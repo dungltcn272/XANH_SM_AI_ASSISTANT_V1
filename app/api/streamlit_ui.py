@@ -74,6 +74,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from app.rag.chain import XanhSMRAGPipeline
 from app.config import config
 from app.evaluation.ragas_eval import XanhSMEvaluation
+from app.crawler.crawl import GreenSMCrawler
+from app.ingestion.ingest import run_ingestion
 
 # Set Streamlit Page Configuration
 st.set_page_config(
@@ -341,7 +343,12 @@ graph_placeholder = st.empty()
 status_placeholder = st.empty()
 
 # Main Navigation Tabs below the tree
-tab_chat, tab_eval, tab_tutorial = st.tabs(["💬 Trợ lý AI CSKH Xanh SM", "🧪 Đánh giá Chất lượng (RAGAS)", "👨‍🏫 Lớp Học RAG Xanh SM"])
+tab_chat, tab_crawl, tab_eval, tab_tutorial = st.tabs([
+    "💬 Trợ lý AI CSKH Xanh SM", 
+    "🕷️ Thu Thập Dữ Liệu (Crawl & Ingest)", 
+    "🧪 Đánh giá Chất lượng (RAGAS)", 
+    "👨‍🏫 Lớp Học RAG Xanh SM"
+])
 
 # ==============================================================================
 # TAB 1: Chatbot & Process Tree Visualizer
@@ -541,6 +548,126 @@ with tab_chat:
         status_placeholder.info("👈 Hãy nhập một câu hỏi ở cột bên trái để theo dõi quá trình Thinking Tree của RAG Pipeline!")
 
 # ==============================================================================
+# TAB 1.5: Crawl and Ingestion Interface (Real-time Crawler & Doc Viewer)
+# ==============================================================================
+with tab_crawl:
+    st.markdown("<h3 style='color: #00f0ff; font-family: Inter;'>🕷️ Thu Thập & Đồng Bộ Hóa Dữ Liệu Chính Sách Thực Tế</h3>", unsafe_allow_html=True)
+    st.markdown("Hệ thống tích hợp công cụ thu thập dữ liệu tự động (Web Crawler) cấu hình BFS để cào dữ liệu thực tế từ Xanh SM, tự động tiền xử lý HTML thành Markdown và đồng bộ vào Vector Database.")
+    
+    col_c1, col_c2 = st.columns([1.2, 1.0])
+    
+    with col_c1:
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #38bdf8;'>⚙️ Cấu HÌnh Web Crawler & Ingest</h4>", unsafe_allow_html=True)
+        
+        crawl_url = st.text_input(
+            "🔗 URL bắt đầu crawl (Start URL):",
+            value="https://www.xanhsm.com/",
+            placeholder="https://www.xanhsm.com/..."
+        )
+        
+        c_sub1, c_sub2 = st.columns(2)
+        with c_sub1:
+            max_depth = st.slider("🌐 Độ sâu BFS tối đa (Max Depth):", min_value=1, max_value=5, value=2)
+        with c_sub2:
+            max_pages = st.slider("📄 Số lượng trang tối đa (Max Pages):", min_value=1, max_value=50, value=10)
+            
+        c_btn1, c_btn2 = st.columns(2)
+        with c_btn1:
+            start_crawl = st.button("🚀 Khởi chạy Crawl & Ingest", use_container_width=True)
+        with c_btn2:
+            start_ingest = st.button("🔄 Chỉ Ingest Lại Dữ Liệu", use_container_width=True)
+            
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Real-time console progress logger
+        if start_crawl or start_ingest:
+            log_placeholder = st.empty()
+            status_box = st.status("⚡ Bắt đầu tiến hành..." if start_crawl else "⚡ Bắt đầu đồng bộ lại...")
+            
+            logs = []
+            def update_log(stage, message):
+                logs.append(f"[{stage}] {message}")
+                log_placeholder.code("\n".join(logs), language="plaintext")
+            
+            if start_crawl:
+                with status_box:
+                    st.write("🕷️ Đang thực thi Web Crawler...")
+                    crawler = GreenSMCrawler(
+                        start_url=crawl_url,
+                        max_depth=max_depth,
+                        max_pages=max_pages,
+                        progress_callback=update_log
+                    )
+                    crawler.crawl()
+                    
+                    st.write("🧹 Đang thực thi tiền xử lý, phân mảnh và nhúng VectorDB...")
+                    run_ingestion(progress_callback=update_log)
+                    
+                    status_box.update(label="🎉 Crawl & Ingest Hoàn Tất Thành Công!", state="complete")
+                    st.success("Tài liệu chính sách đã được cập nhật thành công vào hệ thống RAG!")
+                    if st.button("🔄 Làm mới giao diện"):
+                        st.cache_resource.clear()
+                        st.rerun()
+                    
+            elif start_ingest:
+                with status_box:
+                    st.write("🧹 Đang phân mảnh và đồng bộ lại VectorDB từ dữ liệu thư mục data...")
+                    run_ingestion(progress_callback=update_log)
+                    
+                    status_box.update(label="🎉 Đồng bộ Ingestion Hoàn Tất Thành Công!", state="complete")
+                    st.success("Cơ sở dữ liệu Vector đã được làm mới!")
+                    if st.button("🔄 Làm mới giao diện"):
+                        st.cache_resource.clear()
+                        st.rerun()
+                    
+            # Clear caches to ensure new data takes effect immediately
+            st.cache_resource.clear()
+            
+    with col_c2:
+        st.markdown("<div class='glass-card' style='height: 100%;'>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #00f0ff;'>📁 Kho Tài Liệu Đã Thu Thập (Document Explorer)</h4>", unsafe_allow_html=True)
+        st.markdown("Xem trước các tệp chính sách Markdown đã thu thập và lưu giữ trong các thư mục phân vai trò.")
+        
+        # Look at data folder dynamically
+        import glob
+        data_dir = config.DATA_DIR
+        categories = ["customer", "driver", "merchant", "faq"]
+        
+        selected_category = st.selectbox("📂 Chọn thư mục phân loại:", categories)
+        
+        cat_dir = os.path.join(data_dir, selected_category)
+        if os.path.exists(cat_dir):
+            files = [f for f in os.listdir(cat_dir) if f.endswith(".md")]
+        else:
+            files = []
+            
+        if files:
+            selected_file = st.selectbox("📄 Chọn tài liệu chính sách:", files)
+            
+            file_path = os.path.join(cat_dir, selected_file)
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    file_content = f.read()
+                
+                st.markdown("---")
+                st.markdown(f"**📍 Đường dẫn:** `{selected_category}/{selected_file}`")
+                
+                preview_mode = st.radio("Chế độ xem:", ["Xem dạng văn bản", "Xem thô (Markdown)"], horizontal=True)
+                
+                if preview_mode == "Xem thô (Markdown)":
+                    st.code(file_content, language="markdown")
+                else:
+                    st.markdown(file_content)
+                    
+            except Exception as e:
+                st.error(f"Không thể đọc file: {e}")
+        else:
+            st.warning("⚠️ Thư mục này chưa có tài liệu nào được thu thập. Hãy ấn nút chạy Crawler phía bên trái nhé!")
+            
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ==============================================================================
 # TAB 2: Quality Evaluation Tab (RAGAS)
 # ==============================================================================
 with tab_eval:
@@ -686,6 +813,95 @@ with tab_tutorial:
         
     st.markdown("<h4 style='color: #38bdf8; font-family: Inter; margin-top: 15px;'>🏫 Bài Giảng Chi Tiết Luồng Hoạt Động (RAG Workflow & Evidences)</h4>", unsafe_allow_html=True)
     
+    # Special Preprocessing & Chunking Expander
+    with st.expander("🧹 Bài Giảng Đặc Biệt: Tiền Xử Lý Dữ Liệu & Phân Mảnh Tài Liệu (HTML Preprocessing & Heading-Aware Chunking)"):
+        col_t0, col_ex0 = st.columns([1.2, 1.0])
+        with col_t0:
+            st.markdown("##### 💬 Lời Giảng Của Thầy:")
+            st.write(
+                "\"Để xây dựng một hệ thống RAG chuẩn doanh nghiệp, khâu **tiền xử lý dữ liệu (Preprocessing)** và **phân mảnh (Chunking)** là vô cùng quan trọng các em ạ! "
+                "Nếu ta nạp trực tiếp toàn bộ mã nguồn HTML hoặc các file chính sách dài hàng chục trang vào Vector database, RAG sẽ tìm kiếm cực kỳ kém hiệu quả và tốn chi phí. "
+                "<br><br>"
+                "Hệ thống Xanh SM của chúng ta áp dụng quy trình xử lý 2 giai đoạn cực kỳ bài bản:<br>"
+                "1. **Tiền xử lý & Dọn dẹp (Cleaning):** Loại bỏ hoàn toàn các thẻ thừa (như navigation bar, footer, script, css) và chuyển HTML thô về định dạng **Markdown** tối giản nhằm giữ lại cấu trúc phân cấp (Headers, Tables, Lists).<br>"
+                "2. **Tách đoạn thông minh (Heading-Aware Chunking):** Thay vì cắt văn bản ngẫu nhiên theo số ký tự (làm mất ngữ cảnh, đứt câu), Thầy thiết kế bộ tách `HeadingAwareSplitter`. Bộ tách này cắt văn bản theo các thẻ tiêu đề Markdown (`#`, `##`, `###`) để giữ các điều khoản nguyên vẹn, sau đó mới chia nhỏ với kích thước `chunk_size=700` ký tự và `overlap=150` để đảm bảo thông tin gối đầu liền mạch!\""
+            , unsafe_allow_html=True)
+        with col_ex0:
+            st.markdown("##### 🔍 Minh Họa Quy Trình & Ví Dụ Thực Tế:")
+            st.info(
+                "**1. Tiền xử lý HTML -> Markdown:**\n"
+                "- Thư viện BeautifulSoup bóc tách thẻ `<article>` hoặc `class='policy'`. \n"
+                "- Loại bỏ các thẻ rác `<script>`, `<style>`, `<nav>`.\n"
+                "- Chuyển thẻ table `<table>` sang định dạng bảng Markdown để lưu giữ các bảng phí chuẩn chỉnh.\n\n"
+                "**2. Metadata làm giàu (Metadata Enrichment):**\n"
+                "Mỗi chunk được gắn kèm các thông tin quan trọng để lọc chính xác khi truy vấn:\n"
+                "- `role`: Vai trò áp dụng (customer, driver, merchant, faq).\n"
+                "- `section`: Đường dẫn tiêu đề hoàn chỉnh (ví dụ: `Chính sách hủy > Biểu phí phạt`).\n"
+                "- `chunk_id`: Mã hóa MD5 ASCII để tránh lỗi ký tự Unicode khi ghi vào database."
+            )
+            
+        st.markdown("---")
+        st.markdown("##### 📋 Ví Dụ Phân Mảnh Thực Tế Trực Quan:")
+        
+        # Show a code block comparing raw markdown and two chunk outputs
+        st.markdown("""
+        Hãy xem một file chính sách tài xế `driver_policy.md` được chia mảnh thực tế:
+        """)
+        
+        col_v1, col_v2 = st.columns(2)
+        with col_v1:
+            st.markdown("**📄 File chính sách gốc (Raw Markdown):**")
+            st.code("""
+# CHÍNH SÁCH ĐỐI TÁC TÀI XẾ XANH SM
+---
+url: https://www.xanhsm.com/driver-terms
+category: driver
+crawled_at: 2026-05-26
+---
+
+## Điều 1: Quy định Đồng phục
+Tất cả các đối tác tài xế Xanh SM phải mặc đồng phục (áo thun xanh Cyan, mũ bảo hiểm và quần dài lịch sự) khi thực hiện chuyến đi.
+
+## Điều 2: Tỷ lệ hoạt động tối thiểu
+Tài xế phải duy trì Tỷ lệ nhận chuyến (AR) tối thiểu là 85% và Tỷ lệ hủy chuyến (CR) dưới 10% để tránh bị khóa tài khoản tạm thời.
+""", language="markdown")
+            
+        with col_v2:
+            st.markdown("**📦 Kết quả tạo ra 2 Phân mảnh (Logical Chunks):**")
+            st.code("""
+[Phân mảnh #1]
+ID: a78d8a7c6f0923a1a9e8f17c2f00a6e3
+Nội dung:
+## Điều 1: Quy định Đồng phục
+Tất cả các đối tác tài xế Xanh SM phải mặc đồng phục (áo thun xanh Cyan, mũ bảo hiểm và quần dài lịch sự) khi thực hiện chuyến đi.
+
+Metadata:
+{
+  "source": "driver_policy.md",
+  "role": "driver",
+  "url": "https://www.xanhsm.com/driver-terms",
+  "section": "CHÍNH SÁCH ĐỐI TÁC TÀI XẾ XANH SM > Điều 1: Quy định Đồng phục",
+  "version": "2026-05"
+}
+
+--------------------------------------------------
+
+[Phân mảnh #2]
+ID: 4d28fe7a32d184cf92b8a4f89d3112c8
+Nội dung:
+## Điều 2: Tỷ lệ hoạt động tối thiểu
+Tài xế phải duy trì Tỷ lệ nhận chuyến (AR) tối thiểu là 85% và Tỷ lệ hủy chuyến (CR) dưới 10% để tránh bị khóa tài khoản tạm thời.
+
+Metadata:
+{
+  "source": "driver_policy.md",
+  "role": "driver",
+  "url": "https://www.xanhsm.com/driver-terms",
+  "section": "CHÍNH SÁCH ĐỐI TÁC TÀI XẾ XANH SM > Điều 2: Tỷ lệ hoạt động tối thiểu",
+  "version": "2026-05"
+}
+""", language="json")
+
     # Step 1 Expandable Card
     with st.expander("📚 Bài Giảng 1: Nhận câu hỏi & Mở Rộng Ý Định (AI Query Expansion)"):
         col_t1, col_ex1 = st.columns([1.2, 1.0])

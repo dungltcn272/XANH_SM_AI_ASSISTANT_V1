@@ -1,9 +1,18 @@
 import os
+import sys
+import argparse
 import time
 import requests
+from pathlib import Path
 from urllib.parse import urlparse, urljoin
 from collections import deque
 from bs4 import BeautifulSoup
+
+# Allow running this file directly: `python app/crawler/crawl.py`
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from app.crawler.parser import html_to_markdown
 from app.config import config
 
@@ -14,12 +23,13 @@ class GreenSMCrawler:
     and saves them in a classified folder structure.
     """
     
-    def __init__(self, start_url: str, max_depth: int = 3, max_pages: int = 50):
+    def __init__(self, start_url: str, max_depth: int = 3, max_pages: int = 50, progress_callback = None):
         self.start_url = start_url
         self.domain = urlparse(start_url).netloc
         self.max_depth = max_depth
         self.max_pages = max_pages
         self.visited = set()
+        self.progress_callback = progress_callback
         
     def is_internal_link(self, url: str) -> bool:
         netloc = urlparse(url).netloc
@@ -54,7 +64,11 @@ class GreenSMCrawler:
         return filename
 
     def crawl(self):
-        print(f"[INFO] Starting BFS crawl on {self.start_url} (Max Depth: {self.max_depth}, Max Pages: {self.max_pages})")
+        msg_start = f"Starting BFS crawl on {self.start_url} (Max Depth: {self.max_depth}, Max Pages: {self.max_pages})"
+        print(f"[INFO] {msg_start}")
+        if self.progress_callback:
+            self.progress_callback("START", msg_start)
+            
         queue = deque([(self.start_url, 0)])
         self.visited.add(self.start_url)
         pages_crawled = 0
@@ -65,7 +79,10 @@ class GreenSMCrawler:
             if depth > self.max_depth:
                 continue
                 
-            print(f"[INFO] Crawling ({pages_crawled + 1}/{self.max_pages}): {url} (Depth: {depth})")
+            msg_crawl = f"Crawling ({pages_crawled + 1}/{self.max_pages}): {url} (Depth: {depth})"
+            print(f"[INFO] {msg_crawl}")
+            if self.progress_callback:
+                self.progress_callback("CRAWLING", msg_crawl)
             
             try:
                 time.sleep(0.5)
@@ -101,7 +118,10 @@ class GreenSMCrawler:
                 with open(filepath, "w", encoding="utf-8") as f:
                     f.write(final_content)
                     
-                print(f"[SUCCESS] Saved to {filepath}")
+                msg_save = f"Saved to {filepath}"
+                print(f"[SUCCESS] {msg_save}")
+                if self.progress_callback:
+                    self.progress_callback("SAVED", f"Saved {category}/{filename} ({url})")
                 pages_crawled += 1
                 
                 if depth < self.max_depth:
@@ -118,6 +138,46 @@ class GreenSMCrawler:
                             queue.append((clean_url, depth + 1))
                             
             except Exception as e:
-                print(f"[ERROR] Error crawling {url}: {e}")
+                msg_error = f"Error crawling {url}: {e}"
+                print(f"[ERROR] {msg_error}")
+                if self.progress_callback:
+                    self.progress_callback("ERROR", msg_error)
+ 
+        msg_complete = f"Crawling complete! Total pages successfully crawled: {pages_crawled}"
+        print(f"[INFO] {msg_complete}")
+        if self.progress_callback:
+            self.progress_callback("COMPLETE", msg_complete)
 
-        print(f"[INFO] Crawling complete! Total pages successfully crawled: {pages_crawled}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Crawl Xanh SM pages into categorized markdown files.")
+    parser.add_argument(
+        "start_url",
+        nargs="?",
+        default=os.getenv("CRAWL_START_URL", "https://www.xanhsm.com/"),
+        help="Starting URL for the crawl.",
+    )
+    parser.add_argument(
+        "--max-depth",
+        type=int,
+        default=config.MAX_CRAWL_DEPTH,
+        help="Maximum crawl depth.",
+    )
+    parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=config.MAX_CRAWL_PAGES,
+        help="Maximum number of pages to crawl.",
+    )
+    args = parser.parse_args()
+
+    crawler = GreenSMCrawler(
+        start_url=args.start_url,
+        max_depth=args.max_depth,
+        max_pages=args.max_pages,
+    )
+    crawler.crawl()
+
+
+if __name__ == "__main__":
+    main()
