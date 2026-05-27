@@ -134,6 +134,42 @@ Người dùng (Khách hàng) ➔ Gửi câu hỏi "Hướng dẫn đặt đồ 
 
 Cơ chế này vừa bảo mật tuyệt đối thông tin nội bộ của từng vai trò (khách hàng không bao giờ đọc được chiết khấu hay mức phạt của tài xế), vừa tối ưu hóa khả năng chia sẻ thông tin hữu ích cho toàn bộ người dùng!
 
+Cơ chế này vừa bảo mật tuyệt đối thông tin nội bộ của từng vai trò (khách hàng không bao giờ đọc được chiết khấu hay mức phạt của tài xế), vừa tối ưu hóa khả năng chia sẻ thông tin hữu ích cho toàn bộ người dùng!
+
 ---
 
-👨‍🏫 *Lớp học của Thầy giáo AI hôm nay đến đây là kết thúc. Hãy áp dụng hệ tư duy này để xây dựng những hệ thống AI an toàn, kiên cố và thông minh vượt trội nhé các em!*
+## 🚨 4. Bộ Tứ Điểm Yếu Kinh Điển & Lộ Trình Vá Lỗi Chiến Lược (Giai Đoạn 2)
+
+> [!WARNING]
+> *“Học trò của Thầy thân mến! Một kỹ sư giỏi không chỉ xây dựng hệ thống chạy được, mà phải là người nhìn thấy trước những vết nứt của bức tường trước khi nó sụp đổ. Dưới đây là 4 điểm yếu kinh điển của RAG doanh nghiệp hiện đại và hệ tư duy khắc phục của chúng ta.”*
+
+### ❌ Điểm Yếu 1: Thiếu Bộ Nhớ Hội Thoại (Anaphora & Chat History Loss)
+* **Hiện tượng**: Khi khách hàng chat nhiều câu nối tiếp ngữ cảnh:
+  - Câu 1: *"Xanh SM có bao nhiêu nhân viên?"*
+  - Câu 2: *"Doanh thu của **họ** là bao nhiêu?"*
+  - RAG sẽ tìm kiếm vector thô chữ *"họ"* và trả về 0 kết quả chính xác vì không biết *"họ"* là ai.
+* **Giải pháp khắc phục**: Tích hợp luồng **Conversational Query Rewriter**. Lưu 3-5 lượt chat gần nhất vào bộ nhớ đệm (Redis/SQLite), sau đó dùng một LLM siêu nhẹ biên dịch lại câu hỏi kế thừa thành câu hỏi độc lập (Self-Contained Query) trước khi gửi vào VectorDB.
+  - *Ví dụ:* `[Doanh thu của họ là bao nhiêu?]` ➔ `[Doanh thu của Xanh SM là bao nhiêu?]`.
+
+### ❌ Điểm Yếu 2: Lãng Phí Chi Phí API & Tăng Độ Trễ Khi Hỏi Lại (Redundant LLM Calls)
+* **Hiện tượng**: Hàng ngàn khách hàng khác nhau thường xuyên hỏi cùng một câu hỏi hoặc các câu hỏi tương đương nghĩa (ví dụ: *"Hotline là gì?"* vs *"Số tổng đài Xanh SM"*). Việc gọi OpenAI API liên tục cho các câu hỏi trùng lặp gây **lãng phí chi phí nghiêm trọng** và tạo ra **độ trễ nghẽn mạng (~1s-2s)**.
+* **Giải pháp khắc phục**: Triển khai bộ đệm **GPTCache** hoặc **Redis Semantic Cache** với 2 lớp:
+  - *Deterministic Cache (MD5 string hash)*: Khớp chính xác 100% câu hỏi cũ ➔ Trả ngay kết quả (Độ trễ < 5ms, Phí = $0).
+  - *Semantic Cache (Embedding Similarity)*: Đối sánh khoảng cách vector câu hỏi mới và các câu hỏi lịch sử. Nếu Cosine Similarity > `0.96`, lấy luôn câu trả lời đã lưu ➔ Trả ngay (Độ trễ < 20ms, Phí = $0).
+
+### ❌ Điểm Yếu 3: Thiếu Đầu Vào Đa Phương Tiện (Multimodal EV Diagnostics Blindness)
+* **Hiện tượng**: Khi nâng cấp hệ thống thành bộ chẩn đoán kỹ thuật toàn năng cho xe điện GSM (EV), người lái xe/khách hàng sẽ chụp hình ảnh đèn cảnh báo taplo (như lỗi rùa vàng, báo lỗi động cơ, đèn phanh...) gửi lên. Hệ thống text-only hiện tại sẽ hoàn toàn bị "mù".
+* **Giải pháp khắc phục**: Nâng cấp lên **Multimodal RAG & Vision LLM Agent**:
+  - Dùng mô hình **CLIP/ColPali** nhúng đồng thời cả hình ảnh cảnh báo và sách hướng dẫn kỹ thuật vào chung không gian vector.
+  - Tích hợp **GPT-4o Vision** tiếp nhận ảnh chụp taplo thực tế ➔ Tự động bóc cảnh báo ➔ Truy xuất tài liệu xử lý tương ứng ➔ Đưa ra chỉ dẫn an toàn khẩn cấp.
+
+### ❌ Điểm Yếu 4: Nghịch Lý Phân Mảnh Văn Bản Trên PDF Phức Tạp (The Chunking Paradox)
+* **Hiện tượng**: Các phương pháp cắt mảnh cơ học (`RecursiveCharacterTextSplitter` hay `Semantic Chunking` dựa trên vector) hoạt động máy móc, dễ cắt ngang bảng biểu giá cước, danh sách hoặc tài liệu PDF nhiều cột làm mất cấu trúc. Ngược lại, nếu dùng AI (LLM-based chunking) để cắt mảnh thông minh thì chi phí xử lý thô ban đầu sẽ **cực kỳ đắt đỏ**, doanh nghiệp chắc chắn từ chối chi trả.
+* **Giải pháp khắc phục**: Cơ chế **Hierarchical Layout-Aware Parsing & Parent-Child Retrieval (Truy xuất Cha-Con tự động gộp)**:
+  - *Bố cục thị giác (Layout-Aware Parser)*: Sử dụng các mô hình thị giác máy tính cục bộ gọn nhẹ, chạy local miễn phí (như **LayoutLMv3**, **Marker**, hoặc **PyMuPDF/fitz**) để phân tích bố cục PDF nhiều cột, cấu trúc bảng biểu, Header-DOM chuẩn xác thay vì gọi LLM đắt đỏ.
+  - *Nhận xét về thư viện nổi tiếng `Unstructured`*: Thư viện `unstructured` rất mạnh về lý thuyết phân tách layout ("Chunk by Title"), nhưng cài đặt cục bộ cực kỳ nặng nề (phình Docker lên 3-5GB, đòi hỏi PyTorch, Tesseract, poppler) gây treo đĩa cứng/RAM trên máy chủ Cloud cấu hình vừa phải. Do đó, việc tự thiết kế bộ lọc **PyMuPDF + Heuristics cục bộ** hoặc dùng **Marker** là lựa chọn tối ưu, thực dụng và siêu tốc nhất để deploy.
+  - *Truy xuất Cha-Con (Parent-Child Auto-Merging)*: Vector search chạy trên các mảnh con cực nhỏ (100-200 từ) để bắt trúng ý nghĩa chính xác nhất. Khi tìm thấy mảnh con, RAG tự động gộp và gửi toàn bộ ngữ cảnh cha (1000-2000 từ) chứa nó cho LLM. Điều này giải quyết triệt để vấn đề mất ngữ cảnh PDF mà hoàn toàn không tốn chi phí gọi LLM lúc phân mảnh ban đầu!
+
+---
+
+👨‍🏫 *Lớp học của Thầy giáo AI hôm nay đến đây là kết thúc. Hãy áp dụng hệ tư duy kiên cố này để xây dựng những hệ thống AI an toàn, tối ưu chi phí và thông minh vượt trội nhé các em!*

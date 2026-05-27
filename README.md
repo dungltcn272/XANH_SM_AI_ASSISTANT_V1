@@ -178,6 +178,10 @@ Chuyển sang tab **Variables** trên Railway và thêm các biến cấu hình 
 > **ĐIỂM YẾU 3: CHƯA HỖ TRỢ ĐẦU VÀO ĐA PHƯƠNG TIỆN (MULTIMODAL RAG - IMAGE INPUTS)**
 > - **Mô tả:** Hệ thống hiện tại bị mù thông tin thị giác (Text-only pipeline). Trong tương lai khi nâng cấp lên hệ thống toàn năng giải đáp các thắc mắc về lỗi kỹ thuật xe điện Xanh SM (EV), hành khách hoặc tài xế sẽ chụp ảnh đèn cảnh báo báo lỗi trên mặt taplo (ví dụ: lỗi icon rùa vàng, báo lỗi hệ thống phanh, lỗi động cơ...). Hệ thống hiện tại không thể tiếp nhận và phân tích hình ảnh này để truy xuất tài liệu sửa chữa tương ứng.
 > - **Nguyên nhân:** Đường ống xử lý và bộ trích xuất vector hiện tại chỉ xử lý ký tự thuần túy và mô hình LLM/Embedding chưa kích hoạt chế độ Vision (Thị giác máy tính).
+>
+> **ĐIỂM YẾU 4: NGHỊCH LÝ PHÂN MẢNH VĂN BẢN TRÊN PDF PHỨC TẠP (THE CHUNKING PARADOX IN COMPLEX DOCUMENTS)**
+> - **Mô tả:** Các phương pháp phân mảnh truyền thống (như `RecursiveCharacterSplitter` hoặc `Semantic Chunking` dựa trên Embedding) hoạt động hoàn toàn cơ học, dễ làm đứt gãy bảng dữ liệu, danh sách lồng hoặc cấu trúc nhiều cột của PDF. Ngược lại, việc sử dụng AI (LLM-based document chunking) để tiền xử lý và cắt mảnh thông minh lại cực kỳ đắt đỏ, doanh nghiệp chắc chắn không sẵn lòng trả số tiền lớn chỉ để xử lý dữ liệu thô ban đầu. Với những tệp PDF có bố cục phức tạp, ngay cả mắt thường cũng rất khó chia mảnh tối ưu mà không làm mất tính liền mạch ngữ cảnh.
+> - **Nguyên nhân:** Quá trình phân mảnh bị cô lập, thiếu khả năng nhận diện bố cục thị giác (Layout-Aware) của tài liệu và thiếu tính liên kết phân cấp ngữ cảnh (Hierarchical parent-child relationships).
 
 ### 🎯 Giải pháp & Tính năng phát triển trong Giai đoạn 2:
 
@@ -196,3 +200,9 @@ Triển khai bộ thư viện **GPTCache** hoặc tích hợp **Redis Semantic C
 #### 3. Bộ Nhận Diện Lỗi Kỹ Thuật Đa Phương Tiện (Multimodal RAG & EV Diagnostics)
 * **CSDL Vector Đa Phương Tiện (Multimodal VectorDB)**: Sử dụng mô hình CLIP hoặc ColPali để nhúng đồng thời cả hình ảnh cảnh báo và hướng dẫn dạng chữ từ Sách Hướng dẫn kỹ thuật GSM (EV Manuals) vào chung một không gian vector.
 * **Vision LLM Agent**: Tích hợp GPT-4o Vision hoặc Claude 3.5 Sonnet tiếp nhận hình ảnh taplo lỗi thực tế của khách hàng chụp ➔ Trực quan hóa mã lỗi cảnh báo ➔ Truy xuất RAG tài liệu sửa chữa tương ứng ➔ Đưa ra chỉ dẫn an toàn khẩn cấp tức thì.
+
+#### 4. Cơ chế Tách đoạn Phân cấp & Nhận diện Bố cục (Hierarchical Layout-Aware Parsing & Parent-Child Retrieval)
+* **Layout-Aware PDF Parser**: Sử dụng mô hình thị giác máy tính cục bộ gọn nhẹ, miễn phí (như LayoutLMv3, Marker, hoặc PyMuPDF/fitz) để phân tích bố cục PDF, trích xuất chính xác cấu trúc bảng biểu, biểu phí nhiều cột và cấu trúc Header-DOM mà không cần gọi LLM đắt đỏ.
+* **Parent-Child Retrieval (Truy xuất tự động gộp Cha-Con)**:
+  - *Mảnh Con (Child Chunks - nhỏ, 100-200 từ)*: Phục vụ tìm kiếm vector để đạt độ chính xác ngữ nghĩa cao nhất.
+  - *Mảnh Cha (Parent Chunks - lớn, 1000-2000 từ hoặc toàn bộ chương)*: Khi mảnh con được tìm thấy, RAG sẽ tự động truy xuất và gửi toàn bộ ngữ cảnh cha tương ứng vào LLM. Điều này vừa giúp bảo toàn ngữ cảnh hoàn hảo cho các tài liệu cực kỳ phức tạp, vừa tối ưu chi phí tiền xử lý bằng $0!

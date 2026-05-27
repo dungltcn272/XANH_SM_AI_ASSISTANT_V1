@@ -986,4 +986,36 @@ Metadata:
                 "💡 **Dẫn chứng:** Toàn bộ liên kết nguồn đều được trích dẫn trực tiếp từ các file chính sách chính thức đã được dọn dẹp sạch sẽ link hỏng!"
             )
             
+    # Special Advanced Lecture: The 4 Hidden RAG Weaknesses (Giai Đoạn 2)
+    with st.expander("🚨 Chuyên Đề Nâng Cao: Bộ Tứ Điểm Yếu Kinh Điển & Lộ Trình Vá Lỗi Giai Đoạn 2 (Self-Healing Architecture)"):
+        st.markdown("<h4 style='color: #00f0ff; font-family: Inter;'>⚠️ Phân tích 4 Điểm yếu RAG Sản xuất & Giải pháp Công nghệ Giai đoạn 2</h4>", unsafe_allow_html=True)
+        st.write(
+            "\"Học trò của Thầy thân mến! Một kỹ sư giỏi không chỉ xây dựng hệ thống chạy được, mà phải là người nhìn thấy trước những vết nứt của bức tường trước khi nó sụp đổ. "
+            "Dưới đây là 4 điểm yếu kinh điển của các hệ thống RAG doanh nghiệp hiện nay và cách chúng ta hoạch định giải pháp triệt để cục bộ:\""
+        )
+        
+        c_w1, c_w2 = st.columns(2)
+        with c_w1:
+            st.info(
+                "**❌ Điểm Yếu 1: Thiếu Bộ Nhớ Hội Thoại (Conversational History Loss)**\n\n"
+                "- **Mô tả:** Hỏi câu liên tiếp ngữ cảnh (ví dụ: *'Xanh SM có bao nhiêu nhân viên?'* sau đó hỏi tiếp *'Doanh thu của họ là bao nhiêu?'*). RAG sẽ thất bại vì đại từ thay thế **'họ'** bị mù ngữ cảnh khi tìm kiếm vector.\n"
+                "- **Vá lỗi Giai đoạn 2:** Tích hợp **Conversational Query Rewriter** dùng Redis/SQLite lưu lịch sử, dùng LLM siêu nhẹ biên dịch lại câu hỏi thành độc lập trước khi RAG."
+            )
+            st.warning(
+                "**❌ Điểm Yếu 3: Thiếu Đầu Vào Đa Phương Tiện (Multimodal EV Diagnostics)**\n\n"
+                "- **Mô tả:** Người lái xe EV chụp ảnh bảng điều khiển báo lỗi (icon rùa vàng, báo lỗi động cơ...) gửi lên. Hệ thống text-only sẽ bị 'mù' hoàn toàn.\n"
+                "- **Vá lỗi Giai đoạn 2:** Tích hợp **Multimodal RAG (CLIP/ColPali)** nhúng chung ảnh và chữ vào VectorDB + **Vision LLM (GPT-4o Vision)** đọc ảnh, phân tích mã lỗi trực diện."
+            )
+        with c_w2:
+            st.info(
+                "**❌ Điểm Yếu 2: Lãng Phí Chi Phí Gọi LLM Trùng Lặp (Redundant LLM Calls)**\n\n"
+                "- **Mô tả:** Hỏi lại câu hỏi cũ hoặc câu hỏi đồng nghĩa (ví dụ: *'Hotline đặt xe'* vs *'Tổng đài CSKH'*) gây tốn chi phí API OpenAI lớn và tăng độ trễ mạng (~1s-2s).\n"
+                "- **Vá lỗi Giai đoạn 2:** Cài đặt **Semantic Caching (GPTCache/Redis)** gồm 2 lớp: Deterministic Cache (MD5 string hash) độ trễ <5ms và Semantic Cache (Embedding Cosine Similarity >0.96) độ trễ <20ms, chi phí hoàn toàn bằng $0!"
+            )
+            st.warning(
+                "**❌ Điểm Yếu 4: Nghịch Lý Phân Mảnh Trên PDF Phức Tạp (The Chunking Paradox)**\n\n"
+                "- **Mô tả:** Phân đoạn cơ học làm đứt gãy bảng biểu giá cước xe, danh sách nhiều cột của PDF. Nếu dùng AI phân mảnh thì tiền xử lý cực kỳ đắt đỏ, đè bẹp ngân sách.\n"
+                "- **Vá lỗi Giai đoạn 2:** Sử dụng **Layout-Aware PDF Parser (PyMuPDF + Heuristics cục bộ)** tốc độ siêu nhanh, không tốn API, bỏ qua 'cơn ác mộng' nặng nề 3GB của Unstructured. Kết hợp **Parent-Child Retrieval (Cha-Con tự động gộp)**: Vector search trên mảnh con (100-200 từ) để lấy độ chính xác cao nhất, rồi tự động gộp gửi toàn bộ ngữ cảnh cha (1000-2000 từ) cho LLM để bảo toàn cấu trúc!"
+            )
+            
     st.markdown("<div style='text-align: center; margin-top: 30px; font-size: 1.1rem; color: #00f0ff;'>🎉 Chúc các em học tập vui vẻ và làm chủ công nghệ RAG Doanh Nghiệp cùng Xanh SM! 🎉</div>", unsafe_allow_html=True)
