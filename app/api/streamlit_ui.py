@@ -986,6 +986,78 @@ Metadata:
                 "💡 **Dẫn chứng:** Toàn bộ liên kết nguồn đều được trích dẫn trực tiếp từ các file chính sách chính thức đã được dọn dẹp sạch sẽ link hỏng!"
             )
             
+    # Advanced Retrieval Expandable Card
+    with st.expander("🔍 Bài Giảng Chuyên Sâu: So Sánh Công Nghệ Truy Vấn (Similarity vs. Threshold vs. MMR)"):
+        col_t_ret, col_ex_ret = st.columns([1.2, 1.0])
+        with col_t_ret:
+            st.markdown("##### 💬 Lời Giảng Của Thầy:")
+            st.write(
+                "\"Các em thân mến, khi truy quét VectorDB, việc chọn giải pháp tìm kiếm sẽ quyết định chất lượng ngữ cảnh mà LLM nhận được. "
+                "Hãy cùng Thầy phân tích ba công nghệ truy vấn phổ biến và sự đánh đổi của chúng nhé:<br><br>"
+                "1. **Similarity Search (Tương đồng Cosine):** Quét cực nhanh, lấy Top K mảnh gần nhất. Tuy nhiên, nó bị điểm yếu chí mạng là **trùng lặp thông tin**. Nếu có 3 mảnh cùng nói về một ý, cả 3 sẽ bị lôi vào context làm lãng phí không gian.<br><br>"
+                "2. **Similarity with Score Threshold (Lọc theo Ngưỡng):** Chỉ lấy mảnh có điểm tương đồng lớn hơn một ngưỡng (ví dụ: `score >= 0.75`). Giúp chặn rác rất tốt khi người dùng hỏi lan man. Nhưng ngưỡng cứng lại cực kỳ **nhạy cảm và dễ vỡ** - đặt quá cao thì mất câu trả lời, đặt quá thấp thì mất tác dụng lọc.<br><br>"
+                "3. **Maximal Marginal Relevance (MMR):** Đây là phiên bản nâng cấp giải quyết bài toán đa mục tiêu. MMR cân bằng giữa **độ tương đồng ngữ nghĩa** và **tính đa dạng (chống trùng lặp)** của context. MMR loại bỏ triệt để các nội dung trùng lặp để nhường chỗ cho các mảnh thông tin bổ trợ khác!\""
+            , unsafe_allow_html=True)
+        with col_ex_ret:
+            st.markdown("##### ⚙️ Công Thức & Đánh Đổi Kỹ Thuật:")
+            st.latex(r"MMR = \arg\max_{D_i \in R \setminus S} [\lambda \cdot Sim_1(D_i, Q) - (1 - \lambda) \cdot \max_{D_j \in S} Sim_2(D_i, D_j)]")
+            st.warning(
+                "💡 **Ưu nhược điểm của MMR:**\n"
+                "- **Ưu điểm:** Context siêu sạch, đa dạng thông tin, không trùng lặp.\n"
+                "- **Nhược điểm & Đánh đổi:** MMR làm giảm nhẹ độ chính xác tuyệt đối của mảnh đứng đầu tiếp theo và làm chậm tốc độ truy xuất do phải tính toán khoảng cách chéo giữa các mảnh ứng viên ($O(K^2)$)."
+            )
+            
+    # Chunking Evolution Expandable Card
+    with st.expander("📦 Bài Giảng Chuyên Sâu: Tiến Trình Tiến Hóa Của Các Kỹ Thuật Chunking"):
+        st.markdown("##### 💬 Bài Học Của Thầy Về Các Công Nghệ Chunking:")
+        st.write(
+            "\"Phân mảnh tài liệu là nền móng của mọi hệ thống RAG. Nếu các em chia chunk sai, vector sẽ sai lệch ngữ nghĩa. "
+            "Hãy cùng Thầy điểm danh con đường tiến hóa của các phương pháp chunking từ thô sơ đến hiện đại:\""
+        )
+        
+        st.markdown("""
+        | Công Nghệ Chunking | Cơ Chế Hoạt Động | Ưu Điểm | Nhược Điểm & Đánh Đổi | Tính Thực Tiễn Hiện Đại |
+        | :--- | :--- | :--- | :--- | :--- |
+        | **Character Splitter** | Cắt cơ học đúng số lượng ký tự $N$. | Siêu nhanh, đơn giản. | Cắt đôi câu, làm hỏng từ vựng và bảng biểu. | ❌ Không sử dụng |
+        | **Recursive Splitter** | Cắt đệ quy theo danh sách `['\\n\\n', '\\n', ' ']`. | Nhanh, giữ trọn vẹn câu/đoạn khá tốt. | Mù cấu trúc tiêu đề lớn, dễ mất ngữ cảnh. | ⚠️ Dùng làm baseline cơ bản |
+        | **Heading-Aware** | Tách theo cấu trúc Markdown (`#`, `##`, `###`). | Giữ trọn cấu trúc điều khoản quy chế pháp lý. | Chunk bị quá lớn nếu một mục quá dài. | ✅ Khuyên dùng cho chính sách |
+        | **Semantic Chunking** | Cắt dựa trên độ lệch khoảng cách embedding giữa các câu. | Mảnh cắt cực kỳ tự nhiên theo mạch tư duy. | Tốn tài nguyên tính embedding từng câu đơn lẻ. | ⚠️ Thích hợp cho văn xuôi, sách |
+        | **Agentic / AI-based** | Gọi LLM thông minh đọc và tự động đề xuất điểm cắt. | Chất lượng phân mảnh hoàn hảo tuyệt đối. | Chi phí API khổng lồ, tốc độ xử lý siêu chậm. | ❌ Không thể áp dụng đại trà |
+        | **Parent-Child Retrieval** | Nhúng mảnh con (100-200 từ) để tìm kiếm nhạy, liên kết mảnh cha (1000-2000 từ) để gộp context. | **Đạt lợi ích kép:** Tìm kiếm cực chính xác + Context siêu đầy đủ. | Phải thiết kế cơ sở dữ liệu phân cấp. | 👑 **Tiêu chuẩn vàng (Enterprise Gold Standard)** |
+        """)
+            
+    # Search & Reranking Expandable Card
+    with st.expander("🚀 Bài Giảng Chuyên Sâu: Kiến Trúc Tìm Kiếm & Tái Xếp Hạng Chiều Sâu (Dense/Sparse & Bi/Cross-Encoder)"):
+        col_t_sr, col_ex_sr = st.columns([1.2, 1.0])
+        with col_t_sr:
+            st.markdown("##### 💬 Lời Giảng Của Thầy:")
+            st.write(
+                "\"Để tìm kiếm thông tin không tì vết, hệ thống của chúng ta chạy song song **Tìm Kiếm Lai (Hybrid Search)**:<br>"
+                "1. **Dense Search (Nhúng Vector):** Bắt các từ đồng nghĩa ngữ nghĩa (ví dụ: *'xe điện'* -> *'EV'*).<br>"
+                "2. **Sparse Search (BM25):** Đối sánh chính xác từ khóa, số điện thoại hotline, mã điều khoản.<br>"
+                "Hai luồng được hòa trộn bằng thuật toán **RRF (Reciprocal Rank Fusion)**.<br><br>"
+                "Đặc biệt, ở khâu xếp hạng, các em phải phân biệt rõ **Bi-Encoder** và **Cross-Encoder**:<br>"
+                "- **Bi-Encoder:** Nhúng độc lập Query và Document thành 2 vector rồi so độ tương đồng. Chạy cực nhanh, tính toán offline được, nhưng không có tương tác Attention giữa các từ.<br>"
+                "- **Cross-Encoder:** Ghép trực tiếp Query và Document thành một chuỗi, chạy qua Transformer để tương tác **Full Attention** chéo toàn phần. Siêu chính xác nhưng siêu nặng, bắt buộc chỉ dùng ở Stage 2 để rerank Top 30-50 mảnh.\""
+            , unsafe_allow_html=True)
+        with col_ex_sr:
+            st.markdown("##### 📐 So Sánh Bi-Encoder vs. Cross-Encoder:")
+            st.markdown("""
+            **1. Bi-Encoder (Stage 1 Retriever):**
+            ```text
+            Q ➔ [ Encoder ] ➔ V_Q ┐
+                                  ➔ [ Cosine ] ➔ Score (Nhanh)
+            D ➔ [ Encoder ] ➔ V_D ┘
+            ```
+            
+            **2. Cross-Encoder (Stage 2 Reranker):**
+            ```text
+            Q ──┐
+                ➔ [ Q + D ] ➔ [ Transformer (Full Attention) ] ➔ Score (Chính xác)
+            D ──┘
+            ```
+            """)
+
     # Special Advanced Lecture: The 4 Hidden RAG Weaknesses (Giai Đoạn 2)
     with st.expander("🚨 Chuyên Đề Nâng Cao: Bộ Tứ Điểm Yếu Kinh Điển & Lộ Trình Vá Lỗi Giai Đoạn 2 (Self-Healing Architecture)"):
         st.markdown("<h4 style='color: #00f0ff; font-family: Inter;'>⚠️ Phân tích 4 Điểm yếu RAG Sản xuất & Giải pháp Công nghệ Giai đoạn 2</h4>", unsafe_allow_html=True)

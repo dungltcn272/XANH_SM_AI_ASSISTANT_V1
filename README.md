@@ -206,3 +206,29 @@ Triển khai bộ thư viện **GPTCache** hoặc tích hợp **Redis Semantic C
 * **Parent-Child Retrieval (Truy xuất tự động gộp Cha-Con)**:
   - *Mảnh Con (Child Chunks - nhỏ, 100-200 từ)*: Phục vụ tìm kiếm vector để đạt độ chính xác ngữ nghĩa cao nhất.
   - *Mảnh Cha (Parent Chunks - lớn, 1000-2000 từ hoặc toàn bộ chương)*: Khi mảnh con được tìm thấy, RAG sẽ tự động truy xuất và gửi toàn bộ ngữ cảnh cha tương ứng vào LLM. Điều này vừa giúp bảo toàn ngữ cảnh hoàn hảo cho các tài liệu cực kỳ phức tạp, vừa tối ưu chi phí tiền xử lý bằng $0!
+
+---
+
+## 🧠 6. Phân Tích Chuyên Sâu Công Nghệ RAG (Retrieval, Chunking & Reranking)
+
+Để đảm bảo các kỹ sư và quản trị viên hệ thống có cái nhìn toàn diện, dưới đây là tóm tắt so sánh kỹ thuật các công nghệ cốt lõi của RAG:
+
+### 1. Công Nghệ Truy Vấn: Similarity vs. Threshold vs. MMR
+* **Similarity Search (Tương đồng Cosine)**: Tìm Top K nhanh nhất, nhạy bén nhất. Nhược điểm: Dễ bị lặp ngữ cảnh (Redundancy) khi các mảnh chứa nội dung giống nhau.
+* **Similarity with Score Threshold (Ngưỡng điểm số)**: Ngăn chặn rác cực tốt. Nhược điểm: Ngưỡng cứng rất nhạy cảm và dễ gây mất kết quả khi diễn đạt gián tiếp (Threshold Fragility).
+* **Maximal Marginal Relevance (MMR)**: Cân bằng tối ưu giữa **Độ tương đồng** và **Tính đa dạng** bằng công thức MMR với tham số $\lambda \approx 0.5$.
+  - *Đặc điểm*: Hạn chế tối đa thông tin trùng lặp trong Context window.
+  - *Đánh đổi*: Giảm nhẹ độ chính xác tuyệt đối của mảnh đứng đầu tiếp theo và làm tăng độ trễ tính toán chéo ($O(K^2)$).
+
+### 2. Tiến Trình Tiến Hóa Kỹ Thuật Chunking
+1. **Character Chunking**: Cắt thô theo ký tự ➔ Gây đứt câu, hỏng từ. (❌ Không dùng)
+2. **Recursive Character Chunking**: Tách theo danh sách phân tách `["\n\n", "\n", " "]` ➔ Giữ câu tốt. (⚠️ Baseline)
+3. **Heading-Aware Chunking (Markdown)**: Tách theo tiêu đề `#`, `##` ➔ Giữ trọn cấu trúc điều khoản. (✅ Khuyên dùng cho văn bản pháp lý/chính sách)
+4. **Semantic Chunking**: Cắt theo sự thay đổi đột ngột ngữ nghĩa câu ➔ Tự nhiên nhưng tốn embedding từng câu. (⚠️ Dành cho sách/truyện)
+5. **Agentic Chunking (LLM-based)**: LLM tự quyết định điểm cắt ➔ Hoàn hảo nhưng chi phí cực đắt, tốc độ chậm. (❌ Không thực tế)
+6. **Hierarchical + Parent-Child Retrieval**: Nhúng mảnh con (100-200 từ) để tìm kiếm nhạy bén, liên kết mảnh cha (1000-2000 từ) để gộp ngữ cảnh khi gửi LLM ➔ **Tiêu chuẩn vàng (Gold Standard)** trong doanh nghiệp hiện đại.
+
+### 3. Kiến Trúc Tìm Kiếm & Reranking Chiều Sâu
+* **Tìm Kiếm Lai (Hybrid Search)**: Kết hợp **Dense Search** (Embedding bắt từ đồng nghĩa) và **Sparse Search** (BM25 bắt từ khóa chính xác, mã số, hotline) qua thuật toán **RRF (Reciprocal Rank Fusion)** để xếp thứ hạng tối ưu.
+* **Bi-Encoder (ChromaDB Vector Matching)**: Nhúng độc lập Query và Document ➔ Cực kỳ nhanh, độ chính xác khá tốt, tính toán offline được. Nhược điểm là thiếu tương tác Attention chéo.
+* **Cross-Encoder (Reranker)**: Ghép đôi `Query + Document` vào Transformer để tương tác Self-Attention chéo toàn phần ➔ Độ chính xác siêu việt, bắt trọn sắc thái ngữ nghĩa tinh tế. Nhược điểm là tính toán cực nặng, bắt buộc dùng ở Stage 2 (chỉ xếp hạng lại Top 30-50 ứng viên).
