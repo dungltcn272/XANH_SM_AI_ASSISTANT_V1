@@ -812,9 +812,15 @@ with tab_tutorial:
         """, unsafe_allow_html=True)
         
     st.markdown("<h4 style='color: #38bdf8; font-family: Inter; margin-top: 15px;'>🏫 Bài Giảng Chi Tiết Luồng Hoạt Động (RAG Workflow & Evidences)</h4>", unsafe_allow_html=True)
+    st.write("Các bài giảng chuyên sâu được Thầy phân cấp khoa học theo trình tự **4 Giai Đoạn thực tế của Production RAG Pipeline**:")
     
-    # Special Preprocessing & Chunking Expander
-    with st.expander("🧹 Bài Giảng Đặc Biệt: Tiền Xử Lý Dữ Liệu & Phân Mảnh Tài Liệu (HTML Preprocessing & Heading-Aware Chunking)"):
+    # ==============================================================================
+    # GIAI ĐOẠN I: CHUẨN BỊ DỮ LIỆU & PHÂN MẢNH
+    # ==============================================================================
+    st.markdown("<h5 style='color: #00f0ff; font-family: Inter; margin-top: 20px;'>🧱 GIAI ĐOẠN I: CHUẨN BỊ DỮ LIỆU & PHÂN MẢNH (INGESTION PHASE)</h5>", unsafe_allow_html=True)
+    
+    # 1. Preprocessing & Heading-Aware Chunking
+    with st.expander("🧹 Bài Giảng 1: Tiền Xử Lý Dữ Liệu & Phân Mảnh Tài Liệu (HTML Preprocessing & Heading-Aware Chunking)"):
         col_t0, col_ex0 = st.columns([1.2, 1.0])
         with col_t0:
             st.markdown("##### 💬 Lời Giảng Của Thầy:")
@@ -842,11 +848,7 @@ with tab_tutorial:
             
         st.markdown("---")
         st.markdown("##### 📋 Ví Dụ Phân Mảnh Thực Tế Trực Quan:")
-        
-        # Show a code block comparing raw markdown and two chunk outputs
-        st.markdown("""
-        Hãy xem một file chính sách tài xế `driver_policy.md` được chia mảnh thực tế:
-        """)
+        st.markdown("Hãy xem một file chính sách tài xế `driver_policy.md` được chia mảnh thực tế:")
         
         col_v1, col_v2 = st.columns(2)
         with col_v1:
@@ -902,14 +904,37 @@ Metadata:
 }
 """, language="json")
 
-    # Step 1 Expandable Card
-    with st.expander("📚 Bài Giảng 1: Nhận câu hỏi & Mở Rộng Ý Định (AI Query Expansion)"):
+    # 2. Chunking Evolution
+    with st.expander("📦 Bài Giảng 2: Tiến Trình Tiến Hóa Của Các Kỹ Thuật Chunking"):
+        st.markdown("##### 💬 Bài Học Của Thầy Về Các Công Nghệ Chunking:")
+        st.write(
+            "\"Phân mảnh tài liệu là nền móng của mọi hệ thống RAG. Nếu các em chia chunk sai, vector sẽ sai lệch ngữ nghĩa. "
+            "Hãy cùng Thầy điểm danh con đường tiến hóa của các phương pháp chunking từ thô sơ đến hiện đại:\""
+        )
+        st.markdown("""
+        | Công Nghệ Chunking | Cơ Chế Hoạt Động | Ưu Điểm | Nhược Điểm & Đánh Đổi | Tính Thực Tiễn Hiện Đại |
+        | :--- | :--- | :--- | :--- | :--- |
+        | **Character Splitter** | Cắt cơ học đúng số lượng ký tự $N$. | Siêu nhanh, đơn giản. | Cắt đôi câu, làm hỏng từ vựng và bảng biểu. | ❌ Không sử dụng |
+        | **Recursive Splitter** | Cắt đệ quy theo danh sách `['\\n\\n', '\\n', ' ']`. | Nhanh, giữ trọn vẹn câu/đoạn khá tốt. | Mù cấu trúc tiêu đề lớn, dễ mất ngữ cảnh. | ⚠️ Dùng làm baseline cơ bản |
+        | **Heading-Aware** | Tách theo cấu trúc Markdown (`#`, `##`, `###`). | Giữ trọn cấu trúc điều khoản quy chế pháp lý. | Chunk bị quá lớn nếu một mục quá dài. | ✅ Khuyên dùng cho chính sách |
+        | **Semantic Chunking** | Cắt dựa trên độ lệch khoảng cách embedding giữa các câu. | Mảnh cắt cực kỳ tự nhiên theo mạch tư duy. | Tốn tài nguyên tính embedding từng câu đơn lẻ. | ⚠️ Thích hợp cho văn xuôi, sách |
+        | **Agentic / AI-based** | Gọi LLM thông minh đọc và tự động đề xuất điểm cắt. | Chất lượng phân mảnh hoàn hảo tuyệt đối. | Chi phí API khổng lồ, tốc độ xử lý siêu chậm. | ❌ Không thể áp dụng đại trà |
+        | **Parent-Child Retrieval** | Nhúng mảnh con (100-200 từ) để tìm kiếm nhạy, liên kết mảnh cha (1000-2000 từ) để gộp context. | **Đạt lợi ích kép:** Tìm kiếm cực chính xác + Context siêu đầy đủ. | Phải thiết kế cơ sở dữ liệu phân cấp. | 👑 **Tiêu chuẩn vàng (Enterprise Gold Standard)** |
+        """)
+
+    # ==============================================================================
+    # GIAI ĐOẠN II: Ý ĐỊNH & TRUY VẤN NÂNG CAO
+    # ==============================================================================
+    st.markdown("<h5 style='color: #00f0ff; font-family: Inter; margin-top: 20px;'>🧠 GIAI ĐOẠN II: Ý ĐỊNH & TRUY VẤN NÂNG CAO (QUERYING & RETRIEVAL PHASE)</h5>", unsafe_allow_html=True)
+    
+    # 3. AI Query Expansion
+    with st.expander("📚 Bài Giảng 3: Nhận câu hỏi & Mở Rộng Ý Định (AI Query Expansion)"):
         col_t1, col_ex1 = st.columns([1.2, 1.0])
         with col_t1:
             st.markdown("##### 💬 Lời Giảng Của Thầy:")
             st.write(
                 "\"Các em biết đấy, con người chúng ta khi đặt câu hỏi thường gõ thiếu từ, dùng tiếng lóng hoặc viết sai chính tả. "
-                "Nếu hệ thống RAG chỉ lấy câu hỏi gốc đi tìm kiếm, ta sẽ bỏ sót rất nhiều tài liệu quan trọng! "
+                "If hệ thống RAG chỉ lấy câu hỏi gốc đi tìm kiếm, ta sẽ bỏ sót rất nhiều tài liệu quan trọng! "
                 "Vì vậy, ở bước **Query Expansion (AI)**, Thầy gọi một LLM để phân tích và nhân bản câu hỏi gốc thành "
                 "3 câu hỏi đồng nghĩa chất lượng bằng Tiếng Việt. Điều này giúp chúng ta vét sạch mọi góc khuất của chính sách!\""
             )
@@ -923,71 +948,9 @@ Metadata:
                 "- *'Số hotline toàn quốc liên hệ đặt xe Xanh'* (Synonym)\n\n"
                 "💡 **Dẫn chứng:** Việc mở rộng này giúp hệ thống truy quét được cả file `terms.md` (chứa từ khóa 'Tổng đài') và `booking.md` (chứa từ 'Hotline') cùng lúc!"
             )
-            
-    # Step 2 Expandable Card
-    with st.expander("🔍 Bài Giảng 2: Tìm Kiếm Lai Hai Luồng (Dense & Sparse Hybrid Search)"):
-        col_t2, col_ex2 = st.columns([1.2, 1.0])
-        with col_t2:
-            st.markdown("##### 💬 Lời Giảng Của Thầy:")
-            st.write(
-                "\"Sau khi có nhóm câu hỏi mở rộng, Thầy sử dụng cơ chế **Tìm Kiếm Lai (Hybrid Search)** kết hợp hai tay săn dữ liệu: "
-                "1. **Dense Search (Tìm kiếm Ngữ nghĩa):** Sử dụng các vector nhúng (Embedding) để tìm các văn bản có cùng ý nghĩa dù không dùng chung từ ngữ. "
-                "2. **Sparse Search (Tìm kiếm Từ khóa BM25):** Tra cứu từ khóa chính xác trên chỉ mục nghịch đảo để bắt trúng các con số, tên điều khoản. "
-                "Cả hai kết quả sau đó được hòa trộn bằng thuật toán **RRF (Reciprocal Rank Fusion)** để xếp thứ hạng Top 30 văn bản tốt nhất.\""
-            )
-        with col_ex2:
-            st.markdown("##### 🔍 Ví Dụ Thực Tế & Dẫn Chứng:")
-            st.info(
-                "**Câu hỏi:** *'Phí phạt hủy chuyến Xanh Bike khi chờ quá 5 phút là bao nhiêu?'*\n\n"
-                "- **Dense Search:** Sẽ tìm ra các mục quy định về việc 'không có mặt, từ chối di chuyển, đền bù'.\n"
-                "- **Sparse Search (BM25):** Sẽ khớp chính xác từ khóa 'Xanh Bike', '5 phút' và con số '10.000 VNĐ' trong chính sách.\n\n"
-                "💡 **Dẫn chứng:** Hai luồng bổ trợ cho nhau giúp tìm đúng trích đoạn tại *Điều 1, Khoản 2, file refund.md* có ghi mức phạt Xanh Bike là 10.000 VNĐ!"
-            )
-            
-    # Step 3 Expandable Card
-    with st.expander("⚡ Bài Giảng 3: Tái Xếp Hạng Siêu Tốc (Cross-Encoder Reranking)"):
-        col_t3, col_ex3 = st.columns([1.2, 1.0])
-        with col_t3:
-            st.markdown("##### 💬 Lời Giảng Của Thầy:")
-            st.write(
-                "\"Có được Top 30 văn bản rồi, nhưng nếu nhồi hết vào LLM thì chi phí API sẽ rất đắt, và LLM dễ bị loãng thông tin dẫn đến câu trả lời dài dòng. "
-                "Do đó, Thầy dùng một mô hình **Reranker (AI)** (Cross-Encoder) cục bộ để tính toán sự tương tác ngữ nghĩa trực tiếp giữa câu hỏi và từng đoạn trích. "
-                "Hệ thống chấm điểm siêu tốc và chỉ giữ lại đúng **Top 5 văn bản có điểm số cao nhất** để chuyển sang bước tiếp theo.\""
-            )
-        with col_ex3:
-            st.markdown("##### 🔍 Ví Dụ Thực Tế & Dẫn Chứng:")
-            st.info(
-                "**Câu hỏi:** *'Mức chiết khấu tài xế Xanh Luxury là bao nhiêu?'*\n\n"
-                "**Bảng điểm Rerank của 3 đoạn trích đầu tiên:**\n"
-                "1. *Khoản 2, Điều 1, commission.md* (Chiết khấu Xanh Luxury là 28%) -> **Score: 0.992** ➔ Giữ lại #1\n"
-                "2. *Khoản 1, Điều 1, commission.md* (Chiết khấu Xanh Car là 25%) -> **Score: 0.741** ➔ Giữ lại #2\n"
-                "3. *Điều 3, driver_policy.md* (Chế tài tác phong tài xế) -> **Score: 0.118** ➔ Loại bỏ\n\n"
-                "💡 **Dẫn chứng:** Cross-Reranking loại bỏ các nội dung gây nhiễu, giúp LLM chỉ tập trung vào con số 28% Xanh Luxury!"
-            )
-            
-    # Step 4 Expandable Card
-    with st.expander("🤖 Bài Giảng 4: Tổng Hợp Phản Hồi Trích Nguồn (LLM Synthesizer & Citation)"):
-        col_t4, col_ex4 = st.columns([1.2, 1.0])
-        with col_t4:
-            st.markdown("##### 💬 Lời Giảng Của Thầy:")
-            st.write(
-                "\"Đây là bước cuối cùng và cũng là bước thăng hoa nhất! Thầy nén Top 5 tài liệu sạch nhất thành một ngữ cảnh, "
-                "đưa vào một hệ thống Prompt đặc biệt có quy tắc kiểm duyệt trích nguồn cực kỳ nghiêm ngặt. "
-                "Mô hình ngôn ngữ lớn (LLM - GPT-4o-mini) sẽ tổng hợp câu trả lời tự nhiên, thân thiện đúng tác phong CSKH Xanh SM. "
-                "Sau đó, hệ thống của Thầy sẽ bóc tách các nguồn tham khảo chính thức, đối sánh URL và hiển thị gọn gàng bên dưới câu trả lời!\""
-            )
-        with col_ex4:
-            st.markdown("##### 🔍 Ví Dụ Thực Tế & Dẫn Chứng:")
-            st.info(
-                "**Câu trả lời sinh ra:**\n"
-                "*'Chào quý khách, mức chiết khấu (phí dịch vụ hệ thống) dành cho tài xế Xanh Luxury là 28% trên tổng doanh thu cước mỗi chuyến đi...'* (Câu trả lời cực sạch, không bị dính văn bản thô).\n\n"
-                "**Nguồn trích dẫn hiển thị:**\n"
-                "- *📍 commission.md - Điều 1: Mức Chiết Khấu (URL: https://www.greensm.com/vn-vi/terms-policies)*\n\n"
-                "💡 **Dẫn chứng:** Toàn bộ liên kết nguồn đều được trích dẫn trực tiếp từ các file chính sách chính thức đã được dọn dẹp sạch sẽ link hỏng!"
-            )
-            
-    # Advanced Retrieval Expandable Card
-    with st.expander("🔍 Bài Giảng Chuyên Sâu: So Sánh Công Nghệ Truy Vấn (Similarity vs. Threshold vs. MMR)"):
+
+    # 4. Advanced Retrieval
+    with st.expander("🔍 Bài Giảng 4: So Sánh Công Nghệ Truy Vấn (Similarity vs. Threshold vs. MMR)"):
         col_t_ret, col_ex_ret = st.columns([1.2, 1.0])
         with col_t_ret:
             st.markdown("##### 💬 Lời Giảng Của Thầy:")
@@ -1006,37 +969,42 @@ Metadata:
                 "- **Ưu điểm:** Context siêu sạch, đa dạng thông tin, không trùng lặp.\n"
                 "- **Nhược điểm & Đánh đổi:** MMR làm giảm nhẹ độ chính xác tuyệt đối của mảnh đứng đầu tiếp theo và làm chậm tốc độ truy xuất do phải tính toán khoảng cách chéo giữa các mảnh ứng viên ($O(K^2)$)."
             )
-            
-    # Chunking Evolution Expandable Card
-    with st.expander("📦 Bài Giảng Chuyên Sâu: Tiến Trình Tiến Hóa Của Các Kỹ Thuật Chunking"):
-        st.markdown("##### 💬 Bài Học Của Thầy Về Các Công Nghệ Chunking:")
-        st.write(
-            "\"Phân mảnh tài liệu là nền móng của mọi hệ thống RAG. Nếu các em chia chunk sai, vector sẽ sai lệch ngữ nghĩa. "
-            "Hãy cùng Thầy điểm danh con đường tiến hóa của các phương pháp chunking từ thô sơ đến hiện đại:\""
-        )
-        
-        st.markdown("""
-        | Công Nghệ Chunking | Cơ Chế Hoạt Động | Ưu Điểm | Nhược Điểm & Đánh Đổi | Tính Thực Tiễn Hiện Đại |
-        | :--- | :--- | :--- | :--- | :--- |
-        | **Character Splitter** | Cắt cơ học đúng số lượng ký tự $N$. | Siêu nhanh, đơn giản. | Cắt đôi câu, làm hỏng từ vựng và bảng biểu. | ❌ Không sử dụng |
-        | **Recursive Splitter** | Cắt đệ quy theo danh sách `['\\n\\n', '\\n', ' ']`. | Nhanh, giữ trọn vẹn câu/đoạn khá tốt. | Mù cấu trúc tiêu đề lớn, dễ mất ngữ cảnh. | ⚠️ Dùng làm baseline cơ bản |
-        | **Heading-Aware** | Tách theo cấu trúc Markdown (`#`, `##`, `###`). | Giữ trọn cấu trúc điều khoản quy chế pháp lý. | Chunk bị quá lớn nếu một mục quá dài. | ✅ Khuyên dùng cho chính sách |
-        | **Semantic Chunking** | Cắt dựa trên độ lệch khoảng cách embedding giữa các câu. | Mảnh cắt cực kỳ tự nhiên theo mạch tư duy. | Tốn tài nguyên tính embedding từng câu đơn lẻ. | ⚠️ Thích hợp cho văn xuôi, sách |
-        | **Agentic / AI-based** | Gọi LLM thông minh đọc và tự động đề xuất điểm cắt. | Chất lượng phân mảnh hoàn hảo tuyệt đối. | Chi phí API khổng lồ, tốc độ xử lý siêu chậm. | ❌ Không thể áp dụng đại trà |
-        | **Parent-Child Retrieval** | Nhúng mảnh con (100-200 từ) để tìm kiếm nhạy, liên kết mảnh cha (1000-2000 từ) để gộp context. | **Đạt lợi ích kép:** Tìm kiếm cực chính xác + Context siêu đầy đủ. | Phải thiết kế cơ sở dữ liệu phân cấp. | 👑 **Tiêu chuẩn vàng (Enterprise Gold Standard)** |
-        """)
-            
-    # Search & Reranking Expandable Card
-    with st.expander("🚀 Bài Giảng Chuyên Sâu: Kiến Trúc Tìm Kiếm & Tái Xếp Hạng Chiều Sâu (Dense/Sparse & Bi/Cross-Encoder)"):
+
+    # ==============================================================================
+    # GIAI ĐOẠN III: TÌM KIẾM LAI & TÁI XẾP HẠNG
+    # ==============================================================================
+    st.markdown("<h5 style='color: #00f0ff; font-family: Inter; margin-top: 20px;'>🚀 GIAI ĐOẠN III: TÌM KIẾM LAI & TÁI XẾP HẠNG (RETRIEVAL & RERANKING PHASE)</h5>", unsafe_allow_html=True)
+    
+    # 5. Dense & Sparse Hybrid Search
+    with st.expander("🔍 Bài Giảng 5: Tìm Kiếm Lai Hai Luồng (Dense & Sparse Hybrid Search)"):
+        col_t2, col_ex2 = st.columns([1.2, 1.0])
+        with col_t2:
+            st.markdown("##### 💬 Lời Giảng Của Thầy:")
+            st.write(
+                "\"Sau khi có nhóm câu hỏi mở rộng, Thầy sử dụng cơ chế **Tìm Kiếm Lai (Hybrid Search)** kết hợp hai tay săn dữ liệu: "
+                "1. **Dense Search (Tìm kiếm Ngữ nghĩa):** Sử dụng các vector nhúng (Embedding) để tìm các văn bản có cùng ý nghĩa dù không dùng chung từ ngữ. "
+                "2. **Sparse Search (Tìm kiếm Từ khóa BM25):** Tra cứu từ khóa chính xác trên chỉ mục nghịch đảo để bắt trúng các con số, tên điều khoản. "
+                "Cả hai kết quả sau đó được hòa trộn bằng thuật toán **RRF (Reciprocal Rank Fusion)** để xếp thứ hạng Top 30 văn bản tốt nhất.\""
+            )
+        with col_ex2:
+            st.markdown("##### 🔍 Ví Dụ Thực Tế & Dẫn Chứng:")
+            st.info(
+                "**Câu hỏi:** *'Phí phạt hủy chuyến Xanh Bike khi chờ quá 5 phút là bao nhiêu?'*\n\n"
+                "- **Dense Search:** Sẽ tìm ra các mục quy định về việc 'không có mặt, từ chối di chuyển, đền bù'.\n"
+                "- **Sparse Search (BM25):** Sẽ khớp chính xác từ khóa 'Xanh Bike', '5 phút' và con số '10.000 VNĐ' trong chính sách.\n\n"
+                "💡 **Dẫn chứng:** Hai luồng bổ trợ cho nhau giúp tìm đúng trích đoạn tại *Điều 1, Khoản 2, file refund.md* có ghi mức phạt Xanh Bike là 10.000 VNĐ!"
+            )
+
+    # 6. Bi/Cross-Encoder & Reranking
+    with st.expander("🚀 Bài Giảng 6: Tái Xếp Hạng Siêu Tốc (Cross-Encoder Reranking & Bi/Cross-Encoder Deep-Dive)"):
         col_t_sr, col_ex_sr = st.columns([1.2, 1.0])
         with col_t_sr:
             st.markdown("##### 💬 Lời Giảng Của Thầy:")
             st.write(
-                "\"Để tìm kiếm thông tin không tì vết, hệ thống của chúng ta chạy song song **Tìm Kiếm Lai (Hybrid Search)**:<br>"
-                "1. **Dense Search (Nhúng Vector):** Bắt các từ đồng nghĩa ngữ nghĩa (ví dụ: *'xe điện'* -> *'EV'*).<br>"
-                "2. **Sparse Search (BM25):** Đối sánh chính xác từ khóa, số điện thoại hotline, mã điều khoản.<br>"
-                "Hai luồng được hòa trộn bằng thuật toán **RRF (Reciprocal Rank Fusion)**.<br><br>"
-                "Đặc biệt, ở khâu xếp hạng, các em phải phân biệt rõ **Bi-Encoder** và **Cross-Encoder**:<br>"
+                "\"Để tìm kiếm thông tin không tì vết, hệ thống của chúng ta chạy song song **Tìm Kiếm Lai (Hybrid Search)** và **Reranker**:<br><br>"
+                "Có được Top 30 văn bản rồi, nếu nhồi hết vào LLM thì chi phí API sẽ rất đắt, và LLM dễ bị loãng thông tin. "
+                "Do đó, Thầy dùng một mô hình **Reranker (AI) (Cross-Encoder)** cục bộ để tính toán tương tác ngữ nghĩa trực tiếp giữa câu hỏi và từng đoạn trích. "
+                "Đồng thời các em cần phân biệt rõ Bi-Encoder và Cross-Encoder:<br>"
                 "- **Bi-Encoder:** Nhúng độc lập Query và Document thành 2 vector rồi so độ tương đồng. Chạy cực nhanh, tính toán offline được, nhưng không có tương tác Attention giữa các từ.<br>"
                 "- **Cross-Encoder:** Ghép trực tiếp Query và Document thành một chuỗi, chạy qua Transformer để tương tác **Full Attention** chéo toàn phần. Siêu chính xác nhưng siêu nặng, bắt buộc chỉ dùng ở Stage 2 để rerank Top 30-50 mảnh.\""
             , unsafe_allow_html=True)
@@ -1057,6 +1025,51 @@ Metadata:
             D ──┘
             ```
             """)
+
+    # 7. GraphRAG & Knowledge Graph
+    with st.expander("🕸️ Bài Giảng 7: GraphRAG & Đồ Thị Tri Thức (Khi nào thực sự cần thiết?)"):
+        col_t_gr, col_ex_gr = st.columns([1.2, 1.0])
+        with col_t_gr:
+            st.markdown("##### 💬 Lời Giảng Của Thầy:")
+            st.write(
+                "\"Các em học sinh thân mến! Khi bước vào các hệ thống RAG quy mô lớn, nhiều kỹ sư thường lập tức đề xuất xây dựng **GraphRAG** kết hợp Graph DB (như Neo4j) để trích xuất thực thể và liên kết quan hệ chéo. "
+                "Tuy nhiên, là một kỹ sư thực chiến, các em phải nhìn rõ các đánh đổi và bài toán thực tế:<br><br>"
+                "1. **Khi nào thực sự cần?** Khi dữ liệu của doanh nghiệp có cấu trúc mạng lưới quan hệ chéo chằng chịt, phức tạp (ví dụ: hồ sơ y khoa, phả hệ, mạng lưới giao dịch ngân hàng) và người dùng cần đặt câu hỏi toàn cục dạng: *'Hãy so sánh tác động chéo của tất cả các ban ngành?'* (Global QA).<br><br>"
+                "2. **Tại sao không cần thiết cho CSKH Xanh SM?** Dữ liệu chính sách cước phí, hotline của chúng ta chủ yếu dạng phẳng và có mục lục phân cấp rõ ràng. Các câu hỏi tra cứu là cục bộ (Local QA), cơ chế Hybrid Search + Parent-Child Retrieval đã hoàn toàn giải quyết xuất sắc.<br><br>"
+                "3. **Đánh đổi khổng lồ:** GraphRAG làm tăng chi phí bóc tách bằng LLM lên **50x - 100x**, đồng thời kéo độ trễ phản hồi lên tới **5s - 30s** (hoàn toàn không phù hợp cho Chatbot CSKH thời gian thực cần độ trễ < 1s).\""
+            , unsafe_allow_html=True)
+        with col_ex_gr:
+            st.markdown("##### 💡 Giải Pháp Đồ Thị Lai Siêu Nhẹ (Pragmatic Graph):")
+            st.info(
+                "Thay vì dựng server Neo4j đắt đỏ và cồng kềnh, Thầy đề xuất xây dựng một đồ thị quan hệ liên kết chéo các file Markdown (như `terms.md` link tới `refund.md`) bằng thư viện **networkx** chạy trực tiếp trên RAM.\n\n"
+                "Khi người dùng hỏi trúng file này, RAG tự động dựa vào đồ thị siêu nhẹ này để kéo thêm file liên kết vào context. **Kết quả:** Đạt hiệu quả liên kết tối đa mà chi phí bằng $0 và độ trễ 0ms!"
+            )
+
+    # ==============================================================================
+    # GIAI ĐOẠN IV: TỔNG HỢP & BẢO MẬT
+    # ==============================================================================
+    st.markdown("<h5 style='color: #00f0ff; font-family: Inter; margin-top: 20px;'>🛡️ GIAI ĐOẠN IV: TỔNG HỢP & BẢO MẬT (SYNTHESIS & CITATION PHASE)</h5>", unsafe_allow_html=True)
+    
+    # 8. LLM Synthesizer & Citation
+    with st.expander("🤖 Bài Giảng 8: Tổng Hợp Phản Hồi Trích Nguồn (LLM Synthesizer & Citation)"):
+        col_t4, col_ex4 = st.columns([1.2, 1.0])
+        with col_t4:
+            st.markdown("##### 💬 Lời Giảng Của Thầy:")
+            st.write(
+                "\"Đây là bước cuối cùng và cũng là bước thăng hoa nhất! Thầy nén Top 5 tài liệu sạch nhất thành một ngữ cảnh, "
+                "đưa vào một hệ thống Prompt đặc biệt có quy tắc kiểm duyệt trích nguồn cực kỳ nghiêm ngặt. "
+                "Mô hình ngôn ngữ lớn (LLM - GPT-4o-mini) sẽ tổng hợp câu trả lời tự nhiên, thân thiện đúng tác phong CSKH Xanh SM. "
+                "Sau đó, hệ thống của Thầy sẽ bóc tách các nguồn tham khảo chính thức, đối sánh URL và hiển thị gọn gàng bên dưới câu trả lời!\""
+            )
+        with col_ex4:
+            st.markdown("##### 🔍 Ví Dụ Thực Tế & Dẫn Chứng:")
+            st.info(
+                "**Câu trả lời sinh ra:**\n"
+                "*'Chào quý khách, mức chiết khấu (phí dịch vụ hệ thống) dành cho tài xế Xanh Luxury là 28% trên tổng doanh thu cước mỗi chuyến đi...'* (Câu trả lời cực sạch, không bị dính văn bản thô).\n\n"
+                "**Nguồn trích dẫn hiển thị:**\n"
+                "- *📍 commission.md - Điều 1: Mức Chiết Khấu (URL: https://www.greensm.com/vn-vi/terms-policies)*\n\n"
+                "💡 **Dẫn chứng:** Toàn bộ liên kết nguồn đều được trích dẫn trực tiếp từ các file chính sách chính thức đã được dọn dẹp sạch sẽ link hỏng!"
+            )
 
     # Special Advanced Lecture: The 4 Hidden RAG Weaknesses (Giai Đoạn 2)
     with st.expander("🚨 Chuyên Đề Nâng Cao: Bộ Tứ Điểm Yếu Kinh Điển & Lộ Trình Vá Lỗi Giai Đoạn 2 (Self-Healing Architecture)"):

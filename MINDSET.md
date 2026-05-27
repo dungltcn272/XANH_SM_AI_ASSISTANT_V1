@@ -56,86 +56,89 @@ graph TD
 ## 👨‍🏫 2. Bài Giảng Chuyên Sâu Từ Thầy Giáo AI
 
 > [!NOTE]
-> *“Hỏi gì đáp nấy (Naive RAG) là cách nhanh nhất để đưa một hệ thống RAG doanh nghiệp vào ngõ cụt. Thông tin nhiễu, lỗi định dạng đứt đoạn, và ảo giác (hallucination) sẽ giết chết lòng tin của khách hàng. Hãy cùng Thầy phân tích 5 chương tri thức nền tảng của hệ thống Xanh SM.”*
+> *“Hỏi gì đáp nấy (Naive RAG) là cách nhanh nhất để đưa một hệ thống RAG doanh nghiệp vào ngõ cụt. Thông tin nhiễu, lỗi định dạng đứt đoạn, và ảo giác (hallucination) sẽ giết chết lòng tin của khách hàng. Thầy đã hệ thống lại 8 chương bài giảng chuyên sâu theo trình tự 4 giai đoạn chuẩn của một đường ống (pipeline) RAG cấp doanh nghiệp thực thụ.”*
 
-### 🧹 Chương 1: Tiền Xử Lý Dữ Liệu & Phân Mảnh (Heading-Aware Chunking)
-Để VectorDB lưu trữ hiệu quả, dữ liệu HTML thô được bóc tách bằng BeautifulSoup, loại bỏ sạch rác (headers, footers, scripts) rồi chuyển về **Markdown**.
+---
 
-Thay vì cắt văn bản ngẫu nhiên theo số ký tự làm mất câu và ngữ cảnh, Thầy thiết kế bộ tách `HeadingAwareSplitter` cắt văn bản theo các thẻ tiêu đề Markdown (`#`, `##`, `###`) để giữ các điều khoản pháp lý nguyên vẹn, sau đó mới chia nhỏ với kích thước `chunk_size=700` ký tự và `overlap=150` để đảm bảo gối đầu liền mạch. Mỗi mảnh (chunk) được gán mã MD5 duy nhất dạng ASCII để tránh lỗi hệ điều hành.
+### 🧱 GIAI ĐOẠN I: CHUẨN BỊ DỮ LIỆU & PHÂN MẢNH (INGESTION PHASE)
 
-### 🧠 Chương 2: Mở Rộng Ý Định Thông Minh (AI Query Expansion)
-Hành khách thường gõ thiếu chữ hoặc sai chính tả. Nếu chỉ dùng câu gốc để tìm kiếm, ta sẽ bỏ sót tài liệu. Ở bước này, Thầy gọi LLM sinh ra **3 câu hỏi đồng nghĩa Tiếng Việt** chất lượng để truy quét toàn diện không gian vector.
+#### 🧹 Chương 1: Tiền Xử Lý Dữ Liệu & Tách Theo Tiêu Đề (Heading-Aware Chunking)
+Để VectorDB lưu trữ hiệu quả, dữ liệu HTML thô được bóc tách bằng BeautifulSoup, loại bỏ sạch rác (headers, footers, scripts) rồi chuyển về **Markdown** nhằm giữ cấu trúc phân cấp.
 
-### 🔍 Chương 3: Tìm Kiếm Lai Hai Luồng (Dense & Sparse Hybrid Search)
-Thầy cho chạy song song 2 tay săn thông tin:
-1. **Dense Search (Tìm kiếm ngữ nghĩa)**: Quét ChromaDB bằng vector nhúng để bắt được các ý nghĩa đồng nghĩa.
-2. **Sparse Search (BM25)**: Đối sánh từ khóa chính xác trên chỉ mục nghịch đảo để bắt trúng biểu phí, số điện thoại, con số cụ thể.
+Thay vì cắt văn bản ngẫu nhiên theo số ký tự làm mất câu và ngữ cảnh, Thầy thiết kế bộ tách `HeadingAwareSplitter` cắt văn bản theo các thẻ tiêu đề Markdown (`#`, `##`, `###`) để giữ các điều khoản pháp lý nguyên vẹn, sau đó mới chia nhỏ với kích thước `chunk_size=700` ký tự và `overlap=150` để đảm bảo gối đầu liền mạch. Mỗi mảnh (chunk) được gán mã MD5 duy nhất dạng ASCII để tránh lỗi ký tự đặc biệt của hệ điều hành.
 
-Kết quả được hòa trộn bằng thuật toán **RRF (Reciprocal Rank Fusion)** xếp hạng Top 30 trích đoạn tối ưu nhất.
+#### 📦 Chương 2: Tiến Trình Tiến Hóa Của Kỹ Thuật Chunking (Phân Mảnh Văn Bản)
+Phân mảnh quyết định chất lượng của vector đầu vào. Thầy xin khái quát con đường tiến hóa của kỹ thuật này từ sơ khai đến hiện đại:
+* **Character Chunking** *(Cổ điển)*: Cắt cơ học đúng số ký tự $N$ (ví dụ: cứ 500 ký tự cắt 1 mảnh). Nhanh nhưng làm đứt câu, hỏng từ và nát bảng biểu. (❌ Không dùng)
+* **Recursive Character Chunking**: Tách đệ quy dựa trên danh sách ký tự ưu tiên `["\n\n", "\n", " ", ""]` để bảo toàn đoạn văn và câu. Rất tốt cho tài liệu phẳng thông thường. (⚠️ Baseline cơ bản)
+* **Heading-Aware / Structural Chunking**: Sử dụng cấu trúc cú pháp tiêu đề Markdown để cắt. Bảo toàn 100% tính toàn vẹn của một điều khoản, bảng biểu. (✅ Khuyên dùng cho chính sách/quy chế)
+* **Semantic Chunking**: Tính toán embedding cho từng câu liên tiếp, thực hiện cắt chunk khi độ tương đồng ngữ nghĩa giữa hai câu đột ngột sụt giảm. Mảnh cắt tự nhiên nhưng tốn tài nguyên nhúng vector từng câu. (⚠️ Phù hợp cho văn xuôi)
+* **Agentic / LLM-based Chunking**: Dùng một LLM đọc và tự quyết định vị trí cắt đoạn tối ưu. Chất lượng hoàn hảo nhưng chi phí API khổng lồ, tốc độ chậm chạp. (❌ Không thực tế)
+* **Hierarchical + Parent-Child Retrieval** *(Vàng)*: Phân tích layout PDF bằng mô hình thị giác cục bộ (PyMuPDF / Marker). Tạo ra các **Chunk Con (Child Chunks - 100-200 từ)** nhúng vector để tìm kiếm cực nhạy, liên kết với **Chunk Cha (Parent Chunks - 1000-2000 từ)** để tự động gộp context khi gửi LLM. Đạt lợi ích kép: Tìm siêu nhạy + Context siêu đầy đủ, chi phí ban đầu bằng $0. (👑 Tiêu chuẩn vàng doanh nghiệp hiện đại)
 
-### ⚡ Chương 4: Tái Xếp Hạng Siêu Tốc (Cross-Encoder Reranking)
+---
+
+### 🧠 GIAI ĐOẠN II: Ý ĐỊNH & TRUY VẤN NÂNG CAO (QUERYING & RETRIEVAL PHASE)
+
+#### 🧠 Chương 3: Mở Rộng Ý Định Thông Minh (AI Query Expansion)
+Hành khách thường gõ thiếu chữ, dùng tiếng lóng hoặc sai chính tả. Nếu chỉ dùng câu gốc để tìm kiếm, ta sẽ bỏ sót tài liệu. Ở bước này, Thầy gọi LLM sinh ra **3 câu hỏi đồng nghĩa Tiếng Việt** chất lượng để truy quét toàn diện không gian vector, đảm bảo vét sạch mọi góc khuất của chính sách.
+
+#### 🔍 Chương 4: Các Công Nghệ Truy Vấn Nâng Cao (Similarity vs. Threshold vs. MMR)
+Khi truy quét VectorDB, ta có 3 phương pháp chính với các sự đánh đổi kỹ thuật cực kỳ rõ rệt:
+1. **Tìm kiếm Tương đồng tuyến tính (Cosine Similarity Search)**: Quét lấy Top K mảnh gần nhất. Tốc độ cực nhanh nhưng gặp "Thảm họa Trùng lặp" (Redundancy) khi nhiều mảnh cùng nói về một ý làm loãng Context window của LLM.
+2. **Tương đồng có ngưỡng điểm số (Similarity with Score Threshold)**: Chỉ lấy những mảnh có điểm tương đồng lớn hơn một ngưỡng cứng (ví dụ: `score >= 0.75`). Giúp chặn rác rất tốt nhưng ngưỡng cứng rất nhạy cảm và dễ vỡ (Threshold Fragility) - đặt quá cao thì mất kết quả, đặt quá thấp thì mất tác dụng lọc.
+3. **Độ liên quan tối đa (Maximal Marginal Relevance - MMR)**: MMR cân bằng giữa **Độ tương đồng ngữ nghĩa** và **Tính đa dạng (chống trùng lặp)** của context bằng công thức tối ưu hóa đa mục tiêu:
+   $$MMR = \arg\max_{D_i \in R \setminus S} \left[ \lambda \cdot Sim_1(D_i, Q) - (1 - \lambda) \cdot \max_{D_j \in S} Sim_2(D_i, D_j) \right]$$
+   Trong đó: $\lambda \approx 0.5$ giúp loại bỏ triệt để các nội dung trùng lặp để nhường chỗ cho các mảnh thông tin bổ trợ khác. Đánh đổi lại, MMR làm giảm nhẹ độ chính xác tuyệt đối của mảnh đứng đầu tiếp theo và làm chậm tốc độ truy xuất do phải tính toán khoảng cách chéo ($O(K^2)$).
+
+---
+
+### 🚀 GIAI ĐOẠN III: TÌM KIẾM LAI & TÁI XẾP HẠNG (RETRIEVAL & RERANKING PHASE)
+
+#### 🔍 Chương 5: Tìm Kiếm Lai Hai Luồng (Dense & Sparse Hybrid Search)
+Thầy cho chạy song song 2 tay săn thông tin kết hợp hoàn hảo:
+1. **Dense Search (Tìm kiếm ngữ nghĩa)**: Quét ChromaDB bằng vector nhúng để bắt được các ý nghĩa đồng nghĩa (ví dụ: "xe điện" -> "EV").
+2. **Sparse Search (BM25)**: Đối sánh từ khóa chính xác trên chỉ mục nghịch đảo để bắt trúng biểu phí, số điện thoại, con số cụ thể, mã lỗi chuyên môn.
+Kết quả được hòa trộn bằng thuật toán **RRF (Reciprocal Rank Fusion)** xếp hạng Top 30 trích đoạn tối ưu nhất:
+$$RRF\_Score(d \in D) = \frac{1}{60 + r_{dense}(d)} + \frac{1}{60 + r_{sparse}(d)}$$
+
+#### ⚡ Chương 6: Tái Xếp Hạng Siêu Tốc (Cross-Encoder Reranking & Bi/Cross-Encoder Deep-Dive)
 Đưa 30 trích đoạn vào LLM sẽ rất đắt và loãng. Thầy sử dụng mô hình Cross-Encoder cục bộ để tính toán sự tương tác ngữ nghĩa trực tiếp giữa câu hỏi và từng đoạn trích siêu tốc, lọc lấy **Top 5 văn bản có điểm số cao nhất**.
+Các em cần phân biệt rõ kiến trúc của hai bộ mã hóa:
+* **Bi-Encoder** (Mô hình Nhúng Vector - ChromaDB): Nhúng độc lập Query và Document thành 2 vector rồi tính độ tương đồng. Cực nhanh, tính toán offline được, nhưng không có tương tác Attention chéo giữa từng chữ.
+* **Cross-Encoder** (Mô hình Reranker): Ghép trực tiếp `Query + Document` đưa vào Transformer để tương tác **Full Attention** chéo toàn phần. Siêu chính xác nhưng siêu nặng, bắt buộc dùng ở Stage 2 để rerank tập ứng viên nhỏ.
 
-### 🤖 Chương 5: Tổng Hợp Phản Hồi Trích Nguồn (LLM & Citation Validation)
-Top 5 trích đoạn sạch nhất được đưa vào hệ thống Prompt kiểm duyệt trích nguồn cực kỳ nghiêm ngặt. LLM (gpt-4o-mini) tổng hợp câu trả lời tự nhiên, sau đó bộ xác thực trích nguồn bóc tách URL, hiển thị nguồn tham khảo sạch, loại bỏ hoàn toàn các link rác lỗi.
+```
+[Kiến trúc Bi-Encoder]
+Query (Q)    ➔ [ Encoder ] ➔ Vector V_Q ──┐
+                                          ├──➔ [ Cosine Sim ] ➔ Điểm số (Nhanh)
+Document (D) ➔ [ Encoder ] ➔ Vector V_D ──┘
 
-### 🔍 Chương 6: Các Công Nghệ Truy Vấn Nâng Cao (Similarity vs. Threshold vs. MMR)
+[Kiến trúc Cross-Encoder]
+Query (Q)    ──┐
+               ├──➔ [ Q + D ] ➔ [ Transformer (Full Attention) ] ➔ Điểm số (Chính xác)
+Document (D) ──┘
+```
 
-Học trò của Thầy hãy lưu ý: Khi truy vấn thông tin từ VectorDB, ta có 3 phương pháp chính với các ưu nhược điểm và sự đánh đổi cực kỳ rõ rệt:
-
-1. **Tìm kiếm Tương đồng tuyến tính (Cosine Similarity Search)**:
-   * **Cơ chế**: Quét không gian vector và lấy ra $K$ mảnh (chunks) có khoảng cách Cosine gần nhất với vector câu hỏi.
-   * **Ưu điểm**: Tốc độ xử lý cực kỳ nhanh ($O(1)$ hoặc $O(\log N)$ với index HNSW), cực kỳ nhạy bén trong việc bắt trúng ý nghĩa ngữ nghĩa trực diện.
-   * **Nhược điểm**: Bị hiện tượng **"Thảm họa Trùng lặp" (Redundancy)**. Nếu trong cơ sở dữ liệu có nhiều mảnh viết tương tự nhau về cùng một quy định (ví dụ: 3 mảnh khác nhau đều viết về biểu phí hủy xe 10.000đ nhưng diễn đạt hơi khác), hệ thống sẽ lôi cả 3 mảnh này vào ngữ cảnh. Điều này làm lãng phí không gian Context window và khiến LLM bị loãng thông tin, thiếu không gian cho các điều khoản bổ trợ khác.
-
-2. **Tương đồng có ngưỡng điểm số (Similarity with Score Threshold)**:
-   * **Cơ chế**: Chỉ lấy những mảnh có điểm tương đồng lớn hơn một ngưỡng cứng định sẵn (ví dụ: `score >= 0.75`).
-   * **Ưu điểm**: Ngăn chặn rác cực tốt. Khi người dùng hỏi những câu hỏi hoàn toàn lạc đề, hệ thống sẽ trả về 0 kết quả thay vì cố nhồi nhét các mảnh có điểm tương đồng thấp nhưng không liên quan vào LLM.
-   * **Nhược điểm**: **"Nghịch lý Ngưỡng" (Threshold Fragility)**. Việc thiết lập một ngưỡng cứng rất thiếu linh hoạt. Các mô hình Embedding khác nhau (như OpenAI, Cohere, BGE) có phân phối khoảng cách điểm số khác nhau. Một ngưỡng quá cao sẽ chặn đứng các câu trả lời đúng khi người dùng hỏi bằng ngôn từ gián tiếp; ngược lại, ngưỡng quá thấp sẽ mất tác dụng lọc rác.
-
-3. **Độ liên quan tối đa (Maximal Marginal Relevance - MMR)**:
-   * **Cơ chế**: MMR giải quyết bài toán tối ưu hai mục tiêu đồng thời: **Độ liên quan ngữ nghĩa lớn nhất** và **Độ trùng lặp ngữ cảnh nhỏ nhất**. Thuật toán hoạt động theo công thức lặp:
-     $$MMR = \arg\max_{D_i \in R \setminus S} \left[ \lambda \cdot Sim_1(D_i, Q) - (1 - \lambda) \cdot \max_{D_j \in S} Sim_2(D_i, D_j) \right]$$
-     Trong đó:
-     - $Q$: Câu hỏi truy vấn.
-     - $R$: Tập hợp các tài liệu ứng viên được tìm thấy ban đầu.
-     - $S$: Tập hợp các tài liệu đã được chọn vào Context.
-     - $Sim_1$: Độ tương đồng giữa ứng viên và câu hỏi.
-     - $Sim_2$: Độ tương đồng giữa ứng viên đang xét và các tài liệu đã được chọn trước đó.
-     - $\lambda \in [0, 1]$: Tham số điều hướng. Nếu $\lambda = 1$, MMR trở thành Cosine Search thuần túy. Nếu $\lambda = 0$, MMR tối đa hóa tính đa dạng tuyệt đối. Trong thực tế, $\lambda = 0.5$ là tỷ lệ vàng cân bằng hoàn hảo.
-   * **Ưu điểm**: Context gửi cho LLM cực kỳ giàu thông tin, đa dạng góc nhìn, loại bỏ hoàn toàn các mảnh trùng lặp nội dung, tối ưu hóa tối đa giá trị của Context window.
-   * **Nhược điểm**:
-     - *Mất tính chính xác tuyệt đối*: Đôi khi một mảnh có điểm tương đồng cao thứ 2 (chứa thông tin cực kỳ quan trọng) lại bị loại bỏ chỉ vì nó hơi giống mảnh thứ 1 về mặt từ vựng, dẫn đến việc bỏ lỡ chi tiết kỹ thuật cốt lõi.
-     - *Tốc độ chậm*: MMR yêu cầu tính toán khoảng cách đôi một (Pairwise Distance) giữa tập ứng viên $R$ và tập đã chọn $S$ ở mỗi vòng lặp. Độ phức tạp là $O(K^2)$, làm tăng đáng kể độ trễ (latency) của luồng truy xuất trực tiếp (Online retrieval).
+#### 🕸️ Chương 7: GraphRAG & Đồ Thị Tri Thức (Khi nào thực sự cần thiết?)
+Trong Giai đoạn 2, một số kỹ sư thường nghĩ tới việc tích hợp **Graph DB (như Neo4j)** để xây dựng **GraphRAG** (trích xuất Entities, Relations và xây dựng Đồ thị Tri thức). Tuy nhiên, Thầy muốn các em làm rõ đánh đổi thực tế:
+* **Khi nào thực sự cần?**: Khi kho tài liệu chứa mạng lưới quan hệ chéo cực kỳ phức tạp và người dùng thường đặt các câu hỏi toàn cục (Global QA) cần liên kết thông tin nhiều bước (Multi-hop) như: *"Vẽ sơ đồ liên hệ của tất cả các ban ngành ảnh hưởng tới quy trình xử lý cước phạt?"*.
+* **Tại sao không cần thiết cho Xanh SM?**: 
+  1. Dữ liệu cước phí, hotline của chúng ta chủ yếu dạng phẳng và phân cấp điều khoản rõ ràng. Câu hỏi người dùng là **cục bộ (Local QA)**, cơ chế Hybrid Search + Parent-Child đã giải quyết trọn vẹn.
+  2. **Chi phí khổng lồ**: Việc trích xuất đồ thị bằng LLM đắt gấp **50x - 100x** chi phí nhúng thông thường.
+  3. **Độ trễ cao (Latency)**: GraphRAG tốn từ 5s - 30s để phản hồi, hoàn toàn không thích hợp cho Chatbot CSKH thời gian thực yêu cầu độ trễ < 1s.
+* **Giải pháp "Graph" Lai Siêu Nhẹ (Pragmatic Graph)**: Thay vì server Neo4j cồng kềnh, ta có thể xây dựng một bảng quan hệ liên kết chéo các file Markdown (ví dụ: `terms.md` link tới `refund.md`) bằng thư viện **`networkx`** trực tiếp trong RAM. Khi tìm thấy file này, hệ thống tự động kéo thêm file liên kết vào context, đạt hiệu quả liên kết tối đa với chi phí bằng $0 và độ trễ 0ms!
 
 ---
 
-### 📦 Chương 7: Tiến Trình Tiến Hóa Của Kỹ Thuật Chunking (Phân Mảnh Văn Bản)
+### 🛡️ GIAI ĐOẠN IV: TỔNG HỢP & BẢO MẬT (SYNTHESIS & CITATION PHASE)
 
-Phân mảnh (Chunking) quyết định chất lượng của vector đầu vào. Thầy xin khái quát con đường tiến hóa của kỹ thuật này từ sơ khai đến hiện đại:
+#### 🤖 Chương 8: Tổng Hợp Phản Hồi Trích Nguồn (LLM Synthesizer & Citation Validation)
+Top 5 trích đoạn sạch nhất được đưa vào hệ thống Prompt kiểm duyệt trích nguồn cực kỳ nghiêm ngặt. LLM (gpt-4o-mini) tổng hợp câu trả lời tự nhiên, thân thiện đúng tác phong CSKH Xanh SM.
 
-| Phương Pháp Chunking | Cơ Chế Hoạt Động | Ưu Điểm | Nhược Điểm & Giới Hạn | Sự Ưu Tiên Hiện Đại |
-| :--- | :--- | :--- | :--- | :--- |
-| **Character Chunking** *(Cổ điển)* | Cắt văn bản cơ học đúng số ký tự $N$ cố định (ví dụ: cứ 500 ký tự cắt 1 mảnh). | Rất nhanh, không cần thuật toán phức tạp. | Thường xuyên cắt đôi câu, đôi từ, phá vỡ bảng biểu, làm mất sạch ngữ cảnh. | ❌ **Không dùng** trong sản xuất. |
-| **Recursive Character Chunking** | Tách đệ quy dựa trên danh sách ký tự ưu tiên `["\n\n", "\n", " ", ""]` để bảo toàn đoạn văn và câu. | Rất nhanh, giữ câu nguyên vẹn tốt, hoạt động mượt mà với tài liệu văn bản thường. | Vẫn bị "mù" cấu trúc phân cấp (Header, Title) và dễ làm mất ngữ cảnh của các chính sách phức tạp. | ⚠️ **Dùng làm baseline** hoặc cho tài liệu cấu trúc đơn giản. |
-| **Heading-Aware / Structural Chunking** | Sử dụng cấu trúc cú pháp (như thẻ Markdown `#`, `##`) để cắt thành các khối điều khoản hoàn chỉnh. | Bảo toàn 100% tính toàn vẹn của một điều khoản, bảng biểu, danh mục chính sách. | Nếu một mục chính sách quá dài (>2000 từ), kích thước chunk vượt ngưỡng an toàn, gây loãng vector. | ✅ **Đặc biệt khuyên dùng** cho tài liệu pháp lý, quy chế doanh nghiệp. |
-| **Semantic Chunking** | Tính toán embedding cho từng câu liên tiếp, thực hiện cắt chunk khi độ tương đồng ngữ nghĩa giữa hai câu đột ngột sụt giảm. | Mảnh cắt cực kỳ tự nhiên, đồng nhất về mặt ý tưởng và tư duy của người viết. | Tốn tài nguyên tính toán nhúng vector cho từng câu đơn lẻ, ngưỡng cắt động khó tối ưu hóa. | ⚠️ **Thích hợp** cho sách, tiểu thuyết, tài liệu tự sự dài. |
-| **Agentic / LLM-based Chunking** | Dùng một LLM thông minh đọc qua văn bản và tự động đề xuất các vị trí cắt đoạn tối ưu hoặc tóm tắt. | Chất lượng phân mảnh hoàn hảo, thấu hiểu sâu sắc ý nghĩa ngữ cảnh. | Chi phí API khổng lồ cho khâu tiền xử lý, tốc độ cực kỳ chậm, không thực tế với kho tài liệu lớn. | ❌ **Không khả thi** về mặt kinh tế doanh nghiệp. |
-| **Hierarchical Layout-Aware + Parent-Child Retrieval** *(Vàng)* | Phân tích bố cục PDF bằng mô hình thị giác (như Marker/PyMuPDF) để bảo toàn cấu trúc bảng biểu. Tạo ra các **Chunk Con (100-200 từ)** nhúng vector để tìm kiếm cực nhạy, liên kết với **Chunk Cha (1000-2000 từ)** để tự động gộp context khi truy xuất. | **Đạt lợi ích kép**: Tìm kiếm siêu chính xác ở mảnh nhỏ + Ngữ cảnh đầy đủ ở mảnh lớn. Tốc độ siêu tốc, chi phí ban đầu bằng $0. | Cần thiết lập cấu trúc DB phân cấp phức tạp hơn. | 👑 **Tiêu chuẩn vàng (Gold Standard)** được ưu tiên áp dụng trong RAG doanh nghiệp hiện đại. |
+Sau đó, bộ xác thực trích nguồn của Thầy sẽ bóc tách URL, đối sánh nguồn và hiển thị gọn gàng bên dưới câu trả lời, loại bỏ hoàn toàn các link rác hoặc link hỏng để đảm bảo lòng tin tuyệt đối của người dùng!
 
----
-
-### 🚀 Chương 8: Kiến Trúc Tìm Kiếm & Tái Xếp Hạng Chiều Sâu (Search & Reranking Deep-Dive)
-
-Để hiểu tại sao hệ thống RAG Xanh SM lại đạt độ chính xác vượt trội, các em cần nắm rõ kiến trúc sâu của khâu Tìm kiếm lai (Hybrid Search) và Reranker:
-
-#### 1. Sự bổ trợ của Dense Search và Sparse Search (BM25)
-* **Dense Search (Semantic Search)**: Sử dụng các mô hình nhúng (Embedding Models) để chuyển hóa câu hỏi và tài liệu thành các điểm trong không gian đa chiều. Khoảng cách gần nhau thể hiện sự tương đồng ngữ nghĩa.
-  - *Sức mạnh*: Hiểu từ đồng nghĩa (ví dụ: hành khách hỏi *"xe điện"* vẫn truy xuất được tài liệu chứa từ *"EV"* hoặc *"VinFast"*).
-  - *Điểm yếu*: Dễ bỏ qua các con số chính xác hoặc danh từ riêng biệt do bị làm mờ ngữ nghĩa trong quá trình nén vector.
-* **Sparse Search (BM25 - Keyword Search)**: Dựa trên tần suất từ khóa ($TF$) và tần suất tài liệu nghịch đảo ($IDF$) trên chỉ mục nghịch đảo (Inverted Index).
-  - *Sức mạnh*: Đối sánh chính xác tuyệt đối các thuật ngữ chuyên môn, mã lỗi kỹ thuật (ví dụ: *"lỗi rùa vàng"*), số hotline, mã số chính sách.
-  - *Điểm yếu*: Hoàn toàn không biết từ đồng nghĩa. Nếu người dùng gõ sai chính tả hoặc dùng từ lóng, BM25 sẽ trả về 0.
+---25 sẽ trả về 0.
 * **Hòa trộn thứ hạng (RRF - Reciprocal Rank Fusion)**: Hệ thống của chúng ta không cộng điểm số trực tiếp (vì phân phối điểm vector và BM25 hoàn toàn khác nhau). Thay vào đó, ta sử dụng RRF để xếp hạng lại dựa trên thứ tự xuất hiện của tài liệu trong cả hai danh sách tìm kiếm:
   $$RRF\_Score(d \in D) = \frac{1}{60 + r_{dense}(d)} + \frac{1}{60 + r_{sparse}(d)}$$
   Điều này giúp chọn ra những tài liệu đứng hạng cao ở cả hai luồng hoặc cực kỳ nổi bật ở một trong hai luồng.
