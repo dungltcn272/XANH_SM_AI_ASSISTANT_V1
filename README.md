@@ -161,3 +161,38 @@ Chuyển sang tab **Variables** trên Railway và thêm các biến cấu hình 
 | **`OPENAI_API_KEY`** | `sk-proj-xxxx...` | Khóa OpenAI API Key chính thức của bạn |
 
 *Khi có cấu hình này, hệ thống thông minh của chúng ta sẽ tự sao chép dữ liệu chính sách mặc định sang Volume và tự động nạp index ChromaDB ngay khi app khởi động lần đầu tiên trên Cloud!*
+
+---
+
+## 🚨 5. Điểm Yếu Hệ Thống & Kế Hoạch Nâng Cấp Giai Đoạn Tiếp Theo
+
+> [!CAUTION]
+> **ĐIỂM YẾU 1: THIẾU BỘ NHỚ HỘI THOẠI (CHAT HISTORY & CONTEXTUAL MEMORY)**
+> - **Mô tả:** Hệ thống đang hoạt động theo cơ chế **Single-Turn (Hỏi-Đáp độc lập)**. Khi người dùng hỏi một chuỗi ngữ cảnh liên tiếp (ví dụ: *"Xanh SM có bao nhiêu nhân viên?"*, sau đó hỏi tiếp *"Doanh thu của **họ** là bao nhiêu?"*), RAG sẽ truy xuất sai lệch tài liệu hoặc trả về kết quả trống rỗng.
+> - **Nguyên nhân:** Đại từ thay thế **"họ"** không thể giải nghĩa ngữ cảnh nếu gửi trực tiếp vào VectorDB/BM25 (vì CSDL Vector không có khái niệm lịch sử hội thoại trước đó).
+>
+> **ĐIỂM YẾU 2: LÃNG PHÍ CHI PHÍ & TĂNG ĐỘ TRỄ KHI HỎI LẠI CÂU HỎI CŨ (REDUNDANT LLM CALLS)**
+> - **Mô tả:** Nhiều người dùng khác nhau thường xuyên hỏi cùng một câu hỏi hoặc các câu hỏi đồng nghĩa ngữ nghĩa (ví dụ: *"Phí hủy chuyến Bike sau 5 phút là gì?"* và *"Hủy xe Xanh Bike chờ trên 5 phút mất bao nhiêu tiền?"*). Hệ thống hiện tại phải gọi lại OpenAI API liên tục cho mỗi lượt truy cập, tạo ra **lãng phí chi phí API lớn** và **tăng độ trễ phản hồi không đáng có (~1s - 2s)**.
+> - **Nguyên nhân:** Thiếu lớp đệm lưu trữ (Caching layer) để nhận diện và trả về kết quả tức thì đối với các câu hỏi cũ đã được LLM trả lời và xác thực trước đó.
+>
+> **ĐIỂM YẾU 3: CHƯA HỖ TRỢ ĐẦU VÀO ĐA PHƯƠNG TIỆN (MULTIMODAL RAG - IMAGE INPUTS)**
+> - **Mô tả:** Hệ thống hiện tại bị mù thông tin thị giác (Text-only pipeline). Trong tương lai khi nâng cấp lên hệ thống toàn năng giải đáp các thắc mắc về lỗi kỹ thuật xe điện Xanh SM (EV), hành khách hoặc tài xế sẽ chụp ảnh đèn cảnh báo báo lỗi trên mặt taplo (ví dụ: lỗi icon rùa vàng, báo lỗi hệ thống phanh, lỗi động cơ...). Hệ thống hiện tại không thể tiếp nhận và phân tích hình ảnh này để truy xuất tài liệu sửa chữa tương ứng.
+> - **Nguyên nhân:** Đường ống xử lý và bộ trích xuất vector hiện tại chỉ xử lý ký tự thuần túy và mô hình LLM/Embedding chưa kích hoạt chế độ Vision (Thị giác máy tính).
+
+### 🎯 Giải pháp & Tính năng phát triển trong Giai đoạn 2:
+
+Để đưa hệ thống RAG Xanh SM đạt tiêu chuẩn vận hành tối ưu chi phí và trải nghiệm người dùng cao nhất, các tính năng sau sẽ được tích hợp:
+
+#### 1. Luồng Giải Nghĩa Hội Thoại (Conversational Query Rewriter)
+* **Lưu trữ lịch sử hội thoại**: Ghi nhớ 3-5 lượt chat gần nhất bằng cơ chế Redis/SQLite Cache.
+* **LLM Query Rewriter**: Trước khi tìm kiếm Vector, sử dụng một LLM siêu nhẹ nhận ngữ cảnh hội thoại cũ + câu hỏi mới để tự động biên dịch lại thành câu hỏi độc lập (Self-Contained Query).
+  - *Ví dụ:* `[Lịch sử: Xanh SM có bao nhiêu nhân viên?]` + `[Câu hỏi mới: Doanh thu của họ là bao nhiêu?]` ➔ `[Câu hỏi biên dịch: Doanh thu của Xanh SM là bao nhiêu?]`.
+
+#### 2. Lớp Đệm Caching Thông Minh (Exact & Semantic Cache)
+Triển khai bộ thư viện **GPTCache** hoặc tích hợp **Redis Semantic Cache** với 2 cơ chế bảo vệ chi phí:
+* **Deterministic Cache (Exact Match)**: Sử dụng thuật toán băm (MD5/SHA256) chuỗi ký tự câu hỏi. Nếu có câu hỏi khớp 100% trong đệm và phiên bản tài liệu gốc chưa thay đổi, trả ngay câu trả lời đã lưu **(Độ trễ < 5ms, Chi phí = $0)**.
+* **Semantic Cache (Ý nghĩa tương đồng)**: Embedding câu hỏi mới nhập và thực hiện tìm kiếm khoảng cách vector (Cosine Similarity) trên CSDL các câu hỏi lịch sử. Nếu độ tương đồng vượt ngưỡng cực cao (ví dụ: **`Similarity Score > 0.96`**), trả trực tiếp câu trả lời của câu hỏi tương đương đã lưu trước đó **(Độ trễ < 20ms, Chi phí = $0)**.
+
+#### 3. Bộ Nhận Diện Lỗi Kỹ Thuật Đa Phương Tiện (Multimodal RAG & EV Diagnostics)
+* **CSDL Vector Đa Phương Tiện (Multimodal VectorDB)**: Sử dụng mô hình CLIP hoặc ColPali để nhúng đồng thời cả hình ảnh cảnh báo và hướng dẫn dạng chữ từ Sách Hướng dẫn kỹ thuật GSM (EV Manuals) vào chung một không gian vector.
+* **Vision LLM Agent**: Tích hợp GPT-4o Vision hoặc Claude 3.5 Sonnet tiếp nhận hình ảnh taplo lỗi thực tế của khách hàng chụp ➔ Trực quan hóa mã lỗi cảnh báo ➔ Truy xuất RAG tài liệu sửa chữa tương ứng ➔ Đưa ra chỉ dẫn an toàn khẩn cấp tức thì.
