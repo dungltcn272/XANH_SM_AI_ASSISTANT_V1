@@ -24,8 +24,42 @@ class XanhSMHybridSearch:
     def _fit_bm25_corpus(self):
         """
         Loads and splits all local documents to build the BM25 index.
-        Also populates the in-memory fallback VectorDB if enabled.
+        Also populates the in-memory fallback VectorDB if enabled or auto-populates ChromaDB if active but empty.
         """
+        # --- Resilient Auto-Sync for Persistent Railway Volume ---
+        import shutil
+        import os
+        
+        default_data_dir = "./data"
+        target_data_dir = config.DATA_DIR
+        
+        abs_default = os.path.abspath(default_data_dir)
+        abs_target = os.path.abspath(target_data_dir)
+        
+        if abs_default != abs_target:
+            has_files = False
+            if os.path.exists(abs_target):
+                for root, dirs, files in os.walk(abs_target):
+                    if files:
+                        has_files = True
+                        break
+            
+            if not has_files and os.path.exists(abs_default):
+                print(f"[INFO] Target DATA_DIR '{target_data_dir}' is empty. Copying default bundled files from '{default_data_dir}'...")
+                try:
+                    os.makedirs(abs_target, exist_ok=True)
+                    for item in os.listdir(abs_default):
+                        s = os.path.join(abs_default, item)
+                        d = os.path.join(abs_target, item)
+                        if os.path.isdir(s):
+                            shutil.copytree(s, d, dirs_exist_ok=True)
+                        else:
+                            shutil.copy2(s, d)
+                    print("[OK] Bundled files copied to persistent volume successfully!")
+                except Exception as e:
+                    print(f"[WARN] Failed to copy default files: {e}")
+        # ---------------------------------------------------------
+
         print("[INFO] Loading files to build BM25 sparse index...")
         try:
             chunks = self.splitter.split_directory(config.DATA_DIR)
@@ -35,6 +69,17 @@ class XanhSMHybridSearch:
             if config.CHROMA_PROVIDER == "fallback":
                 self.db.clear()
                 self.db.add_documents(chunks)
+            elif config.CHROMA_PROVIDER == "chromadb" and chunks:
+                from langchain_community.vectorstores import Chroma
+                if self.db._vector_store and isinstance(self.db._vector_store, Chroma):
+                    try:
+                        count = self.db._vector_store._collection.count()
+                        if count == 0:
+                            print("[INFO] Chroma DB is empty on startup. Automatically populating from preloaded data...")
+                            self.db.add_documents(chunks)
+                            print("[OK] Smart auto-ingestion completed on startup!")
+                    except Exception as ex:
+                        print(f"[WARN] Failed to auto-populate Chroma DB: {ex}")
         except Exception as e:
             print(f"[ERROR] Failed to build BM25 corpus: {e}")
 
