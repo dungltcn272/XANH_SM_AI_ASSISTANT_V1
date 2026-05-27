@@ -84,14 +84,14 @@ class XanhSMVectorDB:
             results = []
             for doc in XanhSMVectorDB._fallback_docs:
                 doc_role = doc.metadata.get("role", "").lower()
-                if not target_role or target_role == "agent" or doc_role == target_role:
+                if not target_role or target_role == "agent" or doc_role == target_role or doc_role == "faq":
                     results.append(doc)
             return results[:k]
 
-        # Role filtering logic
+        # Role filtering logic: Allow matching the target role OR general shared FAQs
         search_filter = None
         if target_role and target_role != "agent":
-            search_filter = {"role": target_role}
+            search_filter = {"role": {"$in": [target_role, "faq"]}}
             
         print(f"[INFO] Dense Vector Search for: '{query}' (Filter: {search_filter})")
         
@@ -107,7 +107,7 @@ class XanhSMVectorDB:
             results = []
             for doc in XanhSMVectorDB._fallback_docs:
                 doc_role = doc.metadata.get("role", "").lower()
-                if not target_role or target_role == "agent" or doc_role == target_role:
+                if not target_role or target_role == "agent" or doc_role == target_role or doc_role == "faq":
                     results.append(doc)
             return results[:k]
 

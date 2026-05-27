@@ -50,8 +50,8 @@ class XanhSMBM25Retriever:
         for idx, doc in enumerate(self.documents):
             doc_role = doc.metadata.get("role", "").lower()
             
-            # If target_role is agent or none, matches everything. Otherwise role must match strictly.
-            if not target_role or target_role == "agent" or doc_role == target_role:
+            # If target_role is agent or none, matches everything. Otherwise role must match strictly or be a general 'faq' resource.
+            if not target_role or target_role == "agent" or doc_role == target_role or doc_role == "faq":
                 filtered_indices.append(idx)
                 filtered_corpus_tokens.append(self._tokenize(doc.page_content))
                 

@@ -38,20 +38,30 @@ class GreenSMCrawler:
     def categorize_content(self, url: str, content: str) -> str:
         """
         Classifies page into: customer, driver, merchant, or faq based on URL & content.
+        Uses high-threshold body content matching to avoid global footer matches.
         """
         url_lower = url.lower()
         content_lower = content.lower()
         
-        if "driver" in url_lower or "tai-xe" in url_lower or "tài xế" in content_lower or "chính sách tài xế" in content_lower:
+        # 1. Reliable URL keyword patterns first
+        if "driver" in url_lower or "tai-xe" in url_lower:
             return "driver"
-        elif "merchant" in url_lower or "doi-tac" in url_lower or "đối tác" in content_lower or "cửa hàng" in content_lower:
+        elif "merchant" in url_lower or "doi-tac-cua-hang" in url_lower:
             return "merchant"
-        elif "refund" in url_lower or "hoàn tiền" in content_lower or "hủy chuyến" in content_lower:
+        elif "refund" in url_lower or "hoan-tien" in url_lower:
             return "customer"
-        elif "terms" in url_lower or "policy" in url_lower or "chính sách bảo mật" in content_lower or "điều khoản" in content_lower:
+        elif "terms" in url_lower or "policy" in url_lower or "dieu-khoan" in url_lower:
             return "customer"
-        else:
-            return "faq"
+            
+        # 2. Specific main body text matches (avoiding general footer elements like "Đăng ký tài xế")
+        if "chính sách tài xế" in content_lower or "chiết khấu của tài xế" in content_lower or "tác phong tài xế" in content_lower:
+            return "driver"
+        elif "chiết khấu hoa hồng cửa hàng" in content_lower or "quy trình đối soát cửa hàng" in content_lower:
+            return "merchant"
+        elif "chính sách bồi thường" in content_lower or "chính sách hoàn tiền" in content_lower or "phí hủy chuyến sau" in content_lower:
+            return "customer"
+            
+        return "faq"
 
     def get_filename_from_url(self, url: str) -> str:
         path = urlparse(url).path
