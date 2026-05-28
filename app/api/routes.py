@@ -19,6 +19,8 @@ from app.ingestion.ingest import run_ingestion
 from app.crawler.crawl import GreenSMCrawler
 from app.retrieval.hybrid_search import XanhSMHybridSearch
 from app.config import config
+import threading
+import os
 
 app = FastAPI(
     title="Xanh SM Production RAG API",
@@ -81,6 +83,44 @@ def get_hybrid_search():
     if hybrid_search is None:
         hybrid_search = XanhSMHybridSearch()
     return hybrid_search
+
+
+@app.on_event("startup")
+def startup_auto_ingest():
+    try:
+        chroma_dir = os.path.abspath(config.CHROMA_PERSIST_DIR)
+        marker_file = os.path.join(chroma_dir, ".ingestion_done")
+        data_dir = os.path.abspath(config.DATA_DIR)
+
+        def _has_markdown(dir_path):
+            return os.path.isdir(dir_path) and any(
+                fname.endswith('.md') for _, _, files in os.walk(dir_path) for fname in files
+            )
+
+        if os.path.exists(marker_file):
+            print(f"[INFO] Ingestion marker found at {marker_file}; skipping auto-ingest.")
+            return
+
+        repo_data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+        if not _has_markdown(data_dir) and not _has_markdown(repo_data_dir):
+            print("[INFO] No markdown data found in DATA_DIR or bundled repo data; skipping auto-ingest.")
+            return
+
+        def _bg_ingest():
+            try:
+                print("[INFO] Auto-ingest starting in background thread...")
+                run_ingestion()
+                os.makedirs(chroma_dir, exist_ok=True)
+                with open(marker_file, "w", encoding="utf-8") as f:
+                    f.write("done")
+                print("[INFO] Auto-ingest completed; marker written.")
+            except Exception as e:
+                print(f"[WARN] Auto-ingest failed: {e}")
+
+        t = threading.Thread(target=_bg_ingest, daemon=True)
+        t.start()
+    except Exception as e:
+        print(f"[WARN] Error during startup auto-ingest check: {e}")
 
 @app.post("/api/chat", response_model=ChatResponse)
 def api_chat(request: ChatRequest):
