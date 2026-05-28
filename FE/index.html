@@ -25,37 +25,38 @@
             <button class="nav-tab" data-tab="admin">Console</button>
             <button class="nav-tab" data-tab="ingest-playground">Nạp dữ liệu</button>
             <button class="nav-tab" data-tab="flow-explain">Quy trình thực tế</button>
+            <button class="nav-tab" data-tab="pipeline-comparison">So Sánh Pipeline</button>
         </nav>
         
         <div class="header-status" style="gap: 16px;">
             <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: #1e293b; font-size: 0.85rem;">
                 <span class="signal-icon" style="color: #14b8a6; font-size: 0.95rem; font-weight: bold; letter-spacing: -1px; animation: pulse-signal 2s infinite;">((•))</span>
             </div>
-            <button class="deploy-btn" style="background: #14b8a6; color: #ffffff; border: none; border-radius: 20px; padding: 8px 18px; font-family: var(--font-body); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">Deploy ChatBot</button>
+            <button class="deploy-btn" onclick="window.open('https://zalo.me/0362035623', '_blank')" style="background: #14b8a6; color: #ffffff; border: none; border-radius: 20px; padding: 8px 18px; font-family: var(--font-body); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">Liên Hệ</button>
             <span id="global-status-text" style="display: none;">Kết nối ổn định</span>
-        </div>
-    </header>
-    
-    <!-- Tab 1: AI Chat Assistant Grid -->
-    <div class="tab-content active" id="tab-chat">
-        <div class="app-container">
+            </div>
+            </header>
+
+            <!-- Tab 1: AI Chat Assistant Grid -->
+            <div class="tab-content active" id="tab-chat">
+            <div class="app-container">
             <!-- Sidebar: Configuration & Vision -->
             <aside class="sidebar-panel glass-card">
                 <div class="role-column">
                     <span class="sidebar-title">Role Select</span>
-                    <button class="role-card role-btn customer" data-role="customer">
+                    <button class="role-card role-btn customer active" data-role="customer">
                         <div class="role-icon-circle customer">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px;">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <circle cx="12" cy="7" r="4" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <span>Customer</span>
+                        <span>Khách hàng</span>
                         <svg class="role-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 16px; height: 16px; color: #14b8a6; margin-left: auto;">
                             <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
-                    <button class="role-card role-btn driver active" data-role="driver">
+                    <button class="role-card role-btn driver" data-role="driver">
                         <div class="role-icon-circle driver">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px;">
                                 <rect x="1" y="3" width="15" height="13" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -64,7 +65,7 @@
                                 <circle cx="18.5" cy="18.5" r="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <span>Driver</span>
+                        <span>Tài xế</span>
                         <svg class="role-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 16px; height: 16px; color: #14b8a6; margin-left: auto;">
                             <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
@@ -76,7 +77,7 @@
                                 <polyline points="9 22 9 12 15 12 15 22" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <span>Merchant</span>
+                        <span>Đối tác Cửa hàng</span>
                         <svg class="role-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 16px; height: 16px; color: #14b8a6; margin-left: auto;">
                             <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
@@ -88,7 +89,7 @@
                                 <path d="M12 2v9M8 5h8" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <span>Agent</span>
+                        <span>Nhân viên CSKH</span>
                         <svg class="role-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 16px; height: 16px; color: #14b8a6; margin-left: auto;">
                             <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
@@ -785,7 +786,7 @@
                             <circle cx="165" cy="105" r="5" fill="#14b8a6" />
                             <circle cx="140" cy="135" r="4" fill="#0d9488" />
                             <circle cx="160" cy="130" r="6" fill="#0ea5e9" />
-                            <text x="150" y="168" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" font-family="var(--font-body)">FAQ (Customer)</text>
+                            <text x="150" y="168" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" font-family="var(--font-body)">FAQ (Khách hàng)</text>
                             
                             <!-- Cluster 2: Driver Policy -->
                             <circle cx="380" cy="70" r="36" fill="rgba(14, 165, 233, 0.08)" stroke="#0ea5e9" stroke-width="2" />
@@ -793,7 +794,7 @@
                             <circle cx="395" cy="55" r="4" fill="#0ea5e9" />
                             <circle cx="370" cy="85" r="6" fill="#3b82f6" />
                             <circle cx="390" cy="80" r="4" fill="#10b981" />
-                            <text x="380" y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" font-family="var(--font-body)">Driver Policy</text>
+                            <text x="380" y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" font-family="var(--font-body)">Chính sách Tài xế</text>
 
                             <!-- Cluster 3: Merchant Specs -->
                             <circle cx="610" cy="150" r="34" fill="rgba(139, 92, 246, 0.08)" stroke="#8b5cf6" stroke-width="2" />
@@ -801,14 +802,14 @@
                             <circle cx="625" cy="135" r="4" fill="#8b5cf6" />
                             <circle cx="605" cy="165" r="6" fill="#a855f7" />
                             <circle cx="620" cy="158" r="4" fill="#ec4899" />
-                            <text x="610" y="200" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" font-family="var(--font-body)">Merchant Specs</text>
+                            <text x="610" y="200" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" font-family="var(--font-body)">Đối tác Cửa hàng</text>
 
-                            <!-- Cluster 4: System Logs / Agent -->
+                            <!-- Cluster 4: Nhân viên CSKH -->
                             <circle cx="840" cy="90" r="28" fill="rgba(16, 185, 129, 0.08)" stroke="#10b981" stroke-width="2" />
                             <circle cx="830" cy="80" r="4" fill="#10b981" />
                             <circle cx="850" cy="85" r="5" fill="#10b981" />
                             <circle cx="835" cy="100" r="4" fill="#0d9488" />
-                            <text x="840" y="132" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" font-family="var(--font-body)">Agent Guidelines</text>
+                            <text x="840" y="132" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" font-family="var(--font-body)">Nhân viên CSKH</text>
                         </g>
                     </svg>
                 </div>
@@ -943,6 +944,64 @@
         </div>
     </div>
 
+    <!-- Tab 6: Pipeline Version Comparison Cockpit -->
+    <div class="tab-content" id="tab-pipeline-comparison">
+        <div class="comparison-container">
+            <div class="classroom-header">
+                <h2>📈 Tiến Trình Tiến Hóa & So Sánh Luồng RAG Pipeline</h2>
+                <p>Khám phá sự nâng cấp vượt bậc qua các giai đoạn phát triển của dự án RAG CSKH Xanh SM. Hãy bấm chọn từng nút để so sánh.</p>
+            </div>
+            
+            <!-- Sub-tabs for V1, V2, V3 comparison -->
+            <div class="comparison-tabs-container">
+                <button class="comp-tab-btn active" data-comp-version="V1">Giai Đoạn 1: Basic Production RAG (V1)</button>
+                <button class="comp-tab-btn" data-comp-version="V2">Giai Đoạn 2: Advanced Interactive RAG (V2 - Hiện Tại)</button>
+                <button class="comp-tab-btn" data-comp-version="V3">Giai Đoạn 3: Advanced Agentic RAG (V3 - Sẽ nâng cấp)</button>
+            </div>
+            
+            <!-- Two columns comparing pipelines -->
+            <div class="comparison-grid">
+                <!-- Left Pipeline Column (Older) -->
+                <div class="pipeline-column glass-card">
+                    <div class="column-header">
+                        <span class="column-tag older-tag">KIẾN TRÚC TRƯỚC ĐÓ</span>
+                        <h4 id="left-pipeline-title">Naive RAG (Hỏi gì đáp nấy)</h4>
+                    </div>
+                    
+                    <div class="flow-capsules-container comparison-capsules" id="left-pipeline-flow">
+                        <!-- Dynamically populated baseline V1 -->
+                    </div>
+                </div>
+                
+                <!-- Center arrow or neon text indicator -->
+                <div class="upgrade-separator">
+                    <span class="separator-arrow">➔</span>
+                    <span class="upgrade-glowing-badge">NÂNG CẤP</span>
+                </div>
+                
+                <!-- Right Pipeline Column (Newer) -->
+                <div class="pipeline-column glass-card highlight-border">
+                    <div class="column-header">
+                        <span class="column-tag newer-tag" id="right-column-tag">NÂNG CẤP V1</span>
+                        <h4 id="right-pipeline-title">V1: Production-Grade RAG</h4>
+                    </div>
+                    
+                    <div class="flow-capsules-container comparison-capsules" id="right-pipeline-flow">
+                        <!-- Dynamically populated upgraded V1 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Technical Upgrade Details Cards -->
+            <div class="upgrade-details-panel glass-card">
+                <h3 class="panel-subtitle">🛠️ Chi Tiết Cải Tiến & Giá Trị Kỹ Thuật Mang Lại</h3>
+                <div class="upgrade-cards-grid" id="upgrade-details-content">
+                    <!-- Dynamically populated upgrade cards -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Interactive Lesson Detail Modal (Stitch Feature Parity) -->
     <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/95 backdrop-blur-sm hidden" id="lesson-modal">
         <div class="glass-card max-w-4xl flex flex-col">
@@ -982,6 +1041,31 @@
             <div class="modal-footer-bar">
                 <button class="admin-btn" onclick="document.getElementById('lesson-modal').classList.add('hidden')" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Đóng bài học</button>
                 <button class="admin-btn" id="btn-complete-lesson" style="background: linear-gradient(135deg, var(--accent-cyan) 0%, rgba(59,130,246,0.6) 100%); color: #020408; box-shadow: 0 0 15px rgba(0,240,255,0.25); border: 1px solid var(--accent-cyan); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Hoàn tất học phần ✅</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Onboarding Tour Assistant Widget -->
+    <div class="tour-widget" id="tour-widget" title="Xem Hướng Dẫn Cockpit">
+        <div class="tour-widget-glow"></div>
+        <img src="rag_teacher_illustration.png" alt="Thầy Giáo AI Hướng Dẫn" class="tour-avatar">
+        <span class="tour-badge">!</span>
+    </div>
+    
+    <!-- Floating Tour Speech Bubble Card -->
+    <div class="tour-bubble glass-card hidden" id="tour-bubble">
+        <div class="tour-header">
+            <span class="tour-title">👨‍🏫 Thầy giáo AI Hướng Dẫn:</span>
+            <button class="tour-close-btn" id="tour-close-btn">✕</button>
+        </div>
+        <div class="tour-content" id="tour-content-text">
+            Chào mừng em đến với Cockpit RAG Xanh SM!
+        </div>
+        <div class="tour-footer">
+            <div class="tour-steps-indicator" id="tour-step-indicator">Bước 1/6</div>
+            <div class="tour-nav-buttons">
+                <button class="tour-btn tour-btn-prev" id="tour-btn-prev">⬅️ Quay lại</button>
+                <button class="tour-btn tour-btn-next" id="tour-btn-next">Tiếp theo ➡️</button>
             </div>
         </div>
     </div>

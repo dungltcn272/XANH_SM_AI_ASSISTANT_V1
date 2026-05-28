@@ -2343,20 +2343,13 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     // ----------------------------------------------------------------------
     // Clicking and Interactive Actions for Non-Clickable buttons (Review Rà Soát)
     // ----------------------------------------------------------------------
-    // 1. Deploy Agent button uploader
+    // 1. Contact Button (was Deploy Agent)
     const deployBtn = document.querySelector(".deploy-btn");
     if (deployBtn) {
-        deployBtn.addEventListener("click", () => {
-            deployBtn.disabled = true;
-            deployBtn.textContent = "Deploying...";
-            appendThinkingLog("Đang khởi tạo Kubernetes Deployments...", "normal");
-            
-            setTimeout(() => {
-                deployBtn.disabled = false;
-                deployBtn.textContent = "Deploy Agent";
-                alert("🚀 Deploy Agent Thành Công!\n\nAgent Xanh SM RAG đã được đóng gói Docker và deploy thành công trên Kubernetes Cluster phục vụ sản xuất.");
-                appendThinkingLog("Deploy Agent thành công lên Kubernetes Cluster.", "success");
-            }, 1200);
+        // The click behavior is handled by onclick in HTML for simplicity, 
+        // but we ensure any JS listener doesn't conflict and provides a log.
+        deployBtn.addEventListener("click", (e) => {
+            appendThinkingLog("Người dùng yêu cầu liên hệ hỗ trợ kỹ thuật qua Zalo: 0362035623", "success");
         });
     }
 
@@ -2446,6 +2439,441 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             appendThinkingLog("Mở xem chi tiết bản đồ tri thức topological.", "success");
         });
     }
+
+    // ----------------------------------------------------------------------
+    // 6. Pipeline Version Comparison Logic (V1 vs V2 vs V3)
+    // ----------------------------------------------------------------------
+    const compTabButtons = document.querySelectorAll(".comp-tab-btn");
+    const leftPipelineFlow = document.getElementById("left-pipeline-flow");
+    const rightPipelineFlow = document.getElementById("right-pipeline-flow");
+    const leftPipelineTitle = document.getElementById("left-pipeline-title");
+    const rightPipelineTitle = document.getElementById("right-pipeline-title");
+    const rightColumnTag = document.getElementById("right-column-tag");
+    const upgradeDetailsContent = document.getElementById("upgrade-details-content");
+
+    const pipelineData = {
+        V1: {
+            leftTitle: "Naive RAG (Hỏi gì đáp nấy)",
+            rightTitle: "V1: Production-Grade RAG",
+            rightTag: "NÂNG CẤP V1",
+            leftNodes: [
+                "❓ 1. Question (Câu hỏi)",
+                "🔍 2. Dense Semantic Search (Quét Vector Chroma)",
+                "📝 3. Context Assembly (Hợp nhất ngữ cảnh)",
+                "🤖 4. LLM Generation (Sinh văn bản cơ bản)",
+                "🎉 5. Answer (Kết quả)"
+            ],
+            rightNodes: [
+                "❓ 1. Question (Câu hỏi)",
+                "🛡️ 2. Shared Role Filtering (Lọc phân quyền)",
+                "🔍 3. Hybrid Search (Dense + BM25 song song)",
+                "⚡ 4. RRF Rank Fusion (Hòa trộn RRF)",
+                "📝 5. Context Assembly (Hợp nhất ngữ cảnh)",
+                "🤖 6. LLM + System Citation (Trích nguồn hệ thống)",
+                "🎉 7. Answer + Source (Trả lời + Nguồn sạch)"
+            ],
+            upgrades: [
+                {
+                    title: "Ngăn rò rỉ dữ liệu chéo (Shared Filter)",
+                    status: "active",
+                    desc: "Bộ lọc quyền truy cập metadata thông minh tại mức DB (lọc customer, driver, merchant) ngăn chặn 100% rủi ro Prompt Injection rò rỉ dữ liệu.",
+                    lat: "0ms (tầng DB)",
+                    cost: "0đ"
+                },
+                {
+                    title: "Tìm kiếm lai song song (Hybrid Search)",
+                    status: "active",
+                    desc: "Hòa trộn Dense Search (bắt từ đồng nghĩa) và Sparse Search BM25 (bắt từ khóa, mã số, hotline chính xác) qua Reciprocal Rank Fusion RRF.",
+                    lat: "+50ms",
+                    cost: "0đ"
+                },
+                {
+                    title: "Xác thực trích nguồn chính sách (Citations)",
+                    status: "active",
+                    desc: "Đối chiếu nguồn gốc thực tế của tài liệu và chèn các citation tag để CSKH Agent hoặc Khách hàng nhấp vào đối soát văn bản gốc.",
+                    lat: "+20ms",
+                    cost: "0 token"
+                }
+            ]
+        },
+        V2: {
+            leftTitle: "V1: Production-Grade RAG (Giai đoạn 1)",
+            rightTitle: "V2: Advanced Interactive RAG (Hiện tại)",
+            rightTag: "NÂNG CẤP V2",
+            leftNodes: [
+                "❓ 1. Question (Câu hỏi)",
+                "🛡️ 2. Shared Role Filtering (Lọc phân quyền)",
+                "🔍 3. Hybrid Search (Dense + BM25 song song)",
+                "⚡ 4. RRF Rank Fusion (Hòa trộn RRF)",
+                "📝 5. Context Assembly (Hợp nhất ngữ cảnh)",
+                "🤖 6. LLM + System Citation (Trích nguồn hệ thống)",
+                "🎉 7. Answer + Source (Trả lời + Nguồn sạch)"
+            ],
+            rightNodes: [
+                "❓ 1. Question (Câu hỏi thô)",
+                "⚡ 2. Caching Layer Check (Kiểm tra đệm DB)",
+                "🧠 3. Conversational Query Rewrite (gpt-4o-mini)",
+                "🔧 4. Query Expansion (Tiếng Việt đồng nghĩa)",
+                "👤 5. Shared Role Filtering (Lọc phân quyền)",
+                "🔍 6. Hybrid Search (Dense + BM25 song song)",
+                "⚡ 7. Cross-Encoder Reranker (Rerank cục bộ)",
+                "✂️ 8. Parent-Child Context (Gộp mảnh cha)",
+                "🤖 9. LLM Generation (Tổng hợp tránh ảo giác)",
+                "🛡️ 10. Citations Validator (Đối sánh nguồn)",
+                "🎉 11. Answer + Citations (Kết quả + Nguồn chuẩn)"
+            ],
+            upgrades: [
+                {
+                    title: "Early-Exit Caching Layer (Khớp tuyệt đối & ngữ nghĩa)",
+                    status: "active",
+                    desc: "Kiểm tra đệm đầu tiên, nếu khớp tuyệt đối MD5 hoặc ngữ nghĩa >=0.96 sẽ bẻ gãy luồng xử lý (bypass 100% các bước còn lại) trả về tức thì.",
+                    lat: "< 10ms (⚡ Bypass!)",
+                    cost: "0đ & 0 token 👑"
+                },
+                {
+                    title: "Conversational Rewriter & Query Expansion",
+                    status: "active",
+                    desc: "Đọc lịch sử chat 3 lượt gần nhất bằng gpt-4o-mini để khôi phục đại từ khuyết thiếu và sinh 3 câu đồng nghĩa tiếng Việt tăng độ bao phủ.",
+                    lat: "1.8 giây",
+                    cost: "~$0.0001"
+                },
+                {
+                    title: "Đập tan phân mảnh PDF (Parent-Child Chunking)",
+                    status: "active",
+                    desc: "Nhúng mảnh con (100-200 từ) để tìm kiếm nhạy bén, gộp mảnh cha (1000-2000 từ) khi sinh câu trả lời để giữ nguyên vẹn 100% bảng biểu cước phí.",
+                    lat: "600ms",
+                    cost: "0đ"
+                },
+                {
+                    title: "Chẩn đoán Taplo xe điện VinFast (Vision AI)",
+                    status: "active",
+                    desc: "Tiếp nhận ảnh chụp lỗi taplo Base64, dùng Vision LLM chẩn đoán cảnh báo kỹ thuật và truy xuất RAG hướng dẫn xử lý khẩn cấp.",
+                    lat: "1.2 giây",
+                    cost: "~$0.0003"
+                }
+            ]
+        },
+        V3: {
+            leftTitle: "V2: Advanced Interactive RAG (Hiện tại)",
+            rightTitle: "V3: Advanced Agentic RAG (Sẽ nâng cấp)",
+            rightTag: "SẼ NÂNG CẤP (V3)",
+            leftNodes: [
+                "❓ 1. Question (Câu hỏi thô)",
+                "⚡ 2. Caching Layer Check (Kiểm tra đệm DB)",
+                "🧠 3. Conversational Query Rewrite (gpt-4o-mini)",
+                "🔧 4. Query Expansion (Tiếng Việt đồng nghĩa)",
+                "👤 5. Shared Role Filtering (Lọc phân quyền)",
+                "🔍 6. Hybrid Search (Dense + BM25 song song)",
+                "⚡ 7. Cross-Encoder Reranker (Rerank cục bộ)",
+                "✂️ 8. Parent-Child Context (Gộp mảnh cha)",
+                "🤖 9. LLM Generation (Tổng hợp tránh ảo giác)",
+                "🛡️ 10. Citations Validator (Đối sánh nguồn)",
+                "🎉 11. Answer + Citations (Kết quả + Nguồn chuẩn)"
+            ],
+            rightNodes: [
+                "❓ 1. Question (Câu hỏi thô)",
+                "⚡ 2. Caching Layer Check (Kiểm tra đệm DB)",
+                "🧰 3. Agentic Tool Calling (Gợi ý cuốc/Chỉ đường/Booking)",
+                "🔮 4. Self-Querying (Tự động trích xuất Meta Filter)",
+                "🔍 5. Hybrid Search (Dense + BM25 song song)",
+                "⚡ 6. Cross-Encoder Reranker (Rerank cục bộ)",
+                "👑 7. Multimodal Chunking (Dual-Representation)",
+                "🔎 8. Corrective RAG (CRAG Web Search fallback)",
+                "🔎 9. Self-RAG (Hệ thống tự phản biện đa tầng)",
+                "🤖 10. LLM Generation (Tổng hợp tránh ảo giác)",
+                "🛡️ 11. Citations Validator (Đối sánh nguồn)",
+                "🎉 12. Answer + Citations (Kết quả + Nguồn chuẩn)"
+            ],
+            upgrades: [
+                {
+                    title: "Multimodal Chunking Dual-Representation (Tối Quan Trọng)",
+                    status: "planned",
+                    desc: "Ưu tiên số 1: Một khối tri thức chứa đồng thời cả Text, Table và Image đính kèm. Nhúng vector cho bản tóm tắt và caption của VLM chạy offline (LLaVA/Qwen-VL) để triệt tiêu chi phí API.",
+                    lat: "Offline Ingest",
+                    cost: "0đ (GPU cục bộ) 👑"
+                },
+                {
+                    title: "Agentic Tool Calling & Hỗ trợ hành trình",
+                    status: "planned",
+                    desc: "Gợi ý điểm nhiều cuốc xe cho tài xế, gợi ý khung giờ bắt xe rẻ cho khách hàng. *Lưu ý: Sử dụng dữ liệu giả lập (Mock) vì giới hạn dữ liệu GSM nội bộ thực tế.*",
+                    lat: "800ms - 2s",
+                    cost: "~$0.0002"
+                },
+                {
+                    title: "Corrective RAG (CRAG Web Search fallback)",
+                    status: "planned",
+                    desc: "Tự động kích hoạt Google Search / Tavily API cào cẩm nang GSM mới khi dữ liệu nội bộ không có câu trả lời, chặn đứng hoàn toàn ảo giác.",
+                    lat: "2 - 4 giây",
+                    cost: "Phí API Search"
+                },
+                {
+                    title: "Self-Querying & Tự động lọc Metadata",
+                    status: "planned",
+                    desc: "Dùng LLM dịch ngôn ngữ tự nhiên thành bộ lọc metadata (ví dụ: year=2026, role=driver) trước khi vector search giúp thu hẹp không gian tìm kiếm.",
+                    lat: "300ms",
+                    cost: "~$0.00005"
+                }
+            ]
+        }
+    };
+
+    function renderPipelineComparison(version) {
+        const data = pipelineData[version];
+        if (!data) return;
+
+        // Render titles
+        leftPipelineTitle.textContent = data.leftTitle;
+        rightPipelineTitle.textContent = data.rightTitle;
+        rightColumnTag.textContent = data.rightTag;
+        
+        if (version === "V3") {
+            rightColumnTag.className = "column-tag status-planned";
+        } else {
+            rightColumnTag.className = "column-tag newer-tag";
+        }
+
+        // Render left column nodes
+        leftPipelineFlow.innerHTML = "";
+        data.leftNodes.forEach((nodeText, idx) => {
+            const el = document.createElement("div");
+            el.className = "compare-capsule";
+            el.textContent = nodeText;
+            leftPipelineFlow.appendChild(el);
+            
+            if (idx < data.leftNodes.length - 1) {
+                const arr = document.createElement("div");
+                arr.className = "flow-step-arrow";
+                arr.style.fontSize = "0.75rem";
+                arr.style.margin = "2px 0";
+                arr.textContent = "⬇️";
+                leftPipelineFlow.appendChild(arr);
+            }
+        });
+
+        // Render right column nodes
+        rightPipelineFlow.innerHTML = "";
+        data.rightNodes.forEach((nodeText, idx) => {
+            const el = document.createElement("div");
+            
+            // Apply neon glow effects for newly introduced features
+            if (version === "V1" && (nodeText.includes("Filtering") || nodeText.includes("Hybrid") || nodeText.includes("Citation"))) {
+                el.className = "compare-capsule highlight-glow";
+            } else if (version === "V2" && nodeText.includes("Caching")) {
+                el.className = "compare-capsule bypass-glow";
+            } else if (version === "V2" && (nodeText.includes("Rewrite") || nodeText.includes("Expansion") || nodeText.includes("Reranker") || nodeText.includes("Parent-Child"))) {
+                el.className = "compare-capsule highlight-glow";
+            } else if (version === "V3" && (nodeText.includes("Tool") || nodeText.includes("Multimodal") || nodeText.includes("Self-Query") || nodeText.includes("Corrective") || nodeText.includes("Self-RAG"))) {
+                el.className = "compare-capsule highlight-glow";
+            } else {
+                el.className = "compare-capsule";
+            }
+
+            el.textContent = nodeText;
+            rightPipelineFlow.appendChild(el);
+
+            if (idx < data.rightNodes.length - 1) {
+                const arr = document.createElement("div");
+                arr.className = "flow-step-arrow";
+                arr.style.fontSize = "0.75rem";
+                arr.style.margin = "2px 0";
+                arr.textContent = "⬇️";
+                rightPipelineFlow.appendChild(arr);
+            }
+        });
+
+        // Render upgrade detail cards
+        upgradeDetailsContent.innerHTML = "";
+        data.upgrades.forEach(upg => {
+            const card = document.createElement("div");
+            card.className = "upgrade-card";
+            
+            const statusClass = upg.status === "active" ? "status-active" : "status-planned";
+            const statusText = upg.status === "active" ? "ĐANG HOẠT ĐỘNG" : "SẼ NÂNG CẤP (V3)";
+
+            card.innerHTML = `
+                <div class="upgrade-card-header">
+                    <span class="upgrade-card-title">💡 ${upg.title}</span>
+                    <span class="upgrade-card-status ${statusClass}">${statusText}</span>
+                </div>
+                <p class="upgrade-card-desc">${upg.desc}</p>
+                <div class="upgrade-card-metrics">
+                    <div class="metric-item">
+                        <span class="metric-label">Độ trễ:</span>
+                        <span class="metric-val" style="color: var(--accent-cyan); font-weight:600;">${upg.lat}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Chi phí:</span>
+                        <span class="metric-val" style="color: #10b981; font-weight:600;">${upg.cost}</span>
+                    </div>
+                </div>
+            `;
+            upgradeDetailsContent.appendChild(card);
+        });
+    }
+
+    // Attach click listeners to comparison sub-tabs
+    compTabButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            compTabButtons.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            
+            const ver = btn.dataset.compVersion;
+            renderPipelineComparison(ver);
+            appendThinkingLog(`Người dùng đối so sánh kiến trúc luồng RAG: Phiên bản ${ver}`, "normal");
+        });
+    });
+
+    // Initial render comparison
+    renderPipelineComparison("V1");
+
+
+    // ----------------------------------------------------------------------
+    // 7. Floating Onboarding Tour Assistant Logic (Tour Guide / Reminder)
+    // ----------------------------------------------------------------------
+    const tourWidget = document.getElementById("tour-widget");
+    const tourBubble = document.getElementById("tour-bubble");
+    const tourCloseBtn = document.getElementById("tour-close-btn");
+    const tourContentText = document.getElementById("tour-content-text");
+    const tourStepIndicator = document.getElementById("tour-step-indicator");
+    const tourBtnPrev = document.getElementById("tour-btn-prev");
+    const tourBtnNext = document.getElementById("tour-btn-next");
+
+    const tourSteps = [
+        {
+            tab: "chat",
+            text: `<strong>Bước 1: AI Chat CSKH</strong> 💬<br>Đây là buồng lái điều khiển chính! Em có thể:
+            <ul>
+                <li>Nhập câu hỏi chính sách thô của Khách hàng, Tài xế, Cửa hàng.</li>
+                <li><strong>Gửi ảnh taplo xe VinFast</strong> để chẩn đoán sự cố tự động.</li>
+                <li>Xem <strong>luồng LED sáng nhảy bước</strong> của RAG Pipeline bên phải thời gian thực!</li>
+            </ul>`,
+            elementSelector: '[data-tab="chat"]'
+        },
+        {
+            tab: "masterclass",
+            text: `<strong>Bước 2: Lớp học RAG Thầy Giáp</strong> 👨‍🏫<br>Học viện đào tạo RAG chuyên sâu! Thầy đã biên soạn <strong>15 chương bài giảng chuẩn doanh nghiệp</strong>:
+            <ul>
+                <li>Ngăn RAG Cơ bản (Basic), Ngăn RAG Sản xuất (Production), Ngăn RAG Tác vụ (Agentic).</li>
+                <li>Bấm vào bài học để đọc lý thuyết, xem mã nguồn Python thật và làm <strong>Mini Quiz trắc nghiệm có chấm điểm</strong>!</li>
+            </ul>`,
+            elementSelector: '[data-tab="masterclass"]'
+        },
+        {
+            tab: "admin",
+            text: `<strong>Bước 3: Console Quản Trị Hệ Thống</strong> ⚙️<br>Nơi giám sát "sức khỏe" và hiệu năng!
+            <ul>
+                <li>Theo dõi dung lượng Vector trong CSDL ChromaDB thực tế.</li>
+                <li>Theo dõi **tỷ lệ Cache Hit** và nút dọn sạch Cache đệm tức thì.</li>
+                <li>Duyệt xem tài liệu Markdown thật trong hệ thống và tải bộ **Dataset 10 kịch bản vàng (Golden Dataset)**.</li>
+            </ul>`,
+            elementSelector: '[data-tab="admin"]'
+        },
+        {
+            tab: "ingest-playground",
+            text: `<strong>Bước 4: Nạp Dữ Liệu Ingestion</strong> 📥<br>Nơi cập nhật tri thức mới cho RAG!
+            <ul>
+                <li>Bật **BFS Web Crawler** tự động cào trang chủ Greensm.</li>
+                <li>Mô phỏng quy trình nạp **Heading-Aware Splitter & Parent-Child chunking** đập tan phân mảnh dữ liệu.</li>
+            </ul>`,
+            elementSelector: '[data-tab="ingest-playground"]'
+        },
+        {
+            tab: "flow-explain",
+            text: `<strong>Bước 5: Quy Trình Thực Tế (Visual Lecture)</strong> 🕸️<br>Một sơ đồ topological sâu sắc của RAG Pipeline!
+            <ul>
+                <li>Bấm **Thuyết Trình Tự Động** để nghe Thầy giáo AI giảng giải chi tiết từng bước câu hỏi đi qua đệm Cache, Rewriter, Reranker...</li>
+            </ul>`,
+            elementSelector: '[data-tab="flow-explain"]'
+        },
+        {
+            tab: "pipeline-comparison",
+            text: `<strong>Bước 6: So Sánh Tiến Hóa Pipeline</strong> 📈<br>Tính năng mới nhất giúp em nhìn lại lịch sử!
+            <ul>
+                <li>So sánh trực quan các bước luồng RAG cũ vs RAG mới đặt cạnh nhau.</li>
+                <li>Xem chi tiết độ trễ, token, và **lộ trình đa phương tiện Multimodal / Agentic gợi ý cuốc xe trong V3**!</li>
+            </ul>`,
+            elementSelector: '[data-tab="pipeline-comparison"]'
+        }
+    ];
+
+    let currentTourStep = 0;
+
+    function showTourStep(idx) {
+        currentTourStep = idx;
+        const step = tourSteps[idx];
+        if (!step) return;
+
+        // Clear all previous highlight classes
+        document.querySelectorAll(".tour-highlight").forEach(el => el.classList.remove("tour-highlight"));
+
+        // Switch to the correct tab programmatically!
+        const tabBtn = document.querySelector(`[data-tab="${step.tab}"]`);
+        if (tabBtn) {
+            tabBtn.click(); // Trigger dynamic tab switcher!
+            tabBtn.classList.add("tour-highlight");
+        }
+
+        // Update dialog text & step count
+        tourContentText.innerHTML = step.text;
+        tourStepIndicator.textContent = `Bước ${idx + 1}/${tourSteps.length}`;
+
+        // Handle navigation button states
+        tourBtnPrev.disabled = (idx === 0);
+        if (idx === tourSteps.length - 1) {
+            tourBtnNext.textContent = "Hoàn tất ✅";
+        } else {
+            tourBtnNext.textContent = "Tiếp theo ➡️";
+        }
+    }
+
+    // Toggle tour assistant dialog when clicking widget
+    tourWidget.addEventListener("click", () => {
+        tourBubble.classList.toggle("hidden");
+        if (!tourBubble.classList.contains("hidden")) {
+            showTourStep(0);
+            appendThinkingLog("Kích hoạt trợ lý AI chỉ dẫn sử dụng app.", "success");
+        }
+    });
+
+    // Close button
+    tourCloseBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        tourBubble.classList.add("hidden");
+        document.querySelectorAll(".tour-highlight").forEach(el => el.classList.remove("tour-highlight"));
+        localStorage.setItem("xanhsm_tour_completed", "true");
+        appendThinkingLog("Đóng trợ lý hướng dẫn sử dụng.", "normal");
+    });
+
+    // Prev Button
+    tourBtnPrev.addEventListener("click", () => {
+        if (currentTourStep > 0) {
+            showTourStep(currentTourStep - 1);
+        }
+    });
+
+    // Next Button
+    tourBtnNext.addEventListener("click", () => {
+        if (currentTourStep < tourSteps.length - 1) {
+            showTourStep(currentTourStep + 1);
+        } else {
+            // Completed!
+            tourBubble.classList.add("hidden");
+            document.querySelectorAll(".tour-highlight").forEach(el => el.classList.remove("tour-highlight"));
+            localStorage.setItem("xanhsm_tour_completed", "true");
+            alert("🎉 Chúc mừng em đã hoàn tất chuyến tham quan buồng lái Cockpit RAG Xanh SM! Thầy chúc em có trải nghiệm học tập và phát triển RAG tuyệt vời!");
+            appendThinkingLog("Người dùng đã hoàn thành toàn bộ khóa học chỉ dẫn Cockpit.", "success");
+        }
+    });
+
+    // Auto-trigger tour guide after 2 seconds if user has never seen it
+    setTimeout(() => {
+        const completed = localStorage.getItem("xanhsm_tour_completed");
+        if (!completed) {
+            tourBubble.classList.remove("hidden");
+            showTourStep(0);
+            appendThinkingLog("Trợ lý tự động kích hoạt tour hướng dẫn lần đầu.", "normal");
+        }
+    }, 2000);
 
     // Initial Setup
     loadSuggestions();

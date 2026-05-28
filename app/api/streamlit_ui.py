@@ -306,12 +306,12 @@ with st.sidebar:
     # 1. Role Selection
     role_option = st.selectbox(
         "👤 Lựa chọn Vai trò (Pre-Filtering Role):",
-        ["Khách hàng", "Đối tác tài xế", "Đối tác cửa hàng", "Nhân viên CSKH"],
+        ["Khách hàng", "Tài xế", "Đối tác cửa hàng", "Nhân viên CSKH"],
         index=0
     )
     role_map = {
         "Khách hàng": "customer",
-        "Đối tác tài xế": "driver",
+        "Tài xế": "driver",
         "Đối tác cửa hàng": "merchant",
         "Nhân viên CSKH": "agent"
     }
