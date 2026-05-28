@@ -1,26 +1,73 @@
----
-url: https://www.xanhsm.com/vn-vi/greensm-limo
-category: driver
-crawled_at: 2026-05-26
----
-
 # Green SM Limo - 7 Nhãn Quan 1 Hành Trình
 
-Green SM LimoGreen SM LimoGreen SM LimoGIỚI THIỆUGreen SM Limo    7 Nhãn Quan 1 Hành TrìnhPhương tiện "Xanh"Xe sạch sẽ, không mùi, khoang ngồi rộng rãiDễ dàng đặt xeĐặt xe nhanh chóng với nhiều ưu đãi ngay trên ứng dụng Green SMLuôn Trọn VẹnTài xế 5 sao luôn hỗ trợ để hành trình di chuyển của bạn thêm thảnh thơiTài xế luôn sẵn sàngTài xế được đào tạo bài bản, tác phong chuyên nghiệpGiá cước tối ưuChi phí hợp lý đi cùng nhiều ưu đãi thanh toán trên ứng dụngLuôn bảo vệ môi trườngDùng xe điện không phát thải, mỗi chuyến đi là hành động bảo vệ môi trườngKHÁM PHÁHướng dẫn đặt xe
-- 1 . Bước 1Mở ứng dụng Green SM, lựa chọn biểu tượng Ô tô tại màn hình trang chủ.
-- 2 . Bước 2Lựa chọn điểm đi & điểm đến bạn mong muốn và lựa chọn Green SM Limo.
-- 3 . Bước 3Lựa chọn phương thức thanh toán. Đừng quên áp dụng ưu đãi khi di chuyển.
-- 4 . Bước 4Xác nhận đặt xe. Chúc bạn có một chuyến đi vui vẻ.
-1 .  Bước 1Mở ứng dụng Green SM, lựa chọn biểu tượng Ô tô tại màn hình trang chủ.2 .  Bước 2Lựa chọn điểm đi & điểm đến bạn mong muốn và lựa chọn Green SM Limo.3 .  Bước 3Lựa chọn phương thức thanh toán. Đừng quên áp dụng ưu đãi khi di chuyển.4 .  Bước 4Xác nhận đặt xe. Chúc bạn có một chuyến đi vui vẻ.THÔNG TINGiá cước dịch vụTỉnh/ Thành phốChọn tỉnh/ thành phốGIÁ TAXI NIÊM YẾTCác loại phụ phí khác
+**URL:** https://www.xanhsm.com/vn-vi/greensm-limo  
+**Category:** driver  
+**Crawled at:** 2026-05-26
+
+---
+
+## Giới thiệu
+
+**Green SM Limo** – 7 Nhãn Quan 1 Hành Trình
+
+---
+
+## Lợi ích nổi bật
+
+| Lợi ích | Mô tả |
+|---------|-------|
+| **Phương tiện "Xanh"** | Xe sạch sẽ, không mùi, khoang ngồi rộng rãi |
+| **Dễ dàng đặt xe** | Đặt xe nhanh chóng với nhiều ưu đãi ngay trên ứng dụng Green SM |
+| **Luôn Trọn Vẹn** | Tài xế 5 sao luôn hỗ trợ để hành trình di chuyển của bạn thêm thảnh thơi |
+| **Tài xế luôn sẵn sàng** | Tài xế được đào tạo bài bản, tác phong chuyên nghiệp |
+| **Giá cước tối ưu** | Chi phí hợp lý đi cùng nhiều ưu đãi thanh toán trên ứng dụng |
+| **Luôn bảo vệ môi trường** | Dùng xe điện không phát thải, mỗi chuyến đi là hành động bảo vệ môi trường |
+
+---
+
+## Hướng dẫn đặt xe
+
+1. **Bước 1**: Mở ứng dụng Green SM, lựa chọn biểu tượng Ô tô tại màn hình trang chủ
+
+2. **Bước 2**: Lựa chọn điểm đi & điểm đến bạn mong muốn và lựa chọn Green SM Limo
+
+3. **Bước 3**: Lựa chọn phương thức thanh toán. Đừng quên áp dụng ưu đãi khi di chuyển
+
+4. **Bước 4**: Xác nhận đặt xe. Chúc bạn có một chuyến đi vui vẻ
+
+---
+
+## Thông tin giá cước dịch vụ
+
+### Giá taxi niêm yết
+
+> Các loại phụ phí khác:
 
 | Mô tả | Phụ phí (VNĐ) |
-| --- | --- |
-| Phí thời gian chờ: 10 phút đầu khách hàng được miễn phí | Bắt đầu từ phút thứ 11 tính 1.000 vnđ/phút/Green SM Limo |
-| Giá giờ chờ/ giờ | 60.000 |
-| Phụ phí lưu đêm tài xế nghỉ đêm tại Hà Nội, Hồ Chí Minh | 500.000 vnđ/tài xế/đêm |
-| Phụ phí lưu đêm tài xế nghỉ đêm tại tỉnh/ thành phố khác | 300.000 vnđ/tài xế/đêm |
+|-------|---------------|
+| Phí thời gian chờ: 10 phút đầu khách hàng được miễn phí | Bắt đầu từ phút thứ 11 tính 1.000 VNĐ/phút/Green SM Limo |
+| Giá giờ chờ/giờ | 60.000 |
+| Phụ phí lưu đêm tài xế nghỉ đêm tại Hà Nội, Hồ Chí Minh | 500.000 VNĐ/tài xế/đêm |
+| Phụ phí lưu đêm tài xế nghỉ đêm tại tỉnh/thành phố khác | 300.000 VNĐ/tài xế/đêm |
 
-- Giá trên đã bao gồm thuế GTGT và bảo hiểm dành cho hành khách.
-- Bảng chi phí cuốc đi thực tế phụ thuộc vào số km thực tế, lệ phí cầu đường (nếu có) và các phụ phí (nếu có) phát sinh trong chuyến đi.
-- Vui lòng đặt chuyến hoặc các dịch vụ khác qua Hotline 1900 2088 trước khi khởi hành để nhận được ưu đãi tốt nhất.
-- Giá đặt qua ứng dụng được xác định thông qua phần mềm tính tiền, theo chính sách giá niêm yết và có áp dụng khuyến mại (nếu có) và chính sách giá phụ thu (nếu có) tại từng thời điểm.CÂU HỎI THƯỜNG GẶPGreen SM LimoDịch vụ Green SM Limo là gì?Sử dụng mã khuyến mãi và ưu đãi giảm giá như thế nào?Hướng dẫn thêm mới/cập nhật phương thức thanh toánDịch vụ Green SM Limo là gì?1 .Dịch vụ Green SM Limo là gì?Green SM Limo là một dịch vụ taxi điện cao cấp, được thiết kế cho các nhóm 6 người hoặc khách có nhu cầu di chuyển tiện nghi và sang trọng. Dịch vụ này sử dụng xe điện VinFast Limo Green rộng rãi, êm ái và có đầy đủ tiện nghi, hướng tới trải nghiệm di chuyển 5 sao cho gia đình, doanh nhân và du khách.[Xem thêm](/vn-vi/helps)Tải ứng dụng Green SM    Trải nghiệm thuận tiện  Thêm nhiều ưu đãiĐĂNG KÝ GIA NHẬPxanhsm_limo.taxi_register_titlexanhsm_limo.taxi_register_descỨng tuyển ngayCÂU HỎI THƯỜNG GẶPTìm hiểu sâu hơn về Green SM[Đối tác / Doanh nghiệpBạn là doanh nghiệp, tiên phong chuyển đổi cùng GreenXem thêm](/vn-vi/business-transport)[Trung tâm Tài xếBạn tìm kiếm công việc được đào tạo bài bản, thu nhập cạnh tranhXem thêm](/vn-vi/driver-center)[Tin tức & Ưu đãiCác hoạt động và chương trình ưu đãi hấp dẫn mỗi ngàyXem thêm](/vn-vi/news)[Trung tâm hỗ trợTìm hiểu chi tiết các chính sách, điều khoản hoạt động của GreenXem thêm](/vn-vi/helps)CÔNG TY CỔ PHẦN DI CHUYỂN XANH VÀ THÔNG MINH GSMHotline: 1555Email: support.vn@greensm.comTòa Văn phòng Symphony, đường Chu Huy Mân, khu đô thị Vinhomes Riverside, Phường Phúc Lợi, Thành phố Hà Nội, Việt NamGREEN SM[Trang chủ](/vn-vi)[Về Green SM](/vn-vi/about)[Giới thiệu ứng dụng Green SM](/vn-vi/download)Người dùng[Green SM Car](/vn-vi/greensm-car)[Green SM Mini](/vn-vi/greensm-mini)[Green SM Premium](/vn-vi/greensm-premium)[Green SM Limo](/vn-vi/greensm-limo)[Green Airport](/vn-vi/green-airport)[Green Tour](/vn-vi/green-tour)[Green Liên Tỉnh](/vn-vi/green-lien-tinh)[Green SM Bike](/vn-vi/greensm-bike)[Green SM Food](/vn-vi/greensm-ngon)[Green SM Express](/vn-vi/green-express)[Green SM Van](/vn-vi/green-van)[Gói hội viên](/vn-vi/green-subscription)[Thẻ quà tặng](/vn-vi/green-gift-card)Doanh nghiệp[Green Business](/vn-vi/business-transport)[Green SM Merchant](/vn-vi/greensm-merchant)[Thẻ doanh nghiệp](/vn-vi/business-payment)[Green Partner](/vn-vi)[Green Ads](/vn-vi)Khám phá[Tài xế Ô tô](/vn-vi/driver-car)[Tài xế Xe máy](/vn-vi/driver-bike)[Green SM Platform](/vn-vi/driver-platform)[Trung tâm Tài xế](/vn-vi/driver-center)Tổng hợp[Tin tức](/vn-vi/news)[Trung tâm hỗ trợ](/vn-vi/helps)[Tuyển dụng](/vn-vi/career)[Ưu đãi](/vn-vi/promotions)MẠNG XÃ HỘIMã số doanh nghiệp: 0110269067 do Sở Kế hoạch và Đầu tư thành phố Hà Nội cấp lần đầu ngày 01/03/2023.Giấy phép vận tải số 9620/GPKDVT do Sở Giao thông vận tải thành phố Hà Nội cấp lần thứ nhất ngày 06/03/2023.Văn bản xác nhận hoạt động bưu chính số 6150/XN-BTTTT do Bộ Thông Tin và Truyền Thông cấp ngày 13/12/2023.© 2024 GSM. All rights reserved   | [Điều khoản & Pháp lý](/vn-vi/terms-policies) |  [Chính sách bảo vệ dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice)  | [Quy tắc bảo vệ quyền lợi người tiêu dùng](/vn-vi/terms-policies/consumer-protection-policy)  |  Cài đặt cookiesTrải nghiệm ứng dụng ngay
+> Lưu ý quan trọng:
+> - Giá trên đã bao gồm thuế GTGT và bảo hiểm dành cho hành khách
+> - Bảng chi phí cuốc đi thực tế phụ thuộc vào số km thực tế, lệ phí cầu đường (nếu có) và các phụ phí (nếu có) phát sinh trong chuyến đi
+> - Vui lòng đặt chuyến hoặc các dịch vụ khác qua Hotline 1900 2088 trước khi khởi hành để nhận được ưu đãi tốt nhất
+> - Giá đặt qua ứng dụng được xác định thông qua phần mềm tính tiền, theo chính sách giá niêm yết và có áp dụng khuyến mại (nếu có) và chính sách giá phụ thu (nếu có) tại từng thời điểm
+
+---
+
+## Câu hỏi thường gặp
+
+### Dịch vụ Green SM Limo
+
+**Dịch vụ Green SM Limo là gì?**
+
+Green SM Limo là một dịch vụ taxi điện cao cấp, được thiết kế cho các nhóm 6 người hoặc khách có nhu cầu di chuyển tiện nghi và sang trọng. Dịch vụ này sử dụng xe điện VinFast Limo Green rộng rãi, êm ái và có đầy đủ tiện nghi, hướng tới trải nghiệm di chuyển 5 sao cho gia đình, doanh nhân và du khách.
+
+**Sử dụng mã khuyến mãi và ưu đãi giảm giá như thế nào?**
+*(Hướng dẫn chi tiết về cách áp dụng mã khuyến mãi sẽ được cung cấp trên ứng dụng Green SM)*
+
+**Hướng dẫn thêm mới/cập nhật phương thức thanh toán**
+*(Các bước cập nhật phương thức thanh toán sẽ được hướng dẫn trong mục Tài khoản trên ứng dụng)*

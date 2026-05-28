@@ -90,6 +90,31 @@ Phân mảnh quyết định chất lượng của vector đầu vào. Thầy xi
 * **Agentic / LLM-based Chunking**: Dùng một LLM đọc và tự quyết định vị trí cắt đoạn tối ưu. Chất lượng hoàn hảo nhưng chi phí API khổng lồ, tốc độ chậm chạp. (❌ Không thực tế)
 * **Hierarchical + Parent-Child Retrieval** *(Vàng)*: Phân tích layout PDF bằng mô hình thị giác cục bộ (PyMuPDF / Marker). Tạo ra các **Chunk Con (Child Chunks - 100-200 từ)** nhúng vector để tìm kiếm cực nhạy, liên kết với **Chunk Cha (Parent Chunks - 1000-2000 từ)** để tự động gộp context khi gửi LLM. Đạt lợi ích kép: Tìm siêu nhạy + Context siêu đầy đủ, chi phí ban đầu bằng $0. (👑 Tiêu chuẩn vàng doanh nghiệp hiện đại)
 
+#### 🗺️ Chương 2b: Xử Lý Đa Phương Tiện & Trích Xuất Bảng Biểu Phức Tạp Bằng Định Dạng Metadata Trong V3 (Multimodal & Table Ingestion Roadmap)
+
+Khi tài liệu nguồn là PDF có cấu trúc phức tạp chứa nhiều hình ảnh Taplo sự cố, sơ đồ bãi đỗ xe hoặc bảng giá cước, RAG cơ bản sẽ làm nát cấu trúc hoặc bỏ qua hoàn toàn các tín hiệu đa phương tiện.
+
+* **Thực trạng Giai đoạn 2 (V2) hiện tại:**
+  * **Đối với Bảng biểu (Tables):** Đã giải quyết ở cấp độ Parser bằng cách bóc tách HTML thô và bảo tồn thành Markdown Table (`| cột 1 | cột 2 |`) kết hợp `HeadingAwareSplitter` để tránh cắt nát đoạn. Tuy nhiên, hệ thống *chưa có nhãn metadata phân loại rõ ràng loại chunk* (như `type = table`) trong DB.
+  * **Đối với Hình ảnh (Images):** Đã hỗ trợ Vision ở đầu vào (đọc ảnh taplo người dùng gửi), nhưng ở khâu Ingestion hệ thống *chưa lưu trữ* và *chưa gắn nhãn* hình ảnh chính sách.
+
+* **Phương án đột phá trong Phiên bản V3 (Lộ trình 2026):**
+  Thầy thiết kế giải pháp **Multimodal & Table-Aware Ingestion Pipeline** với trường metadata bắt buộc gán cho mỗi chunk: `chunk_type: "text" | "table" | "image"`.
+
+  1. **Giải pháp xử lý Bảng biểu chuyên sâu (Table-specific RAG):**
+     - *Trích xuất:* Dùng **Table Transformer / Nougat** nhận diện tọa độ bảng trong PDF gốc.
+     - *Biểu diễn kép (Dual-Representation):*
+       - **Vector Search Representation:** Dùng LLM tóm tắt ý nghĩa bảng bằng văn bản tự nhiên (*"Bảng này thể hiện mức phạt hủy chuyến..."*). Hệ thống tính toán vector (embedding) trên đoạn tóm tắt này để Vector Search tìm kiếm nhạy nhất.
+       - **LLM Context Representation:** Khi chunk được truy xuất trúng, kéo nguyên bản định dạng Markdown/HTML Table nạp vào context để LLM tính toán chính xác 100%.
+     - *Gán nhãn metadata:* `{"chunk_type": "table", "has_table": true}`.
+
+  2. **Giải pháp xử lý Hình ảnh chuyên sâu (Image-specific / Multimodal RAG):**
+     - *Trích xuất:* Dùng **PyMuPDF / PDFPlumber** tự động cắt và lưu trữ file ảnh thô (`.png`, `.jpg`) vào Storage.
+     - *Biểu diễn kép (Dual-Representation):*
+       - **Vector Search Representation:** Dùng mô hình **VLM (Vision-Language Model như GPT-4o-mini)** đọc ảnh và viết một bản mô tả chi tiết bằng văn bản (Image Captioning). Ví dụ: *"Hình chụp đèn taplo VF8 cảnh báo lỗi Rùa Vàng..."*. Nhúng vector đoạn mô tả này để tìm kiếm.
+       - **LLM Context Representation:** Khi tìm thấy, hệ thống kéo cả bản mô tả VÀ đường dẫn liên kết URL ảnh thật nạp cho LLM. AI sẽ sinh ra câu trả lời có chứa link ảnh trực tiếp để người dùng xem trực quan.
+     - *Gán nhãn metadata:* `{"chunk_type": "image", "image_url": "...", "has_visual": true}`.
+
 ---
 
 ### 🧠 GIAI ĐOẠN II: Ý ĐỊNH & TRUY VẤN NÂNG CAO (QUERYING & RETRIEVAL PHASE)

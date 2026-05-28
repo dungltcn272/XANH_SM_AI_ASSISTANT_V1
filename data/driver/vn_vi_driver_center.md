@@ -1,9 +1,27 @@
----
-url: https://www.xanhsm.com/vn-vi/driver-center
-category: driver
-crawled_at: 2026-05-26
----
-
 # Trung tâm hỗ trợ dành riêng cho các tài xế | Green SM
 
-Trung tâm tài xếTrung tâm tài xếTrung tâm tài xếCộng đồng tài xế Green SMLàm nên thành công của chúng tôi không thể thiếu những đóng góp của bạn[Đăng ký Tài xế xe máy](/vn-vi/driver-bike)[Đăng ký Tài xế taxi](/vn-vi/driver-car)[Đăng ký Tài xế Platform](/vn-vi/driver-platform)GIA NHẬP CỘNG ĐỒNG TÀI XẾ GREEN SMCổng tin tức và hỗ trợCÂU HỎI THƯỜNG GẶPTìm hiểu sâu hơn về Green SM[Đối tác / Doanh nghiệpBạn là doanh nghiệp, tiên phong chuyển đổi cùng GreenXem thêm](/vn-vi/business-transport)[Trung tâm Tài xếBạn tìm kiếm công việc được đào tạo bài bản, thu nhập cạnh tranhXem thêm](/vn-vi/driver-center)[Tin tức & Ưu đãiCác hoạt động và chương trình ưu đãi hấp dẫn mỗi ngàyXem thêm](/vn-vi/news)[Trung tâm hỗ trợTìm hiểu chi tiết các chính sách, điều khoản hoạt động của GreenXem thêm](/vn-vi/helps)Tải ngay App Green SM  dành cho tài xếCÔNG TY CỔ PHẦN DI CHUYỂN XANH VÀ THÔNG MINH GSMHotline: 1555Email: support.vn@greensm.comTòa Văn phòng Symphony, đường Chu Huy Mân, khu đô thị Vinhomes Riverside, Phường Phúc Lợi, Thành phố Hà Nội, Việt NamGREEN SM[Trang chủ](/vn-vi)[Về Green SM](/vn-vi/about)[Giới thiệu ứng dụng Green SM](/vn-vi/download)Người dùng[Green SM Car](/vn-vi/greensm-car)[Green SM Mini](/vn-vi/greensm-mini)[Green SM Premium](/vn-vi/greensm-premium)[Green SM Limo](/vn-vi/greensm-limo)[Green Airport](/vn-vi/green-airport)[Green Tour](/vn-vi/green-tour)[Green Liên Tỉnh](/vn-vi/green-lien-tinh)[Green SM Bike](/vn-vi/greensm-bike)[Green SM Food](/vn-vi/greensm-ngon)[Green SM Express](/vn-vi/green-express)[Green SM Van](/vn-vi/green-van)[Gói hội viên](/vn-vi/green-subscription)[Thẻ quà tặng](/vn-vi/green-gift-card)Doanh nghiệp[Green Business](/vn-vi/business-transport)[Green SM Merchant](/vn-vi/greensm-merchant)[Thẻ doanh nghiệp](/vn-vi/business-payment)[Green Partner](/vn-vi)[Green Ads](/vn-vi)Khám phá[Tài xế Ô tô](/vn-vi/driver-car)[Tài xế Xe máy](/vn-vi/driver-bike)[Green SM Platform](/vn-vi/driver-platform)[Trung tâm Tài xế](/vn-vi/driver-center)Tổng hợp[Tin tức](/vn-vi/news)[Trung tâm hỗ trợ](/vn-vi/helps)[Tuyển dụng](/vn-vi/career)[Ưu đãi](/vn-vi/promotions)MẠNG XÃ HỘIMã số doanh nghiệp: 0110269067 do Sở Kế hoạch và Đầu tư thành phố Hà Nội cấp lần đầu ngày 01/03/2023.Giấy phép vận tải số 9620/GPKDVT do Sở Giao thông vận tải thành phố Hà Nội cấp lần thứ nhất ngày 06/03/2023.Văn bản xác nhận hoạt động bưu chính số 6150/XN-BTTTT do Bộ Thông Tin và Truyền Thông cấp ngày 13/12/2023.© 2024 GSM. All rights reserved   | [Điều khoản & Pháp lý](/vn-vi/terms-policies) |  [Chính sách bảo vệ dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice)  | [Quy tắc bảo vệ quyền lợi người tiêu dùng](/vn-vi/terms-policies/consumer-protection-policy)  |  Cài đặt cookiesTrải nghiệm ứng dụng ngay
+**URL:** https://www.xanhsm.com/vn-vi/driver-center  
+**Category:** driver  
+**Crawled at:** 2026-05-26
+
+---
+
+## Giới thiệu
+
+**Cộng đồng tài xế Green SM**
+
+Làm nên thành công của chúng tôi không thể thiếu những đóng góp của bạn.
+
+---
+
+## Đăng ký trở thành tài xế Green SM
+
+| Loại hình | Mô tả | Link đăng ký |
+|-----------|-------|--------------|
+| Tài xế xe máy | Lái xe máy điện VinFast, thu nhập linh hoạt | [Đăng ký ngay](/vn-vi/driver-bike) |
+| Tài xế taxi | Lái xe ô tô điện VinFast, hưởng lương cứng + thưởng | [Đăng ký ngay](/vn-vi/driver-car) |
+| Tài xế Platform | Hợp tác linh hoạt theo nhu cầu cá nhân | [Đăng ký ngay](/vn-vi/driver-platform) |
+
+[Gia nhập cộng đồng tài xế Green SM](#)
+
+---

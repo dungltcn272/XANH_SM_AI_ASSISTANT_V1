@@ -1,10 +1,39 @@
----
-url: https://www.xanhsm.com/vn-vi/career
-category: driver
-crawled_at: 2026-05-26
----
-
 # Phát triển sự nghiệp và tiên phong hành trình chuyển đổi cùng Xanh | Green SM
 
-Tuyển dụngTuyển dụngTuyển dụngVĂN HOÁTại sao nên gia nhập Green SM?Con ngườiTrẻ trung, năng động, sáng tạo… Là cốt lõi cho sự phát triển bền vững của doanh nghiệpMôi trườngKhông gian làm việc thoải mái, hiện đại, đáp ứng đầy đủ tiện nghi sinh hoạt… Tác động trực tiếp đến sự sáng tạo và hiệu suất công việc của nhân viên.Công việcĐảm bảo sự minh bạch, rõ ràng và không quá xa rời phạm vi chuyên môn, đào tạo kỹ năng, kiến thức… Kích thích sự hứng thú và niềm hăng say trong công việc.Con ngườiTrẻ trung, năng động, sáng tạo… Là cốt lõi cho sự phát triển bền vững của doanh nghiệpMôi trườngKhông gian làm việc thoải mái, hiện đại, đáp ứng đầy đủ tiện nghi sinh hoạt… Tác động trực tiếp đến sự sáng tạo và hiệu suất công việc của nhân viên.Công việcĐảm bảo sự minh bạch, rõ ràng và không quá xa rời phạm vi chuyên môn, đào tạo kỹ năng, kiến thức… Kích thích sự hứng thú và niềm hăng say trong công việc.Con ngườiTrẻ trung, năng động, sáng tạo… Là cốt lõi cho sự phát triển bền vững của doanh nghiệpMôi trườngKhông gian làm việc thoải mái, hiện đại, đáp ứng đầy đủ tiện nghi sinh hoạt… Tác động trực tiếp đến sự sáng tạo và hiệu suất công việc của nhân viên.Công việcĐảm bảo sự minh bạch, rõ ràng và không quá xa rời phạm vi chuyên môn, đào tạo kỹ năng, kiến thức… Kích thích sự hứng thú và niềm hăng say trong công việc.Cơ hội nghề nghiệpGia nhập  **Green SM**  với các vị trí hấp dẫnBạn có đam mê và hoài bão để trở thành một trong những chuyên gia về công nghệ?Bạn muốn làm việc tại một môi trường thỏa sức sáng tạo, được khẳng định bản thân và nhiều cơ hội thăng 
- tiến?Bạn sẽ tìm được mọi thứ tại  **Green SM**Hiện tại chưa có thông tin tuyển dụng mới.CẬP NHẬTTin tức[23 May 2026MớiVào Xanh – Tặng Xe Cùng Chính Sách Bảo Đảm Thu Nhập Vô Cùng Hấp DẫnGreen SM chính thức triển khai chương trình “VÀO XANH – TẶNG XE”, cho phép Bác Tài thuê & sở hữu xe máy điện VinFast sau 2 năm, kết hợp cùng Chính sách Bảo đảm Thu nhập vô cùng hấp dẫn giúp Bác Tài an tâm vận doanh ngay từ ngày đầu. Thông qua chương […]](/vn-vi/news/vao-xanh-tang-xe-cung-chinh-sach-bao-dam-thu-nhap-vo-cung-hap-dan)[22 May 2026MớiBản tin vận doanh cuối tuần 18/05-24/05Bác Tài Xanh thân mến, Cuối tuần đã đến! Cùng tham khảo ngay các sự kiện tâm điểm và mẹo vận doanh cuối tuần để bứt phá doanh thu – bùng nổ thu nhập nhé Bác Tài Xanh! Và đừng quên, nếu Bác Tài Xanh có góp ý hay chia sẻ thêm mong muốn, hãy […]](/vn-vi/news/ban-tin-van-doanh-cuoi-tuan-18-05-24-05)[22 May 2026MớiGreen SM Đồng Hành Cùng Phụ Huynh Sky International Preschool Trên Hành Trình Di Chuyển Xanh – An Toàn – Tiện LợiNhằm mang đến trải nghiệm di chuyển thuận tiện, an toàn và thân thiện với môi trường cho phụ huynh và học sinh, Green SM chính thức hợp tác cùng Sky International Preschool triển khai chương trình ưu đãi dành riêng cho khách hàng di chuyển đi/đến trường. 📌 Ưu đãi dành cho dịch vụ […]](/vn-vi/news/green-sm-dong-hanh-cung-phu-huynh-sky-international-preschool)[Xem tất cả tin tức](/vn-vi/news)CÔNG TY CỔ PHẦN DI CHUYỂN XANH VÀ THÔNG MINH GSMHotline: 1555Email: support.vn@greensm.comTòa Văn phòng Symphony, đường Chu Huy Mân, khu đô thị Vinhomes Riverside, Phường Phúc Lợi, Thành phố Hà Nội, Việt NamGREEN SM[Trang chủ](/vn-vi)[Về Green SM](/vn-vi/about)[Giới thiệu ứng dụng Green SM](/vn-vi/download)Người dùng[Green SM Car](/vn-vi/greensm-car)[Green SM Mini](/vn-vi/greensm-mini)[Green SM Premium](/vn-vi/greensm-premium)[Green SM Limo](/vn-vi/greensm-limo)[Green Airport](/vn-vi/green-airport)[Green Tour](/vn-vi/green-tour)[Green Liên Tỉnh](/vn-vi/green-lien-tinh)[Green SM Bike](/vn-vi/greensm-bike)[Green SM Food](/vn-vi/greensm-ngon)[Green SM Express](/vn-vi/green-express)[Green SM Van](/vn-vi/green-van)[Gói hội viên](/vn-vi/green-subscription)[Thẻ quà tặng](/vn-vi/green-gift-card)Doanh nghiệp[Green Business](/vn-vi/business-transport)[Green SM Merchant](/vn-vi/greensm-merchant)[Thẻ doanh nghiệp](/vn-vi/business-payment)[Green Partner](/vn-vi)[Green Ads](/vn-vi)Khám phá[Tài xế Ô tô](/vn-vi/driver-car)[Tài xế Xe máy](/vn-vi/driver-bike)[Green SM Platform](/vn-vi/driver-platform)[Trung tâm Tài xế](/vn-vi/driver-center)Tổng hợp[Tin tức](/vn-vi/news)[Trung tâm hỗ trợ](/vn-vi/helps)[Tuyển dụng](/vn-vi/career)[Ưu đãi](/vn-vi/promotions)MẠNG XÃ HỘIMã số doanh nghiệp: 0110269067 do Sở Kế hoạch và Đầu tư thành phố Hà Nội cấp lần đầu ngày 01/03/2023.Giấy phép vận tải số 9620/GPKDVT do Sở Giao thông vận tải thành phố Hà Nội cấp lần thứ nhất ngày 06/03/2023.Văn bản xác nhận hoạt động bưu chính số 6150/XN-BTTTT do Bộ Thông Tin và Truyền Thông cấp ngày 13/12/2023.© 2024 GSM. All rights reserved   | [Điều khoản & Pháp lý](/vn-vi/terms-policies) |  [Chính sách bảo vệ dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice)  | [Quy tắc bảo vệ quyền lợi người tiêu dùng](/vn-vi/terms-policies/consumer-protection-policy)  |  Cài đặt cookiesTrải nghiệm ứng dụng ngay
+**URL:** https://www.xanhsm.com/vn-vi/career  
+**Category:** driver  
+**Crawled at:** 2026-05-26
+
+---
+
+## Văn hóa Green SM
+
+### Tại sao nên gia nhập Green SM?
+
+| Yếu tố | Mô tả |
+|--------|-------|
+| **Con người** | Trẻ trung, năng động, sáng tạo… Là cốt lõi cho sự phát triển bền vững của doanh nghiệp |
+| **Môi trường** | Không gian làm việc thoải mái, hiện đại, đáp ứng đầy đủ tiện nghi sinh hoạt… Tác động trực tiếp đến sự sáng tạo và hiệu suất công việc của nhân viên |
+| **Công việc** | Đảm bảo sự minh bạch, rõ ràng và không quá xa rời phạm vi chuyên môn, đào tạo kỹ năng, kiến thức… Kích thích sự hứng thú và niềm hăng say trong công việc |
+
+---
+
+## Cơ hội nghề nghiệp
+
+### Gia nhập Green SM với các vị trí hấp dẫn
+
+- Bạn có đam mê và hoài bão để trở thành một trong những chuyên gia về công nghệ?
+- Bạn muốn làm việc tại một môi trường thỏa sức sáng tạo, được khẳng định bản thân và nhiều cơ hội thăng tiến?
+- Bạn sẽ tìm được mọi thứ tại **Green SM**
+
+> Hiện tại chưa có thông tin tuyển dụng mới.
+
+---
+
+## Cập nhật tin tức
+
+| Ngày | Tiêu đề | Tóm tắt |
+|------|---------|---------|
+| 23 May 2026 | Vào Xanh – Tặng Xe Cùng Chính Sách Bảo Đảm Thu Nhập Vô Cùng Hấp Dẫn | Green SM chính thức triển khai chương trình "VÀO XANH – TẶNG XE", cho phép Bác Tài thuê & sở hữu xe máy điện VinFast sau 2 năm, kết hợp cùng Chính sách Bảo đảm Thu nhập vô cùng hấp dẫn |
+| 22 May 2026 | Bản tin vận doanh cuối tuần 18/05-24/05 | Cùng tham khảo các sự kiện tâm điểm và mẹo vận doanh cuối tuần để bứt phá doanh thu – bùng nổ thu nhập |
+| 22 May 2026 | Green SM Đồng Hành Cùng Phụ Huynh Sky International Preschool | Green SM hợp tác cùng Sky International Preschool triển khai chương trình ưu đãi dành riêng cho khách hàng di chuyển đi/đến trường |

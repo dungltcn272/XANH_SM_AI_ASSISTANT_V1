@@ -306,3 +306,10 @@ Dựa trên tài liệu khảo sát kỹ thuật chuyên sâu về các mô hìn
 * **Khắc phục:** Cá nhân hóa câu trả lời dựa trên những tương tác lịch sử từ nhiều ngày hoặc nhiều tuần trước.
 * **Cơ chế:** Định kỳ tóm tắt nội dung hội thoại cũ, nhúng vector hóa và lưu trữ vào cơ sở dữ liệu lịch sử hội thoại của người dùng. Khi họ quay lại và đặt câu hỏi mới, Agent có thể tham chiếu chéo cả tri thức chính sách chung lẫn bộ nhớ thói quen đặt xe/sự cố cũ của chính họ để trả lời.
 * **Đánh giá hiệu năng:** **Trung bình.** Tăng nhẹ thời gian tìm kiếm nhưng đem lại trải nghiệm cá nhân hóa cao.
+
+### 9. Multimodal & Table-Aware Ingestion Pipeline (Quy trình nạp đa phương tiện & bảng biểu chuyên sâu)
+* **Khắc phục:** PDF và tài liệu thô chứa cấu trúc bảng biểu hoặc hình ảnh sơ đồ phức tạp dễ bị RAG cơ bản bỏ sót hoặc phân tách vụn nát làm LLM mất phương hướng.
+* **Cơ chế:** Thiết lập bộ nạp phân loại và gán nhãn metadata chuyên sâu với trường `chunk_type: "text" | "table" | "image"`.
+  * **Table-specific RAG (Bảng biểu):** Trích xuất tọa độ bảng bằng **Table Transformer / Nougat**. Lưu trữ dạng văn bản tóm tắt tự nhiên (Table Summary) để Vector Search tìm kiếm nhạy nhất, nhưng kéo định dạng Markdown/HTML Table gốc khi LLM sinh câu trả lời để đạt độ chính xác số liệu 100%. Gán nhãn metadata `{"chunk_type": "table", "has_table": true}`.
+  * **Image-specific RAG (Hình ảnh):** Cắt tự động ảnh chính sách/sơ đồ taplo bằng **PyMuPDF**, chạy VLM để sinh văn bản mô tả (Image Caption) làm đại diện Vector Search. Khi khớp tìm kiếm, truyền URL ảnh thật để LLM hiển thị trực quan dạng Markdown cho người dùng click xem. Gán nhãn metadata `{"chunk_type": "image", "image_url": "...", "has_visual": true}`.
+* **Đánh giá hiệu năng:** **Rất cao & Toàn năng!** Nâng cấp chatbot CSKH từ đọc hiểu văn bản đơn điệu lên tầm nhìn đa phương tiện đỉnh cao, giữ trọn vẹn 100% tính chính xác của các bảng cước phí phức tạp.
