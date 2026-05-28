@@ -619,6 +619,7 @@ body {
     text-decoration: none;
     transition: var(--transition-smooth);
     font-weight: 600;
+    cursor: default;
 }
 
 .citation-tag:hover {

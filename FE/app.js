@@ -1291,10 +1291,8 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
                 if (!seen.has(uniqueKey)) {
                     seen.add(uniqueKey);
                     
-                    const tag = document.createElement("a");
+                    const tag = document.createElement("span");
                     tag.className = "citation-tag";
-                    tag.href = c.url || "#";
-                    tag.target = "_blank";
                     tag.innerHTML = `📄 [${c.source}] ${c.section} (Khớp: ${(c.relevance_score * 100).toFixed(0)}%)`;
                     citeList.appendChild(tag);
                 }
