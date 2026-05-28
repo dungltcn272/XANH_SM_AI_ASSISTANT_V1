@@ -1,0 +1,52 @@
+[
+  {
+    "query": "Số điện thoại tổng đài hỗ trợ hành khách của Xanh SM là số mấy?",
+    "role": "customer",
+    "expected_keywords": ["1900 2088", "terms.md", "booking.md"]
+  },
+  {
+    "query": "Mức chiết khấu hay phí dịch vụ hệ thống của tài xế Xanh Car là bao nhiêu?",
+    "role": "driver",
+    "expected_keywords": ["25%", "commission.md"]
+  },
+  {
+    "query": "Tỷ lệ nhận chuyến AR và hủy chuyến CR tài xế phải duy trì là bao nhiêu?",
+    "role": "driver",
+    "expected_keywords": ["85%", "5%", "driver_policy.md"]
+  },
+  {
+    "query": "Đối tác cửa hàng Xanh Food phải chiết khấu hoa hồng bao nhiêu?",
+    "role": "merchant",
+    "expected_keywords": ["20%", "merchant_policy.md"]
+  },
+  {
+    "query": "Phí hủy chuyến xe đối với hành khách khi hủy sau 2 phút là bao nhiêu?",
+    "role": "customer",
+    "expected_keywords": ["15.000", "refund.md"]
+  },
+  {
+    "query": "Mức chiết khấu phí dịch vụ hệ thống đối với dịch vụ Xanh Luxury là bao nhiêu?",
+    "role": "driver",
+    "expected_keywords": ["28%", "commission.md"]
+  },
+  {
+    "query": "Để được nhận thưởng ngày mốc 3 (180.000 VNĐ), tài xế cần hoàn thành bao nhiêu cuốc xe và duy trì chỉ số AR, CR thế nào?",
+    "role": "driver",
+    "expected_keywords": ["20 cuốc", "AR >= 90%", "CR <= 3%", "commission.md"]
+  },
+  {
+    "query": "Mức phạt tài chính đối với tài xế vi phạm mức độ 2 về hành vi tự ý hủy cuốc xe lần thứ nhất là bao nhiêu?",
+    "role": "driver",
+    "expected_keywords": ["1.000.000 VNĐ", "driver_policy.md"]
+  },
+  {
+    "query": "Dung lượng pin xe điện VinFast tối thiểu cần đạt bao nhiêu trước khi tài xế bật chế độ nhận chuyến?",
+    "role": "driver",
+    "expected_keywords": ["20%", "driver_policy.md"]
+  },
+  {
+    "query": "Quy trình đối soát tự động thanh toán doanh thu tuần cho tài xế diễn ra vào chu kỳ nào và tiền về ngân hàng khi nào?",
+    "role": "driver",
+    "expected_keywords": ["thứ Hai đến Chủ nhật", "trước 17h00 ngày thứ Ba", "commission.md"]
+  }
+]

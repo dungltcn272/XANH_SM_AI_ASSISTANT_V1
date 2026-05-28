@@ -3,5 +3,5 @@ builder = "NIXPACKS"
 ignorePaths = ["README.md", "MINDSET.md", "SKILL.md", ".gitignore", ".dockerignore", "docs/**"]
 
 [deploy]
-startCommand = "streamlit run app/api/streamlit_ui.py --server.port $PORT --server.address 0.0.0.0"
+startCommand = "uvicorn app.api.routes:app --host 0.0.0.0 --port $PORT"
 restartPolicyType = "ON_FAILURE"

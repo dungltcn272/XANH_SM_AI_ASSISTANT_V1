@@ -1,14 +1,52 @@
----
-url: https://www.xanhsm.com/vn-vi/green-subscription
-category: driver
-crawled_at: 2026-05-26
----
-
 # Xanh Hội Viên - Đi càng nhiều, ưu đãi càng lớn | Green SM
 
-Gói hội viênGói hội viênGói hội viênGiới thiệuTiết kiệm khủng khi đăng ký Gói Hội viên    trên ứng dụng Green SMNhiều ưu đãiTối ưu mọi nhu cầu di chuyển với gói ưu đãi hấp dẫn, giá trị caoDễ dàng sử dụngMua 1 lần, sử dụng trong vòng 30 ngày hoặc theo chu kỳ góiDễ dàng thanh toánThanh toán nhanh chóng ngay trên ứng dụng qua thẻ hoặc ví điện tử khả dụngKhám pháHướng dẫn mua gói hội viên
-- 1 . Bước 1Mở ứng dụng Green SM, chọn Gói hội viên tại màn hình chính hoặc trong tính năng Tài khoản.
-- 2 . Bước 2Lựa chọn "Gói hội viên" phù hợp với nhu cầu di chuyển hàng ngày của bạn và bấm Đăng ký.
-- 3 . Bước 3Đọc kỹ điều khoản áp dụng, số lượng ưu đãi trong gói và chọn Đăng ký.
-- 4 . Bước 4Xác nhận thanh toán bằng phương thức yêu thích, gói ưu đãi sẽ được hiển thị trong mục Ưu đãi và bạn đã có thể sẵn sàng sử dụng.
-1 .  Bước 1Mở ứng dụng Green SM, chọn Gói hội viên tại màn hình chính hoặc trong tính năng Tài khoản.2 .  Bước 2Lựa chọn "Gói hội viên" phù hợp với nhu cầu di chuyển hàng ngày của bạn và bấm Đăng ký.3 .  Bước 3Đọc kỹ điều khoản áp dụng, số lượng ưu đãi trong gói và chọn Đăng ký.4 .  Bước 4Xác nhận thanh toán bằng phương thức yêu thích, gói ưu đãi sẽ được hiển thị trong mục Ưu đãi và bạn đã có thể sẵn sàng sử dụng.CÂU HỎI THƯỜNG GẶPDịch vụ Gói hội viênGói Hội viên có thời gian sử dụng trong vòng bao lâu kể từ lúc đăng ký mua?Nếu hết thời gian khả dụng mà tôi chưa dùng hết các mã ưu đãi?Tôi có thể mua Gói Hội viên tặng cho người thân không?Gói Hội viên có thời gian sử dụng trong vòng bao lâu kể từ lúc đăng ký mua?1 .Gói Hội viên có thời gian sử dụng trong vòng bao lâu kể từ lúc đăng ký mua?Gói Hội viên của Green SM có thời gian sử dụng trong vòng 30 ngày kể từ ngày đăng ký mua trên ứng dụng. Một số Gói Hội viên sẽ có thời hạn sử dụng riêng theo từng thời điểm phát hành, vui lòng tham khảo kỹ Điều khoản của Gói trước khi xác nhận Đăng ký.[Xem thêm](/vn-vi/helps)Tải ứng dụng Green SM    Trải nghiệm thuận tiện  Thêm nhiều ưu đãiCÂU HỎI THƯỜNG GẶPTìm hiểu sâu hơn về Green SM[Đối tác / Doanh nghiệpBạn là doanh nghiệp, tiên phong chuyển đổi cùng GreenXem thêm](/vn-vi/business-transport)[Trung tâm Tài xếBạn tìm kiếm công việc được đào tạo bài bản, thu nhập cạnh tranhXem thêm](/vn-vi/driver-center)[Tin tức & Ưu đãiCác hoạt động và chương trình ưu đãi hấp dẫn mỗi ngàyXem thêm](/vn-vi/news)[Trung tâm hỗ trợTìm hiểu chi tiết các chính sách, điều khoản hoạt động của GreenXem thêm](/vn-vi/helps)CÔNG TY CỔ PHẦN DI CHUYỂN XANH VÀ THÔNG MINH GSMHotline: 1555Email: support.vn@greensm.comTòa Văn phòng Symphony, đường Chu Huy Mân, khu đô thị Vinhomes Riverside, Phường Phúc Lợi, Thành phố Hà Nội, Việt NamGREEN SM[Trang chủ](/vn-vi)[Về Green SM](/vn-vi/about)[Giới thiệu ứng dụng Green SM](/vn-vi/download)Người dùng[Green SM Car](/vn-vi/greensm-car)[Green SM Mini](/vn-vi/greensm-mini)[Green SM Premium](/vn-vi/greensm-premium)[Green SM Limo](/vn-vi/greensm-limo)[Green Airport](/vn-vi/green-airport)[Green Tour](/vn-vi/green-tour)[Green Liên Tỉnh](/vn-vi/green-lien-tinh)[Green SM Bike](/vn-vi/greensm-bike)[Green SM Food](/vn-vi/greensm-ngon)[Green SM Express](/vn-vi/green-express)[Green SM Van](/vn-vi/green-van)[Gói hội viên](/vn-vi/green-subscription)[Thẻ quà tặng](/vn-vi/green-gift-card)Doanh nghiệp[Green Business](/vn-vi/business-transport)[Green SM Merchant](/vn-vi/greensm-merchant)[Thẻ doanh nghiệp](/vn-vi/business-payment)[Green Partner](/vn-vi)[Green Ads](/vn-vi)Khám phá[Tài xế Ô tô](/vn-vi/driver-car)[Tài xế Xe máy](/vn-vi/driver-bike)[Green SM Platform](/vn-vi/driver-platform)[Trung tâm Tài xế](/vn-vi/driver-center)Tổng hợp[Tin tức](/vn-vi/news)[Trung tâm hỗ trợ](/vn-vi/helps)[Tuyển dụng](/vn-vi/career)[Ưu đãi](/vn-vi/promotions)MẠNG XÃ HỘIMã số doanh nghiệp: 0110269067 do Sở Kế hoạch và Đầu tư thành phố Hà Nội cấp lần đầu ngày 01/03/2023.Giấy phép vận tải số 9620/GPKDVT do Sở Giao thông vận tải thành phố Hà Nội cấp lần thứ nhất ngày 06/03/2023.Văn bản xác nhận hoạt động bưu chính số 6150/XN-BTTTT do Bộ Thông Tin và Truyền Thông cấp ngày 13/12/2023.© 2024 GSM. All rights reserved   | [Điều khoản & Pháp lý](/vn-vi/terms-policies) |  [Chính sách bảo vệ dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice)  | [Quy tắc bảo vệ quyền lợi người tiêu dùng](/vn-vi/terms-policies/consumer-protection-policy)  |  Cài đặt cookiesTrải nghiệm ứng dụng ngay
+**URL:** https://www.xanhsm.com/vn-vi/green-subscription  
+**Category:** driver  
+**Crawled at:** 2026-05-26
+
+---
+
+## Giới thiệu
+
+**Tiết kiệm khủng khi đăng ký Gói Hội viên trên ứng dụng Green SM**
+
+---
+
+## Lợi ích nổi bật
+
+| Lợi ích | Mô tả |
+|---------|-------|
+| **Nhiều ưu đãi** | Tối ưu mọi nhu cầu di chuyển với gói ưu đãi hấp dẫn, giá trị cao |
+| **Dễ dàng sử dụng** | Mua 1 lần, sử dụng trong vòng 30 ngày hoặc theo chu kỳ gói |
+| **Dễ dàng thanh toán** | Thanh toán nhanh chóng ngay trên ứng dụng qua thẻ hoặc ví điện tử khả dụng |
+
+---
+
+## Hướng dẫn mua gói hội viên
+
+1. **Bước 1**: Mở ứng dụng Green SM, chọn Gói hội viên tại màn hình chính hoặc trong tính năng Tài khoản
+
+2. **Bước 2**: Lựa chọn "Gói hội viên" phù hợp với nhu cầu di chuyển hàng ngày của bạn và bấm Đăng ký
+
+3. **Bước 3**: Đọc kỹ điều khoản áp dụng, số lượng ưu đãi trong gói và chọn Đăng ký
+
+4. **Bước 4**: Xác nhận thanh toán bằng phương thức yêu thích, gói ưu đãi sẽ được hiển thị trong mục Ưu đãi và bạn đã có thể sẵn sàng sử dụng
+
+---
+
+## Câu hỏi thường gặp
+
+### Dịch vụ Gói hội viên
+
+**Gói Hội viên có thời gian sử dụng trong vòng bao lâu kể từ lúc đăng ký mua?**
+
+Gói Hội viên của Green SM có thời gian sử dụng trong vòng 30 ngày kể từ ngày đăng ký mua trên ứng dụng. Một số Gói Hội viên sẽ có thời hạn sử dụng riêng theo từng thời điểm phát hành, vui lòng tham khảo kỹ Điều khoản của Gói trước khi xác nhận Đăng ký.
+
+**Nếu hết thời gian khả dụng mà tôi chưa dùng hết các mã ưu đãi?**
+*(Thông tin chi tiết về chính sách gia hạn hoặc hoàn ưu đãi sẽ được cung cấp trong điều khoản sử dụng)*
+
+**Tôi có thể mua Gói Hội viên tặng cho người thân không?**
+*(Tính năng tặng gói hội viên sẽ được cập nhật trong các phiên bản ứng dụng tiếp theo)*
+
+[Xem thêm câu hỏi thường gặp](/vn-vi/helps)
+

@@ -122,11 +122,12 @@ class XanhSMHybridSearch:
             
         return merged_docs
 
-    def search(self, query: str, role: str = None, limit: int = 25) -> List[Document]:
+    def search(self, query: str, role: str = None, limit: int = 25, expanded_queries: List[str] = None) -> List[Document]:
         """
         Runs Multi-Query Expansion, Hybrid Retrieval, and fuses scores.
         """
-        expanded_queries = self.expander.get_queries(query)
+        if expanded_queries is None:
+            expanded_queries = self.expander.get_queries(query)
         print(f"[INFO] Expanded queries for search: {expanded_queries}")
         
         dense_runs: List[List[Document]] = []

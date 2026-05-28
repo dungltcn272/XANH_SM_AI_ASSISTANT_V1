@@ -1,26 +1,91 @@
----
-url: https://www.xanhsm.com/vn-vi/greensm-merchant
-category: driver
-crawled_at: 2026-05-26
----
-
 # Green SM Merchant - Mở rộng kênh bán dễ dàng, lợi nhuận bứt phá
 
-Green SM MerchantGreen SM MerchantGreen SM MerchantGiới thiệuGreen SM Merchant
-Đồng hành cùng Xanh, Lợi nhuận bứt pháMiễn phí đăng ký, duyệt hồ sơ nhanhĐảm bảo đối tác nhà hàng ổn định kinh doanh nhanh chóngPhí dịch vụ hấp dẫnNhiều ưu đãi phí dịch vụ linh hoạt, nhất là cho đối tác đăng kí sớmĐội ngũ giao hàng xanh - sạch - chuyên nghiệpTài xế được đào tạo bài bản, sử dụng 100% phương tiện di chuyển thuần điệnLợi nhuận bứt pháTiếp cận lượng khách hàng đang tăng trưởng mạnh mỗi ngàyĐĂNG KÝTrở thành đối tác 
-Green SM MerchantTên Nhà Hàng/ Quán Ăn  *Họ và tên (người đại diện)  *Số điện thoại  *Email  *Tỉnh thành  *Chọn Tỉnh thànhLoại hình kinh doanh  *Chọn loại hình kinh doanhHình thức kinh doanh  *Chọn hình thức kinh doanhĐịa chỉ kinh doanh  ** Green SM Merchant không ngừng mở rộng dịch vụ, tính năng và phạm vi hoạt động. Mọi thông tin cập nhật mới nhất sẽ được đăng tải[tại đây.](/vn-vi/news)Tôi cam kết các thông tin đã cung cấp hoàn toàn chính xác.Tôi đã đọc, hiểu và đồng ý với các   [Điều kiện & Điều khoản Pháp lý, Chính sách bảo vệ về dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice)  của Green SM.Đăng ký ngayKHÁM PHÁQuy trình đăng ký Đối tác Nhà hàng
-- Bước 1Liên hệ với hotline của Green SM Food hoặc click Đăng kí ngay trong trang web này.
-- Bước 2Nhân viên kinh doanh của Green SM Food sẽ liên lạc với đối tác để giải thích quy trình cùng các hồ sơ cần thiết trong quá trình gia nhập nền tảng.
-- Bước 3Tải app Green SM Merchant, và thiết lập nhà hàng trên Green SM Food cực kì đơn giản.
-- Bước 4Bắt đầu vận doanh trên Green SM Food ngay thôi!
-Bước 1Liên hệ với hotline của Green SM Food hoặc click Đăng kí ngay trong trang web này.Bước 2Nhân viên kinh doanh của Green SM Food sẽ liên lạc với đối tác để giải thích quy trình cùng các hồ sơ cần thiết trong quá trình gia nhập nền tảng.Bước 3Tải app Green SM Merchant, và thiết lập nhà hàng trên Green SM Food cực kì đơn giản.Bước 4Bắt đầu vận doanh trên Green SM Food ngay thôi!HỒ SƠ ĐĂNG KÝCác thông tin và tài liệu cần chuẩn bị khi đăng kýHỘ KINH DOANHCÁ NHÂNCÔNG TYChuẩn bị thông tin và tài liệu sau
+**URL:** https://www.xanhsm.com/vn-vi/greensm-merchant  
+**Category:** driver  
+**Crawled at:** 2026-05-26
+
+---
+
+## Giới thiệu
+
+**Green SM Merchant** – Đồng hành cùng Xanh, Lợi nhuận bứt phá
+
+---
+
+## Lợi ích khi trở thành đối tác Green SM Merchant
+
+| Lợi ích | Mô tả |
+|---------|-------|
+| **Miễn phí đăng ký, duyệt hồ sơ nhanh** | Đảm bảo đối tác nhà hàng ổn định kinh doanh nhanh chóng |
+| **Phí dịch vụ hấp dẫn** | Nhiều ưu đãi phí dịch vụ linh hoạt, đặc biệt cho đối tác đăng ký sớm |
+| **Đội ngũ giao hàng xanh - sạch - chuyên nghiệp** | Tài xế được đào tạo bài bản, sử dụng 100% phương tiện di chuyển thuần điện |
+| **Lợi nhuận bứt phá** | Tiếp cận lượng khách hàng đang tăng trưởng mạnh mỗi ngày |
+
+[Đăng ký trở thành đối tác](#)
+
+---
+
+## Đăng ký trở thành đối tác Green SM Merchant
+
+Vui lòng điền thông tin dưới đây để đăng ký:
+
+- Tên Nhà Hàng/Quán Ăn *
+- Họ và tên (người đại diện) *
+- Số điện thoại *
+- Email *
+- Tỉnh thành *
+- Loại hình kinh doanh *
+- Hình thức kinh doanh *
+- Địa chỉ kinh doanh *
+
+> Green SM Merchant không ngừng mở rộng dịch vụ, tính năng và phạm vi hoạt động. Mọi thông tin cập nhật mới nhất sẽ được đăng tải [tại đây](/vn-vi/news).
+
+> Tôi cam kết các thông tin đã cung cấp hoàn toàn chính xác.  
+> Tôi đã đọc, hiểu và đồng ý với các [Điều kiện & Điều khoản Pháp lý, Chính sách bảo vệ về dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice) của Green SM.
+
+[Đăng ký ngay](#)
+
+---
+
+## Quy trình đăng ký Đối tác Nhà hàng
+
+1. **Liên hệ đăng ký**
+   - Liên hệ với hotline của Green SM Food hoặc click Đăng ký ngay trên website
+
+2. **Tư vấn hồ sơ**
+   - Nhân viên kinh doanh của Green SM Food sẽ liên lạc để giải thích quy trình và các hồ sơ cần thiết
+
+3. **Thiết lập nhà hàng**
+   - Tải app Green SM Merchant và thiết lập nhà hàng trên Green SM Food cực kỳ đơn giản
+
+4. **Bắt đầu kinh doanh**
+   - Bắt đầu vận hành và nhận đơn hàng trên Green SM Food ngay
+
+---
+
+## Hồ sơ đăng ký
+
+### Đối với Hộ kinh doanh/Cá nhân
 - CCCD/Hộ chiếu (Hình chụp bản gốc)
 - Giấy Đăng ký Hộ kinh doanh cá thể
 - Hình ảnh mặt tiền nhà hàng (Rõ ràng, đầy đủ bảng hiệu và địa chỉ)
 - Thực đơn và hình ảnh món ăn
-KHÁM PHÁQuy trình hoạt động của Dịch vụ Giao đồ ăn
-- Bước 1. Khách hàng đặt mónKhách hàng chọn món và đặt hàng thông qua ứng dụng GREEN SM.
-- Bước 2. Nhà hàng nhận đơnNhà hàng nhận được thông tin đơn hàng từ hệ thống và chuẩn bị nguyên liệu.
-- Bước 3. Tài xế nhận đơnTài xế nhận thông tin đơn hàng và di chuyển đến nhà hàng để nhận món.
-- Bước 4. Nhà hàng chuẩn bị mónNhà hàng chế biến món ăn và đóng gói cẩn thận trước khi giao cho tài xế.
-Bước 1. Khách hàng đặt mónKhách hàng chọn món và đặt hàng thông qua ứng dụng GREEN SM.Bước 2. Nhà hàng nhận đơnNhà hàng nhận được thông tin đơn hàng từ hệ thống và chuẩn bị nguyên liệu.Bước 3. Tài xế nhận đơnTài xế nhận thông tin đơn hàng và di chuyển đến nhà hàng để nhận món.Bước 4. Nhà hàng chuẩn bị mónNhà hàng chế biến món ăn và đóng gói cẩn thận trước khi giao cho tài xế.CÂU HỎI THƯỜNG GẶPVề Green SM Merchant1 .Làm cách nào để đăng ký trở thành đối tác nhà hàng/quán ăn trên Green SM Food?Để trở thành đối tác của Green SM, Quý Đối tác vui lòng điền form đăng ký sau đây: [https://bit.ly/xanhsm_merchant](https://bit.ly/xanhsm_merchant)2 .Phí hoa hồng của Green SM Food là bao nhiêu?3 .Làm sao để nhận và xử lý đơn hàng?4 .Tôi có thể hủy đơn hàng không?[Xem thêm](/vn-vi/helps)Tải ứng dụng Green SM    Trải nghiệm thuận tiện  Thêm nhiều ưu đãiKHÁM PHÁTìm hiểu thêm về Green SM[Trung tâm hỗ trợ](/vn-vi/helps)[Đăng ký Tài xế xe máy](/vn-vi/driver-bike)[Đăng ký Tài xế taxi](/vn-vi/driver-car)[Đăng ký tài xế Platform](/vn-vi/driver-platform)Hotline hỗ trợ0247123 9999CÔNG TY CỔ PHẦN DI CHUYỂN XANH VÀ THÔNG MINH GSMHotline: 1555Email: support.vn@greensm.comTòa Văn phòng Symphony, đường Chu Huy Mân, khu đô thị Vinhomes Riverside, Phường Phúc Lợi, Thành phố Hà Nội, Việt NamGREEN SM[Trang chủ](/vn-vi)[Về Green SM](/vn-vi/about)[Giới thiệu ứng dụng Green SM](/vn-vi/download)Người dùng[Green SM Car](/vn-vi/greensm-car)[Green SM Mini](/vn-vi/greensm-mini)[Green SM Premium](/vn-vi/greensm-premium)[Green SM Limo](/vn-vi/greensm-limo)[Green Airport](/vn-vi/green-airport)[Green Tour](/vn-vi/green-tour)[Green Liên Tỉnh](/vn-vi/green-lien-tinh)[Green SM Bike](/vn-vi/greensm-bike)[Green SM Food](/vn-vi/greensm-ngon)[Green SM Express](/vn-vi/green-express)[Green SM Van](/vn-vi/green-van)[Gói hội viên](/vn-vi/green-subscription)[Thẻ quà tặng](/vn-vi/green-gift-card)Doanh nghiệp[Green Business](/vn-vi/business-transport)[Green SM Merchant](/vn-vi/greensm-merchant)[Thẻ doanh nghiệp](/vn-vi/business-payment)[Green Partner](/vn-vi)[Green Ads](/vn-vi)Khám phá[Tài xế Ô tô](/vn-vi/driver-car)[Tài xế Xe máy](/vn-vi/driver-bike)[Green SM Platform](/vn-vi/driver-platform)[Trung tâm Tài xế](/vn-vi/driver-center)Tổng hợp[Tin tức](/vn-vi/news)[Trung tâm hỗ trợ](/vn-vi/helps)[Tuyển dụng](/vn-vi/career)[Ưu đãi](/vn-vi/promotions)MẠNG XÃ HỘIMã số doanh nghiệp: 0110269067 do Sở Kế hoạch và Đầu tư thành phố Hà Nội cấp lần đầu ngày 01/03/2023.Giấy phép vận tải số 9620/GPKDVT do Sở Giao thông vận tải thành phố Hà Nội cấp lần thứ nhất ngày 06/03/2023.Văn bản xác nhận hoạt động bưu chính số 6150/XN-BTTTT do Bộ Thông Tin và Truyền Thông cấp ngày 13/12/2023.© 2024 GSM. All rights reserved   | [Điều khoản & Pháp lý](/vn-vi/terms-policies) |  [Chính sách bảo vệ dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice)  | [Quy tắc bảo vệ quyền lợi người tiêu dùng](/vn-vi/terms-policies/consumer-protection-policy)  |  Cài đặt cookiesTrải nghiệm ứng dụng ngay
+
+### Đối với Công ty
+- Giấy phép đăng ký kinh doanh
+- CCCD/Hộ chiếu người đại diện (Hình chụp bản gốc)
+- Hình ảnh mặt tiền nhà hàng (Rõ ràng, đầy đủ bảng hiệu và địa chỉ)
+- Thực đơn và hình ảnh món ăn
+
+---
+
+## Quy trình hoạt động của Dịch vụ Giao đồ ăn
+
+| Bước | Mô tả |
+|------|-------|
+| **Bước 1: Khách hàng đặt món** | Khách hàng chọn món và đặt hàng thông qua ứng dụng Green SM |
+| **Bước 2: Nhà hàng nhận đơn** | Nhà hàng nhận thông tin đơn hàng từ hệ thống và chuẩn bị nguyên liệu |
+| **Bước 3: Tài xế nhận đơn** | Tài xế nhận thông tin đơn hàng và di chuyển đến nhà hàng để nhận món |
+| **Bước 4: Nhà hàng chuẩn bị món** | Nhà hàng chế biến món ăn và đóng gói cẩn thận trước khi giao cho tài xế |
+
+---
