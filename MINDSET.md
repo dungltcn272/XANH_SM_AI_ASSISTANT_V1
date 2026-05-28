@@ -94,6 +94,8 @@ Phân mảnh quyết định chất lượng của vector đầu vào. Thầy xi
 
 Khi tài liệu nguồn là PDF có cấu trúc phức tạp chứa nhiều hình ảnh Taplo sự cố, sơ đồ bãi đỗ xe hoặc bảng giá cước, RAG cơ bản sẽ làm nát cấu trúc hoặc bỏ qua hoàn toàn các tín hiệu đa phương tiện.
 
+* **🎯 Tầm Quan Trọng Vượt Trội:** Trong số các nâng cấp của V3, **Multimodal Ingestion & Chunking** được định vị là **tính năng cốt lõi và đáng giá nhất**. Phương pháp biểu diễn kép (Dual-Representation) cho phép một khối tri thức logic (mảnh cha) vừa liên kết tìm kiếm nhạy bén bằng Vector, vừa lưu trữ và bảo toàn đồng thời nhiều định dạng dữ liệu (văn bản thô, bảng biểu Markdown, hình ảnh đính kèm) mà không bị đứt gãy ngữ cảnh.
+
 * **Thực trạng Giai đoạn 2 (V2) hiện tại:**
   * **Đối với Bảng biểu (Tables):** Đã giải quyết ở cấp độ Parser bằng cách bóc tách HTML thô và bảo tồn thành Markdown Table (`| cột 1 | cột 2 |`) kết hợp `HeadingAwareSplitter` để tránh cắt nát đoạn. Tuy nhiên, hệ thống *chưa có nhãn metadata phân loại rõ ràng loại chunk* (như `type = table`) trong DB.
   * **Đối với Hình ảnh (Images):** Đã hỗ trợ Vision ở đầu vào (đọc ảnh taplo người dùng gửi), nhưng ở khâu Ingestion hệ thống *chưa lưu trữ* và *chưa gắn nhãn* hình ảnh chính sách.
@@ -114,6 +116,9 @@ Khi tài liệu nguồn là PDF có cấu trúc phức tạp chứa nhiều hìn
        - **Vector Search Representation:** Dùng mô hình **VLM (Vision-Language Model như GPT-4o-mini)** đọc ảnh và viết một bản mô tả chi tiết bằng văn bản (Image Captioning). Ví dụ: *"Hình chụp đèn taplo VF8 cảnh báo lỗi Rùa Vàng..."*. Nhúng vector đoạn mô tả này để tìm kiếm.
        - **LLM Context Representation:** Khi tìm thấy, hệ thống kéo cả bản mô tả VÀ đường dẫn liên kết URL ảnh thật nạp cho LLM. AI sẽ sinh ra câu trả lời có chứa link ảnh trực tiếp để người dùng xem trực quan.
      - *Gán nhãn metadata:* `{"chunk_type": "image", "image_url": "...", "has_visual": true}`.
+
+* **⚠️ Phân Tích Kỹ Thuật Về Chi Phí & Tính Khả Thi (Cost & Feasibility Warning):**
+  Việc gửi hàng vạn bức ảnh chính sách và bảng biểu lên các API Vision thương mại lớn như `gpt-4o` sẽ **làm tăng vọt hóa đơn API lên gấp 10-20 lần** và làm chậm đáng kể quá trình ingestion tự động. Để giải quyết bài toán kinh tế này cho Xanh SM, giải pháp thực tế nhất là **tự host và chạy offline** các mô hình Vision-Language mã nguồn mở nhỏ gọn như **LLaVA-1.5-8B** hoặc **Qwen-VL** trên máy chủ GPU cục bộ hoặc dịch vụ cloud thuê theo giờ. Mô hình cục bộ sẽ đảm nhiệm việc OCR, sinh caption mô tả và viết tóm tắt bảng biểu một cách hoàn toàn miễn phí (chi phí gọi API = 0đ), giúp RAG pipeline V3 vừa cực kỳ toàn năng vừa tối ưu ngân sách tối đa!
 
 ---
 

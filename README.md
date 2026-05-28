@@ -271,12 +271,16 @@ Dựa trên tài liệu khảo sát kỹ thuật chuyên sâu về các mô hìn
   * Hợp nhất dữ liệu cào ngoài với tri thức cũ để sinh ra câu trả lời chuẩn xác.
 * **⚠️ Cảnh báo hiệu năng (Cân nhắc):** Khâu Web Search có thể làm tăng thời gian phản hồi thêm 2-4 giây và tốn phí API tìm kiếm, chỉ nên kích hoạt ở chế độ fallback khẩn cấp khi tri thức nội bộ hoàn toàn trống rỗng để tránh làm chậm hệ thống hàng ngày.
 
-### 3. Agentic Tool Calling & Function Calling (Công cụ tác vụ chủ động)
+### 3. Agentic Tool Calling & Function Calling (Công cụ tác vụ chủ động & Hỗ trợ hành trình)
 * **Khắc phục:** Chatbot RAG truyền thống bị giới hạn ở việc trả lời tĩnh, không thể thực hiện hành động hoặc tính toán nghiệp vụ động.
 * **Cơ chế:** Thiết lập bộ công cụ (Tools) cho Agent gọi trực tiếp:
   * **GSM Taxi Booking Tool:** Khách hàng có thể yêu cầu đặt chuyến xe trực tiếp qua chat, Agent sẽ gọi API đặt chuyến của Xanh SM.
+  * **Driver Hotspot Suggester Tool (Gợi ý điểm nhiều cuốc):** Hỗ trợ tài xế tìm kiếm các tọa độ/khu vực có nhu cầu đặt chuyến cao trong thành phố theo thời gian thực để tăng tần suất nhận chuyến.
+  * **Customer Smart Ride Planner Tool (Gợi ý giờ rẻ, xe dễ):** Gợi ý cho khách hàng các khung giờ thấp điểm có giá cước ưu đãi và các địa điểm đón xe tối ưu (vùng xanh lá cước rẻ, dễ bắt).
   * **Driver Scorecard Tool:** Tra cứu lịch sử vi phạm chỉ số AR (Tỷ lệ nhận chuyến) và CR (Tỷ lệ hủy chuyến) của đối tác tài xế trực tiếp trong SQLite DB.
   * **Refund Calculator Tool:** Chạy mã Python thực tế để tính toán chính xác mức phạt hủy chuyến của hành khách sau 2 phút tùy theo phân khúc xe (Xanh Car, Xanh Luxury, Xanh Bike) thay vì trích dẫn thô sơ.
+* **⚠️ Rào cản Dữ liệu Thực tế (Data Constraint & Warning):** 
+  Hiện tại dự án **không có quyền truy cập vào nguồn dữ liệu thực tế thời gian thực (Real-time production APIs)** của Xanh SM về luồng xe chạy, phân bố mật độ cuốc khách, biến động giá cước động (Surge pricing) hay thống kê điểm bắt xe lịch sử. Trong phiên bản V3, các công cụ này sẽ hoạt động dựa trên các bộ dữ liệu giả lập (Mock Datasets/APIs) hoặc dữ liệu thống kê tĩnh được cấu trúc hóa trong file JSON/SQLite, trừ khi có sự tích hợp API chính thức từ đối tác Xanh SM.
 
 ### 4. Self-RAG (Hệ thống RAG tự phản biện đa tầng)
 * **Khắc phục:** Kiểm soát chặt chẽ từng lượt sinh văn bản của LLM.
@@ -308,8 +312,9 @@ Dựa trên tài liệu khảo sát kỹ thuật chuyên sâu về các mô hìn
 * **Đánh giá hiệu năng:** **Trung bình.** Tăng nhẹ thời gian tìm kiếm nhưng đem lại trải nghiệm cá nhân hóa cao.
 
 ### 9. Multimodal & Table-Aware Ingestion Pipeline (Quy trình nạp đa phương tiện & bảng biểu chuyên sâu)
-* **Khắc phục:** PDF và tài liệu thô chứa cấu trúc bảng biểu hoặc hình ảnh sơ đồ phức tạp dễ bị RAG cơ bản bỏ sót hoặc phân tách vụn nát làm LLM mất phương hướng.
+* **Tầm quan trọng:** Đây được đánh giá là **tính năng đáng giá và ưu tiên nâng cấp hàng đầu trong V3**. Lớp chunking đa phương tiện với phương pháp biểu diễn kép (Dual-Representation) cho phép một khối tri thức logic (mảnh cha) chứa đựng và phản ánh chính xác đồng thời nhiều loại dữ liệu (vừa có Text mô tả, vừa chứa Table biểu phí cước, vừa có Image sơ đồ/ảnh minh họa) mà không bị đứt gãy ngữ cảnh.
 * **Cơ chế:** Thiết lập bộ nạp phân loại và gán nhãn metadata chuyên sâu với trường `chunk_type: "text" | "table" | "image"`.
   * **Table-specific RAG (Bảng biểu):** Trích xuất tọa độ bảng bằng **Table Transformer / Nougat**. Lưu trữ dạng văn bản tóm tắt tự nhiên (Table Summary) để Vector Search tìm kiếm nhạy nhất, nhưng kéo định dạng Markdown/HTML Table gốc khi LLM sinh câu trả lời để đạt độ chính xác số liệu 100%. Gán nhãn metadata `{"chunk_type": "table", "has_table": true}`.
   * **Image-specific RAG (Hình ảnh):** Cắt tự động ảnh chính sách/sơ đồ taplo bằng **PyMuPDF**, chạy VLM để sinh văn bản mô tả (Image Caption) làm đại diện Vector Search. Khi khớp tìm kiếm, truyền URL ảnh thật để LLM hiển thị trực quan dạng Markdown cho người dùng click xem. Gán nhãn metadata `{"chunk_type": "image", "image_url": "...", "has_visual": true}`.
-* **Đánh giá hiệu năng:** **Rất cao & Toàn năng!** Nâng cấp chatbot CSKH từ đọc hiểu văn bản đơn điệu lên tầm nhìn đa phương tiện đỉnh cao, giữ trọn vẹn 100% tính chính xác của các bảng cước phí phức tạp.
+* **⚠️ Phân tích Thực Tế về Chi Phí & Tính Khả Thi (Cost & Feasibility Analysis):** 
+  Việc chạy mô hình Vision-Language (VLM) thương mại lớn của OpenAI (như `gpt-4o`) để quét hàng vạn trang PDF chứa ảnh/bảng biểu sẽ **gây vọt chi phí API lên gấp hàng chục lần** và tăng đáng kể thời gian Ingestion. Để đảm bảo tính thực tế và tối ưu chi phí tối đa cho Xanh SM, phương án khuyến nghị là tự host và chạy offline các mô hình mã nguồn mở gọn nhẹ như **LLaVA-1.5-8B** hoặc **Qwen-VL** trên GPU cục bộ/cloud giá rẻ để tự động gán nhãn, OCR và viết caption cho dữ liệu trước khi nạp vào ChromaDB. Điều này mang lại hiệu quả vượt trội với chi phí vận hành tiệm cận 0đ!
