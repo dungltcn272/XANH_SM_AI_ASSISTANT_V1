@@ -2494,40 +2494,43 @@ body {
     align-items: center;
     max-width: 1200px;
     margin: 0 auto;
+    background: #eff6ff;
+    border: 1px solid rgba(14, 165, 233, 0.16);
+    border-radius: 24px;
 }
 
 .comparison-tabs-container {
     display: flex;
     gap: 12px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    padding: 6px;
-    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 8px;
+    border-radius: 14px;
     width: fit-content;
 }
 
 .comp-tab-btn {
-    background: transparent;
+    background: #e2e8f0;
     border: none;
-    color: #64748b;
-    padding: 10px 24px;
-    border-radius: 8px;
+    color: #334155;
+    padding: 10px 26px;
+    border-radius: 10px;
     font-family: var(--font-body);
-    font-size: 0.88rem;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .comp-tab-btn:hover {
-    color: #14b8a6;
-    background: #ffffff;
+    color: #0f172a;
+    background: #dbeafe;
 }
 
 .comp-tab-btn.active {
     color: #ffffff;
-    background: #14b8a6;
-    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.2);
+    background: #0ea5e9;
+    box-shadow: 0 6px 18px rgba(14, 165, 233, 0.22);
 }
 
 .comparison-grid {
@@ -2857,10 +2860,10 @@ body {
     gap: 15px;
     z-index: 100;
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(20, 184, 166, 0.22);
+    box-shadow: 0 18px 48px rgba(20, 184, 166, 0.14);
     animation: bubble-fade-in 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-    color: #1e293b;
+    color: #0f172a;
 }
 
 @keyframes bubble-fade-in {
