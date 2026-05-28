@@ -1538,7 +1538,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
                 }
             }
             if (sqliteBadge) {
-                if (data.sqlite_active) {
+                if (data.cache_active) {
                     sqliteBadge.innerHTML = `<span class="status-dot green"></span> Active`;
                 } else {
                     sqliteBadge.innerHTML = `<span class="status-dot red"></span> Inactive`;

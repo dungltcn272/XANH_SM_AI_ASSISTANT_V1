@@ -242,7 +242,7 @@ def db_stats():
             
         cache_count = 0
         driver = "SQLite"
-        sqlite_active = False
+        cache_active = False
         try:
             cache = XanhSMRAGCache()
             driver = "PostgreSQL" if cache.use_postgres else "SQLite"
@@ -251,9 +251,9 @@ def db_stats():
             cursor.execute("SELECT COUNT(*) FROM rag_cache")
             cache_count = cursor.fetchone()[0]
             conn.close()
-            sqlite_active = True
+            cache_active = True
         except Exception as e:
-            print(f"[WARN] Failed to get Cache count: {e}")
+            print(f"[WARN] Failed to get cache count: {e}")
             
         return {
             "chroma_count": chroma_count,
@@ -261,7 +261,7 @@ def db_stats():
             "chroma_active": chroma_active,
             "cache_count": cache_count,
             "cache_driver": driver,
-            "sqlite_active": sqlite_active
+            "cache_active": cache_active
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

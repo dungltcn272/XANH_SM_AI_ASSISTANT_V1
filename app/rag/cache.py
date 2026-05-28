@@ -9,9 +9,11 @@ from app.ingestion.embedding import get_embeddings
 # Try to import psycopg2 for PostgreSQL support
 try:
     import psycopg2
+    from psycopg2 import OperationalError
     HAS_POSTGRES = True
 except ImportError:
     HAS_POSTGRES = False
+    OperationalError = Exception
 
 class XanhSMRAGCache:
     """
@@ -24,20 +26,38 @@ class XanhSMRAGCache:
     """
     def __init__(self):
         self.db_url = os.environ.get("DATABASE_URL")
-        self.use_postgres = HAS_POSTGRES and self.db_url is not None
+        self.use_postgres = False
         self.embeddings = get_embeddings()
-        
+        self.db_path = None
+
+        if self.db_url:
+            if HAS_POSTGRES:
+                try:
+                    conn = psycopg2.connect(self.db_url)
+                    conn.close()
+                    self.use_postgres = True
+                    print("[INFO] PostgreSQL cache database is available.")
+                except Exception as e:
+                    print(f"[WARN] PostgreSQL cache unavailable, falling back to SQLite. Error: {e}")
+                    self.use_postgres = False
+            else:
+                print("[WARN] DATABASE_URL is set but psycopg2 is not installed; using local SQLite cache.")
+
         if not self.use_postgres:
             self.db_path = os.path.join(config.CHROMA_PERSIST_DIR or "persistent_storage", "rag_cache.db")
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            
+
         self._init_db()
 
     def _get_connection(self):
         if self.use_postgres:
-            return psycopg2.connect(self.db_url)
-        else:
-            return sqlite3.connect(self.db_path)
+            try:
+                return psycopg2.connect(self.db_url)
+            except Exception as e:
+                print(f"[WARN] PostgreSQL cache connection failed, falling back to SQLite. Error: {e}")
+                self.use_postgres = False
+
+        return sqlite3.connect(self.db_path)
 
     def _init_db(self):
         conn = self._get_connection()
