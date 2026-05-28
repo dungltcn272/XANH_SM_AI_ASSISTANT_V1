@@ -15,7 +15,9 @@ Rather than a simplistic, naive RAG pipeline that leads to high citation errors 
 
 ```mermaid
 graph TD
-    Question[User Question] --> QU[Query Understanding & Multi-Query]
+    Question[User Question] --> CacheCheck{Caching Layer Check}
+    CacheCheck -->|Cache Hit >= 0.96 / Exact Match| FastReturn[Early-Exit / Bypass Return Response < 10ms, 0d, 0 tokens]
+    CacheCheck -->|Cache Miss| QU[Query Understanding & Multi-Query / Rewrite]
     QU --> Filter[Role Pre-Filtering Filter by driver/customer/merchant]
     
     subgraph Retrieval Pipeline

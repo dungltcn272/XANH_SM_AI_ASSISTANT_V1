@@ -174,39 +174,45 @@
                         </div>
                         <div class="connector-line" id="conn-1"></div>
 
-                        <!-- Step 2: Query Rewrite + Expansion -->
+                        <!-- Step 2: Caching Layer Check -->
+                        <div class="flow-capsule" id="node-CacheCheck">
+                            <span class="capsule-label">⚡ 2. Caching Layer Check</span>
+                        </div>
+                        <div class="connector-line" id="conn-cache"></div>
+
+                        <!-- Step 3: Query Rewrite + Expansion -->
                         <div class="flow-capsule" id="node-QueryUnderstanding">
-                            <span class="capsule-label">🧠 2. Query Rewrite + Expansion</span>
+                            <span class="capsule-label">🧠 3. Query Rewrite + Expansion</span>
                         </div>
                         <div class="connector-line" id="conn-2"></div>
 
-                        <!-- Step 3: Hybrid Search -->
+                        <!-- Step 4: Hybrid Search -->
                         <div class="flow-capsule" id="node-HybridSearch">
-                            <span class="capsule-label">🔍 3. Hybrid Search</span>
+                            <span class="capsule-label">🔍 4. Hybrid Search</span>
                         </div>
                         <div class="connector-line" id="conn-3"></div>
 
-                        <!-- Step 4: Reranker -->
+                        <!-- Step 5: Reranker -->
                         <div class="flow-capsule dashed-active" id="node-Reranker">
-                            <span class="capsule-label">⚡ 4. Reranker (Active)</span>
+                            <span class="capsule-label">⚡ 5. Reranker (Active)</span>
                         </div>
                         <div class="connector-line" id="conn-4"></div>
 
-                        <!-- Step 5: Parent-Child Context -->
+                        <!-- Step 6: Parent-Child Context -->
                         <div class="flow-capsule" id="node-ContextCompression">
-                            <span class="capsule-label">✂️ 5. Parent-Child Context</span>
+                            <span class="capsule-label">✂️ 6. Parent-Child Context</span>
                         </div>
                         <div class="connector-line" id="conn-5"></div>
 
-                        <!-- Step 6: LLM Generation -->
+                        <!-- Step 7: LLM Generation -->
                         <div class="flow-capsule" id="node-LLMGeneration">
-                            <span class="capsule-label">🤖 6. LLM Generator</span>
+                            <span class="capsule-label">🤖 7. LLM Generator</span>
                         </div>
                         <div class="connector-line" id="conn-6"></div>
 
-                        <!-- Step 7: Citations Validator -->
+                        <!-- Step 8: Citations Validator -->
                         <div class="flow-capsule" id="node-CitationValidator">
-                            <span class="capsule-label">🛡️ 7. Citations Validator</span>
+                            <span class="capsule-label">🛡️ 8. Citations Validator</span>
                         </div>
                     </div>
 
@@ -280,45 +286,53 @@
                         <div class="flow-step-item" data-step="1">
                             <div class="flow-step-num">2</div>
                             <div class="flow-step-info">
-                                <h5>Query Rewrite + Expansion</h5>
-                                <p>GPT-4o-mini viết lại truy vấn theo lịch sử chat và sinh biến thể đồng nghĩa để tìm kiếm tốt hơn.</p>
+                                <h5>Caching Layer Check (Kiểm tra đệm)</h5>
+                                <p>Kiểm tra DB cache đầu tiên để early-exit bypass trong &lt; 10ms.</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="2">
                             <div class="flow-step-num">3</div>
                             <div class="flow-step-info">
-                                <h5>Hybrid Search (Dense + Sparse)</h5>
-                                <p>Hệ thống dùng các biến thể truy vấn mở rộng để quét song song ChromaDB và BM25, sau đó hòa trộn bằng RRF.</p>
+                                <h5>Query Rewrite + Expansion</h5>
+                                <p>GPT-4o-mini viết lại truy vấn theo lịch sử chat và sinh biến thể đồng nghĩa để tìm kiếm tốt hơn.</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="3">
                             <div class="flow-step-num">4</div>
                             <div class="flow-step-info">
-                                <h5>Reranker (Tái xếp hạng)</h5>
-                                <p>Cross-Encoder cục bộ tinh lọc lấy Top 5 tốt nhất</p>
+                                <h5>Hybrid Search (Dense + Sparse)</h5>
+                                <p>Hệ thống dùng các biến thể truy vấn mở rộng để quét song song ChromaDB và BM25, sau đó hòa trộn bằng RRF.</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="4">
                             <div class="flow-step-num">5</div>
                             <div class="flow-step-info">
-                                <h5>Context Parent-Child (Nén & Gộp)</h5>
-                                <p>Tìm trên mảnh con, tự gộp toàn bộ mảnh cha</p>
+                                <h5>Reranker (Tái xếp hạng)</h5>
+                                <p>Cross-Encoder cục bộ tinh lọc lấy Top 5 tốt nhất</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="5">
                             <div class="flow-step-num">6</div>
                             <div class="flow-step-info">
-                                <h5>LLM Gen (Tổng hợp phản hồi)</h5>
-                                <p>gpt-4o-mini tổng hợp tự nhiên, tránh ảo giác</p>
+                                <h5>Context Parent-Child (Nén & Gộp)</h5>
+                                <p>Tìm trên mảnh con, tự gộp toàn bộ mảnh cha</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="6">
                             <div class="flow-step-num">7</div>
+                            <div class="flow-step-info">
+                                <h5>LLM Gen (Tổng hợp phản hồi)</h5>
+                                <p>gpt-4o-mini tổng hợp tự nhiên, tránh ảo giác</p>
+                            </div>
+                        </div>
+                        <div class="flow-step-arrow">⬇️</div>
+                        <div class="flow-step-item" data-step="7">
+                            <div class="flow-step-num">8</div>
                             <div class="flow-step-info">
                                 <h5>Citations (Xác thực trích nguồn)</h5>
                                 <p>Đối chiếu chính sách pháp lý thực tế</p>

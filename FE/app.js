@@ -574,15 +574,24 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     const teacherFlowSteps = [
         {
             title: "Question (Câu hỏi thô)",
-            badge: "Bước 1/7 - Đầu Vào Thô",
+            badge: "Bước 1/8 - Đầu Vào Thô",
             text: `<strong>Chào các em!</strong> Thầy rất vui được giải thích trực quan đường ống (pipeline) RAG v2 của chúng ta. 
             
             Mọi chuyện bắt đầu tại <strong>Bước 1: Question</strong> khi khách hàng gõ câu hỏi thô vào khung chat. Ví dụ: <em>"Đi xe Xanh Bike mang mèo đi cùng được không?"</em>. Câu hỏi này chứa đầy các từ ngữ tự nhiên, không dấu hoặc viết tắt nhẹ. AI sẽ tiếp nhận và đưa vào luồng bắt đầu chẩn đoán.`
         },
         {
+            title: "Caching Layer Check",
+            badge: "Bước 2/8 - Kiểm Tra Đệm",
+            text: `<strong>Đây là chốt chặn quan trọng đầu tiên!</strong> Khi một câu hỏi của khách hàng gửi lên, hệ thống sẽ thực hiện kiểm tra lớp <strong>Caching Layer</strong> đầu tiên (đặt tại tầng cao nhất của luồng xử lý trong <code>chain.py</code>, trước khâu Query Rewrite hay Vector Search).
+            
+            Nếu phát hiện câu hỏi đã tồn tại trong DB cache (thỏa mãn khớp tuyệt đối hoặc khớp ngữ nghĩa): Hệ thống sẽ lập tức <strong>bẻ gãy luồng xử lý (early-exit/bypass)</strong>, bỏ qua 100% các bước: Rewrite, Query Expansion, Vector/BM25 Retrieval, Reranking, và LLM Generation.
+            
+            Kết quả đã lưu trong Cache sẽ được trả về trực tiếp trong <strong>&lt; 10ms</strong> với chi phí <strong>0đ</strong> và <strong>0 token</strong>!`
+        },
+        {
             title: "Query Rewrite + Expansion",
-            badge: "Bước 2/7 - Rewrite & Expand",
-            text: `<strong>Hãy quan sát bước thứ 2 này nhé!</strong> Nếu trước đó khách hàng đã hỏi về xe máy Xanh Bike, và giờ họ hỏi tiếp: <em>"Thế còn xe Xanh Car thì sao?"</em>. Từ <em>"thế còn"</em> và <em>"thì sao"</em> là những đại từ cực kỳ mơ hồ!
+            badge: "Bước 3/8 - Rewrite & Expand",
+            text: `<strong>Nếu không có trong cache, hệ thống đi tiếp đến bước thứ 3!</strong> Nếu trước đó khách hàng đã hỏi về xe máy Xanh Bike, và giờ họ hỏi tiếp: <em>"Thế còn xe Xanh Car thì sao?"</em>. Từ <em>"thế còn"</em> và <em>"thì sao"</em> là những đại từ cực kỳ mơ hồ!
             
             Nếu nạp thẳng vào vector search, DB sẽ trả về kết quả rác. Tại đây, Thầy cho chạy mô hình <strong>Query Rewriter</strong> bằng GPT-4o-mini để đọc lịch sử chat 3 lượt gần nhất, tự động khôi phục đại từ khuyết thiếu và viết lại thành câu hỏi độc lập: <em>"Có được mang mèo đi cùng khi sử dụng dịch vụ taxi điện Xanh Car không?"</em>.
             
@@ -590,7 +599,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         },
         {
             title: "Hybrid Search (Tìm kiếm lai song song)",
-            badge: "Bước 3/7 - Truy Xuất Kép RRF",
+            badge: "Bước 4/8 - Truy Xuất Kép RRF",
             text: `<strong>Đây chính là linh hồn của việc tìm kiếm tri thức!</strong> Thầy cho chạy song song 2 tay săn thông tin:
             
             1️⃣ <strong>Dense Search (Quét ngữ nghĩa):</strong> Dùng vector nhúng Chroma quét tìm các ý nghĩa đồng âm/gián tiếp (Hiểu 'mèo' = 'thú cưng, vật nuôi').
@@ -600,14 +609,14 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         },
         {
             title: "Reranker (Tái xếp hạng chéo)",
-            badge: "Bước 4/7 - Chấm Điểm Attention Chéo",
+            badge: "Bước 5/8 - Chấm Điểm Attention Chéo",
             text: `<strong>Lưu ý kỹ điểm này cho Thầy nhé:</strong> Bi-Encoder ở bước trước tìm kiếm rất nhanh nhưng không có tương tác chéo Attention giữa từng từ. 
             
-            Tại Bước 4, Thầy sử dụng mô hình <strong>Cross-Encoder cục bộ</strong> (Two-Stage Pipeline). Nó ghép Query và Top 30 văn bản lại, cho chạy qua Transformer để tính điểm Attention chéo toàn phần từng từ một, lọc ra <strong>Top 5 văn bản đỉnh nhất</strong>. Điều này triệt tiêu hoàn toàn các tài liệu loãng hay gây nhiễu context!`
+            Tại Bước 5, Thầy sử dụng mô hình <strong>Cross-Encoder cục bộ</strong> (Two-Stage Pipeline). Nó ghép Query và Top 30 văn bản lại, cho chạy qua Transformer để tính điểm Attention chéo toàn phần từng từ một, lọc ra <strong>Top 5 văn bản đỉnh nhất</strong>. Điều này triệt tiêu hoàn toàn các tài liệu loãng hay gây nhiễu context!`
         },
         {
             title: "Context Parent-Child (Nén & Gộp)",
-            badge: "Bước 5/7 - Đập Tan Phân Mảnh PDF",
+            badge: "Bước 6/8 - Đập Tan Phân Mảnh PDF",
             text: `<strong>Đây là giải thuật độc quyền giúp ta đập tan nghịch lý phân mảnh PDF!</strong> 
             
             Như Thầy đã dạy, Vector Search chạy trên mảnh con nhỏ (Child chunks) để tìm kiếm nhạy nhất. Nhưng khi gửi cho LLM, thuật toán trong <code>chain.py</code> của ta sẽ tự động gộp và kéo toàn bộ **mảnh cha (Parent chunks)** của mảnh con đó ra. 
@@ -616,14 +625,14 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         },
         {
             title: "LLM Gen (Tổng hợp phản hồi)",
-            badge: "Bước 6/7 - LLM Synthesizer",
+            badge: "Bước 7/8 - LLM Synthesizer",
             text: `<strong>Đến bước này, chúng ta đã có một đĩa thức ăn tri thức sạch sẽ!</strong> Ngữ cảnh cha đã được deduplicate hoàn chỉnh được chuyển thẳng tới mô hình LLM <code>gpt-4o-mini</code>.
             
             Đóng vai một trợ lý CSKH Xanh SM chuyên nghiệp, LLM sẽ đọc hiểu ngữ cảnh sạch này để viết ra câu trả lời cực kỳ trôi chảy, thân thiện và <strong>cam đoan 100% không có ảo giác (hallucination)</strong> vì thông tin đã được ràng buộc cứng trong context gốc.`
         },
         {
             title: "Citations (Xác thực trích nguồn)",
-            badge: "Bước 7/7 - Xác Thực Pháp Lý",
+            badge: "Bước 8/8 - Xác Thực Pháp Lý",
             text: `<strong>Bước cuối cùng nhưng là chốt chặn bảo vệ uy tín của doanh nghiệp!</strong> 
             
             Bộ xác thực trích nguồn của Thầy sẽ đối sánh câu trả lời của LLM với danh mục nguồn gốc để bóc tách URL, hiển thị nút trích nguồn trực quan bên dưới (Ví dụ: <code>[customer] refund.md</code>).
@@ -743,6 +752,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     // RAG Pipeline Nodes Mapping
     const nodes = [
         { id: "node-Question", conn: "conn-1" },
+        { id: "node-CacheCheck", conn: "conn-cache" },
         { id: "node-QueryUnderstanding", conn: "conn-2" },
         { id: "node-HybridSearch", conn: "conn-3" },
         { id: "node-Reranker", conn: "conn-4" },
@@ -1067,18 +1077,31 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             await new Promise(r => setTimeout(r, 400));
             setNodeState("node-Question", "completed");
 
+            // STEP 2: Caching Layer Check Animation (600ms)
+            setNodeState("node-CacheCheck", "active");
+            updatePipelineStatus("Đang kiểm tra Caching Layer...");
+            updateBotLoadingStatus("Đang truy vấn lớp đệm Cache...");
+            appendThinkingLog("Kiểm tra lớp đệm Caching Layer đầu tiên (đặt tại tầng cao nhất của luồng xử lý trong chain.py, trước khâu Query Rewrite hay Vector Search)...", "normal");
+            await new Promise(r => setTimeout(r, 600));
+
             // Check if API resolved immediately with a cache hit. If so, fast-track!
             const isCacheHit = apiResolved && apiData && apiData.cache_hit;
 
             if (isCacheHit) {
-                appendThinkingLog("⚡ Phát hiện câu hỏi trùng khớp trong RAG Cache! Bỏ qua các bước truy xuất...", "success");
+                appendThinkingLog("⚡ Phát hiện câu hỏi đã tồn tại trong DB cache (thỏa mãn khớp tuyệt đối hoặc khớp ngữ nghĩa)!", "success");
+                appendThinkingLog("Hệ thống lập tức bẻ gãy luồng xử lý (early-exit/bypass), bỏ qua 100% các bước: Rewrite, Query Expansion, Vector/BM25 Retrieval, Reranking, và LLM Generation.", "success");
+                appendThinkingLog("Kết quả đã lưu trong Cache được trả về trực tiếp trong < 10ms với chi phí 0đ và 0 token.", "success");
+                setNodeState("node-CacheCheck", "completed");
                 setNodeState("node-QueryUnderstanding", "completed");
                 setNodeState("node-HybridSearch", "completed");
                 setNodeState("node-Reranker", "completed");
                 setNodeState("node-ContextCompression", "completed");
                 setNodeState("node-LLMGeneration", "completed");
             } else {
-                // STEP 2: Query Rewrite + Expansion (1800ms) - TAKES THE LONGEST TIME!
+                setNodeState("node-CacheCheck", "completed");
+                appendThinkingLog("Cache miss! Không phát hiện câu hỏi trong DB cache. Tiếp tục chạy toàn bộ luồng RAG pipeline...", "normal");
+
+                // STEP 3: Query Rewrite + Expansion (1800ms) - TAKES THE LONGEST TIME!
                 setNodeState("node-QueryUnderstanding", "active");
                 updatePipelineStatus("Đang truy vấn CSDL... (Query Rewrite + Expansion)");
                 updateBotLoadingStatus("Đang hiểu ý định tìm kiếm...");
@@ -1090,7 +1113,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
                 await new Promise(r => setTimeout(r, 1800)); // Spend quality time on this step!
                 setNodeState("node-QueryUnderstanding", "completed");
 
-                // STEP 3: Hybrid Search (1200ms)
+                // STEP 4: Hybrid Search (1200ms)
                 setNodeState("node-HybridSearch", "active");
                 updatePipelineStatus("Đang truy vấn CSDL... (Hybrid Search)");
                 updateBotLoadingStatus("Đang tìm kiếm tri thức...");
@@ -1098,7 +1121,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
                 await new Promise(r => setTimeout(r, 1200));
                 setNodeState("node-HybridSearch", "completed");
 
-                // STEP 4: Reranker (800ms)
+                // STEP 5: Reranker (800ms)
                 setNodeState("node-Reranker", "active");
                 updatePipelineStatus("Đang xử lý thứ tự kết quả... (Reranker)");
                 updateBotLoadingStatus("Đang lọc kết quả tốt nhất...");

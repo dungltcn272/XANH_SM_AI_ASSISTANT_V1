@@ -7,7 +7,7 @@ Hệ thống **Retrieval-Augmented Generation (RAG)** cấp doanh nghiệp (Prod
 * 🎧 **Nhân viên CSKH (Agent)** - Truy cập toàn diện để giải quyết các khiếu nại phức tạp.
 
 Thay vì sử dụng Basic RAG (dễ gây ra sai lệch trích dẫn và ảo tưởng thông tin), hệ thống này triển khai một pipeline nâng cao:
-`Question ➔ Query Expansion ➔ Role-Filtered Shared Search ➔ Hybrid Search (Dense + BM25) ➔ Reranker ➔ Context Compression ➔ LLM ➔ Answer + Verified Citation`.
+`Question ➔ Caching Layer Check (Early-Exit/Bypass) ➔ Query Rewrite ➔ Query Expansion ➔ Role-Filtered Shared Search ➔ Hybrid Search (Dense + BM25) ➔ Reranker ➔ Context Compression ➔ LLM ➔ Answer + Verified Citation`.
 
 Để hiểu sâu sắc về kiến trúc, hệ tư duy thiết kế và các bài giảng kỹ thuật của dự án, vui lòng đọc [MINDSET.md](file:///c:/Users/DUNG/Desktop/RAG_XANH_SM/MINDSET.md).
 
