@@ -1,13 +1,95 @@
----
-url: https://www.xanhsm.com/vn-vi/business-payment
-category: driver
-crawled_at: 2026-05-26
----
-
 # Thẻ Doanh nghiệp - Phương thức thanh toán vượt trội dành cho doanh nghiệp | Green SM
 
-Thẻ doanh nghiệpThẻ doanh nghiệpThẻ doanh nghiệpGiới thiệuPhương thức thanh toán tối ưu, nhiều  chính sách ưu đãiThẻ thanh toánĐơn vị duy nhất trên thị thường cung cấp 2 dòng thẻ cứng & thẻ mềm dành cho doanh nghiệpChính sách hấp dẫnChiết khấu đặc quyền doanh nghiệp lên tới 10% giá trị đơn hàngTối ưu dòng tiềnChi phí đặt cọc thấp nhất thị trường chỉ từ 5 triệu đồng cho mỗi đơn hàngHệ thống quản lý 4.0Công nghệ hiện đại & hệ thống quản lý tối ưu theo nhu cầu doanh nghiệpDễ dàng sử dụngTích hợp dễ dàng trên ứng dụng, thanh toán nhanh chóng, bảo mậtTiên phong chuyển đổiĐồng hành cùng Green SM tiên phong chuyển đổi hướng đến tương lai xanh, bền vữngTƯ VẤNĐặt dịch vụHọ và tên  *Email  *Số điện thoại  *Tỉnh/ Thành phố đang sinh sốngChọnTên doanh nghiệp  *Trụ sở doanh nghiệp  *ChọnLĩnh vực kinh doanh  *ChọnQuy mô nhân sự  *ChọnDịch vụ bạn đang quan tâm  *ChọnNội dung tin nhắnBằng việc bấm vào nút Đăng Ký, tôi đồng ý rằng Green SM có thể thu thập, sử dụng và tiết lộ thông tin được tôi cung cấp theo  [Chính sách bảo vệ dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice)  mà tôi đã đọc và hiểu.Đăng ký tư vấn dịch vụ
+**URL:** https://www.xanhsm.com/vn-vi/business-payment  
+**Category:** driver  
+**Crawled at:** 2026-05-26
 
-## 
+---
 
-GIẢI PHÁP THANH TOÁNTối ưu dành cho Doanh nghiệpThẻ doanh nghiệpĐơn vị duy nhất trên thị trường cung cấp 2 loại hình Thẻ Doanh nghiệp phù hợp với mọi nhu cầu sử dụngThẻ cứng vật lýThẻ mềm onlineĐưa đón bằng xe máyChiết khấu đơn hàng lên tới 10% cho Doanh nghiệpChi phí đặt cọc chỉ từ 5 triệu đồng cho mỗi đơn hàngNhiều chương trình ưu đãi dành riêng cho CBNV đối tácDễ dàng quản lý, sử dụngThanh toán nhanh chóng, an toàn, bảo mật Quản lý hạn mức, số lượng  trên hệ thống công nghệ hiện đạiTối ưu nhân sự vận hành, quản lýXEM THÊMCác dịch vụ khác[Green BusinessMới](/vn-vi/business-transport)[Green AdsSắp ra mắt](/vn-vi)[Green PartnerSắp ra mắt](/vn-vi)[Green BusinessMới](/vn-vi/business-transport)[Green AdsSắp ra mắt](/vn-vi)[Green PartnerSắp ra mắt](/vn-vi)CÔNG TY CỔ PHẦN DI CHUYỂN XANH VÀ THÔNG MINH GSMHotline: 1555Email: support.vn@greensm.comTòa Văn phòng Symphony, đường Chu Huy Mân, khu đô thị Vinhomes Riverside, Phường Phúc Lợi, Thành phố Hà Nội, Việt NamGREEN SM[Trang chủ](/vn-vi)[Về Green SM](/vn-vi/about)[Giới thiệu ứng dụng Green SM](/vn-vi/download)Người dùng[Green SM Car](/vn-vi/greensm-car)[Green SM Mini](/vn-vi/greensm-mini)[Green SM Premium](/vn-vi/greensm-premium)[Green SM Limo](/vn-vi/greensm-limo)[Green Airport](/vn-vi/green-airport)[Green Tour](/vn-vi/green-tour)[Green Liên Tỉnh](/vn-vi/green-lien-tinh)[Green SM Bike](/vn-vi/greensm-bike)[Green SM Food](/vn-vi/greensm-ngon)[Green SM Express](/vn-vi/green-express)[Green SM Van](/vn-vi/green-van)[Gói hội viên](/vn-vi/green-subscription)[Thẻ quà tặng](/vn-vi/green-gift-card)Doanh nghiệp[Green Business](/vn-vi/business-transport)[Green SM Merchant](/vn-vi/greensm-merchant)[Thẻ doanh nghiệp](/vn-vi/business-payment)[Green Partner](/vn-vi)[Green Ads](/vn-vi)Khám phá[Tài xế Ô tô](/vn-vi/driver-car)[Tài xế Xe máy](/vn-vi/driver-bike)[Green SM Platform](/vn-vi/driver-platform)[Trung tâm Tài xế](/vn-vi/driver-center)Tổng hợp[Tin tức](/vn-vi/news)[Trung tâm hỗ trợ](/vn-vi/helps)[Tuyển dụng](/vn-vi/career)[Ưu đãi](/vn-vi/promotions)MẠNG XÃ HỘIMã số doanh nghiệp: 0110269067 do Sở Kế hoạch và Đầu tư thành phố Hà Nội cấp lần đầu ngày 01/03/2023.Giấy phép vận tải số 9620/GPKDVT do Sở Giao thông vận tải thành phố Hà Nội cấp lần thứ nhất ngày 06/03/2023.Văn bản xác nhận hoạt động bưu chính số 6150/XN-BTTTT do Bộ Thông Tin và Truyền Thông cấp ngày 13/12/2023.© 2024 GSM. All rights reserved   | [Điều khoản & Pháp lý](/vn-vi/terms-policies) |  [Chính sách bảo vệ dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice)  | [Quy tắc bảo vệ quyền lợi người tiêu dùng](/vn-vi/terms-policies/consumer-protection-policy)  |  Cài đặt cookiesTrải nghiệm ứng dụng ngay
+## Giới thiệu
+
+**Thẻ Doanh nghiệp** – Phương thức thanh toán tối ưu, nhiều chính sách ưu đãi dành cho doanh nghiệp
+
+---
+
+## Lợi ích nổi bật
+
+### Thẻ thanh toán linh hoạt
+- Đơn vị duy nhất trên thị trường cung cấp 2 dòng thẻ: thẻ cứng vật lý và thẻ mềm online dành cho doanh nghiệp
+
+### Chính sách hấp dẫn
+- Chiết khấu đặc quyền doanh nghiệp lên tới 10% giá trị đơn hàng
+
+### Tối ưu dòng tiền
+- Chi phí đặt cọc thấp nhất thị trường, chỉ từ 5 triệu đồng cho mỗi đơn hàng
+
+### Hệ thống quản lý 4.0
+- Công nghệ hiện đại và hệ thống quản lý tối ưu theo nhu cầu doanh nghiệp
+
+### Dễ dàng sử dụng
+- Tích hợp dễ dàng trên ứng dụng, thanh toán nhanh chóng, bảo mật
+
+### Tiên phong chuyển đổi
+- Đồng hành cùng Green SM hướng đến tương lai xanh, bền vững
+
+---
+
+## Giải pháp thanh toán tối ưu dành cho Doanh nghiệp
+
+### Thẻ Doanh nghiệp
+Đơn vị duy nhất trên thị trường cung cấp 2 loại hình Thẻ Doanh nghiệp phù hợp với mọi nhu cầu sử dụng:
+
+| Loại thẻ | Đặc điểm |
+|----------|----------|
+| **Thẻ cứng vật lý** | Sử dụng trực tiếp tại điểm chấp nhận thẻ, an toàn, tiện lợi |
+| **Thẻ mềm online** | Thanh toán trực tuyến nhanh chóng, tích hợp dễ dàng trên ứng dụng |
+
+### Đưa đón bằng xe máy
+- Chiết khấu đơn hàng lên tới 10% cho doanh nghiệp
+- Chi phí đặt cọc chỉ từ 5 triệu đồng cho mỗi đơn hàng
+- Nhiều chương trình ưu đãi dành riêng cho CBNV và đối tác
+
+### Quản lý dễ dàng
+- Dễ dàng quản lý, sử dụng trên nền tảng số
+- Thanh toán nhanh chóng, an toàn, bảo mật
+- Quản lý hạn mức, số lượng trên hệ thống công nghệ hiện đại
+- Tối ưu nhân sự vận hành và quản lý
+
+---
+
+## Đăng ký tư vấn dịch vụ
+
+Để bắt đầu sử dụng Thẻ Doanh nghiệp, vui lòng điền thông tin dưới đây:
+
+- Họ và tên *
+- Email *
+- Số điện thoại *
+- Tỉnh/Thành phố đang sinh sống
+- Tên doanh nghiệp *
+- Trụ sở doanh nghiệp *
+- Lĩnh vực kinh doanh *
+- Quy mô nhân sự *
+- Dịch vụ bạn đang quan tâm *
+- Nội dung tin nhắn
+
+> Bằng việc bấm vào nút Đăng Ký, tôi đồng ý rằng Green SM có thể thu thập, sử dụng và tiết lộ thông tin được tôi cung cấp theo [Chính sách bảo vệ dữ liệu cá nhân](/vn-vi/terms-policies/privacy-notice) mà tôi đã đọc và hiểu.
+
+---
+
+## Các dịch vụ khác
+
+- [Green Business] - Giải pháp di chuyển xanh cho doanh nghiệp
+- [Green Ads] - Sắp ra mắt
+- [Green Partner] - Sắp ra mắt
+
+---
+
+## Thông tin liên hệ
+
+**CÔNG TY CỔ PHẦN DI CHUYỂN XANH VÀ THÔNG MINH GSM**
+
+- Hotline: 1555
+- Email: support.vn@greensm.com
+- Địa chỉ: Tòa Văn phòng Symphony, đường Chu Huy Mân, khu đô thị Vinhomes Riverside, Phường Phúc Lợi, Thành phố Hà Nội, Việt Nam
+
+---

@@ -71,6 +71,9 @@ class HeadingAwareSplitter:
         filename = os.path.basename(filepath)
         
         for doc in header_docs:
+            parent_content = doc.page_content.strip()
+            parent_chunk_id = hashlib.md5(parent_content.encode('utf-8')).hexdigest()
+            
             sub_docs = self.recursive_splitter.split_documents([doc])
             
             for idx, sub_doc in enumerate(sub_docs):
@@ -78,6 +81,8 @@ class HeadingAwareSplitter:
                     "source": filename,
                     "role": role,
                     "version": "2026-05",
+                    "parent_chunk_id": parent_chunk_id,
+                    "parent_content": parent_content,
                 }
                 
                 meta.update(frontmatter_meta)

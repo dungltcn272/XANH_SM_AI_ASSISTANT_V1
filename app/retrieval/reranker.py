@@ -1,4 +1,5 @@
 from typing import List
+import unicodedata
 from langchain_core.documents import Document
 from app.config import config
 
@@ -44,14 +45,24 @@ class XanhSMReranker:
             except Exception as e:
                 print(f"[-] Error during local reranking: {e}. Falling back to heuristic.")
                 
-        # Heuristic Fallback: Calculates relevance score by exact word matches
-        query_words = set(query.lower().split())
+        # Heuristic Fallback: Calculates relevance score by exact word matches with accent stripping
+        def clean_text(text: str) -> str:
+            text = text.lower()
+            normalized = unicodedata.normalize('NFKD', text)
+            no_accents = ''.join([c for c in normalized if not unicodedata.combining(c)])
+            no_accents = no_accents.replace('đ', 'd').replace('Đ', 'D')
+            return no_accents
+
+        clean_query = clean_text(query)
+        query_words = set(clean_query.split())
         for doc in docs:
-            doc_words = doc.page_content.lower().split()
+            clean_doc = clean_text(doc.page_content)
+            doc_words = clean_doc.split()
             match_count = sum(1 for word in query_words if word in doc_words)
             # Normalize match score by query length
             score = match_count / max(len(query_words), 1)
             doc.metadata["rerank_score"] = score
             
-        sorted_docs = sorted(docs, key=lambda x: x.metadata["rerank_score"], reverse=True)
+        sorted_docs = sorted(sorted(docs, key=lambda x: x.metadata.get("bm25_score", 0.0), reverse=True), key=lambda x: x.metadata["rerank_score"], reverse=True)
         return sorted_docs[:top_n]
+

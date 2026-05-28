@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from typing import List
 from rank_bm25 import BM25Okapi
 from langchain_core.documents import Document
@@ -13,11 +14,15 @@ class XanhSMBM25Retriever:
         self.bm25: BM25Okapi = None
         
     def _tokenize(self, text: str) -> List[str]:
-        # Simple lowercase word tokenization suited for Vietnamese keyword search
+        # Strip Vietnamese accents to ensure unaccented queries match accented documents
         text = text.lower()
+        normalized = unicodedata.normalize('NFKD', text)
+        no_accents = ''.join([c for c in normalized if not unicodedata.combining(c)])
+        no_accents = no_accents.replace('đ', 'd').replace('Đ', 'D')
         # Remove punctuation
-        text = re.sub(r'[^\w\s\d]', ' ', text)
-        return text.split()
+        no_accents = re.sub(r'[^\w\s\d]', ' ', no_accents)
+        return no_accents.split()
+
 
     def fit(self, documents: List[Document]):
         """

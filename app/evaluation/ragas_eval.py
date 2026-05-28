@@ -13,34 +13,8 @@ class XanhSMEvaluation:
     def __init__(self):
         self.pipeline = XanhSMRAGPipeline()
         
-        # Comprehensive Gold Standard Test Dataset
-        self.test_cases = [
-            {
-                "query": "So dien thoai tong dai ho tro hanh khach la so may?",
-                "role": "customer",
-                "expected_keywords": ["1900 2088", "terms.md", "booking.md"]
-            },
-            {
-                "query": "Muc chiet khau hay phi dich vu he thong cua tai xe Xanh Car la bao nhieu?",
-                "role": "driver",
-                "expected_keywords": ["25%", "commission.md"]
-            },
-            {
-                "query": "Ty le nhan chuyen AR va huy chuyen CR tai xe phai duy tri la bao nhieu?",
-                "role": "driver",
-                "expected_keywords": ["85%", "5%", "driver_policy.md"]
-            },
-            {
-                "query": "Doi tac cua hang Xanh Food phai chiet khau hoa hong bao nhieu?",
-                "role": "merchant",
-                "expected_keywords": ["20%", "merchant_policy.md"]
-            },
-            {
-                "query": "Phi huy chuyen xe doi voi hanh khach khi huy sau 2 phut la bao nhieu?",
-                "role": "customer",
-                "expected_keywords": ["15.000", "refund.md"]
-            }
-        ]
+        from app.evaluation.golden_dataset import GOLDEN_DATASET
+        self.test_cases = GOLDEN_DATASET
 
     def evaluate_item(self, case: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -85,8 +59,12 @@ class XanhSMEvaluation:
         total_latency = 0.0
         
         for idx, case in enumerate(self.test_cases):
-            # Use ASCII queries for print statements to avoid any CP1252 warning crashes
-            print(f"[#] Test Case {idx + 1}/{len(self.test_cases)}: '{case['query']}'")
+            # Safe print query to avoid any windows console encoding crash
+            try:
+                safe_query = case['query'].encode(sys.stdout.encoding or 'utf-8', errors='replace').decode(sys.stdout.encoding or 'utf-8')
+            except Exception:
+                safe_query = case['query']
+            print(f"[#] Test Case {idx + 1}/{len(self.test_cases)}: '{safe_query}'")
             res = self.evaluate_item(case)
             results.append(res)
             

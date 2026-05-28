@@ -174,7 +174,7 @@ st.markdown("""
 def generate_pipeline_graph(current_step: str, layout_type: str = "ngang") -> str:
     steps = [
         ("Question", "❓ 1. Nhận Câu Hỏi"),
-        ("QueryUnderstanding", "🧠 2. Query Expansion (AI)"),
+        ("QueryUnderstanding", "🧠 2. Query Expansion + Rewrite"),
         ("HybridSearch", "🔍 3. Hybrid Search"),
         ("Reranker", "⚡ 4. Reranker (AI)"),
         ("ContextCompression", "✂️ 5. Context Compression"),
@@ -483,7 +483,7 @@ with tab_chat:
             with st.expander("🔍 Bước 1: Query Understanding & Synonyms"):
                 st.write("**Câu hỏi gốc:**", f"\"{res['query']}\"")
                 st.write("**Vai trò đối tượng:**", f"`{res['role']}` (Lọc Metadata)")
-                st.info("Hệ thống đã tự động phân tích và tạo nhóm truy vấn mở rộng để tối ưu hóa khả năng tìm kiếm ngữ nghĩa.")
+                st.info("Hệ thống đã tự động phân tích và tạo nhóm truy vấn mở rộng (Query Expansion) bằng cả Rule-based synonym và LLM-based rewrite.")
                 expanded = res.get("expanded_queries", [])
                 if expanded:
                     st.write("**Nhóm truy vấn mở rộng được sinh ra (Query Expansion):**")

@@ -13,9 +13,17 @@ def run_ingestion(progress_callback=None):
     if progress_callback:
         progress_callback("START", msg_start)
     
-    # 1. Initialize DB and Splitter
+    # 1. Initialize DB, Splitter, and Cache
     db = XanhSMVectorDB()
     splitter = HeadingAwareSplitter(chunk_size=700, chunk_overlap=150)
+    
+    try:
+        from app.rag.cache import XanhSMRAGCache
+        cache = XanhSMRAGCache()
+        cache.clear()
+    except Exception as e:
+        print(f"[WARN] Failed to clear cache on ingestion: {e}")
+
     
     # 2. Split directory
     data_dir = config.DATA_DIR
