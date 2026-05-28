@@ -87,51 +87,76 @@ class XanhSMRAGPipeline:
 
     def _is_greeting_or_thanks(self, query: str) -> Dict[str, Any]:
         """
-        Fuzzy, spell-tolerant and accent-insensitive detector for greetings and thanks.
-        Bypasses LLM calls entirely to avoid process cost.
+        Fuzzy, spell-tolerant and accent-insensitive detector for greetings, thanks, and short chit-chat.
+        Bypasses the RAG/LLM flow for simple social queries.
         """
         import unicodedata
-        
+        import re
+
         # Clean string
-        q_clean = query.strip().lower().rstrip('?').rstrip('!').strip()
-        
+        q_clean = query.strip().lower()
+        q_clean = re.sub(r"[\?\!\.\,]", "", q_clean).strip()
+
         # Remove accents
         nfkd_form = unicodedata.normalize('NFKD', q_clean)
         q_no_accent = u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
-        
-        # Core greeting roots (including spelling typos)
-        greeting_roots = {
-            "hello", "hi", "halo", "helo", "hey", "hola", "hiii", "helloo", "heloo",
-            "xin chao", "xinchao", "chao ban", "chao", "xjn chao", "gui loi chao", "helooo",
-            "chao ad", "chao ban nhe", "chao bot", "ad oi"
+
+        greeting_phrases = {
+            "hello", "hi", "halo", "hey", "hola", "hiii", "helloo", "heloo", "helooo",
+            "xin chao", "xinchao", "chao ban", "chao", "chao ad", "ad oi", "chao em",
+            "chao anh", "chao chi", "chao ban nhe", "chao ban", "chao buoi sang",
+            "chao buoi trua", "chao buoi chieu", "chao buoi toi"
         }
-        
-        # Core thanks roots (including spelling typos)
-        thanks_roots = {
-            "cam on", "camon", "thank you", "thanks", "thankss", "tks", "thks", "ty", "thank",
-            "cam on nhiu", "cam on nhieu", "cam on ban", "thanks ban", "cám ơn", "cảm ơn"
+        thanks_phrases = {
+            "cam on", "camon", "cam on nhieu", "cam on ban", "cam on rat nhieu",
+            "thank you", "thanks", "tks", "thks", "ty", "thank"
         }
-        
-        # 1. Exact match or root overlap checks
-        is_greet = q_clean in greeting_roots or q_no_accent in greeting_roots or any(root in q_no_accent for root in ["xin chao", "xinchao", "chao ban"])
-        is_thank = q_clean in thanks_roots or q_no_accent in thanks_roots or any(root in q_no_accent for root in ["cam on", "camon", "thank you"])
-        
-        # 2. Extremely short queries with no numbers (e.g. "ok", "yes", "no", "he", "uh", "a")
-        if not is_greet and not is_thank:
-            if len(q_clean) <= 3 and not any(c.isdigit() for c in q_clean):
-                is_greet = True
-                
+        farewell_phrases = {
+            "tam biet", "tam biet nhe", "goodbye", "bye", "see you", "hen gap lai"
+        }
+
+        tokens = q_no_accent.split()
+        is_short = len(tokens) <= 6
+
+        # Exact or short social pattern detection
+        is_greet = any(q_no_accent == phrase or q_no_accent.startswith(phrase + " ") or phrase in q_no_accent for phrase in greeting_phrases) and is_short
+        is_thank = any(phrase in q_no_accent for phrase in thanks_phrases) and is_short
+        is_farewell = any(phrase in q_no_accent for phrase in farewell_phrases) and is_short
+
+        # fallback for very short chats
+        if not (is_greet or is_thank or is_farewell):
+            if len(tokens) <= 4:
+                if any(token in {"chao", "xin", "hello", "hi", "hey", "alo", "alo", "ok", "oke"} for token in tokens):
+                    is_greet = True
+                if any(token in {"camon", "thanks", "thank", "tks", "thks", "ty"} for token in tokens):
+                    is_thank = True
+                if any(token in {"bye", "tam", "goodbye"} for token in tokens):
+                    is_farewell = True
+
+        # Avoid false positives for actual questions that mention greeting words with additional intent
+        if is_greet and len(tokens) > 5:
+            is_greet = False
+        if is_thank and len(tokens) > 5:
+            is_thank = False
+        if is_farewell and len(tokens) > 5:
+            is_farewell = False
+
         if is_greet:
             return {
                 "type": "greeting",
-                "answer": "Xin chào! Tôi là Trợ lý AI CSKH của Xanh SM. Tôi có thể hỗ trợ gì cho quý khách về các chính sách hủy chuyến, biểu phí dịch vụ hay quy định hôm nay?"
+                "answer": "Xin chào! Tôi là Trợ lý AI CSKH của Xanh SM. Tôi có thể hỗ trợ gì cho quý khách về chính sách, hủy chuyến, phí dịch vụ hoặc quy định hôm nay?"
             }
-        elif is_thank:
+        if is_thank:
             return {
                 "type": "thanks",
-                "answer": "Dạ, rất vui được hỗ trợ quý khách! Nếu cần bất kỳ thông tin gì thêm, xin vui lòng nhắn tôi nhé."
+                "answer": "Dạ, rất vui được hỗ trợ quý khách! Nếu còn thắc mắc nào khác, xin cứ tiếp tục hỏi nhé."
             }
-            
+        if is_farewell:
+            return {
+                "type": "farewell",
+                "answer": "Cảm ơn quý khách đã sử dụng dịch vụ Xanh SM. Chúc quý khách một ngày tốt lành!"
+            }
+
         return {"type": "none", "answer": ""}
 
     def run(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
