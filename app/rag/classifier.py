@@ -13,7 +13,7 @@ class XanhSMClassifier:
     def __init__(self):
         pass
 
-    def classify_intent(self, query: str) -> Dict[str, Any]:
+    def classify_intent(self, query: str, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Classifies the user query intent into: small-talk, faq, rag, task-agent, sensitive.
         Uses OpenAI LLM and supports robust offline rule-based fallback.
@@ -54,12 +54,19 @@ class XanhSMClassifier:
         # If LLM is available, use it for rich intent classification
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
             try:
+                history_str = ""
+                if chat_history:
+                    for turn in chat_history[-3:]:
+                        role_tag = "User" if turn.get("role") == "user" else "Assistant"
+                        history_str += f"{role_tag}: {turn.get('content')}\n"
+
                 client = OpenAI(api_key=config.OPENAI_API_KEY)
+                user_prompt = f"Lịch sử hội thoại:\n{history_str}\nCâu hỏi người dùng: '{query}'\nJSON kết quả:"
                 response = client.chat.completions.create(
                     model=config.LLM_MODEL,
                     messages=[
                         {"role": "system", "content": INTENT_CLASSIFIER_PROMPT},
-                        {"role": "user", "content": f"Câu hỏi người dùng: '{query}'\nJSON kết quả:"}
+                        {"role": "user", "content": user_prompt}
                     ],
                     temperature=0.0
                 )

@@ -155,21 +155,12 @@ def api_chat(request: ChatRequest):
         import base64
         rag = get_pipeline()
         
-        # 1. Run Vision Diagnostics if image is uploaded
+        # 1. Image logic (Currently restricted to basic upload logs)
         actual_query = request.query
         if request.image_base64:
-            try:
-                # Strip base64 headers if present
-                b64_str = request.image_base64
-                if "," in b64_str:
-                    b64_str = b64_str.split(",", 1)[1]
-                image_bytes = base64.b64decode(b64_str)
-                mime = request.image_mime_type or "image/png"
-                diagnostic_query, vision_usage = rag.run_vision_diagnostics(image_bytes, mime)
-                actual_query = f"{request.query} [Mô tả hình ảnh: {diagnostic_query}]"
-                print(f"[VISION] Combined user query: '{actual_query}'")
-            except Exception as ve:
-                print(f"[WARN] Failed to parse Base64 image in api_chat: {ve}")
+            print("[INFO] Image uploaded, but Vision AI diagnostics are currently disabled per UI policy.")
+            # We skip run_vision_diagnostics and just use the raw text query
+
                 
         # 2. Run NLU-Gateway RAG Pipeline
         result = rag.run(query=actual_query, role=request.role, chat_history=request.chat_history)
@@ -178,6 +169,59 @@ def api_chat(request: ChatRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/chat/stream")
+def api_chat_stream(request: ChatRequest):
+    """
+    Server-Sent Events (SSE) streaming endpoint for real-time pipeline visualization.
+    Streams pipeline stages as they execute, enabling real-time animation on the frontend.
+    """
+    import json
+    from fastapi.responses import StreamingResponse
+    
+    if not request.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+    
+    def event_generator():
+        try:
+            rag = get_pipeline()
+            
+            # Handle vision input (Disabled)
+            actual_query = request.query
+            if request.image_base64:
+                print("[INFO] Image uploaded (stream), but Vision AI diagnostics are currently disabled.")
+
+            
+            # Stream each stage from the generator
+            for stage_event in rag.run_step_by_step(query=actual_query, role=request.role, chat_history=request.chat_history):
+                stage_name = stage_event.get("stage", "Unknown")
+                msg = stage_event.get("msg", "")
+                result = stage_event.get("result", None)
+                
+                event_data = {
+                    "stage": stage_name,
+                    "msg": msg,
+                    "result": result
+                }
+                
+                # Yield SSE formatted data
+                yield f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            error_data = {
+                "stage": "Error",
+                "msg": str(e),
+                "result": None
+            }
+            yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream"
+    )
 
 
 @app.get("/api/search")

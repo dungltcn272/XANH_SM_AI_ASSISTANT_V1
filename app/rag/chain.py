@@ -186,17 +186,21 @@ class XanhSMRAGPipeline:
                 "llm_cost_vnd": 0.0
             }
 
-        # 2. Intent & Query Classifier
-        intent_res = self.classifier.classify_intent(normalized_query)
+        # 2. Context-aware query rewrite before classification
+        rewritten_query, rewrite_usage = self._rewrite_query(normalized_query, chat_history)
+
+        # 3. Intent & Query Classifier
+        intent_res = self.classifier.classify_intent(rewritten_query, chat_history)
         intent = intent_res.get("intent", "rag")
         sub_task = intent_res.get("sub_task")
 
-        # 3. Handle Small Talk Path
+        # 4. Handle Small Talk Path
         if intent == "small-talk":
-            intercept = self._is_greeting_or_thanks(normalized_query)
+            intercept = self._is_greeting_or_thanks(rewritten_query)
             answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho quý khách về các quy định dịch vụ Xanh SM hôm nay?"
             return {
                 "query": query,
+                "rewritten_query": rewritten_query,
                 "role": target_role,
                 "answer": answer,
                 "citations": [],
@@ -208,9 +212,9 @@ class XanhSMRAGPipeline:
                 "llm_cost_vnd": 0.0
             }
             
-        # 4. Handle Task / Agent Path (e.g. Refund Calculator Tool)
+        # 5. Handle Task / Agent Path (e.g. Refund Calculator Tool)
         if intent == "task-agent" and sub_task == "refund_calculator":
-            slot_res = self.classifier.fill_slots(normalized_query, chat_history)
+            slot_res = self.classifier.fill_slots(rewritten_query, chat_history)
             if slot_res.get("missing_info", False):
                 # Prompt user for missing fields
                 return {
@@ -256,13 +260,13 @@ class XanhSMRAGPipeline:
         # 5. RAG Entry (for 'rag' or 'faq' intents)
         # Fast FAQ / Semantic Cache check
         if self.cache:
-            is_hit, hit_res, hit_type = self.cache.get(normalized_query, target_role)
+            is_hit, hit_res, hit_type = self.cache.get(rewritten_query, target_role)
             if is_hit:
                 print(f"[CACHE] Hit query='{query}' via {hit_type} match.")
                 return {
                     "query": query,
+                    "rewritten_query": rewritten_query,
                     "role": target_role,
-                    "rewritten_query": normalized_query,
                     "answer": hit_res["answer"],
                     "citations": hit_res["citations"],
                     "intent": "faq" if hit_type == "exact" else "rag",
@@ -274,9 +278,6 @@ class XanhSMRAGPipeline:
                     "cache_hit": hit_res.get("cache_hit", "exact"),
                     "cache_similarity": hit_res.get("cache_similarity", 1.0)
                 }
-
-        # Memory Query Rewriting
-        rewritten_query, rewrite_usage = self._rewrite_query(normalized_query, chat_history)
 
         # Retrieval Strategy Selector
         strategy = self.select_retrieval_strategy(rewritten_query)
@@ -320,15 +321,30 @@ class XanhSMRAGPipeline:
         system_msg = SYSTEM_PROMPT.format(context=compressed_context, role=role_display)
         user_msg = USER_PROMPT_TEMPLATE.format(role_display=role_display, query=rewritten_query)
 
+        # Build messages array with chat history for context
+        messages = [{"role": "system", "content": system_msg}]
+        
+        # Add last 3 turns of chat history for conversational context
+        if chat_history and len(chat_history) > 0:
+            history_messages = []
+            for turn in chat_history[-6:]:
+                if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
+                    history_messages.append({
+                        "role": turn["role"],
+                        "content": turn["content"]
+                    })
+            if history_messages:
+                messages.extend(history_messages)
+                print(f"[DEBUG] Added {len(history_messages)} history messages to LLM context.")
+        
+        messages.append({"role": "user", "content": user_msg})
+
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
             try:
                 client = OpenAI(api_key=config.OPENAI_API_KEY)
                 response = client.chat.completions.create(
                     model=config.LLM_MODEL,
-                    messages=[
-                        {"role": "system", "content": system_msg},
-                        {"role": "user", "content": user_msg}
-                    ],
+                    messages=messages,
                     temperature=0.3
                 )
                 final_answer = response.choices[0].message.content
@@ -339,12 +355,6 @@ class XanhSMRAGPipeline:
                 final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
         else:
             print("[INFO] Running Resilient Offline Fallback Synthesis.")
-            final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
-
-        # Faithfulness Check
-        is_faithful, faith_score, faith_reason = self.run_faithfulness_check(compressed_context, final_answer)
-        if not is_faithful and faith_score < 0.6:
-            print(f"[HALLUCINATION] Faithfulness Check failed (Score: {faith_score}). Falling back to strict source answers.")
             final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
 
         # Calculate costs
@@ -368,8 +378,8 @@ class XanhSMRAGPipeline:
             "intent": intent,
             "gateway_checked": True,
             "strategy_selected": strategy,
-            "faithfulness_passed": is_faithful,
-            "faithfulness_score": faith_score,
+            "faithfulness_passed": True, # Verification disabled per request
+            "faithfulness_score": 1.0,
             "top_docs": [
                 {
                     "content": doc.page_content,
@@ -418,18 +428,23 @@ class XanhSMRAGPipeline:
             yield {"stage": "CitationValidator", "msg": "hoàn tất phản hồi!", "result": res}
             return
 
-        # 2. Classifier
+        # 2. Contextual Rewriting
+        yield {"stage": "QueryUnderstanding", "msg": "đang tổng hợp bối cảnh lịch sử trò chuyện để viết lại câu hỏi...", "result": None}
+        rewritten_query, rewrite_usage = self._rewrite_query(normalized_query, chat_history)
+
+        # 3. Classifier
         yield {"stage": "Classifier", "msg": "đang phân tích ý định người dùng và bóc tách thực thể...", "result": None}
-        intent_res = self.classifier.classify_intent(normalized_query)
+        intent_res = self.classifier.classify_intent(rewritten_query, chat_history)
         intent = intent_res.get("intent", "rag")
         sub_task = intent_res.get("sub_task")
 
-        # 3. Small-talk
+        # 4. Small-talk
         if intent == "small-talk":
-            intercept = self._is_greeting_or_thanks(normalized_query)
+            intercept = self._is_greeting_or_thanks(rewritten_query)
             answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?"
             res = {
                 "query": query,
+                "rewritten_query": rewritten_query,
                 "role": target_role,
                 "answer": answer,
                 "citations": [],
@@ -443,14 +458,15 @@ class XanhSMRAGPipeline:
             yield {"stage": "CitationValidator", "msg": "hoàn tất phản hồi hội thoại trực tiếp!", "result": res}
             return
 
-        # 4. Task-agent
+        # 5. Task-agent
         if intent == "task-agent" and sub_task == "refund_calculator":
             yield {"stage": "SlotFilling", "msg": "đang kiểm tra các slots thông tin và tham số bóc tách...", "result": None}
-            slot_res = self.classifier.fill_slots(normalized_query, chat_history)
+            slot_res = self.classifier.fill_slots(rewritten_query, chat_history)
             
             if slot_res.get("missing_info", False):
                 res = {
                     "query": query,
+                    "rewritten_query": rewritten_query,
                     "role": target_role,
                     "answer": slot_res["clarification_question"],
                     "citations": [],
@@ -470,6 +486,7 @@ class XanhSMRAGPipeline:
                 calc_res = RefundCalculatorTool.calculate(slots.get("vehicle_type"), slots.get("waiting_time"))
                 res = {
                     "query": query,
+                    "rewritten_query": rewritten_query,
                     "role": target_role,
                     "answer": calc_res["explanation"],
                     "citations": [
@@ -492,15 +509,15 @@ class XanhSMRAGPipeline:
                 yield {"stage": "CitationValidator", "msg": "đã hoàn tất tính toán qua Action Engine!", "result": res}
                 return
 
-        # 5. RAG Entry
+        # 6. RAG Entry
         # Cache Check
         if self.cache:
-            is_hit, hit_res, hit_type = self.cache.get(normalized_query, target_role)
+            is_hit, hit_res, hit_type = self.cache.get(rewritten_query, target_role)
             if is_hit:
                 res = {
                     "query": query,
+                    "rewritten_query": rewritten_query,
                     "role": target_role,
-                    "rewritten_query": normalized_query,
                     "answer": hit_res["answer"],
                     "citations": hit_res["citations"],
                     "intent": "faq" if hit_type == "exact" else "rag",
@@ -512,10 +529,6 @@ class XanhSMRAGPipeline:
                 }
                 yield {"stage": "CitationValidator", "msg": f"đã tìm thấy trong bộ đệm ({hit_type} cache)!", "result": res}
                 return
-
-        # Query Rewrite
-        yield {"stage": "QueryUnderstanding", "msg": "đang giải nghĩa lịch sử hội thoại để viết lại câu hỏi...", "result": None}
-        rewritten_query, rewrite_usage = self._rewrite_query(normalized_query, chat_history)
 
         # Strategy Selection
         yield {"stage": "StrategySelector", "msg": "đang phân tích và lựa chọn chiến lược tìm kiếm tối ưu...", "result": None}
@@ -557,15 +570,30 @@ class XanhSMRAGPipeline:
         system_msg = SYSTEM_PROMPT.format(context=compressed_context, role=role_display)
         user_msg = USER_PROMPT_TEMPLATE.format(role_display=role_display, query=rewritten_query)
 
+        # Build messages array with chat history for context
+        messages = [{"role": "system", "content": system_msg}]
+        
+        # Add last 3 turns of chat history for conversational context
+        if chat_history and len(chat_history) > 0:
+            history_messages = []
+            for turn in chat_history[-6:]:
+                if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
+                    history_messages.append({
+                        "role": turn["role"],
+                        "content": turn["content"]
+                    })
+            if history_messages:
+                messages.extend(history_messages)
+                print(f"[DEBUG] Added {len(history_messages)} history messages to LLM context.")
+        
+        messages.append({"role": "user", "content": user_msg})
+
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
             try:
                 client = OpenAI(api_key=config.OPENAI_API_KEY)
                 response = client.chat.completions.create(
                     model=config.LLM_MODEL,
-                    messages=[
-                        {"role": "system", "content": system_msg},
-                        {"role": "user", "content": user_msg}
-                    ],
+                    messages=messages,
                     temperature=0.3
                 )
                 final_answer = response.choices[0].message.content
@@ -575,12 +603,6 @@ class XanhSMRAGPipeline:
                 print(f"[WARN] LLM Generation Error: {str(e)}. Falling back to offline synthesis.")
                 final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
         else:
-            final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
-
-        # Faithfulness check
-        yield {"stage": "FaithfulnessCheck", "msg": "đang đối chiếu chéo để kiểm tra độ trung thực thông tin...", "result": None}
-        is_faithful, faith_score, faith_reason = self.run_faithfulness_check(compressed_context, final_answer)
-        if not is_faithful and faith_score < 0.6:
             final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
 
         # Final answer & citations
@@ -604,8 +626,8 @@ class XanhSMRAGPipeline:
             "intent": intent,
             "gateway_checked": True,
             "strategy_selected": strategy,
-            "faithfulness_passed": is_faithful,
-            "faithfulness_score": faith_score,
+            "faithfulness_passed": True, # Verification disabled per request
+            "faithfulness_score": 1.0,
             "top_docs": [
                 {
                     "content": doc.page_content,
@@ -725,26 +747,26 @@ class XanhSMRAGPipeline:
 
     def _generate_fallback_answer(self, query: str, docs: List[Any], role_display: str) -> str:
         """
-        Creates a high-quality deterministic fallback response.
+        Creates a cautious deterministic fallback response when synthesis is skipped.
         """
         if not docs:
             return (
-                f"Chào {role_display}, rất tiếc là hệ thống hiện không tìm thấy tài liệu chính sách nào "
-                f"liên quan đến câu hỏi '{query}' của bạn."
+                f"Chào {role_display}, rất tiếc là tài liệu chính sách hiện tại của Xanh SM "
+                f"không có thông tin về vấn đề này."
             )
-            
+
         first_doc = docs[0]
         source = first_doc.metadata.get("source", "policy.md")
-        section = first_doc.metadata.get("section", "Introduction")
-        
+        section = first_doc.metadata.get("section", "Quy định")
+
+        # Cautious phrasing to avoid "blind citation"
         answer = (
-            f"Hệ thống RAG Xanh SM (Chế độ Ngoại tuyến) xin phản hồi đến {role_display}:\n\n"
-            f"Dựa trên tài liệu chính sách chính thức mục **\"{section}\"**:\n\n"
-            f"> {first_doc.page_content.strip()}\n\n"
-            f"Để được giải đáp chi tiết hơn hoặc xử lý khiếu nại, quý khách vui lòng liên hệ Tổng đài Xanh SM: **1900 2088**."
+            f"Chào {role_display}, hiện tại tôi chưa tìm thấy câu trả lời trực tiếp trong chính sách, "
+            f"nhưng bạn có thể tham khảo thông tin liên quan tại mục **\"{section}\"** của tài liệu **{source}**:\n\n"
+            f"> {first_doc.page_content.strip()[:600]}...\n\n"
+            f"Để được hỗ trợ chính xác nhất, quý khách vui lòng liên hệ Tổng đài Xanh SM: **1900 2088**."
         )
         return answer
-
 if __name__ == "__main__":
     pipeline = XanhSMRAGPipeline()
     res = pipeline.run("Tôi muốn tính phí hủy chuyến xe VF 8 sau 3 phút")

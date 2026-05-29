@@ -174,114 +174,94 @@ st.markdown("""
 def generate_pipeline_graph(current_step: str, layout_type: str = "ngang") -> str:
     steps = [
         ("Question", "❓ 1. Nhận Câu Hỏi"),
-        ("QueryUnderstanding", "🧠 2. Query Expansion + Rewrite"),
-        ("HybridSearch", "🔍 3. Hybrid Search"),
-        ("Reranker", "⚡ 4. Reranker (AI)"),
-        ("ContextCompression", "✂️ 5. Context Compression"),
-        ("LLMGeneration", "🤖 6. Tổng Hợp LLM (AI)"),
-        ("CitationValidator", "🛡️ 7. Xác Thực Nguồn")
+        ("Gateway", "🛡 2. Safety Gateway"),
+        ("QueryUnderstanding", "🧠 3. Query Rewrite"),
+        ("Classifier", "🔎 4. Intent Classifier"),
+        ("StrategySelector", "⚙️ 5. Strategy Selector"),
+        ("HybridSearch", "🔍 6. Hybrid / RAG Search"),
+        ("Reranker", "⚡ 7. Reranker"),
+        ("ContextCompression", "✂️ 8. Context Compression"),
+        ("LLMGeneration", "🤖 9. LLM Synthesis"),
+        ("FaithfulnessCheck", "✅ 10. Faithfulness Check"),
+        ("CitationValidator", "📌 11. Final Validation")
     ]
-    
+    branch_nodes = [
+        ("Small_talk", "💬 Small-talk / Greeting"),
+        ("Task_agent", "🧰 Task Agent"),
+        ("RAGSearch", "📚 RAG / FAQ Search")
+    ]
+
     current_idx = -1
-    for i, (step_id, _) in enumerate(steps):
+    all_nodes = steps + branch_nodes
+    for i, (step_id, _) in enumerate(all_nodes):
         if step_id.lower() == current_step.lower():
             current_idx = i
             break
-            
-    # Base configuration based on layout
+
     if layout_type == "vong_tron":
         layout_directive = "  layout=circo;"
     else:
         layout_directive = "  layout=dot;"
-        
+
     rankdir_directive = ""
     if layout_type == "ngang":
         rankdir_directive = "  rankdir=LR;"
-        
+
     dot_lines = [
         "digraph G {",
         layout_directive,
         rankdir_directive,
         "  bgcolor=\"#0c101b\";",
         "  edge [color=\"#38bdf8\", penwidth=2.5, arrowsize=1.0];",
-        "  node [fontname=\"Segoe UI Bold, Arial\", fontsize=13, shape=box, style=\"filled,rounded\", width=2.8, height=0.75];"
+        "  node [fontname=\"Segoe UI Bold, Arial\", fontsize=12, shape=box, style=\"filled,rounded\", width=2.8, height=0.75];"
     ]
-    
-    # Render nodes with dynamic colors
-    for i, (step_id, label) in enumerate(steps):
-        # Determine State Style
-        if i == current_idx:
-            # Active step (bright cyan fill, white glow border, dark text)
-            dot_lines.append(f"  {step_id} [label=\"{label}\", fillcolor=\"#00f0ff\", color=\"#ffffff\", fontcolor=\"#0c101b\", penwidth=3.5];")
-        elif i < current_idx:
-            # Completed step (deep teal/blue background, cyan borders and text)
-            dot_lines.append(f"  {step_id} [label=\"{label}\", fillcolor=\"#0e3a5c\", color=\"#00f0ff\", fontcolor=\"#00f0ff\", penwidth=2.0];")
+
+    def node_style(index: int):
+        if index == current_idx:
+            return "fillcolor=\"#00f0ff\", color=\"#ffffff\", fontcolor=\"#0c101b\", penwidth=3.5"
+        elif index < current_idx:
+            return "fillcolor=\"#0e3a5c\", color=\"#00f0ff\", fontcolor=\"#00f0ff\", penwidth=2.0"
         else:
-            # Pending step (dim grey/blue outline, muted grey text)
-            dot_lines.append(f"  {step_id} [label=\"{label}\", fillcolor=\"#131a2b\", color=\"#1e293b\", fontcolor=\"#475569\", penwidth=1.5];")
-            
-    # Add Transitions based on layout type
+            return "fillcolor=\"#131a2b\", color=\"#1e293b\", fontcolor=\"#94a3b8\", penwidth=1.5"
+
+    for i, (step_id, label) in enumerate(all_nodes):
+        dot_lines.append(f"  {step_id} [label=\"{label}\", {node_style(i)}];")
+
+    def edge_style(from_id: str):
+        index_map = {node_id.lower(): idx for idx, (node_id, _) in enumerate(all_nodes)}
+        idx = index_map.get(from_id.lower(), -1)
+        if idx < 0:
+            return " [color=\"#1e293b\", penwidth=1.5]"
+        if idx < current_idx:
+            return " [color=\"#00f0ff\", penwidth=3.0]"
+        if idx == current_idx:
+            return " [color=\"#38bdf8\", penwidth=2.5, style=dashed]"
+        return " [color=\"#1e293b\", penwidth=1.5]"
+
     if layout_type == "zigzag":
-        # Snake/Zigzag path using Rank alignments
-        dot_lines.append("")
-        dot_lines.append("  # Rank alignments for zigzag rows")
-        dot_lines.append("  { rank=same; Question; QueryUnderstanding; HybridSearch; }")
-        dot_lines.append("  { rank=same; Reranker; ContextCompression; }")
-        dot_lines.append("  { rank=same; LLMGeneration; CitationValidator; }")
-        dot_lines.append("")
-        dot_lines.append("  # Snake connections")
-        
-        # Color edges based on current index progress
-        def get_edge_style(from_idx):
-            if from_idx < current_idx:
-                return " [color=\"#00f0ff\", penwidth=3.0]"
-            elif from_idx == current_idx:
-                return " [color=\"#38bdf8\", penwidth=2.5, style=dashed]"
-            else:
-                return " [color=\"#1e293b\", penwidth=1.5]"
-                
-        dot_lines.append(f"  Question -> QueryUnderstanding{get_edge_style(0)};")
-        dot_lines.append(f"  QueryUnderstanding -> HybridSearch{get_edge_style(1)};")
-        dot_lines.append(f"  HybridSearch -> Reranker{get_edge_style(2)};")
-        dot_lines.append(f"  Reranker -> ContextCompression{get_edge_style(3)};")
-        dot_lines.append(f"  ContextCompression -> LLMGeneration{get_edge_style(4)};")
-        dot_lines.append(f"  LLMGeneration -> CitationValidator{get_edge_style(5)};")
-        
-    elif layout_type == "vong_tron":
-        # Circular flow path
-        def get_edge_style(from_idx):
-            if from_idx < current_idx:
-                return " [color=\"#00f0ff\", penwidth=3.0]"
-            elif from_idx == current_idx:
-                return " [color=\"#38bdf8\", penwidth=2.5, style=dashed]"
-            else:
-                return " [color=\"#1e293b\", penwidth=1.5]"
-                
-        dot_lines.append(f"  Question -> QueryUnderstanding{get_edge_style(0)};")
-        dot_lines.append(f"  QueryUnderstanding -> HybridSearch{get_edge_style(1)};")
-        dot_lines.append(f"  HybridSearch -> Reranker{get_edge_style(2)};")
-        dot_lines.append(f"  Reranker -> ContextCompression{get_edge_style(3)};")
-        dot_lines.append(f"  ContextCompression -> LLMGeneration{get_edge_style(4)};")
-        dot_lines.append(f"  LLMGeneration -> CitationValidator{get_edge_style(5)};")
+        dot_lines.append("  { rank=same; Question; Gateway; QueryUnderstanding; Classifier; }")
+        dot_lines.append("  { rank=same; StrategySelector; HybridSearch; Reranker; }")
+        dot_lines.append("  { rank=same; ContextCompression; LLMGeneration; FaithfulnessCheck; CitationValidator; }")
+
+    dot_lines.append(f"  Question -> Gateway{edge_style('Question')};")
+    dot_lines.append(f"  Gateway -> QueryUnderstanding{edge_style('Gateway')};")
+    dot_lines.append(f"  QueryUnderstanding -> Classifier{edge_style('QueryUnderstanding')};")
+    dot_lines.append(f"  Classifier -> Small_talk{edge_style('Classifier')};")
+    dot_lines.append(f"  Classifier -> Task_agent{edge_style('Classifier')};")
+    dot_lines.append(f"  Classifier -> RAGSearch{edge_style('Classifier')};")
+    dot_lines.append(f"  RAGSearch -> StrategySelector{edge_style('RAGSearch')};")
+    dot_lines.append(f"  StrategySelector -> HybridSearch{edge_style('StrategySelector')};")
+    dot_lines.append(f"  HybridSearch -> Reranker{edge_style('HybridSearch')};")
+    dot_lines.append(f"  Reranker -> ContextCompression{edge_style('Reranker')};")
+    dot_lines.append(f"  ContextCompression -> LLMGeneration{edge_style('ContextCompression')};")
+    dot_lines.append(f"  LLMGeneration -> FaithfulnessCheck{edge_style('LLMGeneration')};")
+    dot_lines.append(f"  FaithfulnessCheck -> CitationValidator{edge_style('FaithfulnessCheck')};")
+    dot_lines.append("  Small_talk -> CitationValidator [style=dashed, color=\"#1e293b\", penwidth=1.2];")
+    dot_lines.append("  Task_agent -> CitationValidator [style=dashed, color=\"#1e293b\", penwidth=1.2];")
+
+    if layout_type == "vong_tron":
         dot_lines.append("  CitationValidator -> Question [style=dashed, color=\"#1e293b\", penwidth=1.5, arrowsize=0.8];")
-        
-    else:
-        # Linear Left-to-Right progress path
-        def get_edge_style(from_idx):
-            if from_idx < current_idx:
-                return " [color=\"#00f0ff\", penwidth=3.0]"
-            elif from_idx == current_idx:
-                return " [color=\"#38bdf8\", penwidth=2.5, style=dashed]"
-            else:
-                return " [color=\"#1e293b\", penwidth=1.5]"
-                
-        dot_lines.append(f"  Question -> QueryUnderstanding{get_edge_style(0)};")
-        dot_lines.append(f"  QueryUnderstanding -> HybridSearch{get_edge_style(1)};")
-        dot_lines.append(f"  HybridSearch -> Reranker{get_edge_style(2)};")
-        dot_lines.append(f"  Reranker -> ContextCompression{get_edge_style(3)};")
-        dot_lines.append(f"  ContextCompression -> LLMGeneration{get_edge_style(4)};")
-        dot_lines.append(f"  LLMGeneration -> CitationValidator{get_edge_style(5)};")
-        
+
     dot_lines.append("}")
     return "\n".join(dot_lines)
 
@@ -367,6 +347,10 @@ with tab_chat:
         # Initialize query state programmatically to allow instant suggestion clicking
         if "query_text_input" not in st.session_state:
             st.session_state["query_text_input"] = ""
+        if "chat_history" not in st.session_state:
+            st.session_state["chat_history"] = []
+        if "last_query_text" not in st.session_state:
+            st.session_state["last_query_text"] = ""
             
         # Define high-end suggestions personalized for the selected role
         suggestions_by_role = {
@@ -413,22 +397,33 @@ with tab_chat:
             
             # Execute actual RAG steps and update UI in true real-time!
             result = None
-            for step_data in pipeline.run_step_by_step(query=user_query, role=target_role):
-                stage_id = step_data["stage"]
-                status_msg = step_data["msg"]
-                
-                # Update horizontal graph tree and status placeholders immediately
-                graph_placeholder.graphviz_chart(generate_pipeline_graph(stage_id, target_layout))
-                if stage_id == "CitationValidator":
-                    status_placeholder.success(f"🎉 {status_msg}")
-                    result = step_data["result"]
-                else:
-                    status_placeholder.info(f"⚡ Trạng thái: **{status_msg}**")
-                
-                # Add smooth transitions for fast steps, letting slow network steps block naturally
-                if stage_id not in ["LLMGeneration", "CitationValidator"]:
-                    time.sleep(0.35)
-                
+            if user_query != st.session_state["last_query_text"]:
+                for step_data in pipeline.run_step_by_step(query=user_query, role=target_role, chat_history=st.session_state["chat_history"]):
+                    stage_id = step_data["stage"]
+                    status_msg = step_data["msg"]
+                    
+                    # Update horizontal graph tree and status placeholders immediately
+                    graph_placeholder.graphviz_chart(generate_pipeline_graph(stage_id, target_layout))
+                    if stage_id == "CitationValidator":
+                        status_placeholder.success(f"🎉 {status_msg}")
+                        result = step_data["result"]
+                    else:
+                        status_placeholder.info(f"⚡ Trạng thái: **{status_msg}**")
+                    
+                    # Add smooth transitions for fast steps, letting slow network steps block naturally
+                    if stage_id not in ["LLMGeneration", "CitationValidator"]:
+                        time.sleep(0.35)
+                if result:
+                    answer = result["answer"]
+                    st.session_state["chat_history"].append({"role": "user", "content": user_query})
+                    st.session_state["chat_history"].append({"role": "assistant", "content": answer})
+                    st.session_state["last_query_text"] = user_query
+                    st.session_state["last_query_result"] = result
+            else:
+                result = st.session_state.get("last_query_result")
+                if result:
+                    status_placeholder.success("🎉 Kết quả giữ nguyên từ lần truy vấn trước")
+            
             # Render final RAG outputs
             if result:
                 answer = result["answer"]
