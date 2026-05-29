@@ -25,6 +25,7 @@
             <button class="nav-tab" data-tab="admin">Console</button>
             <button class="nav-tab" data-tab="ingest-playground">Nạp dữ liệu</button>
             <button class="nav-tab" data-tab="flow-explain">Quy trình thực tế</button>
+            <button class="nav-tab" data-tab="reranker-arena">Reranker Arena ⚔️</button>
             <button class="nav-tab" data-tab="pipeline-comparison">So Sánh Pipeline</button>
         </nav>
         
@@ -1090,7 +1091,106 @@
         </div>
     </div>
 
-    <!-- Tab 6: Pipeline Version Comparison Cockpit -->
+    <!-- Tab 6: Reranker Arena ⚔️ -->
+    <div class="tab-content" id="tab-reranker-arena">
+        <div class="masterclass-container">
+            <div class="classroom-header">
+                <h2>⚔️ Reranker Arena: Đối Soát Hiệu Năng Tái Xếp Hạng</h2>
+                <p>So sánh các mô hình Reranker hiện đại để tối ưu hóa độ chính xác và chi phí vận hành cho RAG Xanh SM.</p>
+            </div>
+
+            <div class="arena-layout">
+                <!-- Top Section: Comparison Table -->
+                <div class="glass-card arena-table-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 class="panel-subtitle" style="margin: 0;">📊 Bảng So Sánh Các Mô Hình Reranker Phổ Biến</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="arena-query-input" placeholder="Nhập câu hỏi để đấu trường..." style="padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; font-size: 0.82rem; width: 250px;">
+                            <button class="deploy-btn" id="btn-run-arena" style="background: #ef4444;">Chạy So Sánh Thật ⚔️</button>
+                        </div>
+                    </div>
+                    <div class="arena-table-wrapper">
+                        <table class="arena-comparison-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Speed</th>
+                                    <th>RAM</th>
+                                    <th>Tiếng Việt</th>
+                                    <th>Quality</th>
+                                    <th>Free</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Heuristic Semantic</strong></td>
+                                    <td><span class="speed-bolts">⚡⚡⚡⚡⚡</span></td>
+                                    <td>0 MB</td>
+                                    <td>Rất tốt</td>
+                                    <td>Ổn</td>
+                                    <td><span class="check-icon">✅</span></td>
+                                </tr>
+                                <tr style="background: rgba(20, 184, 166, 0.05); border-left: 3px solid var(--accent-cyan);">
+                                    <td><strong>MiniLM CrossEncoder (Current)</strong></td>
+                                    <td><span class="speed-bolts">⚡⚡⚡⚡⚡</span></td>
+                                    <td>Thấp</td>
+                                    <td>Ổn</td>
+                                    <td>Tốt</td>
+                                    <td><span class="check-icon">✅</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>FlashRank</strong></td>
+                                    <td><span class="speed-bolts">⚡⚡⚡⚡⚡</span></td>
+                                    <td>Cực thấp</td>
+                                    <td>Khá</td>
+                                    <td>Khá</td>
+                                    <td><span class="check-icon">✅</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>BGE-reranker-base</strong></td>
+                                    <td><span class="speed-bolts">⚡⚡⚡⚡</span></td>
+                                    <td>TB</td>
+                                    <td>Rất tốt</td>
+                                    <td>Rất tốt</td>
+                                    <td><span class="check-icon">✅</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Cohere Rerank</strong></td>
+                                    <td><span class="speed-bolts">⚡⚡⚡⚡</span></td>
+                                    <td>Cloud</td>
+                                    <td>Tốt</td>
+                                    <td>Rất tốt</td>
+                                    <td><span class="cross-icon">❌</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>MonoT5</strong></td>
+                                    <td><span class="speed-bolts">⚡⚡</span></td>
+                                    <td>Cao</td>
+                                    <td>Tốt</td>
+                                    <td>Cực tốt</td>
+                                    <td><span class="check-icon">✅</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bottom Section: Simulation / Strategy Info -->
+                <div class="arena-info-grid">
+                    <div class="glass-card info-card">
+                        <h4 style="color: var(--accent-cyan); margin-bottom: 12px;">🎯 Tại sao cần Reranker?</h4>
+                        <p style="font-size: 0.82rem; color: #475569; line-height: 1.6;">Trong RAG sản xuất, bước Retrieval ban đầu thường ưu tiên **Recall** (lấy thật nhiều mảnh có vẻ liên quan). Reranker đóng vai trò là "lớp lọc tinh", sử dụng tính toán sâu hơn để chọn ra **Top 5** tinh túy nhất, giúp giảm 40-60% tình trạng LLM bị nhiễu thông tin (Context Noise).</p>
+                    </div>
+                    <div class="glass-card info-card">
+                        <h4 style="color: #10b981; margin-bottom: 12px;">💡 Lựa chọn tối ưu cho Xanh SM</h4>
+                        <p style="font-size: 0.82rem; color: #475569; line-height: 1.6;">Hệ thống hiện tại ưu tiên **Heuristic Semantic Reranker** vì độ trễ 0ms và không tốn phí. Với các tác vụ cần độ chính xác pháp lý cực cao, **BGE-reranker** là ứng viên sáng giá nhất để tự host cục bộ.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 7: Pipeline Version Comparison Cockpit -->
     <div class="tab-content" id="tab-pipeline-comparison">
         <div class="comparison-container">
             <div class="classroom-header">

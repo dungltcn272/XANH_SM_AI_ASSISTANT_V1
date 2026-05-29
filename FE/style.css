@@ -1032,14 +1032,14 @@ body {
     align-items: center;
     padding: 20px 0;
     gap: 0;
-    min-width: 650px;
+    min-width: 750px; /* Slightly wider for better spacing */
     margin: 0 auto;
 }
 
 .tree-connector-v {
     width: 2px;
     height: 30px;
-    background: #cbd5e1;
+    background: #94a3b8; /* Sharper gray */
 }
 
 .tree-branches-wrapper {
@@ -1061,8 +1061,8 @@ body {
 .branch-line-diag-l {
     width: 50%;
     height: 30px;
-    border-top: 2px solid #cbd5e1;
-    border-left: 2px solid #cbd5e1;
+    border-top: 2px solid #94a3b8;
+    border-left: 2px solid #94a3b8;
     align-self: flex-end;
     border-top-left-radius: 15px;
 }
@@ -1070,8 +1070,8 @@ body {
 .branch-line-diag-r {
     width: 50%;
     height: 30px;
-    border-top: 2px solid #cbd5e1;
-    border-right: 2px solid #cbd5e1;
+    border-top: 2px solid #94a3b8;
+    border-right: 2px solid #94a3b8;
     align-self: flex-start;
     border-top-right-radius: 15px;
 }
@@ -1079,8 +1079,8 @@ body {
 .branch-line-v {
     width: 2px;
     height: 30px;
-    background: #cbd5e1;
-    border-top: 2px solid #cbd5e1;
+    background: #94a3b8;
+    border-top: 2px solid #94a3b8;
 }
 
 .fork-node {
@@ -1108,7 +1108,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    overflow-y: auto;
+    overflow: auto; /* Enable horizontal and vertical scroll */
     padding: 15px 10px;
 }
 
@@ -1121,9 +1121,9 @@ body {
 
 /* Tree support inside comparison column */
 .comparison-capsules .flow-tree-container {
-    width: 100%;
-    padding: 0;
-    min-width: 0 !important;
+    width: auto;
+    padding: 0 10px;
+    min-width: 600px !important; /* Ensure tree doesn't collapse too much */
 }
 
 .comparison-capsules .tree-branches-wrapper {
@@ -2611,6 +2611,83 @@ body {
     border-color: #14b8a6;
     color: #ffffff;
     box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.15);
+}
+
+/* ==========================================================================
+   TAB 6: RERANKER ARENA ⚔️
+   ========================================================================== */
+.arena-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    margin-top: 10px;
+}
+
+.arena-table-card {
+    padding: 24px;
+    overflow-x: auto;
+}
+
+.arena-table-wrapper {
+    margin-top: 15px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+}
+
+.arena-comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.arena-comparison-table th {
+    background: #f8fafc;
+    padding: 14px 18px;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.arena-comparison-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #475569;
+}
+
+.arena-comparison-table tr:last-child td {
+    border-bottom: none;
+}
+
+.arena-comparison-table tr:hover {
+    background: rgba(20, 184, 166, 0.02);
+}
+
+.speed-bolts {
+    color: #f59e0b;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.check-icon {
+    color: #10b981;
+    font-weight: bold;
+}
+
+.cross-icon {
+    color: #ef4444;
+    font-weight: bold;
+}
+
+.arena-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.info-card {
+    padding: 20px;
 }
 
 /* ==========================================================================

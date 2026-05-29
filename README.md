@@ -149,6 +149,7 @@ Khi quản trị viên hoặc CSKH bấm nút **Ingest / Re-chunking** trên gia
 ### 💎 E. Giao Diện Cockpit Dark-Neon & Giám Sát Chi Phí
 * **Hiển thị Led sáng động**: Sơ đồ 13 node LED sáng lên tuần tự theo thời gian thực mô phỏng chính xác đường đi của dữ liệu.
 * **Markdown Render chuẩn HTML**: Tự động chuyển đổi bảng biểu (`| col |`) và trích dẫn (`> ...`) Markdown thô thành thẻ HTML bóng bẩy với viền neon xanh lá Xanh SM.
+* **Reranker Arena ⚔️**: Giao diện đối soát hiệu năng giữa các mô hình Tái xếp hạng (MiniLM, FlashRank, BGE, Cohere) với dữ liệu thật.
 * **Real-time Cost Reporting**: Citation Validator trả về chi tiết số lượng token sử dụng (Prompt/Completion) và quy đổi chi phí ra USD/VND theo thời gian thực cho từng lượt chat.
 * **Citation Toggle Button**: Người dùng có thể ẩn/hiện danh sách nguồn trích dẫn pháp lý một cách linh hoạt.
 

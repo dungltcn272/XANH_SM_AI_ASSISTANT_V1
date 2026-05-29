@@ -496,6 +496,63 @@ async def simulate_chunk(
 class EmbedRequest(BaseModel):
     texts: List[str]
 
+@app.post("/api/rerank/arena")
+def run_reranker_arena(request: ChatRequest):
+    """
+    Live Reranker Arena: Compares multiple reranking strategies on a real query.
+    """
+    try:
+        from app.rag.chain import XanhSMRAGPipeline
+        from app.retrieval.reranker import XanhSMReranker
+        import time
+
+        pipeline = XanhSMRAGPipeline()
+        query = request.query
+        
+        # 1. Retrieval
+        candidates = pipeline.search_engine.search(query=query, limit=25, role=request.role or "customer")
+        
+        # 2. Define Models to Test (Align with FE table names exactly)
+        test_configs = [
+            {"name": "Heuristic Semantic (Current)", "provider": "heuristic", "model": None},
+            {"name": "MiniLM CrossEncoder", "provider": "local", "model": "cross-encoder/ms-marco-MiniLM-L-6-v2"},
+            {"name": "FlashRank", "provider": "flashrank", "model": "ms-marco-MiniLM-L-12-v2"},
+            {"name": "BGE-reranker-base", "provider": "local", "model": "BAAI/bge-reranker-base"},
+            {"name": "Cohere Rerank", "provider": "cohere", "model": "rerank-v3.0"},
+            {"name": "MonoT5", "provider": "local", "model": "castorini/monot5-base-msmarco-10k"}
+        ]
+        
+        arena_results = []
+        for cfg in test_configs:
+            try:
+                rk = XanhSMReranker(provider=cfg['provider'], model_name=cfg['model'])
+                start = time.time()
+                top_docs = rk.rerank(query, candidates, top_n=3)
+                duration = (time.time() - start) * 1000
+                
+                # Report if a fallback occurred to help user understand the speed
+                display_speed = f"{duration:.1f}ms"
+                if rk.fallback_occurred:
+                    display_speed += " (Fallback)"
+
+                arena_results.append({
+                    "model": cfg['name'],
+                    "speed": display_speed,
+                    "top_chunks": [
+                        {
+                            "source": doc.metadata.get("source", "N/A"),
+                            "score": round(doc.metadata.get("rerank_score", 0), 4),
+                            "content": doc.page_content[:200] + "..."
+                        } for doc in top_docs
+                    ]
+                })
+            except Exception as e:
+                arena_results.append({"model": cfg['name'], "error": str(e)})
+
+        return {"status": "success", "results": arena_results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/simulate/embed")
 def simulate_embed(request: EmbedRequest):
     try:

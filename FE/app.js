@@ -762,7 +762,129 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
 
 
     // ----------------------------------------------------------------------
-    // UI Chat Cockpit Logic
+    // RERANKER ARENA ⚔️ - Live Benchmarking Logic
+    // ----------------------------------------------------------------------
+    const btnRunArena = document.getElementById("btn-run-arena");
+    const arenaQueryInput = document.getElementById("arena-query-input");
+
+    if (btnRunArena) {
+        btnRunArena.addEventListener("click", runRerankerArena);
+    }
+
+    async function runRerankerArena() {
+        const query = arenaQueryInput.value.trim();
+        if (!query) {
+            alert("Vui lòng nhập một câu hỏi để bắt đầu đối soát!");
+            return;
+        }
+
+        btnRunArena.disabled = true;
+        btnRunArena.textContent = "⚔️ Đang đấu trường...";
+        appendThinkingLog(`Bắt đầu chạy Đấu trường Reranker cho truy vấn: "${query}"`, "header");
+
+        try {
+            const response = await fetch("/api/rerank/arena", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query, role: currentRole })
+            });
+
+            const data = await response.json();
+            if (data.status === "success") {
+                updateArenaTable(data.results);
+                appendThinkingLog("Đã hoàn tất đối soát hiệu năng giữa các mô hình Reranker.", "success");
+            } else {
+                throw new Error(data.detail || "Lỗi hệ thống khi chạy đối soát.");
+            }
+        } catch (error) {
+            console.error("Arena Error:", error);
+            appendThinkingLog(`Lỗi Arena: ${error.message}`, "error");
+            alert(`Lỗi khi chạy đối soát: ${error.message}`);
+        } finally {
+            btnRunArena.disabled = false;
+            btnRunArena.textContent = "Chạy So Sánh Thật ⚔️";
+        }
+    }
+
+    function updateArenaTable(results) {
+        const tableBody = document.querySelector(".arena-comparison-table tbody");
+        if (!tableBody) return;
+
+        const rowMap = {};
+        const rows = tableBody.querySelectorAll("tr:not(.arena-detail-row)");
+        rows.forEach(row => {
+            const modelName = row.cells[0].textContent.trim();
+            rowMap[modelName] = row;
+        });
+
+        results.forEach(res => {
+            const modelName = res.model;
+            const row = rowMap[modelName];
+
+            if (row) {
+                if (res.error) {
+                    row.cells[1].innerHTML = `<span style="color: #ef4444; font-size: 0.7rem;">Error</span>`;
+                    row.cells[4].innerHTML = `<span style="color: #ef4444; font-size: 0.7rem;">${res.error.substring(0, 30)}...</span>`;
+                } else {
+                    // Update Speed cell
+                    row.cells[1].innerHTML = `<span class="speed-bolts" style="color: #14b8a6;">${res.speed}</span>`;
+
+                    // Update Quality/Status cell with a toggle button
+                    const top1 = res.top_chunks[0] || { source: "N/A", score: 0 };
+                    row.cells[4].innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 600; color: #1e293b;">${top1.source}</span>
+                            <button class="view-chunks-btn" data-model="${modelName}">Chi tiết 👁️</button>
+                        </div>
+                    `;
+
+                    // Create or Update hidden detail row
+                    let detailRow = row.nextElementSibling;
+                    if (!detailRow || !detailRow.classList.contains("arena-detail-row")) {
+                        detailRow = document.createElement("tr");
+                        detailRow.className = "arena-detail-row";
+                        detailRow.style.display = "none";
+                        detailRow.innerHTML = `<td colspan="6" class="arena-detail-cell"></td>`;
+                        row.parentNode.insertBefore(detailRow, row.nextSibling);
+                    }
+
+                    const detailCell = detailRow.querySelector(".arena-detail-cell");
+                    detailCell.innerHTML = `
+                        <div class="arena-chunks-list">
+                            ${res.top_chunks.map((c, i) => `
+                                <div class="arena-chunk-item">
+                                    <div class="chunk-meta">
+                                        <span class="chunk-rank">#${i+1}</span>
+                                        <span class="chunk-source">${c.source}</span>
+                                        <span class="chunk-score">Score: ${c.score}</span>
+                                    </div>
+                                    <div class="chunk-content">${c.content}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+
+                    // Add click event for the new button
+                    const btn = row.querySelector(".view-chunks-btn");
+                    btn.addEventListener("click", () => {
+                        const isVisible = detailRow.style.display === "table-row";
+                        detailRow.style.display = isVisible ? "none" : "table-row";
+                        btn.textContent = isVisible ? "Chi tiết 👁️" : "Thu gọn ⬆️";
+                    });
+
+                    // Add highlight effect
+                    row.style.transition = "background 0.5s";
+                    row.style.background = "rgba(20, 184, 166, 0.15)";
+                    setTimeout(() => {
+                        row.style.background = "";
+                    }, 2000);
+                }
+            }
+        });
+    }
+
+    // ----------------------------------------------------------------------
+    // Main Chat Message Sending Logic
     // ----------------------------------------------------------------------
     // DOM elements for chat cockpit
     const roleButtons = document.querySelectorAll(".role-btn");
@@ -2753,14 +2875,14 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         if (version === "V3") {
             // SPECIAL CASE V3: Render as a Tree
             rightPipelineFlow.innerHTML = `
-<div class="flow-tree-container">
+<div class="flow-tree-container" style="min-width: 600px; padding: 20px;">
     <!-- Root -->
     <div class="tree-section">
         <div class="compare-capsule highlight-glow">🛡️ 1-2. NLU Entry & Gateway</div>
     </div>
     <div class="tree-connector-v"></div>
     <!-- Router -->
-    <div class="compare-capsule highlight-glow" style="max-width: 180px;">🎯 3. Intent Router</div>
+    <div class="compare-capsule highlight-glow" style="max-width: 180px;">🎯 3. Intent Classifier</div>
     
     <div class="tree-branches-wrapper">
         <!-- Branch A -->
@@ -2776,20 +2898,23 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         <!-- Branch C -->
         <div class="tree-branch">
             <div class="branch-line-v"></div>
-            <div class="compare-capsule" style="border-color: #10b981; font-size: 0.7rem;">C. Cache Hit</div>
+            <div class="compare-capsule highlight-glow" style="border-color: #10b981; font-size: 0.7rem;">C. Semantic Cache</div>
         </div>
         <!-- Branch D -->
         <div class="tree-branch">
             <div class="branch-line-diag-r"></div>
             <div class="compare-capsule highlight-glow" style="border-color: #14b8a6; font-size: 0.7rem;">D. Strategic RAG</div>
+            
             <div class="tree-connector-v"></div>
-            <div class="compare-capsule highlight-glow" style="font-size: 0.7rem;">🤖 11. LLM Synthesizer</div>
+            <div class="compare-capsule highlight-glow" style="font-size: 0.65rem; border-style: dashed;">6-10. Context Pipeline</div>
+            
+            <div class="tree-connector-v"></div>
+            <div class="compare-capsule highlight-glow" style="font-size: 0.7rem;">🤖 11. LLM Generation</div>
         </div>
-        </div>
+    </div>
 
-        <div class="tree-connector-v"></div>
-        <div class="compare-capsule">🎉 12. Citation Output</div>
-
+    <div class="tree-connector-v"></div>
+    <div class="compare-capsule highlight-glow" style="max-width: 220px;">🎉 12. Citation & Response</div>
 </div>
 `;
         } else {

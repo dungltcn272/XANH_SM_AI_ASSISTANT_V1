@@ -147,9 +147,9 @@ Tại sao phải dùng Hybrid Search? Vì **Vector Search (Dense)** giỏi hiể
 #### ⚡ Chương 6: Tái Xếp Hạng Đa Tầng (Multi-Stage Reranking)
 Đây là bước "tinh lọc" cuối cùng trước khi gửi dữ liệu cho LLM:
 1.  **Stage 1 (Retrieval)**: Lấy ra 25 ứng viên tiềm năng nhất (phễu rộng).
-2.  **Stage 2 (Reranking)**: Sử dụng **Heuristic Semantic Reranker** hoặc **Cross-Encoder**.
-    *   **Heuristic**: Tính điểm dựa trên sự xuất hiện của tập hợp từ khóa đã chuẩn hóa (Accent-stripped) giữa Query và Document. Cực nhanh, hỗ trợ tốt tiếng Việt không dấu.
-    *   **Cross-Encoder (Future)**: Đọc sâu tương tác Attention chéo giữa từng cặp câu hỏi-tài liệu để chấm điểm logic.
+2.  **Stage 2 (Reranking)**: Sử dụng **MiniLM Cross-Encoder** (Mặc định) hoặc các mô hình thay thế (FlashRank, Cohere).
+    *   **MiniLM Cross-Encoder**: Đọc sâu tương tác Attention chéo giữa từng cặp câu hỏi-tài liệu để chấm điểm logic. Đây là tiêu chuẩn vàng cho độ chính xác trong RAG doanh nghiệp.
+    *   **Heuristic Fallback**: Tự động kích hoạt nếu các mô hình AI gặp sự cố, đảm bảo hệ thống luôn phản hồi.
 *   **Kết quả**: Chỉ giữ lại Top 5 "tinh hoa" nhất, giúp LLM không bị nhiễu bởi các đoạn văn bản "trông có vẻ giống" nhưng thực tế không chứa câu trả lời.
 
 ---
