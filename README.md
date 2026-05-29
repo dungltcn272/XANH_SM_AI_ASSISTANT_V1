@@ -218,8 +218,9 @@ Bạn truy cập vào service của mình trên Railway Dashboard, chuyển sang
 | `EMBEDDING_PROVIDER` | `openai` | Sử dụng mô hình nhúng text-embedding-3-small hiệu năng cao. |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | Tên mô hình nhúng. |
 | `LLM_MODEL` | `gpt-4o-mini` | Mô hình ngôn ngữ chính cho synthesizer và NLU. |
-| `CHROMA_PERSIST_DIR` | `/data/chroma_db` | **BẮT BUỘC:** Đường dẫn lưu trữ CSDL vector trên đĩa cứng gắn ngoài (Volume) của Railway. |
-| `DATA_DIR` | `/data` | **BẮT BUỘC:** Đường dẫn chứa dữ liệu chính sách trên Volume để tránh mất mát khi deploy lại. |
+| `CHROMA_PERSIST_DIR` | `/app/persistent_storage/chroma_db` | **BẮT BUỘC:** Đường dẫn lưu trữ CSDL vector trên đĩa cứng gắn ngoài (Volume) của Railway. |
+| `DATA_DIR` | `/app/persistent_storage` | **BẮT BUỘC:** Đường dẫn chứa dữ liệu chính sách trên Volume để tránh mất mát khi deploy lại. |
+| `DATABASE_URL` | `postgresql://...` | **BẮT BUỘC (Tùy chọn):** URL kết nối PostgreSQL của Railway cung cấp để sử dụng hệ thống Caching. Nếu không có, hệ thống sẽ dùng SQLite cục bộ. |
 | `PORT` | `8000` | Cổng dịch vụ Railway tự động cấp phát. |
 
 #### 2. Thiết Lập Ổ Đĩa Vĩnh Viễn (Persistent Volume):
@@ -227,10 +228,11 @@ CSDL ChromaDB và tệp cache BM25 cần được lưu giữ vĩnh viễn để 
 1. Trên giao diện sơ đồ Railway, click vào service **RAG_XANH_SM**.
 2. Nhấn nút **Settings** hoặc nút **+ Add** góc trên ➔ Chọn **Volume**.
 3. Đặt kích thước Volume tùy ý (ví dụ: `1 GB` hoặc `2 GB` là quá đủ cho hàng triệu trang chính sách).
-4. Thiết lập **Mount Path** của Volume là: `/data` (khớp chính xác với cấu hình `DATA_DIR` và `CHROMA_PERSIST_DIR` ở bảng trên).
+4. Thiết lập **Mount Path** của Volume là: `/app/persistent_storage` (khớp chính xác với cấu hình `DATA_DIR` và `CHROMA_PERSIST_DIR` ở bảng trên).
 
 #### 3. Cơ chế Khởi Chạy Tự Chữa Lành (Self-Healing) trên Cloud:
-* Khi container khởi chạy lần đầu tiên trên Railway, hệ thống sẽ tự động phát hiện nếu thư mục `/data` trên Volume mới gắn bị trống.
-* Hệ thống sẽ tự động sao chép (copy) toàn bộ tài liệu Markdown mẫu từ thư mục `data/` trong mã nguồn sang `/data` trên Volume.
-* Tiếp theo, hệ thống tự động kích hoạt tiến trình phân đoạn (ingestion) để phân mảnh và nạp toàn bộ tri thức vào ChromaDB thực tại `/data/chroma_db` và ghi file chỉ mục `/data/chroma_db/bm25_corpus.json`.
+* Khi container khởi chạy lần đầu tiên trên Railway, hệ thống sẽ tự động phát hiện nếu thư mục `/app/persistent_storage` trên Volume mới gắn bị trống.
+* Hệ thống sẽ tự động sao chép (copy) toàn bộ tài liệu Markdown mẫu từ thư mục `data/` trong mã nguồn sang `/app/persistent_storage` trên Volume.
+* Tiếp theo, hệ thống tự động kích hoạt tiến trình phân đoạn (ingestion) để phân mảnh và nạp toàn bộ tri thức vào ChromaDB thực tại `/app/persistent_storage/chroma_db` và ghi file chỉ mục `/app/persistent_storage/chroma_db/bm25_corpus.json`.
+* Nếu biến `DATABASE_URL` được cấu hình, hệ thống sẽ tự động kết nối và khởi tạo bảng `query_cache` trên **PostgreSQL**, sẵn sàng cho hiệu suất caching cực cao!
 * Từ đó về sau, tri thức của bạn được bảo vệ vĩnh viễn trên Volume và hoạt động với hiệu suất tối đa 100%!

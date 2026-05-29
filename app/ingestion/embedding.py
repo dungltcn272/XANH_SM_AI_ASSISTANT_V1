@@ -23,6 +23,7 @@ class CustomEmbeddings(Embeddings):
         
         self.client = None
         self._init_client()
+        self._initialized = True
 
     def _init_client(self):
         if self.provider == "openai":
