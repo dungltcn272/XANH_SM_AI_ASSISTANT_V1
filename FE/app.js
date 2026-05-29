@@ -676,8 +676,9 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         if (!step) return;
 
         // Toggle active visual states on selector chain
-        flowStepItems.forEach((item, idx) => {
-            if (idx === stepIdx) {
+        flowStepItems.forEach((item) => {
+            const itemStep = parseInt(item.getAttribute("data-step"));
+            if (itemStep === stepIdx) {
                 item.classList.add("active");
                 item.scrollIntoView({ behavior: "smooth", block: "nearest" });
             } else {

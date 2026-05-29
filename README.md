@@ -7,7 +7,7 @@ Hệ thống **Retrieval-Augmented Generation (RAG)** cấp doanh nghiệp (Prod
 * 🎧 **Nhân viên CSKH (Agent)** - Truy cập toàn diện để giải quyết các khiếu nại phức tạp.
 
 Hệ thống này triển khai kiến trúc **NLU-Gateway RAG (Phase 3)** nâng cao, thực tiễn và tối ưu hóa chi phí vận hành:
-`Question ➔ Safety & Lang Gateway ➔ Intent Classifier ➔ Slot Filling (Task/RAG) ➔ Caching Layer Check (Bypass) ➔ Memory Query Rewrite ➔ Strategy Selector ➔ Strategic Search (Dense / BM25 / Hybrid) ➔ Cross-Encoder Reranker ➔ Parent-Child Context ➔ LLM Synthesizer ➔ Faithfulness Check ➔ Citation Validator ➔ Observability`.
+`Question ➔ Safety & Lang Gateway ➔ Intent Classifier ➔ Slot Filling (Task/RAG) ➔ Caching Layer Check (Bypass) ➔ Memory Query Rewrite ➔ Strategy Selector ➔ Strategic Search (Dense / BM25 / Hybrid) ➔ Cross-Encoder Reranker ➔ Parent-Child Context ➔ LLM Synthesizer ➔ Citation Validator (Integrated Faithfulness) ➔ Cost Observability`.
 
 Để hiểu sâu sắc về hệ tư duy thiết kế, sơ đồ và các bài giảng kỹ thuật của dự án, vui lòng đọc [MINDSET.md](file:///c:/Users/DUNG/Desktop/RAG_XANH_SM/MINDSET.md).
 
@@ -114,12 +114,10 @@ flowchart TD
     
     Rerank --> PC[✂️ Parent-Child Expand Context]
     PC --> LLM[🤖 LLM Synthesizer]
-    LLM --> Faith{🛡️ Faithfulness Check}
-    
-    Faith -- Thất bại --> Fallback[⚠️ Phản hồi an toàn/Tra cứu lại]
-    Faith -- Đạt chuẩn --> Validator[📌 Citation Validator & MD5 Clean]
+    LLM --> Validator[📌 Citation Validator & Cost Tracking]
     
     Validator --> Render[🎨 FE Render HTML Table/Blockquote & Citation Toggle]
+    Validator --> Obs[📊 Telemetry & Cost Reporting]
 ```
 
 ---
@@ -148,10 +146,11 @@ Khi quản trị viên hoặc CSKH bấm nút **Ingest / Re-chunking** trên gia
 3. Tự động gọi `reset_pipeline_singleton()` đưa các biến toàn cục `pipeline = None` và `hybrid_search = None` về trạng thái ban đầu.
 4. Lượt chat tiếp theo sẽ tự động reload tri thức mới nạp ngay lập tức mà không cần khởi động lại máy chủ!
 
-### 💎 E. Giao Diện Cockpit Dark-Neon & Render HTML Table/Blockquote Cao Cấp
+### 💎 E. Giao Diện Cockpit Dark-Neon & Giám Sát Chi Phí
 * **Hiển thị Led sáng động**: Sơ đồ 13 node LED sáng lên tuần tự theo thời gian thực mô phỏng chính xác đường đi của dữ liệu.
-* **Markdown Render chuẩn HTML**: Tự động chuyển đổi bảng biểu (`| col |`) và trích dẫn (`> ...`) Markdown thô thành thẻ HTML bóng bẩy với viền neon xanh lá Xanh SM, hỗ trợ cuộn ngang responsive trên điện thoại.
-* **Citation Toggle Button**: Danh sách nguồn trích dẫn pháp lý mặc định được ẩn gọn gàng. Người dùng chỉ cần click vào nút `Xem chi tiết 👁️ (N nguồn)` để hiển thị danh sách tag trích nguồn hoặc `Thu gọn ⬆️` để tối ưu diện tích.
+* **Markdown Render chuẩn HTML**: Tự động chuyển đổi bảng biểu (`| col |`) và trích dẫn (`> ...`) Markdown thô thành thẻ HTML bóng bẩy với viền neon xanh lá Xanh SM.
+* **Real-time Cost Reporting**: Citation Validator trả về chi tiết số lượng token sử dụng (Prompt/Completion) và quy đổi chi phí ra USD/VND theo thời gian thực cho từng lượt chat.
+* **Citation Toggle Button**: Người dùng có thể ẩn/hiện danh sách nguồn trích dẫn pháp lý một cách linh hoạt.
 
 ---
 

@@ -342,10 +342,22 @@
                         <!-- Root Node -->
                         <div class="tree-section">
                             <div class="flow-step-item active" data-step="0">
-                                <div class="flow-step-num">1-2</div>
+                                <div class="flow-step-num">1</div>
                                 <div class="flow-step-info">
-                                    <h5>NLU Entry & Gateway</h5>
-                                    <p>Question Precheck -> Safety Guardrails</p>
+                                    <h5>Question Input</h5>
+                                    <p>Đầu vào câu hỏi thô từ người dùng</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tree-connector-v"></div>
+                        
+                        <div class="tree-section">
+                            <div class="flow-step-item" data-step="1">
+                                <div class="flow-step-num">2</div>
+                                <div class="flow-step-info">
+                                    <h5>Safety Gateway</h5>
+                                    <p>Bảo mật & Chuẩn hóa Unicode NFC</p>
                                 </div>
                             </div>
                         </div>
@@ -356,7 +368,7 @@
                         <div class="flow-step-item fork-node" data-step="2" style="max-width: 180px; margin: 0 auto; background: #f1f5f9;">
                             <div class="flow-step-num">3</div>
                             <div class="flow-step-info">
-                                <h5>Intent Router</h5>
+                                <h5>Intent Classifier</h5>
                             </div>
                         </div>
 
@@ -401,13 +413,53 @@
                             <div class="tree-branch">
                                 <div class="branch-line-diag-r"></div>
                                 <div class="flow-step-item" data-step="5" style="border-color: #14b8a6; background: rgba(20, 184, 166, 0.05);">
-                                    <div class="flow-step-num" style="background: #14b8a6; border-color: #14b8a6; color: white;">D</div>
+                                    <div class="flow-step-num">6</div>
                                     <div class="flow-step-info">
-                                        <h5>Strategic RAG</h5>
-                                        <p>Memory -> Search -> Rerank</p>
+                                        <h5>Memory Rewriter</h5>
+                                        <p>Biên dịch ngữ cảnh lịch sử</p>
                                     </div>
                                 </div>
                                 
+                                <div class="tree-connector-v"></div>
+
+                                <div class="flow-step-item" data-step="6">
+                                    <div class="flow-step-num">7</div>
+                                    <div class="flow-step-info">
+                                        <h5>Strategy Selector</h5>
+                                        <p>BM25 / Dense / Hybrid</p>
+                                    </div>
+                                </div>
+
+                                <div class="tree-connector-v"></div>
+
+                                <div class="flow-step-item" data-step="7">
+                                    <div class="flow-step-num">8</div>
+                                    <div class="flow-step-info">
+                                        <h5>Hybrid Search</h5>
+                                        <p>Quét đa tầng & Hòa trộn RRF</p>
+                                    </div>
+                                </div>
+
+                                <div class="tree-connector-v"></div>
+
+                                <div class="flow-step-item" data-step="8">
+                                    <div class="flow-step-num">9</div>
+                                    <div class="flow-step-info">
+                                        <h5>Cross-Reranker</h5>
+                                        <p>Tái xếp hạng Attention chéo</p>
+                                    </div>
+                                </div>
+
+                                <div class="tree-connector-v"></div>
+
+                                <div class="flow-step-item" data-step="9">
+                                    <div class="flow-step-num">10</div>
+                                    <div class="flow-step-info">
+                                        <h5>Parent-Child</h5>
+                                        <p>Gộp ngữ cảnh cha toàn vẹn</p>
+                                    </div>
+                                </div>
+
                                 <div class="tree-connector-v"></div>
                                 
                                 <div class="flow-step-item" data-step="10">
