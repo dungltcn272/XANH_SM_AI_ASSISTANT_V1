@@ -2078,9 +2078,41 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         }
     });
 
-    async function loadEvaluationDataset() {
+    function renderEvaluationDataset() {
         const evalTableBody = document.getElementById("eval-table-body");
         const countBadge = document.getElementById("eval-dataset-count-badge");
+        if (!evalTableBody) return;
+
+        if (countBadge) {
+            countBadge.textContent = `${currentEvaluationDataset.length} Items`;
+        }
+        
+        evalTableBody.innerHTML = "";
+        currentEvaluationDataset.forEach((item, idx) => {
+            const tr = document.createElement("tr");
+            tr.style.borderBottom = "1px solid rgba(0, 0, 0, 0.05)";
+            tr.className = "hover-row";
+            tr.style.transition = "background 0.2s ease";
+            
+            // Truncate query and expected keywords for display
+            const displayQuery = item.query.length > 55 ? item.query.substring(0, 52) + "..." : item.query;
+            const keywordsList = Array.isArray(item.expected_keywords) ? item.expected_keywords.join(", ") : item.expected_keywords;
+            const displayKeywords = keywordsList.length > 60 ? keywordsList.substring(0, 57) + "..." : keywordsList;
+            
+            tr.innerHTML = `
+                <td style="padding: 10px 12px; font-weight: 500; color: #1e293b;" title="${item.query.replace(/"/g, '&quot;')}">${displayQuery}</td>
+                <td style="padding: 10px 12px; color: var(--text-secondary);" title="${keywordsList.replace(/"/g, '&quot;')}"><em>"${displayKeywords}"</em></td>
+                <td style="padding: 10px 12px; white-space: nowrap;">
+                    <span class="citation-tag" style="background: rgba(20, 184, 166, 0.08); color: var(--accent-teal); border: 1px solid rgba(20, 184, 166, 0.15); border-radius: 4px; padding: 2px 6px; font-size: 0.65rem; text-transform: uppercase; margin-right: 6px;">${item.role}</span>
+                    <span style="font-size: 0.72rem; color: #059669; font-weight: 500;"><span class="status-dot green" style="display: inline-block; width: 6px; height: 6px; background: #10b981; border-radius: 50%; margin-right: 4px;"></span> Verified</span>
+                </td>
+            `;
+            evalTableBody.appendChild(tr);
+        });
+    }
+
+    async function loadEvaluationDataset() {
+        const evalTableBody = document.getElementById("eval-table-body");
         if (!evalTableBody) return;
 
         try {
@@ -2089,33 +2121,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             const data = await res.json();
             
             currentEvaluationDataset = data.dataset || [];
-            
-            if (countBadge) {
-                countBadge.textContent = `${currentEvaluationDataset.length} Items`;
-            }
-            
-            evalTableBody.innerHTML = "";
-            currentEvaluationDataset.forEach((item, idx) => {
-                const tr = document.createElement("tr");
-                tr.style.borderBottom = "1px solid rgba(0, 0, 0, 0.05)";
-                tr.className = "hover-row";
-                tr.style.transition = "background 0.2s ease";
-                
-                // Truncate query and expected keywords for display
-                const displayQuery = item.query.length > 55 ? item.query.substring(0, 52) + "..." : item.query;
-                const keywordsList = item.expected_keywords.join(", ");
-                const displayKeywords = keywordsList.length > 60 ? keywordsList.substring(0, 57) + "..." : keywordsList;
-                
-                tr.innerHTML = `
-                    <td style="padding: 10px 12px; font-weight: 500; color: #1e293b;" title="${item.query}">${displayQuery}</td>
-                    <td style="padding: 10px 12px; color: var(--text-secondary);" title="${keywordsList}"><em>"${displayKeywords}"</em></td>
-                    <td style="padding: 10px 12px; white-space: nowrap;">
-                        <span class="citation-tag" style="background: rgba(20, 184, 166, 0.08); color: var(--accent-teal); border: 1px solid rgba(20, 184, 166, 0.15); border-radius: 4px; padding: 2px 6px; font-size: 0.65rem; text-transform: uppercase; margin-right: 6px;">${item.role}</span>
-                        <span style="font-size: 0.72rem; color: #059669; font-weight: 500;"><span class="status-dot green" style="display: inline-block; width: 6px; height: 6px; background: #10b981; border-radius: 50%; margin-right: 4px;"></span> Verified</span>
-                    </td>
-                `;
-                evalTableBody.appendChild(tr);
-            });
+            renderEvaluationDataset();
             
         } catch (err) {
             console.error("Error loading evaluation dataset:", err);
@@ -2617,6 +2623,50 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         });
     }
 
+    function parseCSVToDataset(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+            if (lines.length <= 1) {
+                alert("File CSV rỗng hoặc chỉ có tiêu đề.");
+                return;
+            }
+            
+            const newDataset = [];
+            // Basic CSV parser to handle quotes
+            const re = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+            
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(re);
+                if (cols.length >= 3) {
+                    const q = cols[0].replace(/^"|"$/g, '').replace(/""/g, '"').trim();
+                    const a = cols[1].replace(/^"|"$/g, '').replace(/""/g, '"').trim();
+                    const r = cols[2].replace(/^"|"$/g, '').replace(/""/g, '"').trim();
+                    
+                    if (q) {
+                        newDataset.push({
+                            query: q,
+                            expected_keywords: a.split(",").map(k => k.trim()),
+                            role: r
+                        });
+                    }
+                }
+            }
+            
+            if (newDataset.length > 0) {
+                currentEvaluationDataset = newDataset;
+                renderEvaluationDataset();
+                appendThinkingLog(`Nạp tệp dataset ${file.name} thành công. Tải lên ${newDataset.length} câu hỏi.`, "success");
+                alert(`📊 Đã nạp thành công ${newDataset.length} kịch bản kiểm thử vàng từ tệp CSV!`);
+            } else {
+                alert("Không tìm thấy dữ liệu hợp lệ trong file CSV.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
     // 4. Drag & Drop / Click CSV Dataset uploader
     const dragDropCsvArea = document.querySelector(".drag-drop-csv-area");
     if (dragDropCsvArea) {
@@ -2626,8 +2676,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             input.accept = ".csv";
             input.onchange = (e) => {
                 if (e.target.files.length > 0) {
-                    appendThinkingLog(`Nạp tệp dataset ${e.target.files[0].name} thành công.`, "success");
-                    alert("📊 Đã nạp thành công 5 kịch bản kiểm thử vàng bổ sung từ CSV!");
+                    parseCSVToDataset(e.target.files[0]);
                 }
             };
             input.click();
@@ -2648,8 +2697,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             dragDropCsvArea.style.background = "transparent";
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                appendThinkingLog(`Kéo thả tệp dataset ${files[0].name} thành công.`, "success");
-                alert("📊 Đã nạp thành công 5 kịch bản kiểm thử vàng bổ sung từ CSV!");
+                parseCSVToDataset(files[0]);
             }
         });
     }
