@@ -3,7 +3,6 @@ from langchain_core.documents import Document
 from app.vectordb.chroma_client import XanhSMVectorDB
 from app.retrieval.bm25_retriever import XanhSMBM25Retriever
 from app.retrieval.multi_query import XanhSMQueryExpansion
-from app.ingestion.splitter import HeadingAwareSplitter
 from app.config import config
 
 class XanhSMHybridSearch:
@@ -16,72 +15,118 @@ class XanhSMHybridSearch:
         self.db = XanhSMVectorDB()
         self.bm25_retriever = XanhSMBM25Retriever()
         self.expander = XanhSMQueryExpansion()
-        self.splitter = HeadingAwareSplitter()
+        self.splitter = None
         
         # Fit BM25 corpus on initialization
         self._fit_bm25_corpus()
 
     def _fit_bm25_corpus(self):
         """
-        Loads and splits all local documents to build the BM25 index.
-        Also populates the in-memory fallback VectorDB if enabled or auto-populates ChromaDB if active but empty.
+        Loads pre-split chunks from static JSON file for instant startup,
+        otherwise falls back to parsing and splitting raw data directories.
         """
-        # --- Resilient Auto-Sync for Persistent Railway Volume ---
-        import shutil
         import os
+        import json
         
-        default_data_dir = "./data"
-        target_data_dir = config.DATA_DIR
+        persist_dir = os.path.abspath(config.CHROMA_PERSIST_DIR)
+        chunks_file = os.path.join(persist_dir, "bm25_corpus.json")
+        chunks = []
+        loaded_from_static = False
         
-        abs_default = os.path.abspath(default_data_dir)
-        abs_target = os.path.abspath(target_data_dir)
-        
-        if abs_default != abs_target:
-            has_files = False
-            if os.path.exists(abs_target):
-                for root, dirs, files in os.walk(abs_target):
-                    if files:
-                        has_files = True
-                        break
+        # 1. Attempt to load from static JSON file
+        if os.path.exists(chunks_file):
+            print(f"[INFO] Loading pre-split document chunks from static file: {chunks_file}")
+            try:
+                with open(chunks_file, "r", encoding="utf-8") as f:
+                    serialized_chunks = json.load(f)
+                    
+                for c in serialized_chunks:
+                    chunks.append(Document(
+                        page_content=c["page_content"],
+                        metadata=c["metadata"]
+                    ))
+                print(f"[SUCCESS] Loaded {len(chunks)} chunks instantly from static file.")
+                loaded_from_static = True
+            except Exception as e:
+                print(f"[WARN] Failed to load static chunks file: {e}. Falling back to parsing.")
+                chunks = []
+                
+        # 2. Dynamic Fallback: If static load failed or file missing, parse directories
+        if not loaded_from_static:
+            # --- Resilient Auto-Sync for Persistent Railway Volume ---
+            import shutil
             
-            if not has_files and os.path.exists(abs_default):
-                print(f"[INFO] Target DATA_DIR '{target_data_dir}' is empty. Copying default bundled files from '{default_data_dir}'...")
-                try:
-                    os.makedirs(abs_target, exist_ok=True)
-                    for item in os.listdir(abs_default):
-                        s = os.path.join(abs_default, item)
-                        d = os.path.join(abs_target, item)
-                        if os.path.isdir(s):
-                            shutil.copytree(s, d, dirs_exist_ok=True)
-                        else:
-                            shutil.copy2(s, d)
-                    print("[OK] Bundled files copied to persistent volume successfully!")
-                except Exception as e:
-                    print(f"[WARN] Failed to copy default files: {e}")
-        # ---------------------------------------------------------
-
-        print("[INFO] Loading files to build BM25 sparse index...")
-        try:
-            chunks = self.splitter.split_directory(config.DATA_DIR)
-            self.bm25_retriever.fit(chunks)
+            default_data_dir = "./data"
+            target_data_dir = config.DATA_DIR
             
-            # Resilient auto-load for Fallback Vector DB on startup
-            if config.CHROMA_PROVIDER == "fallback":
-                self.db.clear()
-                self.db.add_documents(chunks)
-            elif config.CHROMA_PROVIDER == "chromadb" and chunks:
-                from langchain_community.vectorstores import Chroma
-                if self.db._vector_store and isinstance(self.db._vector_store, Chroma):
+            abs_default = os.path.abspath(default_data_dir)
+            abs_target = os.path.abspath(target_data_dir)
+            
+            if abs_default != abs_target:
+                has_files = False
+                if os.path.exists(abs_target):
+                    for root, dirs, files in os.walk(abs_target):
+                        if files:
+                            has_files = True
+                            break
+                
+                if not has_files and os.path.exists(abs_default):
+                    print(f"[INFO] Target DATA_DIR '{target_data_dir}' is empty. Copying default bundled files from '{default_data_dir}'...")
                     try:
-                        count = self.db._vector_store._collection.count()
-                        if count == 0:
-                            print("[INFO] Chroma DB is empty on startup. Automatically populating from preloaded data...")
-                            self.db.add_documents(chunks)
-                            print("[OK] Smart auto-ingestion completed on startup!")
-                    except Exception as ex:
-                        print(f"[WARN] Failed to auto-populate Chroma DB: {ex}")
-        except Exception as e:
-            print(f"[ERROR] Failed to build BM25 corpus: {e}")
+                        os.makedirs(abs_target, exist_ok=True)
+                        for item in os.listdir(abs_default):
+                            s = os.path.join(abs_default, item)
+                            d = os.path.join(abs_target, item)
+                            if os.path.isdir(s):
+                                shutil.copytree(s, d, dirs_exist_ok=True)
+                            else:
+                                shutil.copy2(s, d)
+                        print("[OK] Bundled files copied to persistent volume successfully!")
+                    except Exception as e:
+                        print(f"[WARN] Failed to copy default files: {e}")
+            # ---------------------------------------------------------
+            
+            print("[INFO] Loading files to build BM25 sparse index dynamically...")
+            try:
+                # Dynamic lazy import to prevent C++ / DLL conflicts on Windows during startup
+                from app.ingestion.splitter import HeadingAwareSplitter
+                self.splitter = HeadingAwareSplitter()
+                chunks = self.splitter.split_directory(config.DATA_DIR)
+                
+                # Save static file for subsequent startups
+                try:
+                    os.makedirs(persist_dir, exist_ok=True)
+                    serializable = [{"page_content": doc.page_content, "metadata": doc.metadata} for doc in chunks]
+                    with open(chunks_file, "w", encoding="utf-8") as f:
+                        json.dump(serializable, f, ensure_ascii=False, indent=2)
+                    print(f"[INFO] Saved static chunks cache for next startup: {chunks_file}")
+                except Exception as ex:
+                    print(f"[WARN] Failed to save static cache on fallback: {ex}")
+            except Exception as e:
+                print(f"[ERROR] Failed to build BM25 corpus dynamically: {e}")
+
+        # 3. Fit retriever and populate database if fallback
+        if chunks:
+            try:
+                self.bm25_retriever.fit(chunks)
+                
+                # Resilient auto-load for Fallback Vector DB on startup
+                if config.CHROMA_PROVIDER == "fallback":
+                    self.db.clear()
+                    self.db.add_documents(chunks)
+                elif config.CHROMA_PROVIDER == "chromadb":
+                    from langchain_community.vectorstores import Chroma
+                    if self.db._vector_store and isinstance(self.db._vector_store, Chroma):
+                        try:
+                            count = self.db._vector_store._collection.count()
+                            if count == 0:
+                                print("[INFO] Chroma DB is empty on startup. Automatically populating from preloaded data...")
+                                self.db.add_documents(chunks)
+                                print("[OK] Smart auto-ingestion completed on startup!")
+                        except Exception as ex:
+                            print(f"[WARN] Failed to auto-populate Chroma DB: {ex}")
+            except Exception as e:
+                print(f"[ERROR] Failed to fit BM25 or populate vector DB: {e}")
 
     def reciprocal_rank_fusion(self, dense_runs: List[List[Document]], sparse_runs: List[List[Document]], k: int = 60) -> List[Document]:
         """

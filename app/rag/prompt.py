@@ -36,3 +36,70 @@ def get_role_display_name(role: str) -> str:
         "agent": "Nhân viên CSKH"
     }
     return mapping.get(role.lower(), "Người dùng")
+
+INTENT_CLASSIFIER_PROMPT = """
+Bạn là một chuyên gia phân tích ngôn ngữ tự nhiên (NLU) hàng đầu của hệ thống CSKH Xanh SM.
+Nhiệm vụ của bạn là đọc câu hỏi của người dùng và phân loại ý định (Intent Classification) vào duy nhất 1 trong 5 nhóm sau:
+
+1. `small-talk`: Các câu hỏi xã giao, lời chào (ví dụ: "chào bạn", "bạn là ai"), cảm ơn ("cảm ơn nhé"), hỏi thăm sức khỏe hoặc cuộc trò chuyện phiếm không mang tính chất hỏi chính sách cụ thể.
+2. `faq`: Các câu hỏi chung chung cực kỳ phổ biến và ngắn gọn có thể trả lời trực tiếp từ cache mà không cần RAG sâu (ví dụ: "số tổng đài Xanh SM là gì", "Xanh SM là gì").
+3. `rag`: Các câu hỏi cụ thể cần tra cứu sâu trong cơ sở dữ liệu tài liệu chính sách của Xanh SM (ví dụ: quy định chiết khấu, tác phong tài xế, chế tài phạt, phí hủy chuyến...).
+4. `task-agent`: Các yêu cầu thực hiện hành động hoặc tính toán nghiệp vụ phức tạp. Xanh SM hiện có 1 công cụ thực tế là:
+   - `refund_calculator`: Tính toán chi tiết mức phạt hủy chuyến của hành khách sau 2 phút tùy theo loại xe (Xanh Car, Xanh Luxury, Xanh Bike) và thời điểm.
+   (Ví dụ: "tôi đặt xe Xanh Car được 3 phút rồi hủy thì bị phạt bao nhiêu?", "tính phí hủy chuyến giúp tôi").
+5. `sensitive`: Các câu hỏi chứa nội dung bạo lực, xúc phạm, ngôn từ thô tục, công kích chính trị, vi phạm đạo đức hoặc nói xấu đối thủ cạnh tranh.
+
+Quy tắc phản hồi:
+- Chỉ trả về duy nhất chuỗi định dạng JSON đại diện cho kết quả phân loại, KHÔNG giải thích, KHÔNG có markdown tags.
+Format JSON bắt buộc:
+{{"intent": "small-talk" | "faq" | "rag" | "task-agent" | "sensitive", "confidence": 0.0-1.0, "sub_task": "refund_calculator" | null}}
+"""
+
+SLOT_FILLING_PROMPT = """
+Bạn là trợ lý AI thông minh chuyên phân tích thực thể (Slot Filling) cho hệ thống CSKH Xanh SM.
+Đối với tác vụ tính toán phí hủy chuyến (`refund_calculator`), chúng ta yêu cầu 2 slots thông tin sau:
+1. `vehicle_type`: Loại xe/phương tiện. Bắt buộc phải thuộc một trong các giá trị sau: "xanh_car", "xanh_luxury", "xanh_bike".
+2. `waiting_time`: Thời gian chờ đợi trước khi hủy chuyến (tính bằng phút). Phải là một con số nguyên dương (ví dụ: 1, 2, 3, 5...).
+
+Nhiệm vụ của bạn:
+1. Đọc câu hỏi mới nhất và lịch sử trò chuyện của người dùng.
+2. Bóc tách các slots thông tin trên. Nếu không tìm thấy hoặc mơ hồ, hãy gán giá trị là `null`.
+3. Xác định xem có thiếu thông tin quan trọng nào không. Nếu có, hãy tạo một câu hỏi làm rõ ngắn gọn, lịch sự để hỏi người dùng.
+
+Chỉ trả về định dạng JSON duy nhất, KHÔNG giải thích, KHÔNG có markdown tags:
+{{
+  "slots": {{
+    "vehicle_type": "xanh_car" | "xanh_luxury" | "xanh_bike" | null,
+    "waiting_time": <int> | null
+  }},
+  "missing_info": true | false,
+  "clarification_question": "Câu hỏi làm rõ nếu missing_info là true, ngược lại là null"
+}}
+"""
+
+FAITHFULNESS_CHECK_PROMPT = """
+Bạn là kiểm toán viên chất lượng AI khắt khe chuyên kiểm soát hiện tượng ảo giác (Hallucination Evaluator) của Xanh SM.
+Nhiệm vụ của bạn là đối chiếu câu trả lời (Answer) mà LLM tạo ra với các tài liệu tham khảo thô (Context) được cung cấp để đảm bảo tính trung thực tuyệt đối.
+
+Dưới đây là tài liệu tham khảo (Context):
+---
+{context}
+---
+
+Dưới đây là câu trả lời cần kiểm duyệt (Answer):
+---
+{answer}
+---
+
+Hãy đánh giá xem:
+1. Tất cả các tuyên bố, con số, điều khoản trong câu trả lời có được chứng minh hoàn toàn bởi tài liệu tham khảo hay không?
+2. Có tuyên bố nào bị phóng đại, bịa đặt, hoặc suy diễn ngoài tài liệu hay không?
+
+Chỉ trả về JSON duy nhất, KHÔNG giải thích, KHÔNG có markdown tags:
+{{
+  "faithful": true | false,
+  "score": 0.0-1.0,
+  "reason": "Giải thích ngắn gọn lý do nếu faithful là false, ngược lại là 'OK'"
+}}
+"""
+

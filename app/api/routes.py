@@ -54,6 +54,12 @@ class ChatResponse(BaseModel):
     llm_cost_vnd: Optional[float] = None
     token_usage: Optional[Dict[str, Any]] = None
     compressed_context_len: Optional[int] = None
+    intent: Optional[str] = None
+    gateway_checked: Optional[bool] = None
+    strategy_selected: Optional[str] = None
+    faithfulness_passed: Optional[bool] = None
+    missing_fields: Optional[bool] = None
+
 
 
 class CrawlRequest(BaseModel):
@@ -83,6 +89,20 @@ def get_hybrid_search():
     if hybrid_search is None:
         hybrid_search = XanhSMHybridSearch()
     return hybrid_search
+
+def reset_pipeline_singleton():
+    global pipeline, hybrid_search
+    pipeline = None
+    hybrid_search = None
+    print("[INFO] Global singletons reset: pipeline and hybrid_search set to None.")
+
+def run_ingestion_and_reset():
+    try:
+        run_ingestion()
+        reset_pipeline_singleton()
+    except Exception as e:
+        print(f"[ERROR] run_ingestion_and_reset background task failed: {e}")
+
 
 
 @app.on_event("startup")
@@ -126,7 +146,7 @@ def startup_auto_ingest():
 def api_chat(request: ChatRequest):
     """
     Chat endpoint for Xanh SM RAG.
-    Applies role pre-filtering, query expansion, dense + sparse retrieval, reranking, and citation generation.
+    Applies safety gateway, intent classification, slot filling, strategic search, and faithfulness verification.
     Supports chat history query rewriting and image warning lights vision diagnostics.
     """
     if not request.query.strip():
@@ -139,7 +159,7 @@ def api_chat(request: ChatRequest):
         actual_query = request.query
         if request.image_base64:
             try:
-                # Strip base64 headers if present (e.g. data:image/png;base64,...)
+                # Strip base64 headers if present
                 b64_str = request.image_base64
                 if "," in b64_str:
                     b64_str = b64_str.split(",", 1)[1]
@@ -151,11 +171,14 @@ def api_chat(request: ChatRequest):
             except Exception as ve:
                 print(f"[WARN] Failed to parse Base64 image in api_chat: {ve}")
                 
-        # 2. Run RAG Pipeline
+        # 2. Run NLU-Gateway RAG Pipeline
         result = rag.run(query=actual_query, role=request.role, chat_history=request.chat_history)
         return result
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/search")
 def api_search(query: str, role: Optional[str] = "faq", limit: Optional[int] = 10):
@@ -182,7 +205,7 @@ def api_ingest(background_tasks: BackgroundTasks):
     Triggers re-indexing of all documents inside the data/ folder.
     """
     try:
-        background_tasks.add_task(run_ingestion)
+        background_tasks.add_task(run_ingestion_and_reset)
         return {"status": "success", "message": "Document ingestion started in the background."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -196,7 +219,7 @@ def api_crawl(request: CrawlRequest, background_tasks: BackgroundTasks):
         crawler = GreenSMCrawler(start_url=request.url, max_depth=request.max_depth, max_pages=request.max_pages)
         crawler.crawl()
         # Automatically run ingestion after crawl finishes
-        run_ingestion()
+        run_ingestion_and_reset()
 
     try:
         background_tasks.add_task(run_crawler_bg)

@@ -168,52 +168,113 @@
                         <span class="info-icon" title="View Pipeline Info">ⓘ</span>
                     </div>
 
-                    <div class="flow-capsules-container">
-                        <!-- Step 1: Question -->
-                        <div class="flow-capsule active-node" id="node-Question">
-                            <span class="capsule-label">❓ 1. Question Input</span>
-                        </div>
-                        <div class="connector-line" id="conn-1"></div>
+                    <div class="flow-capsules-container" style="gap: 8px;">
+                        <!-- NLU ENTRY GATEWAY GROUP -->
+                        <div class="pipeline-branch-group" style="display: flex; flex-direction: column; width: 100%; gap: 6px;">
+                            <span class="branch-title-badge">🛡️ NLU Entry Gateway</span>
+                            <!-- Step 1: Question -->
+                            <div class="flow-capsule active-node" id="node-Question">
+                                <span class="capsule-label">❓ 1. Question Input</span>
+                            </div>
+                            <div class="connector-line" id="conn-1" style="margin: 0 auto;"></div>
 
-                        <!-- Step 2: Caching Layer Check -->
-                        <div class="flow-capsule" id="node-CacheCheck">
-                            <span class="capsule-label">⚡ 2. Caching Layer Check</span>
-                        </div>
-                        <div class="connector-line" id="conn-cache"></div>
+                            <!-- Step 2: Gateway Check -->
+                            <div class="flow-capsule" id="node-Gateway">
+                                <span class="capsule-label">🛡️ 2. Safety & Lang Gateway</span>
+                            </div>
+                            <div class="connector-line" id="conn-gateway" style="margin: 0 auto;"></div>
 
-                        <!-- Step 3: Query Rewrite + Expansion -->
-                        <div class="flow-capsule" id="node-QueryUnderstanding">
-                            <span class="capsule-label">🧠 3. Query Rewrite + Expansion</span>
+                            <!-- Step 3: Intent Classifier -->
+                            <div class="flow-capsule" id="node-Classifier">
+                                <span class="capsule-label">🎯 3. Intent Classifier</span>
+                            </div>
                         </div>
-                        <div class="connector-line" id="conn-2"></div>
 
-                        <!-- Step 4: Hybrid Search -->
-                        <div class="flow-capsule" id="node-HybridSearch">
-                            <span class="capsule-label">🔍 4. Hybrid Search</span>
+                        <!-- ROUTING BRANCHES (TREE FISSION) -->
+                        <div class="branch-fork-container" style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+                            
+                            <!-- Branch A: Bypass Path (Small talk & Sensitive) -->
+                            <div class="pipeline-branch-group branch-track" id="track-Bypass" style="border-left: 2px dashed rgba(255, 255, 255, 0.1); padding-left: 10px; margin-left: 6px;">
+                                <span class="branch-title-badge" style="color: #ef4444;">⚡ Nhánh A: Bypass / Safety Block</span>
+                                <div class="flow-capsule" id="node-BypassAction" style="opacity: 0.5;">
+                                    <span class="capsule-label">🚫 Chặn hoặc Trả lời trực tiếp</span>
+                                </div>
+                            </div>
+
+                            <!-- Branch B: Action Engine (Task Agent) -->
+                            <div class="pipeline-branch-group branch-track" id="track-TaskAgent" style="border-left: 2px dashed rgba(255, 255, 255, 0.1); padding-left: 10px; margin-left: 6px;">
+                                <span class="branch-title-badge" style="color: #f59e0b;">⚙️ Nhánh B: Action Engine (Task)</span>
+                                <div class="flow-capsule" id="node-SlotFilling">
+                                    <span class="capsule-label">🧾 4. Slot Filling (Task/RAG)</span>
+                                </div>
+                                <div class="connector-line" id="conn-slot" style="margin: 0 auto;"></div>
+                                <div class="flow-capsule" id="node-CalculatorTool" style="opacity: 0.5;">
+                                    <span class="capsule-label">🔌 Calculator Tool Active</span>
+                                </div>
+                            </div>
+
+                            <!-- Branch C: Fast Cache Response -->
+                            <div class="pipeline-branch-group branch-track" id="track-CacheHit" style="border-left: 2px dashed rgba(255, 255, 255, 0.1); padding-left: 10px; margin-left: 6px;">
+                                <span class="branch-title-badge" style="color: #10b981;">⚡ Nhánh C: Fast FAQ / Cache Hit</span>
+                                <div class="flow-capsule" id="node-CacheHitAction" style="opacity: 0.5;">
+                                    <span class="capsule-label">🚀 Trả về từ đệm Cache (<10ms)</span>
+                                </div>
+                            </div>
+
+                            <!-- Branch D: Standard Strategic RAG (Breakthrough Production) -->
+                            <div class="pipeline-branch-group branch-track active-track" id="track-StandardRAG" style="border-left: 2px solid var(--accent-cyan); padding-left: 10px; margin-left: 6px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <span class="branch-title-badge" style="color: var(--accent-cyan);">📚 Nhánh D: Strategic RAG (Main)</span>
+                                    <span id="active-branch-indicator" style="font-size: 0.6rem; color: #10b981; font-weight: bold; animation: pulse-signal 1.5s infinite;">• active</span>
+                                </div>
+                                
+                                <div class="flow-capsule" id="node-CacheCheck">
+                                    <span class="capsule-label">⚡ 4. Fast FAQ / Cache Check</span>
+                                </div>
+                                <div class="connector-line" id="conn-cache" style="margin: 0 auto;"></div>
+
+                                <div class="flow-capsule" id="node-QueryUnderstanding">
+                                    <span class="capsule-label">🧠 5. Conversational Memory</span>
+                                </div>
+                                <div class="connector-line" id="conn-2" style="margin: 0 auto;"></div>
+
+                                <div class="flow-capsule" id="node-StrategySelector">
+                                    <span class="capsule-label">🔀 6. Strategy Selector</span>
+                                </div>
+                                <div class="connector-line" id="conn-strategy" style="margin: 0 auto;"></div>
+
+                                <div class="flow-capsule" id="node-HybridSearch">
+                                    <span class="capsule-label">🔍 7. Hybrid/Strategic Search</span>
+                                </div>
+                                <div class="connector-line" id="conn-3" style="margin: 0 auto;"></div>
+
+                                <div class="flow-capsule" id="node-Reranker">
+                                    <span class="capsule-label">🚀 8. Cross-Encoder Reranker</span>
+                                </div>
+                                <div class="connector-line" id="conn-4" style="margin: 0 auto;"></div>
+
+                                <div class="flow-capsule" id="node-ContextCompression">
+                                    <span class="capsule-label">✂️ 9. Parent-Child Context</span>
+                                </div>
+                                <div class="connector-line" id="conn-5" style="margin: 0 auto;"></div>
+
+                                <div class="flow-capsule" id="node-LLMGeneration">
+                                    <span class="capsule-label">🤖 10. LLM Synthesizer</span>
+                                </div>
+                                <div class="connector-line" id="conn-6" style="margin: 0 auto;"></div>
+
+                                <div class="flow-capsule" id="node-FaithfulnessCheck">
+                                    <span class="capsule-label">🛡️ 11. Faithfulness Check</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="connector-line" id="conn-3"></div>
 
-                        <!-- Step 5: Reranker -->
-                        <div class="flow-capsule dashed-active" id="node-Reranker">
-                            <span class="capsule-label">⚡ 5. Reranker (Active)</span>
-                        </div>
-                        <div class="connector-line" id="conn-4"></div>
-
-                        <!-- Step 6: Parent-Child Context -->
-                        <div class="flow-capsule" id="node-ContextCompression">
-                            <span class="capsule-label">✂️ 6. Parent-Child Context</span>
-                        </div>
-                        <div class="connector-line" id="conn-5"></div>
-
-                        <!-- Step 7: LLM Generation -->
-                        <div class="flow-capsule" id="node-LLMGeneration">
-                            <span class="capsule-label">🤖 7. LLM Generator</span>
-                        </div>
-                        <div class="connector-line" id="conn-6"></div>
-
-                        <!-- Step 8: Citations Validator -->
-                        <div class="flow-capsule" id="node-CitationValidator">
-                            <span class="capsule-label">🛡️ 8. Citations Validator</span>
+                        <!-- SYSTEM OUTPUT OUTLET -->
+                        <div class="pipeline-branch-group" style="display: flex; flex-direction: column; width: 100%; gap: 6px; margin-top: 4px;">
+                            <span class="branch-title-badge">🎉 System Output</span>
+                            <div class="flow-capsule" id="node-CitationValidator">
+                                <span class="capsule-label">🎉 12. Citation & Response</span>
+                            </div>
                         </div>
                     </div>
 
@@ -287,56 +348,96 @@
                         <div class="flow-step-item" data-step="1">
                             <div class="flow-step-num">2</div>
                             <div class="flow-step-info">
-                                <h5>Caching Layer Check (Kiểm tra đệm)</h5>
-                                <p>Kiểm tra DB cache đầu tiên để early-exit bypass trong &lt; 10ms.</p>
+                                <h5>Safety & Lang Gateway</h5>
+                                <p>Chuẩn hóa Unicode tiếng Việt và lọc nội dung nhạy cảm/spam (Guardrails).</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="2">
                             <div class="flow-step-num">3</div>
                             <div class="flow-step-info">
-                                <h5>Query Rewrite + Expansion</h5>
-                                <p>GPT-4o-mini viết lại truy vấn theo lịch sử chat và sinh biến thể đồng nghĩa để tìm kiếm tốt hơn.</p>
+                                <h5>Intent Classifier</h5>
+                                <p>Phân loại ý định thông minh (Small-talk, FAQ, RAG, Task-Agent, Sensitive).</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="3">
                             <div class="flow-step-num">4</div>
                             <div class="flow-step-info">
-                                <h5>Hybrid Search (Dense + Sparse)</h5>
-                                <p>Hệ thống dùng các biến thể truy vấn mở rộng để quét song song ChromaDB và BM25, sau đó hòa trộn bằng RRF.</p>
+                                <h5>Slot Filling (Task/RAG)</h5>
+                                <p>Bóc tách thực thể và tự động hỏi ngược để thu thập tham số còn thiếu.</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="4">
                             <div class="flow-step-num">5</div>
                             <div class="flow-step-info">
-                                <h5>Reranker (Tái xếp hạng)</h5>
-                                <p>Cross-Encoder cục bộ tinh lọc lấy Top 5 tốt nhất</p>
+                                <h5>Fast FAQ / Semantic Cache</h5>
+                                <p>Đối khớp câu hỏi tuyệt đối hoặc ngữ nghĩa để trả về ngay trong < 10ms - 0đ.</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="5">
                             <div class="flow-step-num">6</div>
                             <div class="flow-step-info">
-                                <h5>Context Parent-Child (Nén & Gộp)</h5>
-                                <p>Tìm trên mảnh con, tự gộp toàn bộ mảnh cha</p>
+                                <h5>Conversational Memory</h5>
+                                <p>Biên dịch lại câu truy vấn độc lập dựa trên lịch sử 3 lượt chat gần nhất.</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="6">
                             <div class="flow-step-num">7</div>
                             <div class="flow-step-info">
-                                <h5>LLM Gen (Tổng hợp phản hồi)</h5>
-                                <p>gpt-4o-mini tổng hợp tự nhiên, tránh ảo giác</p>
+                                <h5>Strategy Selector</h5>
+                                <p>Lựa chọn chiến lược động (BM25 only, Dense only, hoặc Hybrid) tùy đặc tính câu hỏi.</p>
                             </div>
                         </div>
                         <div class="flow-step-arrow">⬇️</div>
                         <div class="flow-step-item" data-step="7">
                             <div class="flow-step-num">8</div>
                             <div class="flow-step-info">
-                                <h5>Citations (Xác thực trích nguồn)</h5>
-                                <p>Đối chiếu chính sách pháp lý thực tế</p>
+                                <h5>Hybrid/Strategic Search</h5>
+                                <p>Quét song song ChromaDB ngữ nghĩa và BM25 từ khóa chính xác, hòa trộn RRF.</p>
+                            </div>
+                        </div>
+                        <div class="flow-step-arrow">⬇️</div>
+                        <div class="flow-step-item" data-step="8">
+                            <div class="flow-step-num">9</div>
+                            <div class="flow-step-info">
+                                <h5>Cross-Encoder Reranker</h5>
+                                <p>Transformer tính Attention chéo Query-Doc toàn phần để xếp hạng Top 5 tối ưu.</p>
+                            </div>
+                        </div>
+                        <div class="flow-step-arrow">⬇️</div>
+                        <div class="flow-step-item" data-step="9">
+                            <div class="flow-step-num">10</div>
+                            <div class="flow-step-info">
+                                <h5>Parent-Child Context</h5>
+                                <p>Đập tan đứt gãy bảng biểu PDF bằng cách nhúng mảnh con và gộp mảnh cha.</p>
+                            </div>
+                        </div>
+                        <div class="flow-step-arrow">⬇️</div>
+                        <div class="flow-step-item" data-step="10">
+                            <div class="flow-step-num">11</div>
+                            <div class="flow-step-info">
+                                <h5>LLM Synthesizer</h5>
+                                <p>Mô hình ngôn ngữ tổng hợp phản hồi tự nhiên dựa trên ràng buộc context.</p>
+                            </div>
+                        </div>
+                        <div class="flow-step-arrow">⬇️</div>
+                        <div class="flow-step-item" data-step="11">
+                            <div class="flow-step-num">12</div>
+                            <div class="flow-step-info">
+                                <h5>Faithfulness Check</h5>
+                                <p>Hallucination Evaluator kiểm định chéo độ trung thực thông tin, triệt tiêu ảo giác.</p>
+                            </div>
+                        </div>
+                        <div class="flow-step-arrow">⬇️</div>
+                        <div class="flow-step-item" data-step="12">
+                            <div class="flow-step-num">13</div>
+                            <div class="flow-step-info">
+                                <h5>Citation & Response</h5>
+                                <p>Xác thực nguồn chính thống, bóc tách URL và trả phản hồi sạch.</p>
                             </div>
                         </div>
                     </div>
@@ -955,8 +1056,8 @@
             <!-- Sub-tabs for V1, V2, V3 comparison -->
             <div class="comparison-tabs-container">
                 <button class="comp-tab-btn active" data-comp-version="V1">Giai Đoạn 1: Basic Production RAG (V1)</button>
-                <button class="comp-tab-btn" data-comp-version="V2">Giai Đoạn 2: Advanced Interactive RAG (V2 - Hiện Tại)</button>
-                <button class="comp-tab-btn" data-comp-version="V3">Giai Đoạn 3: Advanced Agentic RAG (V3 - Sẽ nâng cấp)</button>
+                <button class="comp-tab-btn" data-comp-version="V2">Giai Đoạn 2: Advanced Interactive RAG (V2)</button>
+                <button class="comp-tab-btn" data-comp-version="V3">Giai Đoạn 3: Production NLU-Gateway RAG (Phase 3 - Hiện Tại)</button>
             </div>
             
             <!-- Two columns comparing pipelines -->

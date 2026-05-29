@@ -7,7 +7,17 @@ class CustomEmbeddings(Embeddings):
     Unified Embedding Client supporting OpenAI, SentenceTransformers, and simple local mocks.
     Includes fully self-healing fallback to prevent crashes if OpenAI API keys are invalid.
     """
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(CustomEmbeddings, cls).__new__(cls, *args, **kwargs)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
+        if getattr(self, '_initialized', False):
+            return
         self.provider = config.EMBEDDING_PROVIDER.lower()
         self.model_name = config.EMBEDDING_MODEL
         

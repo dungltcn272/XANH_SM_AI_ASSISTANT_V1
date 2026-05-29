@@ -852,6 +852,17 @@ body {
     font-weight: 700;
 }
 
+.flow-capsule.inactive-node {
+    opacity: 0.35;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+}
+
+.flow-capsule.inactive-node .capsule-label {
+    color: #94a3b8;
+    font-weight: 500;
+}
+
 .parallel-flow-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2991,6 +3002,96 @@ body {
         transform: rotate(90deg);
         margin: 10px 0;
     }
+}
+
+/* Premium Markdown Render Styles (Table & Blockquote) */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    margin: 12px 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+.markdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    background: rgba(10, 25, 47, 0.6);
+    backdrop-filter: blur(10px);
+}
+
+.markdown-table th {
+    background: rgba(0, 240, 255, 0.1);
+    color: var(--accent-cyan);
+    font-weight: 700;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid rgba(0, 240, 255, 0.3);
+    text-shadow: 0 0 5px rgba(0, 240, 255, 0.4);
+}
+
+.markdown-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.2s ease;
+}
+
+.markdown-table tr:last-child td {
+    border-bottom: none;
+}
+
+.markdown-table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.markdown-table tr:hover td {
+    background: rgba(0, 240, 255, 0.05);
+    color: #ffffff;
+}
+
+.markdown-blockquote {
+    margin: 12px 0;
+    padding: 10px 16px;
+    border-left: 4px solid var(--accent-cyan);
+    background: rgba(0, 240, 255, 0.03);
+    border-radius: 0 8px 8px 0;
+    color: #cbd5e1;
+    font-style: italic;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    box-shadow: inset 2px 2px 10px rgba(0, 240, 255, 0.02);
+}
+
+/* Branching Tree Styles for RAG Pipeline Sidebar */
+.branch-title-badge {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    margin-bottom: 2px;
+    opacity: 0.8;
+}
+
+.branch-track {
+    transition: all 0.3s ease-in-out;
+}
+
+.branch-track.active-track {
+    animation: track-glow-pulse 2s infinite ease-in-out;
+}
+
+@keyframes track-glow-pulse {
+    0%, 100% { border-left-color: rgba(0, 240, 255, 0.4); }
+    50% { border-left-color: rgba(0, 240, 255, 1); }
+}
+
+.status-dot.cyan {
+    background-color: var(--accent-cyan) !important;
+    box-shadow: 0 0 8px var(--accent-cyan) !important;
 }
 
 

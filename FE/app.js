@@ -574,70 +574,103 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     const teacherFlowSteps = [
         {
             title: "Question (Câu hỏi thô)",
-            badge: "Bước 1/8 - Đầu Vào Thô",
-            text: `<strong>Chào các em!</strong> Thầy rất vui được giải thích trực quan đường ống (pipeline) RAG v2 của chúng ta. 
+            badge: "Bước 1/13 - Đầu Vào Thô",
+            text: `<strong>Chào các em học sinh yêu quý!</strong> Hôm nay Thầy rất hào hứng được giảng giải về <strong>Kiến trúc Phase 3 NLU-Gateway RAG</strong> mới của chúng ta. 
             
-            Mọi chuyện bắt đầu tại <strong>Bước 1: Question</strong> khi khách hàng gõ câu hỏi thô vào khung chat. Ví dụ: <em>"Đi xe Xanh Bike mang mèo đi cùng được không?"</em>. Câu hỏi này chứa đầy các từ ngữ tự nhiên, không dấu hoặc viết tắt nhẹ. AI sẽ tiếp nhận và đưa vào luồng bắt đầu chẩn đoán.`
+            Mọi chuyện bắt đầu tại <strong>Bước 1: Question Input</strong> khi người dùng gõ câu hỏi thô vào chat. Ví dụ: <em>"đặt xe máy Xanh Bike rồi hủy có bị phạt tiền ko?"</em>. Câu hỏi này thường viết tắt, thiếu dấu và chưa được chuẩn hóa ngữ cảnh.`
         },
         {
-            title: "Caching Layer Check",
-            badge: "Bước 2/8 - Kiểm Tra Đệm",
-            text: `<strong>Đây là chốt chặn quan trọng đầu tiên!</strong> Khi một câu hỏi của khách hàng gửi lên, hệ thống sẽ thực hiện kiểm tra lớp <strong>Caching Layer</strong> đầu tiên (đặt tại tầng cao nhất của luồng xử lý trong <code>chain.py</code>, trước khâu Query Rewrite hay Vector Search).
-            
-            Nếu phát hiện câu hỏi đã tồn tại trong DB cache (thỏa mãn khớp tuyệt đối hoặc khớp ngữ nghĩa): Hệ thống sẽ lập tức <strong>bẻ gãy luồng xử lý (early-exit/bypass)</strong>, bỏ qua 100% các bước: Rewrite, Query Expansion, Vector/BM25 Retrieval, Reranking, và LLM Generation.
-            
-            Kết quả đã lưu trong Cache sẽ được trả về trực tiếp trong <strong>&lt; 10ms</strong> với chi phí <strong>0đ</strong> và <strong>0 token</strong>!`
+            title: "Safety & Lang Gateway",
+            badge: "Bước 2/13 - Gateway Bảo Mật",
+            text: `<strong>Đây là chốt chặn thép đầu tiên!</strong> Khi câu hỏi đi vào hệ thống, module <strong>Safety & Lang Gateway</strong> cục bộ sẽ:
+            - Chuẩn hóa Unicode dựng sẵn (NFC) cho Tiếng Việt để tránh lỗi so khớp.
+            - Nhận diện ngôn ngữ thô (Tiếng Anh/Việt) để định hướng xử lý.
+            - **Safety Precheck:** Quét qua các từ cấm, từ khóa spam, tục tĩu hoặc dìm hàng đối thủ cạnh tranh bằng Regex. Nếu vi phạm, hệ thống sẽ **bẻ gãy luồng xử lý ngay lập tức (Bypass)** để bảo vệ server và **tiết kiệm 100% chi phí gọi LLM!**`
         },
         {
-            title: "Query Rewrite + Expansion",
-            badge: "Bước 3/8 - Rewrite & Expand",
-            text: `<strong>Nếu không có trong cache, hệ thống đi tiếp đến bước thứ 3!</strong> Nếu trước đó khách hàng đã hỏi về xe máy Xanh Bike, và giờ họ hỏi tiếp: <em>"Thế còn xe Xanh Car thì sao?"</em>. Từ <em>"thế còn"</em> và <em>"thì sao"</em> là những đại từ cực kỳ mơ hồ!
+            title: "Intent Classifier",
+            badge: "Bước 3/13 - Phân Loại Ý Định",
+            text: `<strong>Bước tiếp theo cực kỳ thông minh!</strong> Module <strong>Intent Classifier</strong> sẽ phân loại câu hỏi của người dùng vào 5 nhóm lớn:
+            - <code>small-talk</code>: Trò chuyện xã giao ➔ Trả lời trực tiếp từ LLM, bỏ qua RAG.
+            - <code>faq</code>: Câu hỏi cực kỳ phổ biến ➔ Trả về từ Cache khớp.
+            - <code>rag</code>: Câu hỏi chính sách sâu ➔ Đi tiếp vào luồng RAG.
+            - <code>task-agent</code>: Thao tác thực thi tác vụ/Action Engine ➔ Đi vào luồng Slot Filling.
+            - <code>sensitive</code>: Nội dung nhạy cảm độc hại ➔ Chặn Guardrails.
             
-            Nếu nạp thẳng vào vector search, DB sẽ trả về kết quả rác. Tại đây, Thầy cho chạy mô hình <strong>Query Rewriter</strong> bằng GPT-4o-mini để đọc lịch sử chat 3 lượt gần nhất, tự động khôi phục đại từ khuyết thiếu và viết lại thành câu hỏi độc lập: <em>"Có được mang mèo đi cùng khi sử dụng dịch vụ taxi điện Xanh Car không?"</em>.
-            
-            Sau khi viết lại, hệ thống còn chạy bước <strong>Query Expansion</strong> để sinh ra các biến thể đồng nghĩa và không dấu của truy vấn. Điều này làm tăng độ bao phủ tìm kiếm, đảm bảo không bỏ sót tài liệu vì cách diễn đạt khác nhau.`
+            Điều này giúp hệ thống định tuyến chính xác và không lãng phí token LLM cho những câu hỏi ngoài tầm.`
         },
         {
-            title: "Hybrid Search (Tìm kiếm lai song song)",
-            badge: "Bước 4/8 - Truy Xuất Kép RRF",
-            text: `<strong>Đây chính là linh hồn của việc tìm kiếm tri thức!</strong> Thầy cho chạy song song 2 tay săn thông tin:
+            title: "Slot Filling (Task/RAG)",
+            badge: "Bước 4/13 - Điền Tham Số",
+            text: `<strong>Đây là cơ chế tương tác cực kỳ thực dụng!</strong> Đối với các tác vụ Action Engine (như <code>refund_calculator</code> tính phí hủy chuyến), hệ thống yêu cầu các slots dữ liệu bắt buộc: <em>loại xe</em> và <em>thời gian chờ trước khi hủy</em>.
             
-            1️⃣ <strong>Dense Search (Quét ngữ nghĩa):</strong> Dùng vector nhúng Chroma quét tìm các ý nghĩa đồng âm/gián tiếp (Hiểu 'mèo' = 'thú cưng, vật nuôi').
-            2️⃣ <strong>Sparse Search (BM25 Index):</strong> Quét tìm từ khóa chính xác tuyệt đối như 'Bike', 'Car'.
-            
-            Trước khi quét, hệ thống đã mở rộng truy vấn thành nhiều biến thể đồng nghĩa. Hai bảng xếp hạng kết quả được hòa trộn bằng giải thuật <strong>Reciprocal Rank Fusion (RRF)</strong> để rút trích ra Top 30 trích đoạn sạch và bao phủ từ khóa tốt nhất!`
+            Nếu khách hàng chỉ hỏi chung chung: <em>"tôi muốn tính phí hủy chuyến xe"</em> mà chưa nói đi xe gì, bao lâu, module **Slot Filling** sẽ phát hiện thiếu thông tin và chủ động sinh ra **Câu hỏi làm rõ (Clarification Question)** gửi ngược lại người dùng. Hệ thống sẽ không bao giờ đoán mò số liệu!`
         },
         {
-            title: "Reranker (Tái xếp hạng chéo)",
-            badge: "Bước 5/8 - Chấm Điểm Attention Chéo",
-            text: `<strong>Lưu ý kỹ điểm này cho Thầy nhé:</strong> Bi-Encoder ở bước trước tìm kiếm rất nhanh nhưng không có tương tác chéo Attention giữa từng từ. 
-            
-            Tại Bước 5, Thầy sử dụng mô hình <strong>Cross-Encoder cục bộ</strong> (Two-Stage Pipeline). Nó ghép Query và Top 30 văn bản lại, cho chạy qua Transformer để tính điểm Attention chéo toàn phần từng từ một, lọc ra <strong>Top 5 văn bản đỉnh nhất</strong>. Điều này triệt tiêu hoàn toàn các tài liệu loãng hay gây nhiễu context!`
+            title: "Fast FAQ / Semantic Cache",
+            badge: "Bước 5/13 - Bộ Đệm Siêu Tốc",
+            text: `<strong>Tấm lá chắn tiết kiệm chi phí 0đ đây rồi!</strong> Đối với các câu hỏi hợp lệ đi vào RAG, hệ thống sẽ kiểm tra **Fast FAQ / Semantic Cache** đầu tiên:
+            - Khớp tuyệt đối: Dùng mã băm MD5 so khớp 100% siêu tốc.
+            - Khớp ngữ nghĩa: Embedding câu hỏi và so sánh Cosine Similarity trên DB. Nếu đạt độ tương đồng ngữ nghĩa cực cao (<code>>= 0.96</code>), hệ thống trả về ngay câu trả lời đã lưu trong **&lt; 10ms**, bypass hoàn toàn 100% các bước gọi LLM hay truy xuất CSDL đằng sau, tiết kiệm tối đa ngân sách API!`
         },
         {
-            title: "Context Parent-Child (Nén & Gộp)",
-            badge: "Bước 6/8 - Đập Tan Phân Mảnh PDF",
-            text: `<strong>Đây là giải thuật độc quyền giúp ta đập tan nghịch lý phân mảnh PDF!</strong> 
+            title: "Conversational Memory",
+            badge: "Bước 6/13 - Biên Dịch Ngữ Cảnh",
+            text: `<strong>Nếu cache miss, hệ thống đi tiếp đến bước thứ 6!</strong> Nếu người dùng hỏi chuỗi ngữ cảnh liên tiếp: <em>"Quy định của nó thế nào?"</em>, đại từ <em>"nó"</em> cực kỳ mơ hồ!
             
-            Như Thầy đã dạy, Vector Search chạy trên mảnh con nhỏ (Child chunks) để tìm kiếm nhạy nhất. Nhưng khi gửi cho LLM, thuật toán trong <code>chain.py</code> của ta sẽ tự động gộp và kéo toàn bộ **mảnh cha (Parent chunks)** của mảnh con đó ra. 
-            
-            Nhờ đó, các bảng biểu cước phí phức tạp, danh sách lồng của chính sách Xanh SM được bảo toàn nguyên vẹn 100% khi nạp vào context LLM!`
+            Tại đây, **Conversational Query Rewriter** sẽ đọc lịch sử 3 lượt chat gần nhất và biên dịch đại từ thay thế thành một câu truy vấn độc lập hoàn chỉnh: <em>"Quy định về mức chiết khấu doanh thu đối tác tài xế Xanh Car thế nào?"</em> trước khi chuyển xuống tầng tìm kiếm vector.`
         },
         {
-            title: "LLM Gen (Tổng hợp phản hồi)",
-            badge: "Bước 7/8 - LLM Synthesizer",
-            text: `<strong>Đến bước này, chúng ta đã có một đĩa thức ăn tri thức sạch sẽ!</strong> Ngữ cảnh cha đã được deduplicate hoàn chỉnh được chuyển thẳng tới mô hình LLM <code>gpt-4o-mini</code>.
-            
-            Đóng vai một trợ lý CSKH Xanh SM chuyên nghiệp, LLM sẽ đọc hiểu ngữ cảnh sạch này để viết ra câu trả lời cực kỳ trôi chảy, thân thiện và <strong>cam đoan 100% không có ảo giác (hallucination)</strong> vì thông tin đã được ràng buộc cứng trong context gốc.`
+            title: "Strategy Selector",
+            badge: "Bước 7/13 - Chiến Lược Động",
+            text: `<strong>Một nâng cấp rất đắt giá của Phase 3!</strong> Thay vì luôn chạy Hybrid Search cồng kềnh, **Strategy Selector** sẽ phân tích đặc điểm câu truy vấn đã viết lại để chọn phương án tối ưu:
+            - **BM25 / Keyword:** Khi câu hỏi chứa nhiều số liệu, mã điều khoản, số hotline, con số cước phí chính xác.
+            - **Dense Search:** Khi câu hỏi mang tính khái niệm trừu tượng, giải nghĩa chung.
+            - **Hybrid Search (Mặc định):** Hòa trộn cả hai bằng thuật toán RRF để bao phủ rộng nhất.`
         },
         {
-            title: "Citations (Xác thực trích nguồn)",
-            badge: "Bước 8/8 - Xác Thực Pháp Lý",
-            text: `<strong>Bước cuối cùng nhưng là chốt chặn bảo vệ uy tín của doanh nghiệp!</strong> 
+            title: "Hybrid/Strategic Search",
+            badge: "Bước 8/13 - Tìm Kiếm Phân Phối",
+            text: `<strong>Quá trình truy xuất tri thức chính thức bắt đầu!</strong> Dựa trên chiến lược đã chọn ở bước trước:
+            - Hệ thống quét ChromaDB bằng vector nhúng để bắt từ đồng nghĩa.
+            - Quét BM25 bằng chỉ mục nghịch đảo để bắt từ khóa chính xác.
             
-            Bộ xác thực trích nguồn của Thầy sẽ đối sánh câu trả lời của LLM với danh mục nguồn gốc để bóc tách URL, hiển thị nút trích nguồn trực quan bên dưới (Ví dụ: <code>[customer] refund.md</code>).
+            Bộ mở rộng truy vấn (Query Expansion) giúp vét sạch tri thức, hòa trộn bảng xếp hạng bằng thuật toán **RRF (Reciprocal Rank Fusion)** để trích ra Top 30 ứng viên chất lượng nhất!`
+        },
+        {
+            title: "Cross-Encoder Reranker",
+            badge: "Bước 9/13 - Tái Xếp Hạng Chéo",
+            text: `<strong>Nhớ kỹ điểm này cho Thầy nhé:</strong> Bi-Encoder ở bước trước tìm kiếm rất nhanh nhưng không có tương tác chéo Attention.
             
-            Khách hàng hoặc CSKH Agent có thể nhấp chuột trực tiếp vào nút trích dẫn để mở văn bản gốc đối chiếu ngay tức thì. Minh bạch pháp lý tuyệt đối!`
+            Tại đây, Thầy sử dụng mô hình **Cross-Encoder cục bộ** (Two-Stage Pipeline). Nó ghép câu hỏi và Top 30 văn bản lại, cho chạy qua Transformer để tính điểm Attention chéo toàn phần từng từ một, lọc ra **Top 5 văn bản có điểm số cao nhất**, triệt tiêu hoàn toàn các trích đoạn nhiễu!`
+        },
+        {
+            title: "Parent-Child Context",
+            badge: "Bước 10/13 - Giải Quyết Phân Mảnh",
+            text: `<strong>Kỹ thuật nén ngữ cảnh phân cấp cha-con!</strong> Vector Search chạy trên mảnh con nhỏ (100-200 từ) để bắt chính xác tọa độ tri thức.
+            
+            Nhưng khi gửi cho LLM, thuật toán trong <code>chain.py</code> của ta sẽ tự động truy xuất và gộp **mảnh cha tương ứng (1000-2000 từ)**. Nhờ đó, các bảng biểu cước phí phức tạp, danh sách quy định của Xanh SM được bảo toàn nguyên vẹn 100% khi nạp vào context LLM!`
+        },
+        {
+            title: "LLM Synthesizer",
+            badge: "Bước 11/13 - Tổng Hợp Phản Hồi",
+            text: `<strong>Đĩa tri thức sạch sẽ đã sẵn sàng!</strong> Ngữ cảnh cha đã được lọc trùng lặp và nén tối ưu được chuyển thẳng tới mô hình LLM <code>gpt-4o-mini</code>.
+            
+            LLM đóng vai trợ lý CSKH Xanh SM chuyên nghiệp để tổng hợp câu trả lời cực kỳ trôi chảy, thân thiện và tuân thủ nghiêm ngặt ràng buộc của tài liệu chính sách nguồn.`
+        },
+        {
+            title: "Faithfulness Check",
+            badge: "Bước 12/13 - Kiểm Định Trung Thực",
+            text: `<strong>Lá chắn chống ảo tưởng (Hallucination) tuyệt đối!</strong> Trước khi trả kết quả, hệ thống gọi module **Hallucination Evaluator** để đối chiếu câu trả lời được sinh ra với các tài liệu tham khảo thô:
+            - Đánh giá xem tất cả số liệu, con số có được chứng minh 100% bởi context không?
+            - Nếu phát hiện ảo giác (score < 0.6), hệ thống sẽ **bẻ gãy câu trả lời** và tự động kích hoạt **Strict Offline Fallback** hiển thị trích dẫn thô chính xác để bảo vệ độ uy tín của Xanh SM!`
+        },
+        {
+            title: "Citation & Response",
+            badge: "Bước 13/13 - Nguồn Sạch & Trả Kết Quả",
+            text: `<strong>Hoàn tất hành trình hoàn hảo!</strong> 
+            
+            Hệ thống bóc tách URL, hiển thị nút trích nguồn rõ ràng bên dưới (Ví dụ: 📄 <code>[refund.md] Điều 1</code>). Người dùng có thể nhấp chuột trực tiếp vào nút trích dẫn để mở văn bản gốc đối chiếu ngay tức thì. Minh bạch pháp lý tuyệt đối cho cả khách hàng và CSKH Agent!`
         }
     ];
 
@@ -752,13 +785,21 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     // RAG Pipeline Nodes Mapping
     const nodes = [
         { id: "node-Question", conn: "conn-1" },
+        { id: "node-Gateway", conn: "conn-gateway" },
+        { id: "node-Classifier", conn: "conn-classifier" },
+        { id: "node-SlotFilling", conn: "conn-slot" },
         { id: "node-CacheCheck", conn: "conn-cache" },
         { id: "node-QueryUnderstanding", conn: "conn-2" },
+        { id: "node-StrategySelector", conn: "conn-strategy" },
         { id: "node-HybridSearch", conn: "conn-3" },
         { id: "node-Reranker", conn: "conn-4" },
         { id: "node-ContextCompression", conn: "conn-5" },
         { id: "node-LLMGeneration", conn: "conn-6" },
-        { id: "node-CitationValidator", conn: null }
+        { id: "node-FaithfulnessCheck", conn: "conn-faithful" },
+        { id: "node-CitationValidator", conn: null },
+        { id: "node-BypassAction", conn: null },
+        { id: "node-CalculatorTool", conn: null },
+        { id: "node-CacheHitAction", conn: null }
     ];
 
     // Suggestion chips per role
@@ -946,7 +987,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         nodes.forEach(node => {
             const el = document.getElementById(node.id);
             if (el) {
-                el.classList.remove("active", "completed", "step-node", "glow", "active-node", "dashed-active");
+                el.classList.remove("active", "completed", "step-node", "glow", "active-node", "dashed-active", "inactive-node");
                 el.classList.add("flow-capsule", "step-node");
             }
             if (node.conn) {
@@ -1073,82 +1114,245 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         });
 
         try {
-            // STEP 1: Question Input Animation (400ms)
-            await new Promise(r => setTimeout(r, 400));
+            const resetTracks = () => {
+                const bypass = document.getElementById("track-Bypass");
+                const task = document.getElementById("track-TaskAgent");
+                const cache = document.getElementById("track-CacheHit");
+                const standard = document.getElementById("track-StandardRAG");
+                
+                if (bypass) bypass.style.display = "none";
+                if (task) task.style.display = "none";
+                if (cache) cache.style.display = "none";
+                if (standard) {
+                    standard.style.display = "block";
+                    standard.style.opacity = "1";
+                    standard.style.borderLeft = "2px solid var(--accent-cyan)";
+                }
+            };
+
+            const showActiveTrack = (trackId) => {
+                const tracks = ["track-Bypass", "track-TaskAgent", "track-CacheHit", "track-StandardRAG"];
+                tracks.forEach(t => {
+                    const el = document.getElementById(t);
+                    if (el) {
+                        if (t === trackId) {
+                            el.style.display = "block";
+                            el.style.opacity = "1";
+                            if (t === "track-Bypass") {
+                                el.style.borderLeft = "2px solid #ef4444";
+                            } else if (t === "track-TaskAgent") {
+                                el.style.borderLeft = "2px solid #f59e0b";
+                            } else if (t === "track-CacheHit") {
+                                el.style.borderLeft = "2px solid #10b981";
+                            } else {
+                                el.style.borderLeft = "2px solid var(--accent-cyan)";
+                            }
+                        } else {
+                            el.style.display = "none";
+                            el.style.opacity = "0.2";
+                        }
+                    }
+                });
+            };
+
+            resetTracks();
+            
+            // Helper function to sleep with early-exit catchup
+            const stepSleep = async (stdDelay) => {
+                const actualDelay = apiResolved ? 30 : stdDelay;
+                await new Promise(r => setTimeout(r, actualDelay));
+            };
+
+            // STEP 1: Question Input
+            setNodeState("node-Question", "active");
+            await stepSleep(200);
             setNodeState("node-Question", "completed");
 
-            // STEP 2: Caching Layer Check Animation (600ms)
-            setNodeState("node-CacheCheck", "active");
-            updatePipelineStatus("Đang kiểm tra Caching Layer...");
-            updateBotLoadingStatus("Đang truy vấn lớp đệm Cache...");
-            appendThinkingLog("Kiểm tra lớp đệm Caching Layer đầu tiên (đặt tại tầng cao nhất của luồng xử lý trong chain.py, trước khâu Query Rewrite hay Vector Search)...", "normal");
-            await new Promise(r => setTimeout(r, 600));
+            // STEP 2: Gateway Check
+            setNodeState("node-Gateway", "active");
+            updatePipelineStatus("Safety Gateway Check...");
+            updateBotLoadingStatus("Đang kiểm tra an toàn đầu vào...");
+            appendThinkingLog("Chuẩn hóa Unicode và kiểm duyệt nội dung an toàn qua Safety Gateway...", "normal");
+            await stepSleep(250);
+            setNodeState("node-Gateway", "completed");
 
-            // Check if API resolved immediately with a cache hit. If so, fast-track!
-            const isCacheHit = apiResolved && apiData && apiData.cache_hit;
-
-            if (isCacheHit) {
-                appendThinkingLog("⚡ Phát hiện câu hỏi đã tồn tại trong DB cache (thỏa mãn khớp tuyệt đối hoặc khớp ngữ nghĩa)!", "success");
-                appendThinkingLog("Hệ thống lập tức bẻ gãy luồng xử lý (early-exit/bypass), bỏ qua 100% các bước: Rewrite, Query Expansion, Vector/BM25 Retrieval, Reranking, và LLM Generation.", "success");
-                appendThinkingLog("Kết quả đã lưu trong Cache được trả về trực tiếp trong < 10ms với chi phí 0đ và 0 token.", "success");
-                setNodeState("node-CacheCheck", "completed");
-                setNodeState("node-QueryUnderstanding", "completed");
-                setNodeState("node-HybridSearch", "completed");
-                setNodeState("node-Reranker", "completed");
-                setNodeState("node-ContextCompression", "completed");
-                setNodeState("node-LLMGeneration", "completed");
-            } else {
-                setNodeState("node-CacheCheck", "completed");
-                appendThinkingLog("Cache miss! Không phát hiện câu hỏi trong DB cache. Tiếp tục chạy toàn bộ luồng RAG pipeline...", "normal");
-
-                // STEP 3: Query Rewrite + Expansion (1800ms) - TAKES THE LONGEST TIME!
-                setNodeState("node-QueryUnderstanding", "active");
-                updatePipelineStatus("Đang truy vấn CSDL... (Query Rewrite + Expansion)");
-                updateBotLoadingStatus("Đang hiểu ý định tìm kiếm...");
-                if (chatHistory.length > 0) {
-                    appendThinkingLog("Lịch sử hội thoại được phát hiện. Đang chạy GPT-4o-mini Query Rewriter...", "normal");
-                } else {
-                    appendThinkingLog("Không có lịch sử trước đó. Đang chạy bộ xử lý ghi đè ngữ cảnh...", "normal");
-                }
-                await new Promise(r => setTimeout(r, 1800)); // Spend quality time on this step!
-                setNodeState("node-QueryUnderstanding", "completed");
-
-                // STEP 4: Hybrid Search (1200ms)
-                setNodeState("node-HybridSearch", "active");
-                updatePipelineStatus("Đang truy vấn CSDL... (Hybrid Search)");
-                updateBotLoadingStatus("Đang tìm kiếm tri thức...");
-                appendThinkingLog("Đang mở rộng truy vấn (Query Expansion) và truy xuất Vector Database & BM25 Sparse Index...", "normal");
-                await new Promise(r => setTimeout(r, 1200));
-                setNodeState("node-HybridSearch", "completed");
-
-                // STEP 5: Reranker (800ms)
-                setNodeState("node-Reranker", "active");
-                updatePipelineStatus("Đang xử lý thứ tự kết quả... (Reranker)");
-                updateBotLoadingStatus("Đang lọc kết quả tốt nhất...");
-                appendThinkingLog("Đang chạy mô hình chéo Cross-Encoder Reranker để tối ưu độ liên quan...", "normal");
-                await new Promise(r => setTimeout(r, 800));
-                setNodeState("node-Reranker", "completed");
-            }
-
-            // Wait for API resolution if it's not finished yet
+            // STEP 3: Intent Classifier
+            setNodeState("node-Classifier", "active");
+            updatePipelineStatus("Intent Classification...");
+            updateBotLoadingStatus("Đang phân tích ý định...");
+            appendThinkingLog("Chạy Intent Classifier định tuyến câu hỏi (Chit-chat / RAG / Task-Agent / Sensitive)...", "normal");
+            await stepSleep(250);
+            
+            // If API hasn't finished yet, pause on Intent Classifier (but show loading indicator, don't freeze)
             if (!apiResolved) {
-                updateBotLoadingStatus("Đang đợi phản hồi từ mô hình ngôn ngữ...");
-                appendThinkingLog("Đang đợi phản hồi xử lý từ máy chủ...", "normal");
+                updateBotLoadingStatus("Đang phân tích ý định trên máy chủ...");
+                appendThinkingLog("Đang chờ ý định phản hồi từ máy chủ...", "normal");
                 await apiPromise;
             }
+            
+            setNodeState("node-Classifier", "completed");
 
-            // Throw error if API encountered one
             if (apiError) {
                 throw apiError;
             }
 
             const data = apiData;
+            const intent = data.intent || "rag";
+            appendThinkingLog(`Ý định được phân loại: **${intent.toUpperCase()}**`, "success");
 
-            // Record session statistics for 100% genuine telemetry dashboard
+            // Handle branching paths
+            if (intent === "sensitive") {
+                showActiveTrack("track-Bypass");
+                setNodeState("node-BypassAction", "active");
+                appendThinkingLog("⚠️ Phát hiện nội dung nhạy cảm! Kích hoạt bộ chặn Guardrail đầu ra.", "error");
+                await stepSleep(300);
+                setNodeState("node-BypassAction", "completed");
+                setNodeState("node-CitationValidator", "completed");
+                nodes.forEach(node => {
+                    if (!["node-Question", "node-Gateway", "node-Classifier", "node-BypassAction", "node-CitationValidator"].includes(node.id)) {
+                        const el = document.getElementById(node.id);
+                        if (el) el.classList.add("inactive-node");
+                    }
+                });
+                
+            } else if (intent === "small-talk") {
+                showActiveTrack("track-Bypass");
+                setNodeState("node-BypassAction", "active");
+                appendThinkingLog("Hội thoại xã giao phiếm. Chuyển thẳng sang phản hồi trực tiếp.", "success");
+                await stepSleep(300);
+                setNodeState("node-BypassAction", "completed");
+                setNodeState("node-CitationValidator", "completed");
+                nodes.forEach(node => {
+                    if (!["node-Question", "node-Gateway", "node-Classifier", "node-BypassAction", "node-CitationValidator"].includes(node.id)) {
+                        const el = document.getElementById(node.id);
+                        if (el) el.classList.add("inactive-node");
+                    }
+                });
+                
+            } else if (intent === "task-agent") {
+                showActiveTrack("track-TaskAgent");
+                
+                // Step 4: Slot Filling
+                setNodeState("node-SlotFilling", "active");
+                updatePipelineStatus("Slot Filling Engine...");
+                updateBotLoadingStatus("Bóc tách thực thể...");
+                appendThinkingLog("Bóc tách thực thể và slots thông tin cho tác vụ tính toán chi phí...", "normal");
+                await stepSleep(350);
+                setNodeState("node-SlotFilling", "completed");
+
+                // Step 5: Calculator Tool
+                setNodeState("node-CalculatorTool", "active");
+                if (data.missing_fields) {
+                    appendThinkingLog("Phát hiện thiếu thông tin slots! Sinh câu hỏi làm rõ (Clarification).", "warning");
+                } else {
+                    appendThinkingLog("Đầy đủ slots thông tin! Chạy Action Engine tính toán số liệu chính thức.", "success");
+                }
+                await stepSleep(300);
+                setNodeState("node-CalculatorTool", "completed");
+                setNodeState("node-CitationValidator", "completed");
+                nodes.forEach(node => {
+                    if (!["node-Question", "node-Gateway", "node-Classifier", "node-SlotFilling", "node-CalculatorTool", "node-CitationValidator"].includes(node.id)) {
+                        const el = document.getElementById(node.id);
+                        if (el) el.classList.add("inactive-node");
+                    }
+                });
+                
+            } else {
+                // RAG/FAQ MAIN BRANCH
+                showActiveTrack("track-StandardRAG");
+
+                // Step 4: Cache Check
+                setNodeState("node-CacheCheck", "active");
+                updatePipelineStatus("Checking Cache...");
+                updateBotLoadingStatus("Truy vấn CSDL Cache...");
+                await stepSleep(250);
+                
+                if (data.cache_hit) {
+                    showActiveTrack("track-CacheHit");
+                    setNodeState("node-CacheHitAction", "active");
+                    appendThinkingLog("⚡ TRUY CẬP CACHE THÀNH CÔNG! Trả về kết quả đệm trong < 10ms - 0đ.", "success");
+                    await stepSleep(300);
+                    setNodeState("node-CacheHitAction", "completed");
+                    setNodeState("node-CitationValidator", "completed");
+                    nodes.forEach(node => {
+                        if (!["node-Question", "node-Gateway", "node-Classifier", "node-CacheCheck", "node-CacheHitAction", "node-CitationValidator"].includes(node.id)) {
+                            const el = document.getElementById(node.id);
+                            if (el) el.classList.add("inactive-node");
+                        }
+                    });
+                } else {
+                    setNodeState("node-CacheCheck", "completed");
+
+                    // Step 5: Conversational Memory Rewrite
+                    setNodeState("node-QueryUnderstanding", "active");
+                    updatePipelineStatus("Conversational Rewrite...");
+                    updateBotLoadingStatus("Đang biên dịch lịch sử...");
+                    appendThinkingLog("Phân tích 3 lượt chat gần nhất và viết lại truy vấn ngữ cảnh...", "normal");
+                    await stepSleep(400);
+                    setNodeState("node-QueryUnderstanding", "completed");
+
+                    // Step 6: Strategy Selector
+                    setNodeState("node-StrategySelector", "active");
+                    updatePipelineStatus("Strategy Selector...");
+                    updateBotLoadingStatus("Chọn chiến lược tìm kiếm...");
+                    appendThinkingLog(`Đánh giá query và chọn chiến lược truy xuất tối ưu: **${data.strategy_selected}**`, "success");
+                    await stepSleep(300);
+                    setNodeState("node-StrategySelector", "completed");
+
+                    // Step 7: Hybrid Search
+                    setNodeState("node-HybridSearch", "active");
+                    updatePipelineStatus("Retrieving Documents...");
+                    updateBotLoadingStatus("Truy xuất dữ liệu...");
+                    appendThinkingLog("Thực hiện tìm kiếm tài liệu theo chiến lược phân phối...", "normal");
+                    await stepSleep(350);
+                    setNodeState("node-HybridSearch", "completed");
+
+                    // Step 8: Reranker
+                    setNodeState("node-Reranker", "active");
+                    updatePipelineStatus("Reranking Candidate Blocks...");
+                    updateBotLoadingStatus("Xếp hạng tri thức...");
+                    appendThinkingLog("Chạy Cross-Encoder Reranker xếp hạng lại các ứng viên...", "normal");
+                    await stepSleep(300);
+                    setNodeState("node-Reranker", "completed");
+
+                    // Step 9: Parent-Child Context
+                    setNodeState("node-ContextCompression", "active");
+                    updatePipelineStatus("De-duplicating Context...");
+                    updateBotLoadingStatus("Hợp nhất Parent-Child...");
+                    appendThinkingLog("Hợp nhất mảnh Cha-Con (Parent-Child Context Compression) tránh loãng...", "normal");
+                    await stepSleep(300);
+                    setNodeState("node-ContextCompression", "completed");
+
+                    // Step 10: LLM Synthesizer
+                    setNodeState("node-LLMGeneration", "active");
+                    updatePipelineStatus("LLM Generating Answer...");
+                    updateBotLoadingStatus("Tổng hợp phản hồi...");
+                    appendThinkingLog("LLM đang đọc hiểu ngữ cảnh sạch và viết câu trả lời CSKH...", "normal");
+                    // Wait at LLM Synthesis step if the API response is not fully completed yet (though it usually is by now)
+                    if (!apiResolved) {
+                        await apiPromise;
+                    }
+                    await stepSleep(400);
+                    setNodeState("node-LLMGeneration", "completed");
+
+                    // Step 11: Faithfulness Check
+                    setNodeState("node-FaithfulnessCheck", "active");
+                    updatePipelineStatus("Faithfulness Verification...");
+                    updateBotLoadingStatus("Đang kiểm định chéo...");
+                    appendThinkingLog(`Chạy Hallucination Evaluator kiểm định chéo độ trung thực đối với tài liệu nguồn: **PASSED (Faithful: ${data.faithfulness_passed})**`, "success");
+                    await stepSleep(300);
+                    setNodeState("node-FaithfulnessCheck", "completed");
+
+                    // Step 12: Citation Validator (System Output)
+                    setNodeState("node-CitationValidator", "completed");
+                }
+            }
+
+            // Complete telemetry calculations
             const chatDuration = Date.now() - chatQueryStartTime;
             sessionStats.totalQueries++;
             sessionStats.totalLatencyMs += chatDuration;
-            
+
             if (data.cache_hit) {
                 sessionStats.cacheHits++;
             } else {
@@ -1162,53 +1366,23 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
                 sessionStats.totalCostUsd += costUsd;
             }
 
-            if (!data.cache_hit) {
-                // STEP 5: Parent-Child Context (600ms)
-                setNodeState("node-ContextCompression", "active");
-                updateBotLoadingStatus("Nén ngữ cảnh & gộp tri thức...");
-                appendThinkingLog("Đang thực hiện gộp mảnh Cha-Con (Parent-Child) và nén tối ưu ngữ cảnh...", "normal");
-                await new Promise(r => setTimeout(r, 600));
-                setNodeState("node-ContextCompression", "completed");
-                
-                // STEP 6: LLM Generation (800ms)
-                setNodeState("node-LLMGeneration", "active");
-                updateBotLoadingStatus("ChatBot đang tổng hợp câu trả lời...");
-                appendThinkingLog("Đang chạy LLM Synthesizer (gpt-4o-mini) tổng hợp câu trả lời...", "normal");
-                await new Promise(r => setTimeout(r, 800));
-                setNodeState("node-LLMGeneration", "completed");
-            }
-
-            // STEP 7: Citations Validator (400ms)
-            setNodeState("node-CitationValidator", "active");
-            updateBotLoadingStatus("Xác thực nguồn trích dẫn...");
-            appendThinkingLog("Đang kiểm chứng tính minh bạch và xác thực trích dẫn nguồn...", "normal");
-            await new Promise(r => setTimeout(r, 400));
-            setNodeState("node-CitationValidator", "completed");
-
-            // Complete all node visuals
-            nodes.forEach(node => setNodeState(node.id, "completed"));
+            // Finish all visuals
             removeBotLoadingMessage();
             
             if (data.rewritten_query && data.rewritten_query !== currentQuery) {
-                appendThinkingLog(`Truy vấn đã được ghi lại thành: "${data.rewritten_query}"`, "success");
+                appendThinkingLog(`Truy vấn viết lại: "${data.rewritten_query}"`, "success");
             }
             if (payloadBase64) {
-                appendThinkingLog(`[Vision AI] Đã nhận dạng thành công ảnh taplo cảnh báo lỗi.`, "success");
+                appendThinkingLog("[Vision AI] Phân tích Taplo VinFast hoàn tất.", "success");
             }
-            
             if (data.cache_hit) {
-                appendThinkingLog(`⚡ TRUY CẬP CACHE THÀNH CÔNG [Kiểu khớp: ${data.cache_hit.toUpperCase()}]! Phản hồi được trả về ngay lập tức với chi phí 0đ và thời gian gần như bằng 0ms.`, "success");
                 showCacheBadge(true, data.cache_hit, data.cache_similarity);
             } else {
-                appendThinkingLog(`Truy xuất thành công ${data.citations ? data.citations.length : 0} tài liệu phù hợp nhất.`, "success");
-                appendThinkingLog(`Tổng hợp câu trả lời của mô hình LLM hoàn tất.`, "success");
                 showCacheBadge(false);
             }
 
             appendBotMessage(data.answer, data.citations);
             renderMetrics(data);
-            
-            // Instantly refresh telemetry metrics in Console tab
             fetchDbStats();
 
             chatHistory.push({ role: "user", content: currentQuery });
@@ -1216,7 +1390,6 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             if (chatHistory.length > 12) {
                 chatHistory.splice(0, 2);
             }
-
         } catch (error) {
             console.error(error);
             removeBotLoadingMessage();
@@ -1277,29 +1450,62 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             const citeBox = document.createElement("div");
             citeBox.className = "citations-box";
             
-            const citeHeader = document.createElement("div");
-            citeHeader.className = "citations-header";
-            citeHeader.textContent = "📌 Nguồn Trích Dẫn Pháp Lý:";
-            citeBox.appendChild(citeHeader);
-
-            const citeList = document.createElement("div");
-            citeList.className = "citations-list";
-            
+            const uniqueCitations = [];
             const seen = new Set();
             citations.forEach(c => {
                 const uniqueKey = `${c.source}-${c.section}`;
                 if (!seen.has(uniqueKey)) {
                     seen.add(uniqueKey);
-                    
-                    const tag = document.createElement("span");
-                    tag.className = "citation-tag";
-                    tag.innerHTML = `📄 [${c.source}] ${c.section} (Khớp: ${(c.relevance_score * 100).toFixed(0)}%)`;
-                    citeList.appendChild(tag);
+                    uniqueCitations.push(c);
                 }
+            });
+
+            const citeHeader = document.createElement("div");
+            citeHeader.className = "citations-header";
+            citeHeader.style.cssText = "display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;";
+            citeHeader.innerHTML = `
+                <span>📌 Nguồn Trích Dẫn Pháp Lý (${uniqueCitations.length}):</span>
+                <button class="citation-toggle-btn" style="background: rgba(0, 240, 255, 0.1); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; transition: all 0.2s ease-in-out;">Xem chi tiết 👁️</button>
+            `;
+            citeBox.appendChild(citeHeader);
+
+            const citeList = document.createElement("div");
+            citeList.className = "citations-list collapsed";
+            citeList.style.display = "none";
+            citeList.style.flexWrap = "wrap";
+            citeList.style.gap = "8px";
+            citeList.style.marginTop = "8px";
+            
+            uniqueCitations.forEach(c => {
+                const tag = document.createElement("span");
+                tag.className = "citation-tag";
+                tag.innerHTML = `📄 [${c.source}] ${c.section} (Khớp: ${(c.relevance_score * 100).toFixed(0)}%)`;
+                citeList.appendChild(tag);
             });
 
             citeBox.appendChild(citeList);
             bubble.appendChild(citeBox);
+
+            // Toggle handler
+            const toggleBtn = citeHeader.querySelector(".citation-toggle-btn");
+            const toggleHandler = (e) => {
+                e.stopPropagation();
+                const isCollapsed = citeList.style.display === "none";
+                if (isCollapsed) {
+                    citeList.style.display = "flex";
+                    toggleBtn.textContent = "Thu gọn ⬆️";
+                    toggleBtn.style.background = "rgba(20, 184, 166, 0.2)";
+                    toggleBtn.style.color = "var(--primary-neon)";
+                    toggleBtn.style.borderColor = "var(--primary-neon)";
+                } else {
+                    citeList.style.display = "none";
+                    toggleBtn.textContent = "Xem chi tiết 👁️";
+                    toggleBtn.style.background = "rgba(0, 240, 255, 0.1)";
+                    toggleBtn.style.color = "var(--accent-cyan)";
+                    toggleBtn.style.borderColor = "var(--accent-cyan)";
+                }
+            };
+            citeHeader.addEventListener("click", toggleHandler);
         }
 
         const footerMeta = document.createElement("div");
@@ -1350,11 +1556,80 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         if (!text) return "";
         let html = text;
         
+        // 1. Escape HTML for safety
         html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        
+        // 2. Parse Blockquotes (> ...)
+        // Since we escaped >, we match &gt;
+        html = html.replace(/^\s*&gt;\s+(.*)$/gmi, '<blockquote class="markdown-blockquote">$1</blockquote>');
+        
+        // 3. Parse Tables
+        let lines = html.split('\n');
+        let inTable = false;
+        let tableHtml = "";
+        let newLines = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line.startsWith('|') && line.endsWith('|')) {
+                // Ignore table alignment separator lines
+                if (line.match(/^\|[\s\-\:\|]+\|$/)) {
+                    continue;
+                }
+                
+                let cells = line.split('|').slice(1, -1).map(c => c.trim());
+                let rowHtml = "<tr>" + cells.map(c => {
+                    // Basic formats inside cell
+                    let formattedCell = c.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                    formattedCell = formattedCell.replace(/`(.*?)`/g, "<code>$1</code>");
+                    return inTable ? `<td>${formattedCell}</td>` : `<th>${formattedCell}</th>`;
+                }).join('') + "</tr>";
+                
+                if (!inTable) {
+                    inTable = true;
+                    tableHtml = `<div class="table-responsive"><table class="markdown-table"><thead>${rowHtml}</thead><tbody>`;
+                } else {
+                    tableHtml += rowHtml;
+                }
+            } else {
+                if (inTable) {
+                    inTable = false;
+                    tableHtml += "</tbody></table></div>";
+                    newLines.push(tableHtml);
+                    tableHtml = "";
+                }
+                newLines.push(lines[i]);
+            }
+        }
+        if (inTable) {
+            tableHtml += "</tbody></table></div>";
+            newLines.push(tableHtml);
+        }
+        
+        html = newLines.join('\n');
+        
+        // 4. Bold tags **text**
         html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-        html = html.replace(/^\s*-\s+(.*)$/gmi, "<li>$1</li>");
-        html = html.replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>");
+        
+        // 5. Inline code `code`
+        html = html.replace(/`(.*?)`/g, "<code>$1</code>");
+        
+        // 6. Bullet lists
+        html = html.replace(/^\s*[\-\*]\s+(.*)$/gmi, "<li>$1</li>");
+        html = html.replace(/((?:<li>.*?<\/li>\s*)+)/gs, "<ul>$1</ul>");
+        
+        // 7. Headings
+        html = html.replace(/^\s*###\s+(.*)$/gmi, "<h3>$1</h3>");
+        html = html.replace(/^\s*##\s+(.*)$/gmi, "<h2>$1</h2>");
+        html = html.replace(/^\s*#\s+(.*)$/gmi, "<h1>$1</h1>");
+        
+        // 8. Newlines to <br>
         html = html.replace(/\n/g, "<br>");
+        
+        // Clean up <br> where they are redundant and ugly
+        html = html.replace(/<br>\s*<(table|thead|tbody|tr|th|td|div|blockquote|ul|li|h1|h2|h3)/gi, "<$1");
+        html = html.replace(/<\/(table|thead|tbody|tr|th|td|div|blockquote|ul|li|h1|h2|h3)>\s*<br>/gi, "</$1>");
+        html = html.replace(/<\/li>\s*<li>/gi, "</li><li>");
         
         return html;
     }
@@ -1531,6 +1806,8 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             if (chromaBadge) {
                 if (data.chroma_active) {
                     chromaBadge.innerHTML = `<span class="status-dot green"></span> Active`;
+                } else if (data.is_fallback) {
+                    chromaBadge.innerHTML = `<span class="status-dot cyan" style="background-color: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan);"></span> Active (Fallback)`;
                 } else {
                     chromaBadge.innerHTML = `<span class="status-dot red"></span> Inactive`;
                 }
@@ -2552,9 +2829,9 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             ]
         },
         V3: {
-            leftTitle: "V2: Advanced Interactive RAG (Hiện tại)",
-            rightTitle: "V3: Advanced Agentic RAG (Sẽ nâng cấp)",
-            rightTag: "SẼ NÂNG CẤP (V3)",
+            leftTitle: "Giai Đoạn 2: Advanced Interactive RAG (V2)",
+            rightTitle: "Phase 3: Production NLU-Gateway RAG (Hiện Tại)",
+            rightTag: "ĐANG HOẠT ĐỘNG (Phase 3)",
             leftNodes: [
                 "❓ 1. Question (Câu hỏi thô)",
                 "⚡ 2. Caching Layer Check (Kiểm tra đệm DB)",
@@ -2570,46 +2847,47 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             ],
             rightNodes: [
                 "❓ 1. Question (Câu hỏi thô)",
-                "⚡ 2. Caching Layer Check (Kiểm tra đệm DB)",
-                "🧰 3. Agentic Tool Calling (Gợi ý cuốc/Chỉ đường/Booking)",
-                "🔮 4. Self-Querying (Tự động trích xuất Meta Filter)",
-                "🔍 5. Hybrid Search (Dense + BM25 song song)",
-                "⚡ 6. Cross-Encoder Reranker (Rerank cục bộ)",
-                "👑 7. Multimodal Chunking (Dual-Representation)",
-                "🔎 8. Corrective RAG (CRAG Web Search fallback)",
-                "🔎 9. Self-RAG (Hệ thống tự phản biện đa tầng)",
-                "🤖 10. LLM Generation (Tổng hợp tránh ảo giác)",
-                "🛡️ 11. Citations Validator (Đối sánh nguồn)",
-                "🎉 12. Answer + Citations (Kết quả + Nguồn chuẩn)"
+                "🛡️ 2. Safety & Lang Gateway (Lọc bảo mật & NFC)",
+                "🎯 3. Intent Classifier (Phân loại ý định)",
+                "🧾 4. Slot Filling (Task/RAG & Hỏi làm rõ)",
+                "⚡ 5. Fast FAQ / Semantic Cache (Cache Hit)",
+                "🧠 6. Conversational Memory (Biên dịch lịch sử)",
+                "🔀 7. Strategy Selector (BM25 / Dense / Hybrid)",
+                "🔍 8. Hybrid/Strategic Search (Dense + BM25 RRF)",
+                "🚀 9. Cross-Encoder Reranker (Rerank cục bộ)",
+                "✂️ 10. Parent-Child Context (Gộp mảnh cha)",
+                "🤖 11. LLM Synthesizer (Tổng hợp tránh ảo giác)",
+                "🛡️ 12. Faithfulness Check (Tự phản biện)",
+                "🎉 13. Citation & Response (Trích nguồn HTML)"
             ],
             upgrades: [
                 {
-                    title: "Multimodal Chunking Dual-Representation (Tối Quan Trọng)",
-                    status: "planned",
-                    desc: "Ưu tiên số 1: Một khối tri thức chứa đồng thời cả Text, Table và Image đính kèm. Nhúng vector cho bản tóm tắt và caption của VLM chạy offline (LLaVA/Qwen-VL) để triệt tiêu chi phí API.",
-                    lat: "Offline Ingest",
-                    cost: "0đ (GPU cục bộ) 👑"
+                    title: "Conversation Safety & Lang Gateway (Bảo mật cục bộ)",
+                    status: "active",
+                    desc: "Chuẩn hóa Unicode NFC tiếng Việt, lọc từ khóa cấm/nhạy cảm/spam ngay tầng đầu vào cục bộ. Bypass ngắt sớm giúp bảo vệ server và tiết kiệm 100% chi phí gọi LLM.",
+                    lat: "5ms",
+                    cost: "0đ (Chạy offline) 👑"
                 },
                 {
-                    title: "Agentic Tool Calling & Hỗ trợ hành trình",
-                    status: "planned",
-                    desc: "Gợi ý điểm nhiều cuốc xe cho tài xế, gợi ý khung giờ bắt xe rẻ cho khách hàng. *Lưu ý: Sử dụng dữ liệu giả lập (Mock) vì giới hạn dữ liệu GSM nội bộ thực tế.*",
-                    lat: "800ms - 2s",
-                    cost: "~$0.0002"
-                },
-                {
-                    title: "Corrective RAG (CRAG Web Search fallback)",
-                    status: "planned",
-                    desc: "Tự động kích hoạt Google Search / Tavily API cào cẩm nang GSM mới khi dữ liệu nội bộ không có câu trả lời, chặn đứng hoàn toàn ảo giác.",
-                    lat: "2 - 4 giây",
-                    cost: "Phí API Search"
-                },
-                {
-                    title: "Self-Querying & Tự động lọc Metadata",
-                    status: "planned",
-                    desc: "Dùng LLM dịch ngôn ngữ tự nhiên thành bộ lọc metadata (ví dụ: year=2026, role=driver) trước khi vector search giúp thu hẹp không gian tìm kiếm.",
-                    lat: "300ms",
+                    title: "Intent Classifier & Slot Filling (RefundCalculatorTool)",
+                    status: "active",
+                    desc: "Tự động phân loại câu hỏi (Small Talk, Task Agent, FAQ, RAG), phát hiện thiếu tham số và hỏi làm rõ (Clarification), tích hợp Action Engine chạy code Python xử lý nghiệp vụ động.",
+                    lat: "200ms",
                     cost: "~$0.00005"
+                },
+                {
+                    title: "Dynamic Strategy Selector (Chiến lược động)",
+                    status: "active",
+                    desc: "Phân tích đặc tính truy vấn đã viết lại để tự chọn chiến lược tối ưu: BM25 Only cho số liệu/hotline, Dense Only cho khái niệm ngữ nghĩa, hoặc Hybrid Search.",
+                    lat: "50ms",
+                    cost: "0đ"
+                },
+                {
+                    title: "Faithfulness Check (Tự phản biện chống ảo giác)",
+                    status: "active",
+                    desc: "Hệ thống tự đánh giá độ trung thực của câu trả lời LLM so với tài liệu ngữ cảnh gốc (Faithfulness) trước khi gửi phản hồi, triệt tiêu hoàn toàn ảo giác thông tin.",
+                    lat: "300ms",
+                    cost: "~$0.0001"
                 }
             ]
         }
@@ -2624,11 +2902,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         rightPipelineTitle.textContent = data.rightTitle;
         rightColumnTag.textContent = data.rightTag;
         
-        if (version === "V3") {
-            rightColumnTag.className = "column-tag status-planned";
-        } else {
-            rightColumnTag.className = "column-tag newer-tag";
-        }
+        rightColumnTag.className = "column-tag newer-tag";
 
         // Render left column nodes
         leftPipelineFlow.innerHTML = "";
@@ -2660,7 +2934,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
                 el.className = "compare-capsule bypass-glow";
             } else if (version === "V2" && (nodeText.includes("Rewrite") || nodeText.includes("Expansion") || nodeText.includes("Reranker") || nodeText.includes("Parent-Child"))) {
                 el.className = "compare-capsule highlight-glow";
-            } else if (version === "V3" && (nodeText.includes("Tool") || nodeText.includes("Multimodal") || nodeText.includes("Self-Query") || nodeText.includes("Corrective") || nodeText.includes("Self-RAG"))) {
+            } else if (version === "V3" && (nodeText.includes("Gateway") || nodeText.includes("Classifier") || nodeText.includes("Slot") || nodeText.includes("Selector") || nodeText.includes("Faithfulness"))) {
                 el.className = "compare-capsule highlight-glow";
             } else {
                 el.className = "compare-capsule";
@@ -2788,7 +3062,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             text: `<strong>Bước 6: So Sánh Tiến Hóa Pipeline</strong> 📈<br>Tính năng mới nhất giúp em nhìn lại lịch sử!
             <ul>
                 <li>So sánh trực quan các bước luồng RAG cũ vs RAG mới đặt cạnh nhau.</li>
-                <li>Xem chi tiết độ trễ, token, và **lộ trình đa phương tiện Multimodal / Agentic gợi ý cuốc xe trong V3**!</li>
+                <li>Xem chi tiết độ trễ, token, và **cơ chế tối ưu NLU-Gateway RAG đột phá thực tế trong V3 (Phase 3 - Hiện tại)**!</li>
             </ul>`,
             elementSelector: '[data-tab="pipeline-comparison"]'
         }

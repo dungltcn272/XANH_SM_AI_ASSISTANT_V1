@@ -1,5 +1,8 @@
 import os
 import sys
+import json
+import hashlib
+from typing import List, Dict, Any, Tuple
 
 # Force UTF-8 encoding on standard streams to prevent CP1252 console encoding crashes on Windows
 try:
@@ -10,30 +13,33 @@ try:
 except Exception:
     pass
 
-from typing import List, Dict, Any, Tuple
 from openai import OpenAI
 from app.retrieval.hybrid_search import XanhSMHybridSearch
 from app.retrieval.reranker import XanhSMReranker
-from app.rag.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, get_role_display_name
+from app.rag.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, get_role_display_name, FAITHFULNESS_CHECK_PROMPT
+from app.rag.gateway import XanhSMGateway
+from app.rag.classifier import XanhSMClassifier, RefundCalculatorTool
 from app.config import config
 
 class XanhSMRAGPipeline:
     """
-    Advanced RAG Pipeline coordinating:
-    Role Routing ➔ Hybrid Search ➔ Reranking ➔ Context Compression ➔ LLM + Citations.
-    Includes robust offline / invalid key checks to prevent process conflicts.
+    Phase 3 Advanced NLU-Gateway RAG Pipeline:
+    Coordinates Conversation Gateway ➔ Intent Classifier ➔ Slot Filling (Task Agent) ➔ Semantic Cache Check 
+    ➔ Query Rewrite ➔ Strategy Selector ➔ Hybrid Search ➔ Reranker ➔ Parent-Child ➔ LLM Gen ➔ Faithfulness Check ➔ Citations.
     """
     
     def __init__(self):
         self.search_engine = XanhSMHybridSearch()
         self.reranker = XanhSMReranker()
+        self.gateway = XanhSMGateway()
+        self.classifier = XanhSMClassifier()
         try:
             from app.rag.cache import XanhSMRAGCache
             self.cache = XanhSMRAGCache()
         except Exception as e:
             print(f"[WARN] Failed to load cache: {e}")
             self.cache = None
-        
+            
     def _compress_context(self, docs: List[Any]) -> str:
         """
         Formats and compresses retrieved documents with source boundaries.
@@ -65,13 +71,10 @@ class XanhSMRAGPipeline:
             formatted_blocks.append(block)
             
         return "\n\n".join(formatted_blocks)
-
+        
     def _calculate_llm_cost(self, prompt_tokens: int, completion_tokens: int) -> Dict[str, Any]:
         """
         Calculates exact API cost in USD and VND based on GPT-4o-mini pricing.
-        Input: $0.15 per million tokens
-        Output: $0.60 per million tokens
-        Exchange rate: 1 USD = 25,400 VND
         """
         usd_input = (prompt_tokens / 1_000_000) * 0.15
         usd_output = (completion_tokens / 1_000_000) * 0.60
@@ -87,156 +90,225 @@ class XanhSMRAGPipeline:
 
     def _is_greeting_or_thanks(self, query: str) -> Dict[str, Any]:
         """
-        Fuzzy, spell-tolerant and accent-insensitive detector for greetings, thanks, and short chit-chat.
-        Bypasses the RAG/LLM flow for simple social queries.
+        Spell-tolerant and accent-insensitive detector for greetings, thanks, and short chit-chat.
         """
-        import unicodedata
-        import re
+        return self.gateway.is_greeting_or_thanks(query)
 
-        # Clean string
-        q_clean = query.strip().lower()
-        q_clean = re.sub(r"[\?\!\.\,]", "", q_clean).strip()
-
-        # Remove accents
-        nfkd_form = unicodedata.normalize('NFKD', q_clean)
-        q_no_accent = u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
-
-        greeting_phrases = {
-            "hello", "hi", "halo", "hey", "hola", "hiii", "helloo", "heloo", "helooo",
-            "xin chao", "xinchao", "chao ban", "chao", "chao ad", "ad oi", "chao em",
-            "chao anh", "chao chi", "chao ban nhe", "chao ban", "chao buoi sang",
-            "chao buoi trua", "chao buoi chieu", "chao buoi toi"
+    def select_retrieval_strategy(self, query: str) -> str:
+        """
+        Strategy Selector: Dynamically decides the optimal search mechanism based on query properties.
+        - BM25: For queries seeking specific error codes, hotlines, bridge fees, numbers, exact rule clauses.
+        - Dense: For conceptual, abstract, semantic meaning queries.
+        - Hybrid (Default): Merges dense semantic & exact keyword search.
+        """
+        query_clean = query.lower()
+        
+        # Specific indicators for exact keywords/numbers
+        bm25_indicators = {
+            "1900", "2088", "hotline", "điều", "khoản", "mục", "phần", "chế tài", 
+            "vnđ", "đồng", "triệu", "phạt", "mã lỗi", "rùa vàng", "rùa", "cứu hộ"
         }
-        thanks_phrases = {
-            "cam on", "camon", "cam on nhieu", "cam on ban", "cam on rat nhieu",
-            "thank you", "thanks", "tks", "thks", "ty", "thank"
-        }
-        farewell_phrases = {
-            "tam biet", "tam biet nhe", "goodbye", "bye", "see you", "hen gap lai"
-        }
+        
+        # Numeric or phone check
+        has_numbers = any(char.isdigit() for char in query_clean)
+        
+        if any(ind in query_clean for ind in bm25_indicators) or has_numbers:
+            # Contains high density of exact keywords or numbers
+            return "BM25 / Keyword"
+            
+        # Abstract queries like "tác phong chuẩn mực", "hỗ trợ khách hàng thế nào", "giúp tôi hiểu..."
+        dense_indicators = {"chuẩn mực", "thế nào", "nghĩa là gì", "giải thích", "tại sao", "lý do", "ý nghĩa", "hiểu thế nào"}
+        if any(ind in query_clean for ind in dense_indicators) and not has_numbers:
+            return "Dense Search"
+            
+        return "Hybrid Search"
 
-        tokens = q_no_accent.split()
-        is_short = len(tokens) <= 6
-
-        # Exact or short social pattern detection
-        is_greet = any(q_no_accent == phrase or q_no_accent.startswith(phrase + " ") or phrase in q_no_accent for phrase in greeting_phrases) and is_short
-        is_thank = any(phrase in q_no_accent for phrase in thanks_phrases) and is_short
-        is_farewell = any(phrase in q_no_accent for phrase in farewell_phrases) and is_short
-
-        # fallback for very short chats
-        if not (is_greet or is_thank or is_farewell):
-            if len(tokens) <= 4:
-                if any(token in {"chao", "xin", "hello", "hi", "hey", "alo", "alo", "ok", "oke"} for token in tokens):
-                    is_greet = True
-                if any(token in {"camon", "thanks", "thank", "tks", "thks", "ty"} for token in tokens):
-                    is_thank = True
-                if any(token in {"bye", "tam", "goodbye"} for token in tokens):
-                    is_farewell = True
-
-        # Avoid false positives for actual questions that mention greeting words with additional intent
-        if is_greet and len(tokens) > 5:
-            is_greet = False
-        if is_thank and len(tokens) > 5:
-            is_thank = False
-        if is_farewell and len(tokens) > 5:
-            is_farewell = False
-
-        if is_greet:
-            return {
-                "type": "greeting",
-                "answer": "Xin chào! Tôi là Trợ lý AI CSKH của Xanh SM. Tôi có thể hỗ trợ gì cho quý khách về chính sách, hủy chuyến, phí dịch vụ hoặc quy định hôm nay?"
-            }
-        if is_thank:
-            return {
-                "type": "thanks",
-                "answer": "Dạ, rất vui được hỗ trợ quý khách! Nếu còn thắc mắc nào khác, xin cứ tiếp tục hỏi nhé."
-            }
-        if is_farewell:
-            return {
-                "type": "farewell",
-                "answer": "Cảm ơn quý khách đã sử dụng dịch vụ Xanh SM. Chúc quý khách một ngày tốt lành!"
-            }
-
-        return {"type": "none", "answer": ""}
+    def run_faithfulness_check(self, context: str, answer: str) -> Tuple[bool, float, str]:
+        """
+        Evaluates whether the LLM answer is strictly faithful to the provided context.
+        Returns (is_faithful, score, reason).
+        """
+        if not context or not answer:
+            return True, 1.0, "No context or answer to evaluate."
+            
+        if not config.OPENAI_API_KEY or config.EMBEDDING_PROVIDER == "mock" or "YOUR_OPENAI_API_KEY" in config.OPENAI_API_KEY:
+            # Skip in offline mode
+            return True, 1.0, "Skipped in Offline Mode."
+            
+        try:
+            import re
+            system_msg = FAITHFULNESS_CHECK_PROMPT.format(context=context, answer=answer)
+            client = OpenAI(api_key=config.OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": f"Bắt đầu đánh giá câu trả lời sau đây."}
+                ],
+                temperature=0.0
+            )
+            res_content = response.choices[0].message.content.strip()
+            res_content = re.sub(r"```json|```", "", res_content).strip()
+            res_json = json.loads(res_content)
+            
+            is_faithful = res_json.get("faithful", True)
+            score = res_json.get("score", 1.0)
+            reason = res_json.get("reason", "OK")
+            return is_faithful, score, reason
+        except Exception as e:
+            print(f"[WARN] Faithfulness Check failed: {e}. Defaulting to True.")
+            return True, 1.0, f"Error: {e}"
 
     def run(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         """
-        Executes the full advanced RAG chain.
-        Supports caching, chat history query rewriting, and parent-child retrieval.
+        Executes the full advanced NLU-Gateway RAG chain.
         """
         target_role = role.lower() if role else "faq"
         role_display = get_role_display_name(target_role)
         
-        # Spell-tolerant interceptor
-        intercept = self._is_greeting_or_thanks(query)
-        if intercept["type"] != "none":
-            cost_metrics = self._calculate_llm_cost(0, 0)
+        # 1. Gateway Phase (Normalize, Safety & Language detect)
+        normalized_query = self.gateway.normalize_input(query)
+        lang = self.gateway.language_detect(normalized_query)
+        safety_res = self.gateway.safety_precheck(normalized_query)
+        
+        # Handle early-exit for safety violations
+        if not safety_res["safe"]:
             return {
                 "query": query,
                 "role": target_role,
-                "answer": intercept["answer"],
+                "answer": f"⚠️ Cảnh báo bảo mật: {safety_res['reason']}",
                 "citations": [],
-                "expanded_queries": [query],
-                "compressed_context_len": 0,
-                "top_docs": [],
-                "token_usage": {
-                    "query_expansion": {"prompt_tokens": 0, "completion_tokens": 0},
-                    "generation": {"prompt_tokens": 0, "completion_tokens": 0},
-                    "total_prompt_tokens": 0,
-                    "total_completion_tokens": 0
-                },
+                "intent": "sensitive",
+                "gateway_checked": True,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
                 "llm_cost_usd": 0.0,
                 "llm_cost_vnd": 0.0
             }
 
-        # 1. Caching Layer Check
+        # 2. Intent & Query Classifier
+        intent_res = self.classifier.classify_intent(normalized_query)
+        intent = intent_res.get("intent", "rag")
+        sub_task = intent_res.get("sub_task")
+
+        # 3. Handle Small Talk Path
+        if intent == "small-talk":
+            intercept = self._is_greeting_or_thanks(normalized_query)
+            answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho quý khách về các quy định dịch vụ Xanh SM hôm nay?"
+            return {
+                "query": query,
+                "role": target_role,
+                "answer": answer,
+                "citations": [],
+                "intent": "small-talk",
+                "gateway_checked": True,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0
+            }
+            
+        # 4. Handle Task / Agent Path (e.g. Refund Calculator Tool)
+        if intent == "task-agent" and sub_task == "refund_calculator":
+            slot_res = self.classifier.fill_slots(normalized_query, chat_history)
+            if slot_res.get("missing_info", False):
+                # Prompt user for missing fields
+                return {
+                    "query": query,
+                    "role": target_role,
+                    "answer": slot_res["clarification_question"],
+                    "citations": [],
+                    "intent": "task-agent",
+                    "sub_task": "refund_calculator",
+                    "missing_fields": True,
+                    "gateway_checked": True,
+                    "strategy_selected": "Slot Filling",
+                    "faithfulness_passed": True,
+                    "llm_cost_usd": 0.0,
+                    "llm_cost_vnd": 0.0
+                }
+            else:
+                # Execute calculation
+                slots = slot_res.get("slots", {})
+                calc_res = RefundCalculatorTool.calculate(slots.get("vehicle_type"), slots.get("waiting_time"))
+                return {
+                    "query": query,
+                    "role": target_role,
+                    "answer": calc_res["explanation"],
+                    "citations": [
+                        {
+                            "source": "refund.md",
+                            "section": "Điều 1: Quy Định Hủy Chuyến Từ Phía Khách Hàng",
+                            "url": "",
+                            "relevance_score": 1.0
+                        }
+                    ],
+                    "intent": "task-agent",
+                    "sub_task": "refund_calculator",
+                    "missing_fields": False,
+                    "gateway_checked": True,
+                    "strategy_selected": "Action Engine",
+                    "faithfulness_passed": True,
+                    "llm_cost_usd": 0.0,
+                    "llm_cost_vnd": 0.0
+                }
+
+        # 5. RAG Entry (for 'rag' or 'faq' intents)
+        # Fast FAQ / Semantic Cache check
         if self.cache:
-            is_hit, hit_res, hit_type = self.cache.get(query, target_role)
+            is_hit, hit_res, hit_type = self.cache.get(normalized_query, target_role)
             if is_hit:
-                cost_info = self._calculate_llm_cost(0, 0)
                 print(f"[CACHE] Hit query='{query}' via {hit_type} match.")
                 return {
                     "query": query,
                     "role": target_role,
-                    "rewritten_query": query,
+                    "rewritten_query": normalized_query,
                     "answer": hit_res["answer"],
                     "citations": hit_res["citations"],
-                    "expanded_queries": [query],
-                    "compressed_context_len": 0,
-                    "top_docs": [],
-                    "token_usage": {
-                        "query_expansion": {"prompt_tokens": 0, "completion_tokens": 0},
-                        "generation": {"prompt_tokens": 0, "completion_tokens": 0},
-                        "total_prompt_tokens": 0,
-                        "total_completion_tokens": 0
-                    },
+                    "intent": "faq" if hit_type == "exact" else "rag",
+                    "gateway_checked": True,
+                    "strategy_selected": "Semantic Cache Hit",
+                    "faithfulness_passed": True,
                     "llm_cost_usd": 0.0,
                     "llm_cost_vnd": 0.0,
                     "cache_hit": hit_res.get("cache_hit", "exact"),
                     "cache_similarity": hit_res.get("cache_similarity", 1.0)
                 }
 
-        print(f"[*] Processing pipeline query='{query}' for role='{target_role}' ({role_display})")
-        
-        # 2. Conversational Memory Query Rewriting
-        rewritten_query, rewrite_usage = self._rewrite_query(query, chat_history)
-        
-        # 3. Retrieve Candidate Documents (Dense + Sparse Hybrid RRF) using rewritten query
+        # Memory Query Rewriting
+        rewritten_query, rewrite_usage = self._rewrite_query(normalized_query, chat_history)
+
+        # Retrieval Strategy Selector
+        strategy = self.select_retrieval_strategy(rewritten_query)
+        print(f"[STRATEGY] Dynamically selected search strategy: {strategy}")
+
+        # Expand queries
         expanded_queries = self.search_engine.expander.get_queries(rewritten_query)
-        retrieved_candidates = self.search_engine.search(query=rewritten_query, role=target_role, limit=25, expanded_queries=expanded_queries)
-        
-        # 4. Rerank down to top 5
+
+        # Execute Retrieval based on chosen Strategy
+        retrieved_candidates = []
+        if strategy == "BM25 / Keyword":
+            # Direct sparse search
+            retrieved_candidates = self.search_engine.bm25_retriever.search(query=rewritten_query, k=25, role=target_role)
+        elif strategy == "Dense Search":
+            # Direct dense search
+            retrieved_candidates = self.search_engine.db.search(query=rewritten_query, k=25, role=target_role)
+        else:
+            # Hybrid search merging RRF
+            retrieved_candidates = self.search_engine.search(query=rewritten_query, role=target_role, limit=25, expanded_queries=expanded_queries)
+
+        # Reranker
         top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=5)
-        
-        # 5. Compress context blocks (Parent-Child De-duplicated context mapping)
+
+        # Context compression
         compressed_context = self._compress_context(top_docs)
-        
-        # 6. Synthesize final response using LLM
+
+        # LLM Synthesis
         final_answer = ""
         citations = []
         prompt_tokens = 0
         completion_tokens = 0
-        
+
         for doc in top_docs:
             citations.append({
                 "source": doc.metadata.get("source"),
@@ -244,11 +316,10 @@ class XanhSMRAGPipeline:
                 "url": doc.metadata.get("url", ""),
                 "relevance_score": doc.metadata.get("rerank_score", 0.0)
             })
-            
+
         system_msg = SYSTEM_PROMPT.format(context=compressed_context, role=role_display)
         user_msg = USER_PROMPT_TEMPLATE.format(role_display=role_display, query=rewritten_query)
-        
-        # Bypass OpenAI API request if in offline mock mode to prevent Windows socket DLL conflicts
+
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
             try:
                 client = OpenAI(api_key=config.OPENAI_API_KEY)
@@ -269,17 +340,23 @@ class XanhSMRAGPipeline:
         else:
             print("[INFO] Running Resilient Offline Fallback Synthesis.")
             final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
-            
-        # 7. Calculate cumulative costs (including query rewrite)
+
+        # Faithfulness Check
+        is_faithful, faith_score, faith_reason = self.run_faithfulness_check(compressed_context, final_answer)
+        if not is_faithful and faith_score < 0.6:
+            print(f"[HALLUCINATION] Faithfulness Check failed (Score: {faith_score}). Falling back to strict source answers.")
+            final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
+
+        # Calculate costs
         qe_usage = self.search_engine.expander.last_token_usage
         total_prompt = qe_usage["prompt_tokens"] + prompt_tokens + rewrite_usage["prompt_tokens"]
         total_comp = qe_usage["completion_tokens"] + completion_tokens + rewrite_usage["completion_tokens"]
         cost_info = self._calculate_llm_cost(total_prompt, total_comp)
-        
+
         # Save to cache
         if self.cache:
-            self.cache.set(query, final_answer, citations, target_role)
-            
+            self.cache.set(normalized_query, final_answer, citations, target_role)
+
         return {
             "query": query,
             "rewritten_query": rewritten_query,
@@ -288,6 +365,11 @@ class XanhSMRAGPipeline:
             "citations": citations,
             "expanded_queries": expanded_queries,
             "compressed_context_len": len(compressed_context),
+            "intent": intent,
+            "gateway_checked": True,
+            "strategy_selected": strategy,
+            "faithfulness_passed": is_faithful,
+            "faithfulness_score": faith_score,
             "top_docs": [
                 {
                     "content": doc.page_content,
@@ -308,95 +390,162 @@ class XanhSMRAGPipeline:
 
     def run_step_by_step(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None):
         """
-        Step-by-step generator for real-time visual pipeline tracking in Streamlit UI.
-        Yields the current active stage ID and its metadata to allow true real-time node lighting.
+        Step-by-step generator for real-time visual pipeline tracking in Streamlit UI or Dashboard.
+        Yields active stages sequentially.
         """
         target_role = role.lower() if role else "faq"
         role_display = get_role_display_name(target_role)
+
+        # 1. Gateway
+        yield {"stage": "Gateway", "msg": "đang chuẩn hóa đầu vào và kiểm tra rào cản bảo mật (Safety Gateway)...", "result": None}
+        normalized_query = self.gateway.normalize_input(query)
+        safety_res = self.gateway.safety_precheck(normalized_query)
         
-        # Spell-tolerant interceptor
-        intercept = self._is_greeting_or_thanks(query)
-        if intercept["type"] != "none":
+        if not safety_res["safe"]:
             res = {
                 "query": query,
                 "role": target_role,
-                "answer": intercept["answer"],
+                "answer": f"⚠️ Cảnh báo bảo mật: {safety_res['reason']}",
                 "citations": [],
-                "expanded_queries": [query],
-                "compressed_context_len": 0,
-                "top_docs": [],
-                "token_usage": {
-                    "query_expansion": {"prompt_tokens": 0, "completion_tokens": 0},
-                    "generation": {"prompt_tokens": 0, "completion_tokens": 0},
-                    "total_prompt_tokens": 0,
-                    "total_completion_tokens": 0
-                },
+                "intent": "sensitive",
+                "gateway_checked": True,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
                 "llm_cost_usd": 0.0,
                 "llm_cost_vnd": 0.0
             }
-            yield {"stage": "Question", "msg": "đang nhận câu hỏi...", "result": None}
-            yield {"stage": "QueryUnderstanding", "msg": "đang bỏ qua RAG cho lời chào xã giao...", "result": None}
+            yield {"stage": "Classifier", "msg": "đã định tuyến đến luồng nội dung nhạy cảm!", "result": None}
             yield {"stage": "CitationValidator", "msg": "hoàn tất phản hồi!", "result": res}
             return
 
-        # 1. Caching Check
+        # 2. Classifier
+        yield {"stage": "Classifier", "msg": "đang phân tích ý định người dùng và bóc tách thực thể...", "result": None}
+        intent_res = self.classifier.classify_intent(normalized_query)
+        intent = intent_res.get("intent", "rag")
+        sub_task = intent_res.get("sub_task")
+
+        # 3. Small-talk
+        if intent == "small-talk":
+            intercept = self._is_greeting_or_thanks(normalized_query)
+            answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?"
+            res = {
+                "query": query,
+                "role": target_role,
+                "answer": answer,
+                "citations": [],
+                "intent": "small-talk",
+                "gateway_checked": True,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0
+            }
+            yield {"stage": "CitationValidator", "msg": "hoàn tất phản hồi hội thoại trực tiếp!", "result": res}
+            return
+
+        # 4. Task-agent
+        if intent == "task-agent" and sub_task == "refund_calculator":
+            yield {"stage": "SlotFilling", "msg": "đang kiểm tra các slots thông tin và tham số bóc tách...", "result": None}
+            slot_res = self.classifier.fill_slots(normalized_query, chat_history)
+            
+            if slot_res.get("missing_info", False):
+                res = {
+                    "query": query,
+                    "role": target_role,
+                    "answer": slot_res["clarification_question"],
+                    "citations": [],
+                    "intent": "task-agent",
+                    "sub_task": "refund_calculator",
+                    "missing_fields": True,
+                    "gateway_checked": True,
+                    "strategy_selected": "Slot Filling",
+                    "faithfulness_passed": True,
+                    "llm_cost_usd": 0.0,
+                    "llm_cost_vnd": 0.0
+                }
+                yield {"stage": "CitationValidator", "msg": "đã gửi câu hỏi làm rõ các trường còn thiếu!", "result": res}
+                return
+            else:
+                slots = slot_res.get("slots", {})
+                calc_res = RefundCalculatorTool.calculate(slots.get("vehicle_type"), slots.get("waiting_time"))
+                res = {
+                    "query": query,
+                    "role": target_role,
+                    "answer": calc_res["explanation"],
+                    "citations": [
+                        {
+                            "source": "refund.md",
+                            "section": "Điều 1: Quy Định Hủy Chuyến Từ Phía Khách Hàng",
+                            "url": "",
+                            "relevance_score": 1.0
+                        }
+                    ],
+                    "intent": "task-agent",
+                    "sub_task": "refund_calculator",
+                    "missing_fields": False,
+                    "gateway_checked": True,
+                    "strategy_selected": "Action Engine",
+                    "faithfulness_passed": True,
+                    "llm_cost_usd": 0.0,
+                    "llm_cost_vnd": 0.0
+                }
+                yield {"stage": "CitationValidator", "msg": "đã hoàn tất tính toán qua Action Engine!", "result": res}
+                return
+
+        # 5. RAG Entry
+        # Cache Check
         if self.cache:
-            is_hit, hit_res, hit_type = self.cache.get(query, target_role)
+            is_hit, hit_res, hit_type = self.cache.get(normalized_query, target_role)
             if is_hit:
                 res = {
                     "query": query,
-                    "rewritten_query": query,
                     "role": target_role,
+                    "rewritten_query": normalized_query,
                     "answer": hit_res["answer"],
                     "citations": hit_res["citations"],
-                    "expanded_queries": [query],
-                    "compressed_context_len": 0,
-                    "top_docs": [],
-                    "token_usage": {
-                        "query_expansion": {"prompt_tokens": 0, "completion_tokens": 0},
-                        "generation": {"prompt_tokens": 0, "completion_tokens": 0},
-                        "total_prompt_tokens": 0,
-                        "total_completion_tokens": 0
-                    },
+                    "intent": "faq" if hit_type == "exact" else "rag",
+                    "gateway_checked": True,
+                    "strategy_selected": "Semantic Cache Hit",
+                    "faithfulness_passed": True,
                     "llm_cost_usd": 0.0,
-                    "llm_cost_vnd": 0.0,
-                    "cache_hit": hit_res.get("cache_hit", "exact"),
-                    "cache_similarity": hit_res.get("cache_similarity", 1.0)
+                    "llm_cost_vnd": 0.0
                 }
-                yield {"stage": "Question", "msg": "đang nhận câu hỏi...", "result": None}
                 yield {"stage": "CitationValidator", "msg": f"đã tìm thấy trong bộ đệm ({hit_type} cache)!", "result": res}
                 return
 
-        # Regular RAG Flow step by step
-        yield {"stage": "Question", "msg": "đang nhận câu hỏi...", "result": None}
-        
-        # 2. Conversational Memory Query Rewriting
-        rewritten_query, rewrite_usage = self._rewrite_query(query, chat_history)
-        yield {"stage": "QueryUnderstanding", "msg": f"đang giải nghĩa lịch sử và mở rộng ý định... (Ý định viết lại: '{rewritten_query}')", "result": rewritten_query}
-        
-        # 3. Query Expansion
+        # Query Rewrite
+        yield {"stage": "QueryUnderstanding", "msg": "đang giải nghĩa lịch sử hội thoại để viết lại câu hỏi...", "result": None}
+        rewritten_query, rewrite_usage = self._rewrite_query(normalized_query, chat_history)
+
+        # Strategy Selection
+        yield {"stage": "StrategySelector", "msg": "đang phân tích và lựa chọn chiến lược tìm kiếm tối ưu...", "result": None}
+        strategy = self.select_retrieval_strategy(rewritten_query)
+
+        # Retrieval
+        yield {"stage": "HybridSearch", "msg": f"đang tiến hành tìm kiếm tài liệu theo chiến lược: {strategy}...", "result": None}
         expanded_queries = self.search_engine.expander.get_queries(rewritten_query)
-        
-        # 4. Hybrid Search
-        retrieved_candidates = self.search_engine.search(query=rewritten_query, role=target_role, limit=25, expanded_queries=expanded_queries)
-        yield {"stage": "HybridSearch", "msg": "đang tìm kiếm Hybrid (Dense + BM25)...", "result": len(retrieved_candidates)}
-        
-        # 5. Reranker
+        if strategy == "BM25 / Keyword":
+            retrieved_candidates = self.search_engine.bm25_retriever.search(query=rewritten_query, k=25, role=target_role)
+        elif strategy == "Dense Search":
+            retrieved_candidates = self.search_engine.db.search(query=rewritten_query, k=25, role=target_role)
+        else:
+            retrieved_candidates = self.search_engine.search(query=rewritten_query, role=target_role, limit=25, expanded_queries=expanded_queries)
+
+        # Reranker
+        yield {"stage": "Reranker", "msg": "đang xếp hạng Cross-Encoder các trích đoạn ứng viên...", "result": None}
         top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=5)
-        yield {"stage": "Reranker", "msg": "đang xếp hạng Cross-Encoder...", "result": top_docs}
-        
-        # 6. Context Compression & Parent-Child mapping
+
+        # Context compression
+        yield {"stage": "ContextCompression", "msg": "đang nén tối ưu cấu trúc phân cấp (Parent-Child)...", "result": None}
         compressed_context = self._compress_context(top_docs)
-        yield {"stage": "ContextCompression", "msg": "đang nén tối ưu ngữ cảnh phân cấp cha-con...", "result": len(compressed_context)}
-        
-        # 7. LLM Generation
+
+        # LLM Generation
         yield {"stage": "LLMGeneration", "msg": "đang kết nối LLM để tổng hợp câu trả lời...", "result": None}
-        
         final_answer = ""
         citations = []
         prompt_tokens = 0
         completion_tokens = 0
-        
+
         for doc in top_docs:
             citations.append({
                 "source": doc.metadata.get("source"),
@@ -404,10 +553,10 @@ class XanhSMRAGPipeline:
                 "url": doc.metadata.get("url", ""),
                 "relevance_score": doc.metadata.get("rerank_score", 0.0)
             })
-            
+
         system_msg = SYSTEM_PROMPT.format(context=compressed_context, role=role_display)
         user_msg = USER_PROMPT_TEMPLATE.format(role_display=role_display, query=rewritten_query)
-        
+
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
             try:
                 client = OpenAI(api_key=config.OPENAI_API_KEY)
@@ -426,19 +575,24 @@ class XanhSMRAGPipeline:
                 print(f"[WARN] LLM Generation Error: {str(e)}. Falling back to offline synthesis.")
                 final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
         else:
-            print("[INFO] Running Resilient Offline Fallback Synthesis.")
             final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
-            
-        # Cumulative cost calculations
+
+        # Faithfulness check
+        yield {"stage": "FaithfulnessCheck", "msg": "đang đối chiếu chéo để kiểm tra độ trung thực thông tin...", "result": None}
+        is_faithful, faith_score, faith_reason = self.run_faithfulness_check(compressed_context, final_answer)
+        if not is_faithful and faith_score < 0.6:
+            final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
+
+        # Final answer & citations
         qe_usage = self.search_engine.expander.last_token_usage
         total_prompt = qe_usage["prompt_tokens"] + prompt_tokens + rewrite_usage["prompt_tokens"]
         total_comp = qe_usage["completion_tokens"] + completion_tokens + rewrite_usage["completion_tokens"]
         cost_info = self._calculate_llm_cost(total_prompt, total_comp)
-        
+
         # Save to cache
         if self.cache:
-            self.cache.set(query, final_answer, citations, target_role)
-            
+            self.cache.set(normalized_query, final_answer, citations, target_role)
+
         res = {
             "query": query,
             "rewritten_query": rewritten_query,
@@ -447,6 +601,11 @@ class XanhSMRAGPipeline:
             "citations": citations,
             "expanded_queries": expanded_queries,
             "compressed_context_len": len(compressed_context),
+            "intent": intent,
+            "gateway_checked": True,
+            "strategy_selected": strategy,
+            "faithfulness_passed": is_faithful,
+            "faithfulness_score": faith_score,
             "top_docs": [
                 {
                     "content": doc.page_content,
@@ -465,19 +624,17 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
         
-        yield {"stage": "CitationValidator", "msg": "hoàn tất xác thực nguồn trích dẫn!", "result": res}
+        yield {"stage": "CitationValidator", "msg": "hoàn tất xác thực và phản hồi sạch!", "result": res}
 
     def _rewrite_query(self, query: str, chat_history: List[Dict[str, str]] = None) -> Tuple[str, Dict[str, Any]]:
         """
-        Rewrites a contextual query into a self-contained search query based on chat history.
-        Returns (rewritten_query, token_usage).
+        Rewrites a contextual query into a self-contained search query.
         """
         if not chat_history:
             return query, {"prompt_tokens": 0, "completion_tokens": 0}
             
-        # Format history
         history_str = ""
-        for turn in chat_history[-3:]:  # limit to last 3 turns
+        for turn in chat_history[-3:]:
             role_tag = "Người dùng" if turn.get("role") == "user" else "Trợ lý"
             history_str += f"{role_tag}: {turn.get('content')}\n"
             
@@ -520,7 +677,6 @@ class XanhSMRAGPipeline:
     def run_vision_diagnostics(self, image_bytes: bytes, mime_type: str) -> Tuple[str, Dict[str, Any]]:
         """
         Uses OpenAI Vision model to analyze taplo EV warning lights and translate to text diagnostic query.
-        Returns (extracted_description, token_usage).
         """
         import base64
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
@@ -569,8 +725,7 @@ class XanhSMRAGPipeline:
 
     def _generate_fallback_answer(self, query: str, docs: List[Any], role_display: str) -> str:
         """
-        Creates a high-quality deterministic fallback response displaying
-        exact legal sections and citations if the LLM key is absent.
+        Creates a high-quality deterministic fallback response.
         """
         if not docs:
             return (
@@ -592,6 +747,7 @@ class XanhSMRAGPipeline:
 
 if __name__ == "__main__":
     pipeline = XanhSMRAGPipeline()
-    res = pipeline.run("Phí hủy chuyến xe là bao nhiêu?", role="customer")
+    res = pipeline.run("Tôi muốn tính phí hủy chuyến xe VF 8 sau 3 phút")
     print(f"\nAnswer:\n{res['answer']}")
-    print(f"\nCitations:\n{res['citations']}")
+    print(f"\nIntent:\n{res.get('intent')}")
+    print(f"\nStrategy:\n{res.get('strategy_selected')}")
