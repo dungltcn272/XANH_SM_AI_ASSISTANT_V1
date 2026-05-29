@@ -132,54 +132,25 @@ Khi tài liệu nguồn là PDF có cấu trúc phức tạp chứa nhiều hìn
 
 ### 🧠 GIAI ĐOẠN II: Ý ĐỊNH & TRUY VẤN NÂNG CAO (QUERYING & RETRIEVAL PHASE)
 
-#### 🧠 Chương 3: Mở Rộng Ý Định Thông Minh (AI Query Expansion)
-Hành khách thường gõ thiếu chữ, dùng tiếng lóng hoặc sai chính tả. Nếu chỉ dùng câu gốc để tìm kiếm, ta sẽ bỏ sót tài liệu. Ở bước này, Thầy gọi LLM sinh ra **3 câu hỏi đồng nghĩa Tiếng Việt** chất lượng để truy quét toàn diện không gian vector, đảm bảo vét sạch mọi góc khuất của chính sách.
+#### 🔀 Chương 7: Chiến Lược Truy Xuất Động (Strategy Selector)
+Hệ thống không sử dụng một cách tìm kiếm duy nhất cho mọi câu hỏi. **Strategy Selector** đóng vai trò là "người điều phối" (Orchestrator) với cơ chế Heuristic siêu tốc:
+*   **BM25 / Keyword Search**: Kích hoạt khi câu hỏi có mật độ số liệu cao (hotline, ngày tháng, mã lỗi `rùa vàng`, `2088`). Giúp bắt chính xác tuyệt đối các con số mà Vector Search đôi khi làm mờ đi.
+*   **Dense Search**: Dành cho câu hỏi khái niệm ("tác phong chuẩn mực là gì?"). Sử dụng Embedding để tìm kiếm theo ý nghĩa thay vì mặt chữ.
+*   **Hybrid Search**: Sự kết hợp hoàn hảo, dùng khi câu hỏi phức tạp cần cả sự nhạy bén của từ khóa lẫn chiều sâu của ngữ nghĩa.
 
-#### 🔍 Chương 4: Các Công Nghệ Truy Vấn Nâng Cao (Similarity vs. Threshold vs. MMR)
-Khi truy quét VectorDB, ta có 3 phương pháp chính với các sự đánh đổi kỹ thuật cực kỳ rõ rệt:
-1. **Tìm kiếm Tương đồng tuyến tính (Cosine Similarity Search)**: Quét lấy Top K mảnh gần nhất. Tốc độ cực nhanh nhưng gặp "Thảm họa Trùng lặp" (Redundancy) khi nhiều mảnh cùng nói về một ý làm loãng Context window của LLM.
-2. **Tương đồng có ngưỡng điểm số (Similarity with Score Threshold)**: Chỉ lấy những mảnh có điểm tương đồng lớn hơn một ngưỡng cứng (ví dụ: `score >= 0.75`). Giúp chặn rác rất tốt nhưng ngưỡng cứng rất nhạy cảm và dễ vỡ (Threshold Fragility) - đặt quá cao thì mất kết quả, đặt quá thấp thì mất tác dụng lọc.
-3. **Độ liên quan tối đa (Maximal Marginal Relevance - MMR)**: MMR cân bằng giữa **Độ tương đồng ngữ nghĩa** và **Tính đa dạng (chống trùng lặp)** của context bằng công thức tối ưu hóa đa mục tiêu:
-   $$MMR = \arg\max_{D_i \in R \setminus S} \left[ \lambda \cdot Sim_1(D_i, Q) - (1 - \lambda) \cdot \max_{D_j \in S} Sim_2(D_i, D_j) \right]$$
-   Trong đó: $\lambda \approx 0.5$ giúp loại bỏ triệt để các nội dung trùng lặp để nhường chỗ cho các mảnh thông tin bổ trợ khác. Đánh đổi lại, MMR làm giảm nhẹ độ chính xác tuyệt đối của mảnh đứng đầu tiếp theo và làm chậm tốc độ truy xuất do phải tính toán khoảng cách chéo ($O(K^2)$).
+#### 🔍 Chương 5: Tìm Kiếm Lai & Hòa Trộn RRF (Hybrid Search)
+Tại sao phải dùng Hybrid Search? Vì **Vector Search (Dense)** giỏi hiểu ý nhưng hay nhầm các từ viết tắt, còn **Keyword Search (BM25)** giỏi bắt từ khóa nhưng lại "mù" ngữ nghĩa.
+*   **Thuật toán RRF (Reciprocal Rank Fusion)**: Chúng ta không cộng điểm số trực tiếp (vì thang đo khác nhau). RRF xếp hạng lại dựa trên vị trí của tài liệu trong cả hai danh sách:
+    $$RRF\_Score(d) = \sum_{r \in \{R_{dense}, R_{bm25}\}} \frac{1}{k + r(d)}$$ (với $k=60$).
+*   Cơ chế này đảm bảo những tài liệu đứng đầu ở cả hai phía sẽ có trọng số cao nhất.
 
----
-
-### 🚀 GIAI ĐOẠN III: TÌM KIẾM LAI & TÁI XẾP HẠNG (RETRIEVAL & RERANKING PHASE)
-
-#### 🔍 Chương 5: Tìm Kiếm Lai Hai Luồng (Dense & Sparse Hybrid Search)
-Thầy cho chạy song song 2 tay săn thông tin kết hợp hoàn hảo:
-1. **Dense Search (Tìm kiếm ngữ nghĩa)**: Quét ChromaDB bằng vector nhúng để bắt được các ý nghĩa đồng nghĩa (ví dụ: "xe điện" -> "EV").
-2. **Sparse Search (BM25)**: Đối sánh từ khóa chính xác trên chỉ mục nghịch đảo để bắt trúng biểu phí, số điện thoại, con số cụ thể, mã lỗi chuyên môn.
-Kết quả được hòa trộn bằng thuật toán **RRF (Reciprocal Rank Fusion)** xếp hạng Top 30 trích đoạn tối ưu nhất:
-$$RRF\_Score(d \in D) = \frac{1}{60 + r_{dense}(d)} + \frac{1}{60 + r_{sparse}(d)}$$
-
-#### ⚡ Chương 6: Tái Xếp Hạng Siêu Tốc (Cross-Encoder Reranking & Bi/Cross-Encoder Deep-Dive)
-Đưa 30 trích đoạn vào LLM sẽ rất đắt và loãng. Thầy sử dụng mô hình Cross-Encoder cục bộ để tính toán sự tương tác ngữ nghĩa trực tiếp giữa câu hỏi và từng đoạn trích siêu tốc, lọc lấy **Top 5 văn bản có điểm số cao nhất**.
-Các em cần phân biệt rõ kiến trúc của hai bộ mã hóa:
-* **Bi-Encoder** (Mô hình Nhúng Vector - ChromaDB): Nhúng độc lập Query và Document thành 2 vector rồi tính độ tương đồng. Cực nhanh, tính toán offline được, nhưng không có tương tác Attention chéo giữa từng chữ.
-* **Cross-Encoder** (Mô hình Reranker): Ghép trực tiếp `Query + Document` đưa vào Transformer để tương tác **Full Attention** chéo toàn phần. Siêu chính xác nhưng siêu nặng, bắt buộc dùng ở Stage 2 để rerank tập ứng viên nhỏ.
-
-```
-[Kiến trúc Bi-Encoder]
-Query (Q)    ➔ [ Encoder ] ➔ Vector V_Q ──┐
-                                          ├──➔ [ Cosine Sim ] ➔ Điểm số (Nhanh)
-Document (D) ➔ [ Encoder ] ➔ Vector V_D ──┘
-
-[Kiến trúc Cross-Encoder]
-Query (Q)    ──┐
-               ├──➔ [ Q + D ] ➔ [ Transformer (Full Attention) ] ➔ Điểm số (Chính xác)
-Document (D) ──┘
-```
-
-#### 🕸️ Chương 7: GraphRAG & Đồ Thị Tri Thức (Khi nào thực sự cần thiết?)
-Trong Giai đoạn 2, một số kỹ sư thường nghĩ tới việc tích hợp **Graph DB (như Neo4j)** để xây dựng **GraphRAG** (trích xuất Entities, Relations và xây dựng Đồ thị Tri thức). Tuy nhiên, Thầy muốn các em làm rõ đánh đổi thực tế:
-* **Khi nào thực sự cần?**: Khi kho tài liệu chứa mạng lưới quan hệ chéo cực kỳ phức tạp và người dùng thường đặt các câu hỏi toàn cục (Global QA) cần liên kết thông tin nhiều bước (Multi-hop) như: *"Vẽ sơ đồ liên hệ của tất cả các ban ngành ảnh hưởng tới quy trình xử lý cước phạt?"*.
-* **Tại sao không cần thiết cho Xanh SM?**: 
-  1. Dữ liệu cước phí, hotline của chúng ta chủ yếu dạng phẳng và phân cấp điều khoản rõ ràng. Câu hỏi người dùng là **cục bộ (Local QA)**, cơ chế Hybrid Search + Parent-Child đã giải quyết trọn vẹn.
-  2. **Chi phí khổng lồ**: Việc trích xuất đồ thị bằng LLM đắt gấp **50x - 100x** chi phí nhúng thông thường.
-  3. **Độ trễ cao (Latency)**: GraphRAG tốn từ 5s - 30s để phản hồi, hoàn toàn không thích hợp cho Chatbot CSKH thời gian thực yêu cầu độ trễ < 1s.
-* **Giải pháp "Graph" Lai Siêu Nhẹ (Pragmatic Graph)**: Thay vì server Neo4j cồng kềnh, ta có thể xây dựng một bảng quan hệ liên kết chéo các file Markdown (ví dụ: `terms.md` link tới `refund.md`) bằng thư viện **`networkx`** trực tiếp trong RAM. Khi tìm thấy file này, hệ thống tự động kéo thêm file liên kết vào context, đạt hiệu quả liên kết tối đa với chi phí bằng $0 và độ trễ 0ms!
+#### ⚡ Chương 6: Tái Xếp Hạng Đa Tầng (Multi-Stage Reranking)
+Đây là bước "tinh lọc" cuối cùng trước khi gửi dữ liệu cho LLM:
+1.  **Stage 1 (Retrieval)**: Lấy ra 25 ứng viên tiềm năng nhất (phễu rộng).
+2.  **Stage 2 (Reranking)**: Sử dụng **Heuristic Semantic Reranker** hoặc **Cross-Encoder**.
+    *   **Heuristic**: Tính điểm dựa trên sự xuất hiện của tập hợp từ khóa đã chuẩn hóa (Accent-stripped) giữa Query và Document. Cực nhanh, hỗ trợ tốt tiếng Việt không dấu.
+    *   **Cross-Encoder (Future)**: Đọc sâu tương tác Attention chéo giữa từng cặp câu hỏi-tài liệu để chấm điểm logic.
+*   **Kết quả**: Chỉ giữ lại Top 5 "tinh hoa" nhất, giúp LLM không bị nhiễu bởi các đoạn văn bản "trông có vẻ giống" nhưng thực tế không chứa câu trả lời.
 
 ---
 
