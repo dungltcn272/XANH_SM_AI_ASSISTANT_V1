@@ -41,7 +41,7 @@ def run_ingestion(progress_callback=None):
         )
 
     if not _has_markdown(data_dir):
-        repo_data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+        repo_data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
         if _has_markdown(repo_data_dir):
             try:
                 print(f"[INFO] DATA_DIR '{data_dir}' is empty; copying bundled repo data from '{repo_data_dir}'...")
