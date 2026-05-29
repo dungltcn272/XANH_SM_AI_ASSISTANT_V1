@@ -852,6 +852,17 @@ body {
     font-weight: 700;
 }
 
+.flow-capsule.inactive-node {
+    opacity: 0.35;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+}
+
+.flow-capsule.inactive-node .capsule-label {
+    color: #94a3b8;
+    font-weight: 500;
+}
+
 .parallel-flow-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1013,27 +1024,144 @@ body {
 }
 
 /* ==========================================================================
-   TAB 2: TEACHER EXPLAIN PIPELINE DIAGRAM LAYOUT
+   FLOW TREE STYLES (Tab 2: Actual Flow)
    ========================================================================== */
-.flow-explain-container {
-    padding: 24px;
+.flow-tree-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    gap: 0;
+    min-width: 750px; /* Slightly wider for better spacing */
+    margin: 0 auto;
+}
+
+.tree-connector-v {
+    width: 2px;
+    height: 30px;
+    background: #94a3b8; /* Sharper gray */
+}
+
+.tree-branches-wrapper {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
     width: 100%;
-    height: 100%;
-    overflow-y: auto;
+    margin-top: 0;
+}
+
+.tree-branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 140px;
+}
+
+.branch-line-diag-l {
+    width: 50%;
+    height: 30px;
+    border-top: 2px solid #94a3b8;
+    border-left: 2px solid #94a3b8;
+    align-self: flex-end;
+    border-top-left-radius: 15px;
+}
+
+.branch-line-diag-r {
+    width: 50%;
+    height: 30px;
+    border-top: 2px solid #94a3b8;
+    border-right: 2px solid #94a3b8;
+    align-self: flex-start;
+    border-top-right-radius: 15px;
+}
+
+.branch-line-v {
+    width: 2px;
+    height: 30px;
+    background: #94a3b8;
+    border-top: 2px solid #94a3b8;
+}
+
+.fork-node {
+    position: relative;
+    z-index: 2;
+}
+
+/* Horizontal Pipeline Comparison Styles */
+.comparison-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.pipeline-column {
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 15px;
-    background: radial-gradient(circle at 80% 20%, rgba(0, 240, 255, 0.03) 0%, transparent 60%);
+    padding: 20px;
 }
+
+.comparison-capsules {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    overflow: auto; /* Enable horizontal and vertical scroll */
+    padding: 15px 10px;
+}
+
+.comparison-capsules .flow-capsule,
+.comparison-capsules .compare-capsule {
+    width: 100%;
+    max-width: 320px;
+    flex-shrink: 0;
+}
+
+/* Tree support inside comparison column */
+.comparison-capsules .flow-tree-container {
+    width: auto;
+    padding: 0 10px;
+    min-width: 600px !important; /* Ensure tree doesn't collapse too much */
+}
+
+.comparison-capsules .tree-branches-wrapper {
+    gap: 8px;
+}
+
+.comparison-capsules .tree-branch {
+    min-width: 120px;
+}
+
+
+.upgrade-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.separator-arrow {
+    transform: rotate(90deg);
+    font-size: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .separator-arrow {
+        transform: rotate(0deg);
+    }
+}
+
 
 .flow-explain-split {
     display: grid;
-    grid-template-columns: 420px 1fr;
-    gap: 20px;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 30px;
     flex: 1;
 }
 
-@media (max-width: 950px) {
+@media (max-width: 1200px) {
     .flow-explain-split {
         grid-template-columns: 1fr;
     }
@@ -1043,11 +1171,12 @@ body {
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 12px;
-    padding: 18px;
+    padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 10px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+    overflow-x: auto;
 }
 
 .flow-map-panel h3 {
@@ -1101,15 +1230,15 @@ body {
 
 .flow-step-info h5 {
     font-family: var(--font-display);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: #0f172a;
 }
 
 .flow-step-info p {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     color: #475569;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 .flow-step-arrow {
@@ -1182,7 +1311,7 @@ body {
 
 .speech-bubble-card {
     width: 100%;
-    max-width: 700px;
+    max-width: 620px;
     padding: 24px;
     border-radius: 16px;
     gap: 15px;
@@ -2485,6 +2614,83 @@ body {
 }
 
 /* ==========================================================================
+   TAB 6: RERANKER ARENA ⚔️
+   ========================================================================== */
+.arena-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    margin-top: 10px;
+}
+
+.arena-table-card {
+    padding: 24px;
+    overflow-x: auto;
+}
+
+.arena-table-wrapper {
+    margin-top: 15px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+}
+
+.arena-comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.arena-comparison-table th {
+    background: #f8fafc;
+    padding: 14px 18px;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.arena-comparison-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #475569;
+}
+
+.arena-comparison-table tr:last-child td {
+    border-bottom: none;
+}
+
+.arena-comparison-table tr:hover {
+    background: rgba(20, 184, 166, 0.02);
+}
+
+.speed-bolts {
+    color: #f59e0b;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.check-icon {
+    color: #10b981;
+    font-weight: bold;
+}
+
+.cross-icon {
+    color: #ef4444;
+    font-weight: bold;
+}
+
+.arena-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.info-card {
+    padding: 20px;
+}
+
+/* ==========================================================================
    Tab Pipeline Comparison Styles
    ========================================================================== */
 .comparison-container {
@@ -2991,6 +3197,96 @@ body {
         transform: rotate(90deg);
         margin: 10px 0;
     }
+}
+
+/* Premium Markdown Render Styles (Table & Blockquote) */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    margin: 12px 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+.markdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    background: rgba(10, 25, 47, 0.6);
+    backdrop-filter: blur(10px);
+}
+
+.markdown-table th {
+    background: rgba(0, 240, 255, 0.1);
+    color: var(--accent-cyan);
+    font-weight: 700;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid rgba(0, 240, 255, 0.3);
+    text-shadow: 0 0 5px rgba(0, 240, 255, 0.4);
+}
+
+.markdown-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.2s ease;
+}
+
+.markdown-table tr:last-child td {
+    border-bottom: none;
+}
+
+.markdown-table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.markdown-table tr:hover td {
+    background: rgba(0, 240, 255, 0.05);
+    color: #ffffff;
+}
+
+.markdown-blockquote {
+    margin: 12px 0;
+    padding: 10px 16px;
+    border-left: 4px solid var(--accent-cyan);
+    background: rgba(0, 240, 255, 0.03);
+    border-radius: 0 8px 8px 0;
+    color: #cbd5e1;
+    font-style: italic;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    box-shadow: inset 2px 2px 10px rgba(0, 240, 255, 0.02);
+}
+
+/* Branching Tree Styles for RAG Pipeline Sidebar */
+.branch-title-badge {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    margin-bottom: 2px;
+    opacity: 0.8;
+}
+
+.branch-track {
+    transition: all 0.3s ease-in-out;
+}
+
+.branch-track.active-track {
+    animation: track-glow-pulse 2s infinite ease-in-out;
+}
+
+@keyframes track-glow-pulse {
+    0%, 100% { border-left-color: rgba(0, 240, 255, 0.4); }
+    50% { border-left-color: rgba(0, 240, 255, 1); }
+}
+
+.status-dot.cyan {
+    background-color: var(--accent-cyan) !important;
+    box-shadow: 0 0 8px var(--accent-cyan) !important;
 }
 
 

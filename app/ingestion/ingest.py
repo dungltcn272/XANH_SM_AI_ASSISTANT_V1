@@ -80,7 +80,33 @@ def run_ingestion(progress_callback=None):
         progress_callback("SPLIT", msg_split)
     
     # 3. Add to ChromaDB
+    try:
+        print("[INFO] Clearing existing vector database before importing new documents...")
+        db.clear()
+    except Exception as e:
+        print(f"[WARN] Failed to clear DB: {e}")
+        
     db.add_documents(chunks)
+    
+    # Save chunks to a static JSON file for fast BM25 load
+    try:
+        import json
+        persist_dir = os.path.abspath(config.CHROMA_PERSIST_DIR)
+        os.makedirs(persist_dir, exist_ok=True)
+        chunks_file = os.path.join(persist_dir, "bm25_corpus.json")
+        
+        serializable_chunks = []
+        for doc in chunks:
+            serializable_chunks.append({
+                "page_content": doc.page_content,
+                "metadata": doc.metadata
+            })
+            
+        with open(chunks_file, "w", encoding="utf-8") as f:
+            json.dump(serializable_chunks, f, ensure_ascii=False, indent=2)
+        print(f"[SUCCESS] Saved {len(chunks)} chunks to static file for fast BM25 load: {chunks_file}")
+    except Exception as e:
+        print(f"[WARN] Failed to save static chunks file: {e}")
     
     msg_complete = "Ingestion complete. Vector store successfully populated!"
     print(f"[SUCCESS] {msg_complete}")

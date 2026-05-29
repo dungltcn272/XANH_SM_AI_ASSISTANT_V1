@@ -57,18 +57,64 @@ class HeadingAwareSplitter:
 
     def split_file(self, filepath: str, role: str) -> List[Document]:
         """
-        Splits a single markdown file into enriched Document chunks.
+        Splits a single markdown or PDF file into enriched Document chunks.
         """
-        with open(filepath, "r", encoding="utf-8") as f:
-            raw_content = f.read()
-            
-        frontmatter_meta, body = self.parse_frontmatter(raw_content)
+        filename = os.path.basename(filepath)
+        frontmatter_meta = {}
         
+        if filepath.lower().endswith(".pdf"):
+            import pypdf
+            try:
+                reader = pypdf.PdfReader(filepath)
+                pdf_lines = []
+                
+                # Simple layout-aware heuristics to convert PDF text to hierarchy Markdown
+                for page_num, page in enumerate(reader.pages):
+                    text = page.extract_text()
+                    if not text:
+                        continue
+                    
+                    for line in text.split("\n"):
+                        trimmed = line.strip()
+                        if not trimmed:
+                            continue
+                        
+                        is_header = False
+                        # Regular expressions to check if line is a header
+                        if (
+                            re.match(r"^(Chương|Điều|Mục|Phần)\s+\d+", trimmed, re.IGNORECASE) or
+                            re.match(r"^[I|V|X|L|C|D|M]+\.\s+", trimmed) or
+                            re.match(r"^\d+(\.\d+)+\s+", trimmed) or
+                            (len(trimmed) < 80 and not trimmed.endswith(('.', ':', ';', ',')) and trimmed[0].isupper())
+                        ):
+                            is_header = True
+                            
+                        if is_header:
+                            if re.match(r"^(Chương|Phần)\s+", trimmed, re.IGNORECASE):
+                                pdf_lines.append(f"# {trimmed}")
+                            elif re.match(r"^(Mục|Điều)\s+\d+", trimmed, re.IGNORECASE):
+                                pdf_lines.append(f"## {trimmed}")
+                            else:
+                                pdf_lines.append(f"### {trimmed}")
+                        else:
+                            pdf_lines.append(trimmed)
+                
+                body = "\n\n".join(pdf_lines)
+            except Exception as e:
+                print(f"[ERROR] Failed to parse PDF {filename}: {e}")
+                body = ""
+        else:
+            with open(filepath, "r", encoding="utf-8") as f:
+                raw_content = f.read()
+            frontmatter_meta, body = self.parse_frontmatter(raw_content)
+            
+        if not body.strip():
+            return []
+            
         # Split by markdown headers
         header_docs = self.markdown_splitter.split_text(body)
         
         final_docs = []
-        filename = os.path.basename(filepath)
         
         for doc in header_docs:
             parent_content = doc.page_content.strip()
@@ -111,7 +157,7 @@ class HeadingAwareSplitter:
 
     def split_directory(self, data_dir: str) -> List[Document]:
         """
-        Walks the structured folders and splits all markdown files.
+        Walks the structured folders and splits all markdown and PDF files.
         """
         all_documents = []
         categories = ["customer", "driver", "merchant", "faq"]
@@ -123,7 +169,7 @@ class HeadingAwareSplitter:
                 
             for root, _, files in os.walk(cat_path):
                 for file in files:
-                    if file.endswith(".md"):
+                    if file.lower().endswith((".md", ".pdf")):
                         filepath = os.path.join(root, file)
                         print(f"[INFO] Splitting: {filepath} (Role: {category})")
                         try:

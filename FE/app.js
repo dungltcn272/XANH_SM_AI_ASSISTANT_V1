@@ -126,7 +126,7 @@ text_splitter = SemanticChunker(
             
 **Cách triển khai:** Nhúng toàn bộ văn bản và câu truy vấn của người dùng thành các vector 1536 chiều, sau đó tìm Top K vector có khoảng cách ngắn nhất.
 **Ưu điểm:** Cực nhanh, bắt được các từ đồng nghĩa rất tốt mà không cần trùng khớp từ khóa chính xác (ví dụ gõ 'mèo' vẫn ra 'thú cưng').
-**Nhược điểm:** Gặp hiện tượng **\"thảm họa trùng lặp\" (redundancy)** - nhiều mảnh văn bản cùng nói một nội dung giống nhau chiếm sạch không gian Context window của LLM. Ngoài ra, Dense Search rất kém khi tìm kiếm các số điện thoại hotline, các số biểu phí cụ thể, mã lỗi kỹ thuật hoặc ký tự taplo xe điện VinFast.`,
+**Nhược điểm:** Gặp hiện tượng **\"thảm họa trùng lặp\" (redundancy)** - nhiều mảnh văn bản cùng nói một nội dung giống nhau chiếm sạch không gian Context window của LLM. Ngoài ra, Dense Search rất kém khi tìm kiếm các số điện thoại hotline, các số biểu phí cụ thể, hoặc mã lỗi kỹ thuật.`,
             code: `# Thực hiện tìm kiếm Cosine Similarity thuần túy trên ChromaDB
 results = chroma_collection.query(
     query_embeddings=[query_vector],
@@ -154,7 +154,7 @@ Do đó, Thầy giáo AI thiết kế luồng **Hybrid Search** kết hợp song
     return 1.0 / (60 + dense_rank) + 1.0 / (60 + sparse_rank)`,
             quiz: "Tại sao hệ thống RAG CSKH Xanh SM bắt buộc phải kết hợp cả Sparse Search (BM25)?",
             options: [
-                "A. Để bắt chính xác các thông tin dạng từ khóa cứng như số hotline, biểu phí cụ thể, hoặc mã lỗi taplo.",
+                "A. Để bắt chính xác các thông tin dạng từ khóa cứng như số hotline, biểu phí cụ thể, hoặc mã lỗi kỹ thuật.",
                 "B. Vì Dense Search (Vector) không thể tìm kiếm văn bản tiếng Việt."
             ],
             correctIndex: 0
@@ -574,70 +574,96 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     const teacherFlowSteps = [
         {
             title: "Question (Câu hỏi thô)",
-            badge: "Bước 1/8 - Đầu Vào Thô",
-            text: `<strong>Chào các em!</strong> Thầy rất vui được giải thích trực quan đường ống (pipeline) RAG v2 của chúng ta. 
+            badge: "Bước 1/12 - Đầu Vào Thô",
+            text: `<strong>Chào các em học sinh yêu quý!</strong> Hôm nay Thầy rất hào hứng được giảng giải về <strong>Kiến trúc Phase 3 NLU-Gateway RAG</strong> mới của chúng ta. 
             
-            Mọi chuyện bắt đầu tại <strong>Bước 1: Question</strong> khi khách hàng gõ câu hỏi thô vào khung chat. Ví dụ: <em>"Đi xe Xanh Bike mang mèo đi cùng được không?"</em>. Câu hỏi này chứa đầy các từ ngữ tự nhiên, không dấu hoặc viết tắt nhẹ. AI sẽ tiếp nhận và đưa vào luồng bắt đầu chẩn đoán.`
+            Mọi chuyện bắt đầu tại <strong>Bước 1: Question Input</strong> khi người dùng gõ câu hỏi thô vào chat. Ví dụ: <em>"đặt xe máy Xanh Bike rồi hủy có bị phạt tiền ko?"</em>. Câu hỏi này thường viết tắt, thiếu dấu và chưa được chuẩn hóa ngữ cảnh.`
         },
         {
-            title: "Caching Layer Check",
-            badge: "Bước 2/8 - Kiểm Tra Đệm",
-            text: `<strong>Đây là chốt chặn quan trọng đầu tiên!</strong> Khi một câu hỏi của khách hàng gửi lên, hệ thống sẽ thực hiện kiểm tra lớp <strong>Caching Layer</strong> đầu tiên (đặt tại tầng cao nhất của luồng xử lý trong <code>chain.py</code>, trước khâu Query Rewrite hay Vector Search).
-            
-            Nếu phát hiện câu hỏi đã tồn tại trong DB cache (thỏa mãn khớp tuyệt đối hoặc khớp ngữ nghĩa): Hệ thống sẽ lập tức <strong>bẻ gãy luồng xử lý (early-exit/bypass)</strong>, bỏ qua 100% các bước: Rewrite, Query Expansion, Vector/BM25 Retrieval, Reranking, và LLM Generation.
-            
-            Kết quả đã lưu trong Cache sẽ được trả về trực tiếp trong <strong>&lt; 10ms</strong> với chi phí <strong>0đ</strong> và <strong>0 token</strong>!`
+            title: "Safety & Lang Gateway",
+            badge: "Bước 2/12 - Gateway Bảo Mật",
+            text: `<strong>Đây là chốt chặn thép đầu tiên!</strong> Khi câu hỏi đi vào hệ thống, module <strong>Safety & Lang Gateway</strong> cục bộ sẽ:
+            - Chuẩn hóa Unicode dựng sẵn (NFC) cho Tiếng Việt để tránh lỗi so khớp.
+            - Nhận diện ngôn ngữ thô (Tiếng Anh/Việt) để định hướng xử lý.
+            - **Safety Precheck:** Quét qua các từ cấm, từ khóa spam, tục tĩu hoặc dìm hàng đối thủ cạnh tranh bằng Regex. Nếu vi phạm, hệ thống sẽ **bẻ gãy luồng xử lý ngay lập tức (Bypass)** để bảo vệ server và **tiết kiệm 100% chi phí gọi LLM!**`
         },
         {
-            title: "Query Rewrite + Expansion",
-            badge: "Bước 3/8 - Rewrite & Expand",
-            text: `<strong>Nếu không có trong cache, hệ thống đi tiếp đến bước thứ 3!</strong> Nếu trước đó khách hàng đã hỏi về xe máy Xanh Bike, và giờ họ hỏi tiếp: <em>"Thế còn xe Xanh Car thì sao?"</em>. Từ <em>"thế còn"</em> và <em>"thì sao"</em> là những đại từ cực kỳ mơ hồ!
+            title: "Intent Classifier",
+            badge: "Bước 3/12 - Phân Loại Ý Định",
+            text: `<strong>Bước tiếp theo cực kỳ thông minh!</strong> Module <strong>Intent Classifier</strong> sẽ phân loại câu hỏi của người dùng vào 5 nhóm lớn:
+            - <code>small-talk</code>: Trò chuyện xã giao ➔ Trả lời trực tiếp từ LLM, bỏ qua RAG.
+            - <code>faq</code>: Câu hỏi cực kỳ phổ biến ➔ Trả về từ Cache khớp.
+            - <code>rag</code>: Câu hỏi chính sách sâu ➔ Đi tiếp vào luồng RAG.
+            - <code>task-agent</code>: Thao tác thực thi tác vụ/Action Engine ➔ Đi vào luồng Slot Filling.
+            - <code>sensitive</code>: Nội dung nhạy cảm độc hại ➔ Chặn Guardrails.
             
-            Nếu nạp thẳng vào vector search, DB sẽ trả về kết quả rác. Tại đây, Thầy cho chạy mô hình <strong>Query Rewriter</strong> bằng GPT-4o-mini để đọc lịch sử chat 3 lượt gần nhất, tự động khôi phục đại từ khuyết thiếu và viết lại thành câu hỏi độc lập: <em>"Có được mang mèo đi cùng khi sử dụng dịch vụ taxi điện Xanh Car không?"</em>.
-            
-            Sau khi viết lại, hệ thống còn chạy bước <strong>Query Expansion</strong> để sinh ra các biến thể đồng nghĩa và không dấu của truy vấn. Điều này làm tăng độ bao phủ tìm kiếm, đảm bảo không bỏ sót tài liệu vì cách diễn đạt khác nhau.`
+            Điều này giúp hệ thống định tuyến chính xác và không lãng phí token LLM cho những câu hỏi ngoài tầm.`
         },
         {
-            title: "Hybrid Search (Tìm kiếm lai song song)",
-            badge: "Bước 4/8 - Truy Xuất Kép RRF",
-            text: `<strong>Đây chính là linh hồn của việc tìm kiếm tri thức!</strong> Thầy cho chạy song song 2 tay săn thông tin:
+            title: "Slot Filling (Task/RAG)",
+            badge: "Bước 4/12 - Điền Tham Số",
+            text: `<strong>Đây là cơ chế tương tác cực kỳ thực dụng!</strong> Đối với các tác vụ Action Engine (như <code>refund_calculator</code> tính phí hủy chuyến), hệ thống yêu cầu các slots dữ liệu bắt buộc: <em>loại xe</em> và <em>thời gian chờ trước khi hủy</em>.
             
-            1️⃣ <strong>Dense Search (Quét ngữ nghĩa):</strong> Dùng vector nhúng Chroma quét tìm các ý nghĩa đồng âm/gián tiếp (Hiểu 'mèo' = 'thú cưng, vật nuôi').
-            2️⃣ <strong>Sparse Search (BM25 Index):</strong> Quét tìm từ khóa chính xác tuyệt đối như 'Bike', 'Car'.
-            
-            Trước khi quét, hệ thống đã mở rộng truy vấn thành nhiều biến thể đồng nghĩa. Hai bảng xếp hạng kết quả được hòa trộn bằng giải thuật <strong>Reciprocal Rank Fusion (RRF)</strong> để rút trích ra Top 30 trích đoạn sạch và bao phủ từ khóa tốt nhất!`
+            Nếu khách hàng chỉ hỏi chung chung: <em>"tôi muốn tính phí hủy chuyến xe"</em> mà chưa nói đi xe gì, bao lâu, module **Slot Filling** sẽ phát hiện thiếu thông tin và chủ động sinh ra **Câu hỏi làm rõ (Clarification Question)** gửi ngược lại người dùng. Hệ thống sẽ không bao giờ đoán mò số liệu!`
         },
         {
-            title: "Reranker (Tái xếp hạng chéo)",
-            badge: "Bước 5/8 - Chấm Điểm Attention Chéo",
-            text: `<strong>Lưu ý kỹ điểm này cho Thầy nhé:</strong> Bi-Encoder ở bước trước tìm kiếm rất nhanh nhưng không có tương tác chéo Attention giữa từng từ. 
-            
-            Tại Bước 5, Thầy sử dụng mô hình <strong>Cross-Encoder cục bộ</strong> (Two-Stage Pipeline). Nó ghép Query và Top 30 văn bản lại, cho chạy qua Transformer để tính điểm Attention chéo toàn phần từng từ một, lọc ra <strong>Top 5 văn bản đỉnh nhất</strong>. Điều này triệt tiêu hoàn toàn các tài liệu loãng hay gây nhiễu context!`
+            title: "Fast FAQ / Semantic Cache",
+            badge: "Bước 5/12 - Bộ Đệm Siêu Tốc",
+            text: `<strong>Tấm lá chắn tiết kiệm chi phí 0đ đây rồi!</strong> Đối với các câu hỏi hợp lệ đi vào RAG, hệ thống sẽ kiểm tra **Fast FAQ / Semantic Cache** đầu tiên:
+            - Khớp tuyệt đối: Dùng mã băm MD5 so khớp 100% siêu tốc.
+            - Khớp ngữ nghĩa: Embedding câu hỏi và so sánh Cosine Similarity trên DB. Nếu đạt độ tương đồng ngữ nghĩa cực cao (<code>>= 0.96</code>), hệ thống trả về ngay câu trả lời đã lưu trong **&lt; 10ms**, bypass hoàn toàn 100% các bước gọi LLM hay truy xuất CSDL đằng sau, tiết kiệm tối đa ngân sách API!`
         },
         {
-            title: "Context Parent-Child (Nén & Gộp)",
-            badge: "Bước 6/8 - Đập Tan Phân Mảnh PDF",
-            text: `<strong>Đây là giải thuật độc quyền giúp ta đập tan nghịch lý phân mảnh PDF!</strong> 
+            title: "Conversational Memory",
+            badge: "Bước 6/12 - Biên Dịch Ngữ Cảnh",
+            text: `<strong>Nếu cache miss, hệ thống đi tiếp đến bước thứ 6!</strong> Nếu người dùng hỏi chuỗi ngữ cảnh liên tiếp: <em>"Quy định của nó thế nào?"</em>, đại từ <em>"nó"</em> cực kỳ mơ hồ!
             
-            Như Thầy đã dạy, Vector Search chạy trên mảnh con nhỏ (Child chunks) để tìm kiếm nhạy nhất. Nhưng khi gửi cho LLM, thuật toán trong <code>chain.py</code> của ta sẽ tự động gộp và kéo toàn bộ **mảnh cha (Parent chunks)** của mảnh con đó ra. 
-            
-            Nhờ đó, các bảng biểu cước phí phức tạp, danh sách lồng của chính sách Xanh SM được bảo toàn nguyên vẹn 100% khi nạp vào context LLM!`
+            Tại đây, **Conversational Query Rewriter** sẽ đọc lịch sử 3 lượt chat gần nhất và biên dịch đại từ thay thế thành một câu truy vấn độc lập hoàn chỉnh: <em>"Quy định về mức chiết khấu doanh thu đối tác tài xế Xanh Car thế nào?"</em> trước khi chuyển xuống tầng tìm kiếm vector.`
         },
         {
-            title: "LLM Gen (Tổng hợp phản hồi)",
-            badge: "Bước 7/8 - LLM Synthesizer",
-            text: `<strong>Đến bước này, chúng ta đã có một đĩa thức ăn tri thức sạch sẽ!</strong> Ngữ cảnh cha đã được deduplicate hoàn chỉnh được chuyển thẳng tới mô hình LLM <code>gpt-4o-mini</code>.
-            
-            Đóng vai một trợ lý CSKH Xanh SM chuyên nghiệp, LLM sẽ đọc hiểu ngữ cảnh sạch này để viết ra câu trả lời cực kỳ trôi chảy, thân thiện và <strong>cam đoan 100% không có ảo giác (hallucination)</strong> vì thông tin đã được ràng buộc cứng trong context gốc.`
+            title: "Strategy Selector",
+            badge: "Bước 7/12 - Chiến Lược Động",
+            text: `<strong>Một nâng cấp rất đắt giá của Phase 3!</strong> Thay vì luôn chạy Hybrid Search cồng kềnh, **Strategy Selector** sẽ phân tích đặc điểm câu truy vấn đã viết lại để chọn phương án tối ưu:
+            - **BM25 / Keyword:** Khi câu hỏi chứa nhiều số liệu, mã điều khoản, số hotline, con số cước phí chính xác.
+            - **Dense Search:** Khi câu hỏi mang tính khái niệm trừu tượng, giải nghĩa chung.
+            - **Hybrid Search (Mặc định):** Hòa trộn cả hai bằng thuật toán RRF để bao phủ rộng nhất.`
         },
         {
-            title: "Citations (Xác thực trích nguồn)",
-            badge: "Bước 8/8 - Xác Thực Pháp Lý",
-            text: `<strong>Bước cuối cùng nhưng là chốt chặn bảo vệ uy tín của doanh nghiệp!</strong> 
+            title: "Hybrid/Strategic Search",
+            badge: "Bước 8/12 - Tìm Kiếm Phân Phối",
+            text: `<strong>Quá trình truy xuất tri thức chính thức bắt đầu!</strong> Dựa trên chiến lược đã chọn ở bước trước:
+            - Hệ thống quét ChromaDB bằng vector nhúng để bắt từ đồng nghĩa.
+            - Quét BM25 bằng chỉ mục nghịch đảo để bắt từ khóa chính xác.
             
-            Bộ xác thực trích nguồn của Thầy sẽ đối sánh câu trả lời của LLM với danh mục nguồn gốc để bóc tách URL, hiển thị nút trích nguồn trực quan bên dưới (Ví dụ: <code>[customer] refund.md</code>).
+            Bộ mở rộng truy vấn (Query Expansion) giúp vét sạch tri thức, hòa trộn bảng xếp hạng bằng thuật toán **RRF (Reciprocal Rank Fusion)** để trích ra Top 30 ứng viên chất lượng nhất!`
+        },
+        {
+            title: "Cross-Encoder Reranker",
+            badge: "Bước 9/12 - Tái Xếp Hạng Chéo",
+            text: `<strong>Nhớ kỹ điểm này cho Thầy nhé:</strong> Bi-Encoder ở bước trước tìm kiếm rất nhanh nhưng không có tương tác chéo Attention.
             
-            Khách hàng hoặc CSKH Agent có thể nhấp chuột trực tiếp vào nút trích dẫn để mở văn bản gốc đối chiếu ngay tức thì. Minh bạch pháp lý tuyệt đối!`
+            Tại đây, Thầy sử dụng mô hình **Cross-Encoder cục bộ** (Two-Stage Pipeline). Nó ghép câu hỏi và Top 30 văn bản lại, cho chạy qua Transformer để tính điểm Attention chéo toàn phần từng từ một, lọc ra **Top 5 văn bản có điểm số cao nhất**, triệt tiêu hoàn toàn các trích đoạn nhiễu!`
+        },
+        {
+            title: "Parent-Child Context",
+            badge: "Bước 10/12 - Giải Quyết Phân Mảnh",
+            text: `<strong>Kỹ thuật nén ngữ cảnh phân cấp cha-con!</strong> Vector Search chạy trên mảnh con nhỏ (100-200 từ) để bắt chính xác tọa độ tri thức.
+            
+            Nhưng khi gửi cho LLM, thuật toán trong <code>chain.py</code> của ta sẽ tự động truy xuất và gộp **mảnh cha tương ứng (1000-2000 từ)**. Nhờ đó, các bảng biểu cước phí phức tạp, danh sách quy định của Xanh SM được bảo toàn nguyên vẹn 100% khi nạp vào context LLM!`
+        },
+        {
+            title: "LLM Synthesizer",
+            badge: "Bước 11/12 - Tổng Hợp Phản Hồi",
+            text: `<strong>Đĩa tri thức sạch sẽ đã sẵn sàng!</strong> Ngữ cảnh cha đã được lọc trùng lặp và nén tối ưu được chuyển thẳng tới mô hình LLM <code>gpt-4o-mini</code>.
+            
+            LLM đóng vai trợ lý CSKH Xanh SM chuyên nghiệp để tổng hợp câu trả lời cực kỳ trôi chảy, thân thiện và tuân thủ nghiêm ngặt ràng buộc của tài liệu chính sách nguồn.`
+        },
+        {
+            title: "Citation & Response",
+            badge: "Bước 12/12 - Nguồn Sạch & Trả Kết Quả",
+            text: `<strong>Hoàn tất hành trình hoàn hảo!</strong> 
+            
+            Hệ thống bóc tách URL, hiển thị nút trích nguồn rõ ràng bên dưới (Ví dụ: 📄 <code>[refund.md] Điều 1</code>). Người dùng có thể nhấp chuột trực tiếp vào nút trích dẫn để mở văn bản gốc đối chiếu ngay tức thì. Minh bạch pháp lý tuyệt đối cho cả khách hàng và CSKH Agent!`
         }
     ];
 
@@ -650,8 +676,9 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         if (!step) return;
 
         // Toggle active visual states on selector chain
-        flowStepItems.forEach((item, idx) => {
-            if (idx === stepIdx) {
+        flowStepItems.forEach((item) => {
+            const itemStep = parseInt(item.getAttribute("data-step"));
+            if (itemStep === stepIdx) {
                 item.classList.add("active");
                 item.scrollIntoView({ behavior: "smooth", block: "nearest" });
             } else {
@@ -676,12 +703,16 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     }
 
     // Set up step selector item clicks
-    flowStepItems.forEach((item, idx) => {
+    flowStepItems.forEach((item) => {
         item.addEventListener("click", () => {
-            stopTeacherAutoplay();
-            renderTeacherStep(idx);
+            const stepIdx = parseInt(item.getAttribute("data-step"));
+            if (!isNaN(stepIdx)) {
+                stopTeacherAutoplay();
+                renderTeacherStep(stepIdx);
+            }
         });
     });
+
 
     // Next step button trigger
     btnNextStep.addEventListener("click", () => {
@@ -731,7 +762,129 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
 
 
     // ----------------------------------------------------------------------
-    // UI Chat Cockpit Logic
+    // RERANKER ARENA ⚔️ - Live Benchmarking Logic
+    // ----------------------------------------------------------------------
+    const btnRunArena = document.getElementById("btn-run-arena");
+    const arenaQueryInput = document.getElementById("arena-query-input");
+
+    if (btnRunArena) {
+        btnRunArena.addEventListener("click", runRerankerArena);
+    }
+
+    async function runRerankerArena() {
+        const query = arenaQueryInput.value.trim();
+        if (!query) {
+            alert("Vui lòng nhập một câu hỏi để bắt đầu đối soát!");
+            return;
+        }
+
+        btnRunArena.disabled = true;
+        btnRunArena.textContent = "⚔️ Đang đấu trường...";
+        appendThinkingLog(`Bắt đầu chạy Đấu trường Reranker cho truy vấn: "${query}"`, "header");
+
+        try {
+            const response = await fetch("/api/rerank/arena", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query, role: currentRole })
+            });
+
+            const data = await response.json();
+            if (data.status === "success") {
+                updateArenaTable(data.results);
+                appendThinkingLog("Đã hoàn tất đối soát hiệu năng giữa các mô hình Reranker.", "success");
+            } else {
+                throw new Error(data.detail || "Lỗi hệ thống khi chạy đối soát.");
+            }
+        } catch (error) {
+            console.error("Arena Error:", error);
+            appendThinkingLog(`Lỗi Arena: ${error.message}`, "error");
+            alert(`Lỗi khi chạy đối soát: ${error.message}`);
+        } finally {
+            btnRunArena.disabled = false;
+            btnRunArena.textContent = "Chạy So Sánh Thật ⚔️";
+        }
+    }
+
+    function updateArenaTable(results) {
+        const tableBody = document.querySelector(".arena-comparison-table tbody");
+        if (!tableBody) return;
+
+        const rowMap = {};
+        const rows = tableBody.querySelectorAll("tr:not(.arena-detail-row)");
+        rows.forEach(row => {
+            const modelName = row.cells[0].textContent.trim();
+            rowMap[modelName] = row;
+        });
+
+        results.forEach(res => {
+            const modelName = res.model;
+            const row = rowMap[modelName];
+
+            if (row) {
+                if (res.error) {
+                    row.cells[1].innerHTML = `<span style="color: #ef4444; font-size: 0.7rem;">Error</span>`;
+                    row.cells[4].innerHTML = `<span style="color: #ef4444; font-size: 0.7rem;">${res.error.substring(0, 30)}...</span>`;
+                } else {
+                    // Update Speed cell
+                    row.cells[1].innerHTML = `<span class="speed-bolts" style="color: #14b8a6;">${res.speed}</span>`;
+
+                    // Update Quality/Status cell with a toggle button
+                    const top1 = res.top_chunks[0] || { source: "N/A", score: 0 };
+                    row.cells[4].innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 600; color: #1e293b;">${top1.source}</span>
+                            <button class="view-chunks-btn" data-model="${modelName}">Chi tiết 👁️</button>
+                        </div>
+                    `;
+
+                    // Create or Update hidden detail row
+                    let detailRow = row.nextElementSibling;
+                    if (!detailRow || !detailRow.classList.contains("arena-detail-row")) {
+                        detailRow = document.createElement("tr");
+                        detailRow.className = "arena-detail-row";
+                        detailRow.style.display = "none";
+                        detailRow.innerHTML = `<td colspan="6" class="arena-detail-cell"></td>`;
+                        row.parentNode.insertBefore(detailRow, row.nextSibling);
+                    }
+
+                    const detailCell = detailRow.querySelector(".arena-detail-cell");
+                    detailCell.innerHTML = `
+                        <div class="arena-chunks-list">
+                            ${res.top_chunks.map((c, i) => `
+                                <div class="arena-chunk-item">
+                                    <div class="chunk-meta">
+                                        <span class="chunk-rank">#${i+1}</span>
+                                        <span class="chunk-source">${c.source}</span>
+                                        <span class="chunk-score">Score: ${c.score}</span>
+                                    </div>
+                                    <div class="chunk-content">${c.content}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+
+                    // Add click event for the new button
+                    const btn = row.querySelector(".view-chunks-btn");
+                    btn.addEventListener("click", () => {
+                        const isVisible = detailRow.style.display === "table-row";
+                        detailRow.style.display = isVisible ? "none" : "table-row";
+                        btn.textContent = isVisible ? "Chi tiết 👁️" : "Thu gọn ⬆️";
+                    });
+
+                    // Add highlight effect
+                    row.style.transition = "background 0.5s";
+                    row.style.background = "rgba(20, 184, 166, 0.15)";
+                    setTimeout(() => {
+                        row.style.background = "";
+                    }, 2000);
+                }
+            }
+        });
+    }
+
+    // ----------------------------------------------------------------------
+    // Main Chat Message Sending Logic
     // ----------------------------------------------------------------------
     // DOM elements for chat cockpit
     const roleButtons = document.querySelectorAll(".role-btn");
@@ -752,13 +905,20 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     // RAG Pipeline Nodes Mapping
     const nodes = [
         { id: "node-Question", conn: "conn-1" },
+        { id: "node-Gateway", conn: "conn-gateway" },
+        { id: "node-Classifier", conn: "conn-classifier" },
+        { id: "node-SlotFilling", conn: "conn-slot" },
         { id: "node-CacheCheck", conn: "conn-cache" },
         { id: "node-QueryUnderstanding", conn: "conn-2" },
+        { id: "node-StrategySelector", conn: "conn-strategy" },
         { id: "node-HybridSearch", conn: "conn-3" },
         { id: "node-Reranker", conn: "conn-4" },
         { id: "node-ContextCompression", conn: "conn-5" },
         { id: "node-LLMGeneration", conn: "conn-6" },
-        { id: "node-CitationValidator", conn: null }
+        { id: "node-CitationValidator", conn: null },
+        { id: "node-BypassAction", conn: null },
+        { id: "node-CalculatorTool", conn: null },
+        { id: "node-CacheHitAction", conn: null }
     ];
 
     // Suggestion chips per role
@@ -878,7 +1038,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             if (imagePreviewContainer) imagePreviewContainer.style.display = "block";
             if (uploadZone) uploadZone.style.display = "none";
             
-            appendThinkingLog(`Ảnh cảnh báo taplo được nạp thành công: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, "success");
+            appendThinkingLog(`Tệp tin hình ảnh được nạp thành công: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, "success");
         };
         reader.onerror = () => {
             alert("Lỗi khi đọc file ảnh!");
@@ -946,7 +1106,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         nodes.forEach(node => {
             const el = document.getElementById(node.id);
             if (el) {
-                el.classList.remove("active", "completed", "step-node", "glow", "active-node", "dashed-active");
+                el.classList.remove("active", "completed", "step-node", "glow", "active-node", "dashed-active", "inactive-node");
                 el.classList.add("flow-capsule", "step-node");
             }
             if (node.conn) {
@@ -1007,220 +1167,181 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         console.error("[ERROR] user-input not found in DOM");
     }
 
-    async function submitMessage() {
-        console.log("[DEBUG] submitMessage triggered");
+        async function submitMessage() {
+        console.log("[DEBUG] submitMessage triggered with SSE");
         const queryText = userInput.value.trim();
-        if (!queryText && !uploadedImageBase64) {
-            console.log("[DEBUG] Empty query and no image, aborting");
-            return;
-        }
+        if (!queryText && !uploadedImageBase64) return;
 
         appendUserMessage(queryText || "[Tải lên ảnh cảnh báo sự cố]");
-        
-        const currentQuery = queryText || "Chẩn đoán sự cố taplo hình ảnh xe điện.";
+
+        const currentQuery = queryText || "Hãy cho tôi biết về chính sách dịch vụ của Xanh SM.";
         const payloadBase64 = uploadedImageBase64;
         const payloadMime = uploadedImageMimeType;
-        
+
         userInput.value = "";
         adjustTextareaHeight();
-        if (uploadedImageBase64) {
-            clearImage();
-        }
+        if (uploadedImageBase64) clearImage();
 
         setLoadingState(true);
-        updatePipelineStatus("Đang xử lý câu hỏi...");
+        updatePipelineStatus("Đang khởi tạo luồng...");
         clearThinkingLogs();
         resetPipelineGraph();
-        
-        appendBotLoadingMessage("Khởi tạo luồng xử lý...");
-        
+        appendBotLoadingMessage("Đang kết nối luồng xử lý...");
+
         setNodeState("node-Question", "active");
-        appendThinkingLog("Bắt đầu xử lý luồng sự kiện hỏi đáp...", "header");
-        appendThinkingLog(`Truy vấn: "${currentQuery}" | Vai trò: ${currentRole}`, "normal");
-        
-        // Start API fetch in parallel
-        let apiResolved = false;
-        let apiData = null;
-        let apiError = null;
+        appendThinkingLog("Bắt đầu xử lý luồng sự kiện hỏi đáp (SSE)...", "header");
+        appendThinkingLog(`Truy vấn: "${currentQuery}"`, "normal");
+
+        const resetTracks = () => {
+            ["track-Bypass", "track-TaskAgent", "track-CacheHit", "track-StandardRAG"].forEach(t => {
+                const el = document.getElementById(t);
+                if (el) el.style.display = "none";
+            });
+            const std = document.getElementById("track-StandardRAG");
+            if (std) { 
+                std.style.display = "block"; 
+                std.style.opacity = "1"; 
+                std.style.borderLeft = "2px solid var(--accent-cyan)";
+            }
+        };
+
+        const showActiveTrack = (trackId) => {
+            ["track-Bypass", "track-TaskAgent", "track-CacheHit", "track-StandardRAG"].forEach(t => {
+                const el = document.getElementById(t);
+                if (el) {
+                    if (t === trackId) {
+                        el.style.display = "block";
+                        el.style.opacity = "1";
+                        if (t === "track-Bypass") el.style.borderLeft = "2px solid #ef4444";
+                        else if (t === "track-TaskAgent") el.style.borderLeft = "2px solid #f59e0b";
+                        else if (t === "track-CacheHit") el.style.borderLeft = "2px solid #10b981";
+                        else el.style.borderLeft = "2px solid var(--accent-cyan)";
+                    } else {
+                        el.style.display = "none";
+                        el.style.opacity = "0.2";
+                    }
+                }
+            });
+        };
+
+        resetTracks();
+
+        const stageToNode = {
+            "Gateway": "node-Gateway",
+            "Classifier": "node-Classifier",
+            "SlotFilling": "node-SlotFilling",
+            "ActionEngine": "node-CalculatorTool",
+            "CacheCheck": "node-CacheCheck",
+            "QueryUnderstanding": "node-QueryUnderstanding",
+            "StrategySelector": "node-StrategySelector",
+            "HybridSearch": "node-HybridSearch",
+            "Reranker": "node-Reranker",
+            "ContextCompression": "node-ContextCompression",
+            "LLMGeneration": "node-LLMGeneration",
+            "FaithfulnessCheck": "node-FaithfulnessCheck",
+            "CitationValidator": "node-CitationValidator"
+        };
+
         const chatQueryStartTime = Date.now();
 
-        const apiPromise = fetch("/api/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                query: currentQuery,
-                role: currentRole,
-                chat_history: chatHistory,
-                image_base64: payloadBase64,
-                image_mime_type: payloadMime
-            })
-        }).then(async (response) => {
-            console.log("[DEBUG] Fetch response status:", response.status);
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({ detail: "Unknown server error" }));
-                throw new Error(errData.detail || `Server returned error status: ${response.status}`);
-            }
-            apiData = await response.json();
-            apiResolved = true;
-            return apiData;
-        }).catch((err) => {
-            console.error("[ERROR] API fetch failed:", err);
-            apiError = err;
-            apiResolved = true;
-            throw err;
-        });
-
         try {
-            // STEP 1: Question Input Animation (400ms)
-            await new Promise(r => setTimeout(r, 400));
-            setNodeState("node-Question", "completed");
+            const response = await fetch("/api/chat/stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    query: currentQuery,
+                    role: currentRole,
+                    chat_history: chatHistory,
+                    image_base64: payloadBase64,
+                    image_mime_type: payloadMime
+                })
+            });
 
-            // STEP 2: Caching Layer Check Animation (600ms)
-            setNodeState("node-CacheCheck", "active");
-            updatePipelineStatus("Đang kiểm tra Caching Layer...");
-            updateBotLoadingStatus("Đang truy vấn lớp đệm Cache...");
-            appendThinkingLog("Kiểm tra lớp đệm Caching Layer đầu tiên (đặt tại tầng cao nhất của luồng xử lý trong chain.py, trước khâu Query Rewrite hay Vector Search)...", "normal");
-            await new Promise(r => setTimeout(r, 600));
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-            // Check if API resolved immediately with a cache hit. If so, fast-track!
-            const isCacheHit = apiResolved && apiData && apiData.cache_hit;
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let lastNode = "node-Question";
+            let buffer = "";
 
-            if (isCacheHit) {
-                appendThinkingLog("⚡ Phát hiện câu hỏi đã tồn tại trong DB cache (thỏa mãn khớp tuyệt đối hoặc khớp ngữ nghĩa)!", "success");
-                appendThinkingLog("Hệ thống lập tức bẻ gãy luồng xử lý (early-exit/bypass), bỏ qua 100% các bước: Rewrite, Query Expansion, Vector/BM25 Retrieval, Reranking, và LLM Generation.", "success");
-                appendThinkingLog("Kết quả đã lưu trong Cache được trả về trực tiếp trong < 10ms với chi phí 0đ và 0 token.", "success");
-                setNodeState("node-CacheCheck", "completed");
-                setNodeState("node-QueryUnderstanding", "completed");
-                setNodeState("node-HybridSearch", "completed");
-                setNodeState("node-Reranker", "completed");
-                setNodeState("node-ContextCompression", "completed");
-                setNodeState("node-LLMGeneration", "completed");
-            } else {
-                setNodeState("node-CacheCheck", "completed");
-                appendThinkingLog("Cache miss! Không phát hiện câu hỏi trong DB cache. Tiếp tục chạy toàn bộ luồng RAG pipeline...", "normal");
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
 
-                // STEP 3: Query Rewrite + Expansion (1800ms) - TAKES THE LONGEST TIME!
-                setNodeState("node-QueryUnderstanding", "active");
-                updatePipelineStatus("Đang truy vấn CSDL... (Query Rewrite + Expansion)");
-                updateBotLoadingStatus("Đang hiểu ý định tìm kiếm...");
-                if (chatHistory.length > 0) {
-                    appendThinkingLog("Lịch sử hội thoại được phát hiện. Đang chạy GPT-4o-mini Query Rewriter...", "normal");
-                } else {
-                    appendThinkingLog("Không có lịch sử trước đó. Đang chạy bộ xử lý ghi đè ngữ cảnh...", "normal");
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (line.trim().startsWith("data: ")) {
+                        try {
+                            const eventData = JSON.parse(line.substring(6));
+                            const { stage, msg, result } = eventData;
+
+                            if (stage === "Error") throw new Error(msg);
+
+                            const nodeId = stageToNode[stage];
+                            if (nodeId) {
+                                if (lastNode && lastNode !== nodeId) setNodeState(lastNode, "completed");
+                                setNodeState(nodeId, "active");
+                                lastNode = nodeId;
+                            }
+
+                            if (msg) {
+                                appendThinkingLog(msg, "normal");
+                                updateBotLoadingStatus(msg);
+                                updatePipelineStatus(msg);
+                            }
+
+                            if (stage === "Classifier" && result && result.intent) {
+                                const intent = result.intent;
+                                if (intent === "sensitive" || intent === "small-talk") showActiveTrack("track-Bypass");
+                                else if (intent === "task-agent") showActiveTrack("track-TaskAgent");
+                            }
+                            
+                            if (stage === "CitationValidator" && result) {
+                                if (result.intent === "faq" || result.strategy_selected === "Semantic Cache Hit") {
+                                    showActiveTrack("track-CacheHit");
+                                    setNodeState("node-CacheHitAction", "completed");
+                                }
+                                
+                                setNodeState(lastNode, "completed");
+                                
+                                const chatDuration = Date.now() - chatQueryStartTime;
+                                sessionStats.totalQueries++;
+                                sessionStats.totalLatencyMs += chatDuration;
+
+                                if (result.strategy_selected === "Semantic Cache Hit") {
+                                    sessionStats.cacheHits++;
+                                    showCacheBadge(true, "exact", 1.0);
+                                } else {
+                                    const usage = result.token_usage || {};
+                                    sessionStats.totalPromptTokens += usage.total_prompt_tokens || 0;
+                                    sessionStats.totalCompletionTokens += usage.total_completion_tokens || 0;
+                                    sessionStats.totalCostUsd += result.llm_cost_usd || 0;
+                                    showCacheBadge(false);
+                                }
+
+                                removeBotLoadingMessage();
+                                appendBotMessage(result.answer, result.citations);
+                                renderMetrics(result);
+                                fetchDbStats();
+
+                                chatHistory.push({ role: "user", content: currentQuery });
+                                chatHistory.push({ role: "assistant", content: result.answer });
+                                if (chatHistory.length > 6) chatHistory = chatHistory.slice(-6);
+                                
+                                setLoadingState(false);
+                                return;
+                            }
+                        } catch (e) { console.error("[SSE Parse Error]", e); }
+                    }
                 }
-                await new Promise(r => setTimeout(r, 1800)); // Spend quality time on this step!
-                setNodeState("node-QueryUnderstanding", "completed");
-
-                // STEP 4: Hybrid Search (1200ms)
-                setNodeState("node-HybridSearch", "active");
-                updatePipelineStatus("Đang truy vấn CSDL... (Hybrid Search)");
-                updateBotLoadingStatus("Đang tìm kiếm tri thức...");
-                appendThinkingLog("Đang mở rộng truy vấn (Query Expansion) và truy xuất Vector Database & BM25 Sparse Index...", "normal");
-                await new Promise(r => setTimeout(r, 1200));
-                setNodeState("node-HybridSearch", "completed");
-
-                // STEP 5: Reranker (800ms)
-                setNodeState("node-Reranker", "active");
-                updatePipelineStatus("Đang xử lý thứ tự kết quả... (Reranker)");
-                updateBotLoadingStatus("Đang lọc kết quả tốt nhất...");
-                appendThinkingLog("Đang chạy mô hình chéo Cross-Encoder Reranker để tối ưu độ liên quan...", "normal");
-                await new Promise(r => setTimeout(r, 800));
-                setNodeState("node-Reranker", "completed");
             }
-
-            // Wait for API resolution if it's not finished yet
-            if (!apiResolved) {
-                updateBotLoadingStatus("Đang đợi phản hồi từ mô hình ngôn ngữ...");
-                appendThinkingLog("Đang đợi phản hồi xử lý từ máy chủ...", "normal");
-                await apiPromise;
-            }
-
-            // Throw error if API encountered one
-            if (apiError) {
-                throw apiError;
-            }
-
-            const data = apiData;
-
-            // Record session statistics for 100% genuine telemetry dashboard
-            const chatDuration = Date.now() - chatQueryStartTime;
-            sessionStats.totalQueries++;
-            sessionStats.totalLatencyMs += chatDuration;
-            
-            if (data.cache_hit) {
-                sessionStats.cacheHits++;
-            } else {
-                const usage = data.token_usage || {};
-                const totalPrompt = usage.total_prompt_tokens || 0;
-                const totalComp = usage.total_completion_tokens || 0;
-                const costUsd = data.llm_cost_usd || 0;
-                
-                sessionStats.totalPromptTokens += totalPrompt;
-                sessionStats.totalCompletionTokens += totalComp;
-                sessionStats.totalCostUsd += costUsd;
-            }
-
-            if (!data.cache_hit) {
-                // STEP 5: Parent-Child Context (600ms)
-                setNodeState("node-ContextCompression", "active");
-                updateBotLoadingStatus("Nén ngữ cảnh & gộp tri thức...");
-                appendThinkingLog("Đang thực hiện gộp mảnh Cha-Con (Parent-Child) và nén tối ưu ngữ cảnh...", "normal");
-                await new Promise(r => setTimeout(r, 600));
-                setNodeState("node-ContextCompression", "completed");
-                
-                // STEP 6: LLM Generation (800ms)
-                setNodeState("node-LLMGeneration", "active");
-                updateBotLoadingStatus("ChatBot đang tổng hợp câu trả lời...");
-                appendThinkingLog("Đang chạy LLM Synthesizer (gpt-4o-mini) tổng hợp câu trả lời...", "normal");
-                await new Promise(r => setTimeout(r, 800));
-                setNodeState("node-LLMGeneration", "completed");
-            }
-
-            // STEP 7: Citations Validator (400ms)
-            setNodeState("node-CitationValidator", "active");
-            updateBotLoadingStatus("Xác thực nguồn trích dẫn...");
-            appendThinkingLog("Đang kiểm chứng tính minh bạch và xác thực trích dẫn nguồn...", "normal");
-            await new Promise(r => setTimeout(r, 400));
-            setNodeState("node-CitationValidator", "completed");
-
-            // Complete all node visuals
-            nodes.forEach(node => setNodeState(node.id, "completed"));
-            removeBotLoadingMessage();
-            
-            if (data.rewritten_query && data.rewritten_query !== currentQuery) {
-                appendThinkingLog(`Truy vấn đã được ghi lại thành: "${data.rewritten_query}"`, "success");
-            }
-            if (payloadBase64) {
-                appendThinkingLog(`[Vision AI] Đã nhận dạng thành công ảnh taplo cảnh báo lỗi.`, "success");
-            }
-            
-            if (data.cache_hit) {
-                appendThinkingLog(`⚡ TRUY CẬP CACHE THÀNH CÔNG [Kiểu khớp: ${data.cache_hit.toUpperCase()}]! Phản hồi được trả về ngay lập tức với chi phí 0đ và thời gian gần như bằng 0ms.`, "success");
-                showCacheBadge(true, data.cache_hit, data.cache_similarity);
-            } else {
-                appendThinkingLog(`Truy xuất thành công ${data.citations ? data.citations.length : 0} tài liệu phù hợp nhất.`, "success");
-                appendThinkingLog(`Tổng hợp câu trả lời của mô hình LLM hoàn tất.`, "success");
-                showCacheBadge(false);
-            }
-
-            appendBotMessage(data.answer, data.citations);
-            renderMetrics(data);
-            
-            // Instantly refresh telemetry metrics in Console tab
-            fetchDbStats();
-
-            chatHistory.push({ role: "user", content: currentQuery });
-            chatHistory.push({ role: "assistant", content: data.answer });
-            if (chatHistory.length > 12) {
-                chatHistory.splice(0, 2);
-            }
-
         } catch (error) {
-            console.error(error);
+            console.error("[SSE ERROR]", error);
             removeBotLoadingMessage();
-            appendBotMessage(`⚠️ **Lỗi hệ thống:** ${error.message}. Vui lòng kiểm tra lại kết nối mạng hoặc thử lại sau.`);
+            appendBotMessage(`⚠️ **Lỗi hệ thống:** ${error.message}`);
             updatePipelineStatus("Lỗi xử lý luồng RAG");
             setLoadingState(false);
         } finally {
@@ -1277,29 +1398,62 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             const citeBox = document.createElement("div");
             citeBox.className = "citations-box";
             
-            const citeHeader = document.createElement("div");
-            citeHeader.className = "citations-header";
-            citeHeader.textContent = "📌 Nguồn Trích Dẫn Pháp Lý:";
-            citeBox.appendChild(citeHeader);
-
-            const citeList = document.createElement("div");
-            citeList.className = "citations-list";
-            
+            const uniqueCitations = [];
             const seen = new Set();
             citations.forEach(c => {
                 const uniqueKey = `${c.source}-${c.section}`;
                 if (!seen.has(uniqueKey)) {
                     seen.add(uniqueKey);
-                    
-                    const tag = document.createElement("span");
-                    tag.className = "citation-tag";
-                    tag.innerHTML = `📄 [${c.source}] ${c.section} (Khớp: ${(c.relevance_score * 100).toFixed(0)}%)`;
-                    citeList.appendChild(tag);
+                    uniqueCitations.push(c);
                 }
+            });
+
+            const citeHeader = document.createElement("div");
+            citeHeader.className = "citations-header";
+            citeHeader.style.cssText = "display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;";
+            citeHeader.innerHTML = `
+                <span>📌 Nguồn Trích Dẫn Pháp Lý (${uniqueCitations.length}):</span>
+                <button class="citation-toggle-btn" style="background: rgba(0, 240, 255, 0.1); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; transition: all 0.2s ease-in-out;">Xem chi tiết 👁️</button>
+            `;
+            citeBox.appendChild(citeHeader);
+
+            const citeList = document.createElement("div");
+            citeList.className = "citations-list collapsed";
+            citeList.style.display = "none";
+            citeList.style.flexWrap = "wrap";
+            citeList.style.gap = "8px";
+            citeList.style.marginTop = "8px";
+            
+            uniqueCitations.forEach(c => {
+                const tag = document.createElement("span");
+                tag.className = "citation-tag";
+                tag.innerHTML = `📄 [${c.source}] ${c.section} (Khớp: ${(c.relevance_score * 100).toFixed(0)}%)`;
+                citeList.appendChild(tag);
             });
 
             citeBox.appendChild(citeList);
             bubble.appendChild(citeBox);
+
+            // Toggle handler
+            const toggleBtn = citeHeader.querySelector(".citation-toggle-btn");
+            const toggleHandler = (e) => {
+                e.stopPropagation();
+                const isCollapsed = citeList.style.display === "none";
+                if (isCollapsed) {
+                    citeList.style.display = "flex";
+                    toggleBtn.textContent = "Thu gọn ⬆️";
+                    toggleBtn.style.background = "rgba(20, 184, 166, 0.2)";
+                    toggleBtn.style.color = "var(--primary-neon)";
+                    toggleBtn.style.borderColor = "var(--primary-neon)";
+                } else {
+                    citeList.style.display = "none";
+                    toggleBtn.textContent = "Xem chi tiết 👁️";
+                    toggleBtn.style.background = "rgba(0, 240, 255, 0.1)";
+                    toggleBtn.style.color = "var(--accent-cyan)";
+                    toggleBtn.style.borderColor = "var(--accent-cyan)";
+                }
+            };
+            citeHeader.addEventListener("click", toggleHandler);
         }
 
         const footerMeta = document.createElement("div");
@@ -1350,11 +1504,80 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         if (!text) return "";
         let html = text;
         
+        // 1. Escape HTML for safety
         html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        
+        // 2. Parse Blockquotes (> ...)
+        // Since we escaped >, we match &gt;
+        html = html.replace(/^\s*&gt;\s+(.*)$/gmi, '<blockquote class="markdown-blockquote">$1</blockquote>');
+        
+        // 3. Parse Tables
+        let lines = html.split('\n');
+        let inTable = false;
+        let tableHtml = "";
+        let newLines = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line.startsWith('|') && line.endsWith('|')) {
+                // Ignore table alignment separator lines
+                if (line.match(/^\|[\s\-\:\|]+\|$/)) {
+                    continue;
+                }
+                
+                let cells = line.split('|').slice(1, -1).map(c => c.trim());
+                let rowHtml = "<tr>" + cells.map(c => {
+                    // Basic formats inside cell
+                    let formattedCell = c.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                    formattedCell = formattedCell.replace(/`(.*?)`/g, "<code>$1</code>");
+                    return inTable ? `<td>${formattedCell}</td>` : `<th>${formattedCell}</th>`;
+                }).join('') + "</tr>";
+                
+                if (!inTable) {
+                    inTable = true;
+                    tableHtml = `<div class="table-responsive"><table class="markdown-table"><thead>${rowHtml}</thead><tbody>`;
+                } else {
+                    tableHtml += rowHtml;
+                }
+            } else {
+                if (inTable) {
+                    inTable = false;
+                    tableHtml += "</tbody></table></div>";
+                    newLines.push(tableHtml);
+                    tableHtml = "";
+                }
+                newLines.push(lines[i]);
+            }
+        }
+        if (inTable) {
+            tableHtml += "</tbody></table></div>";
+            newLines.push(tableHtml);
+        }
+        
+        html = newLines.join('\n');
+        
+        // 4. Bold tags **text**
         html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-        html = html.replace(/^\s*-\s+(.*)$/gmi, "<li>$1</li>");
-        html = html.replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>");
+        
+        // 5. Inline code `code`
+        html = html.replace(/`(.*?)`/g, "<code>$1</code>");
+        
+        // 6. Bullet lists
+        html = html.replace(/^\s*[\-\*]\s+(.*)$/gmi, "<li>$1</li>");
+        html = html.replace(/((?:<li>.*?<\/li>\s*)+)/gs, "<ul>$1</ul>");
+        
+        // 7. Headings
+        html = html.replace(/^\s*###\s+(.*)$/gmi, "<h3>$1</h3>");
+        html = html.replace(/^\s*##\s+(.*)$/gmi, "<h2>$1</h2>");
+        html = html.replace(/^\s*#\s+(.*)$/gmi, "<h1>$1</h1>");
+        
+        // 8. Newlines to <br>
         html = html.replace(/\n/g, "<br>");
+        
+        // Clean up <br> where they are redundant and ugly
+        html = html.replace(/<br>\s*<(table|thead|tbody|tr|th|td|div|blockquote|ul|li|h1|h2|h3)/gi, "<$1");
+        html = html.replace(/<\/(table|thead|tbody|tr|th|td|div|blockquote|ul|li|h1|h2|h3)>\s*<br>/gi, "</$1>");
+        html = html.replace(/<\/li>\s*<li>/gi, "</li><li>");
         
         return html;
     }
@@ -1531,6 +1754,8 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             if (chromaBadge) {
                 if (data.chroma_active) {
                     chromaBadge.innerHTML = `<span class="status-dot green"></span> Active`;
+                } else if (data.is_fallback) {
+                    chromaBadge.innerHTML = `<span class="status-dot cyan" style="background-color: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan);"></span> Active (Fallback)`;
                 } else {
                     chromaBadge.innerHTML = `<span class="status-dot red"></span> Inactive`;
                 }
@@ -2355,7 +2580,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
     const attachBtn = document.querySelector(".attach-btn");
     if (attachBtn) {
         attachBtn.addEventListener("click", () => {
-            alert("📎 Chức năng tải lên tệp: Tính năng chẩn đoán hình ảnh taplo xe đang tạm đóng để nâng cấp bộ dữ liệu (chuẩn bị cho Phiên bản V3).");
+            alert("📎 Chức năng tải lên tệp: Tính năng gửi ảnh đính kèm đang được nâng cấp, vui lòng quay lại sau.");
         });
     }
 
@@ -2543,18 +2768,18 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
                     cost: "0đ"
                 },
                 {
-                    title: "Chẩn đoán Taplo xe điện VinFast (Vision AI)",
+                    title: "Tối ưu hóa đa ngôn ngữ (Language Gateway)",
                     status: "active",
-                    desc: "Tiếp nhận ảnh chụp lỗi taplo Base64, dùng Vision LLM chẩn đoán cảnh báo kỹ thuật và truy xuất RAG hướng dẫn xử lý khẩn cấp.",
-                    lat: "1.2 giây",
-                    cost: "~$0.0003"
+                    desc: "Tự động nhận diện và chuẩn hóa ngôn ngữ đầu vào, hỗ trợ khách hàng quốc tế tốt hơn trong giai đoạn mở rộng.",
+                    lat: "100ms",
+                    cost: "0đ"
                 }
             ]
         },
         V3: {
-            leftTitle: "V2: Advanced Interactive RAG (Hiện tại)",
-            rightTitle: "V3: Advanced Agentic RAG (Sẽ nâng cấp)",
-            rightTag: "SẼ NÂNG CẤP (V3)",
+            leftTitle: "Giai Đoạn 2: Advanced Interactive RAG (V2)",
+            rightTitle: "Phase 3: Production NLU-Gateway RAG (Hiện Tại)",
+            rightTag: "ĐANG HOẠT ĐỘNG (Phase 3)",
             leftNodes: [
                 "❓ 1. Question (Câu hỏi thô)",
                 "⚡ 2. Caching Layer Check (Kiểm tra đệm DB)",
@@ -2570,46 +2795,46 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             ],
             rightNodes: [
                 "❓ 1. Question (Câu hỏi thô)",
-                "⚡ 2. Caching Layer Check (Kiểm tra đệm DB)",
-                "🧰 3. Agentic Tool Calling (Gợi ý cuốc/Chỉ đường/Booking)",
-                "🔮 4. Self-Querying (Tự động trích xuất Meta Filter)",
-                "🔍 5. Hybrid Search (Dense + BM25 song song)",
-                "⚡ 6. Cross-Encoder Reranker (Rerank cục bộ)",
-                "👑 7. Multimodal Chunking (Dual-Representation)",
-                "🔎 8. Corrective RAG (CRAG Web Search fallback)",
-                "🔎 9. Self-RAG (Hệ thống tự phản biện đa tầng)",
-                "🤖 10. LLM Generation (Tổng hợp tránh ảo giác)",
-                "🛡️ 11. Citations Validator (Đối sánh nguồn)",
-                "🎉 12. Answer + Citations (Kết quả + Nguồn chuẩn)"
+                "🛡️ 2. Safety & Lang Gateway (Lọc bảo mật & NFC)",
+                "🎯 3. Intent Classifier (Phân loại ý định)",
+                "🧾 4. Slot Filling (Task/RAG & Hỏi làm rõ)",
+                "⚡ 5. Fast FAQ / Semantic Cache (Cache Hit)",
+                "🧠 6. Conversational Memory (Biên dịch lịch sử)",
+                "🔀 7. Strategy Selector (BM25 / Dense / Hybrid)",
+                "🔍 8. Hybrid/Strategic Search (Dense + BM25 RRF)",
+                "🚀 9. Cross-Encoder Reranker (Rerank cục bộ)",
+                "✂️ 10. Parent-Child Context (Gộp mảnh cha)",
+                "🤖 11. LLM Synthesizer (Tổng hợp tránh ảo giác)",
+                "🎉 12. Citation & Response (Trích nguồn HTML)"
             ],
             upgrades: [
                 {
-                    title: "Multimodal Chunking Dual-Representation (Tối Quan Trọng)",
-                    status: "planned",
-                    desc: "Ưu tiên số 1: Một khối tri thức chứa đồng thời cả Text, Table và Image đính kèm. Nhúng vector cho bản tóm tắt và caption của VLM chạy offline (LLaVA/Qwen-VL) để triệt tiêu chi phí API.",
-                    lat: "Offline Ingest",
-                    cost: "0đ (GPU cục bộ) 👑"
+                    title: "Conversation Safety & Lang Gateway (Bảo mật cục bộ)",
+                    status: "active",
+                    desc: "Chuẩn hóa Unicode NFC tiếng Việt, lọc từ khóa cấm/nhạy cảm/spam ngay tầng đầu vào cục bộ. Bypass ngắt sớm giúp bảo vệ server và tiết kiệm 100% chi phí gọi LLM.",
+                    lat: "5ms",
+                    cost: "0đ (Chạy offline) 👑"
                 },
                 {
-                    title: "Agentic Tool Calling & Hỗ trợ hành trình",
-                    status: "planned",
-                    desc: "Gợi ý điểm nhiều cuốc xe cho tài xế, gợi ý khung giờ bắt xe rẻ cho khách hàng. *Lưu ý: Sử dụng dữ liệu giả lập (Mock) vì giới hạn dữ liệu GSM nội bộ thực tế.*",
-                    lat: "800ms - 2s",
-                    cost: "~$0.0002"
-                },
-                {
-                    title: "Corrective RAG (CRAG Web Search fallback)",
-                    status: "planned",
-                    desc: "Tự động kích hoạt Google Search / Tavily API cào cẩm nang GSM mới khi dữ liệu nội bộ không có câu trả lời, chặn đứng hoàn toàn ảo giác.",
-                    lat: "2 - 4 giây",
-                    cost: "Phí API Search"
-                },
-                {
-                    title: "Self-Querying & Tự động lọc Metadata",
-                    status: "planned",
-                    desc: "Dùng LLM dịch ngôn ngữ tự nhiên thành bộ lọc metadata (ví dụ: year=2026, role=driver) trước khi vector search giúp thu hẹp không gian tìm kiếm.",
-                    lat: "300ms",
+                    title: "Intent Classifier & Slot Filling (RefundCalculatorTool)",
+                    status: "active",
+                    desc: "Tự động phân loại câu hỏi (Small Talk, Task Agent, FAQ, RAG), phát hiện thiếu tham số và hỏi làm rõ (Clarification), tích hợp Action Engine chạy code Python xử lý nghiệp vụ động.",
+                    lat: "200ms",
                     cost: "~$0.00005"
+                },
+                {
+                    title: "Dynamic Strategy Selector (Chiến lược động)",
+                    status: "active",
+                    desc: "Phân tích đặc tính truy vấn đã viết lại để tự chọn chiến lược tối ưu: BM25 Only cho số liệu/hotline, Dense Only cho khái niệm ngữ nghĩa, hoặc Hybrid Search.",
+                    lat: "50ms",
+                    cost: "0đ"
+                },
+                {
+                    title: "Faithfulness Check (Tự phản biện chống ảo giác)",
+                    status: "active",
+                    desc: "Hệ thống tự đánh giá độ trung thực của câu trả lời LLM so với tài liệu ngữ cảnh gốc (Faithfulness) trước khi gửi phản hồi, triệt tiêu hoàn toàn ảo giác thông tin.",
+                    lat: "300ms",
+                    cost: "~$0.0001"
                 }
             ]
         }
@@ -2623,21 +2848,17 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
         leftPipelineTitle.textContent = data.leftTitle;
         rightPipelineTitle.textContent = data.rightTitle;
         rightColumnTag.textContent = data.rightTag;
-        
-        if (version === "V3") {
-            rightColumnTag.className = "column-tag status-planned";
-        } else {
-            rightColumnTag.className = "column-tag newer-tag";
-        }
 
-        // Render left column nodes
+        rightColumnTag.className = "column-tag newer-tag";
+
+        // Render left column nodes (Always vertical)
         leftPipelineFlow.innerHTML = "";
         data.leftNodes.forEach((nodeText, idx) => {
             const el = document.createElement("div");
             el.className = "compare-capsule";
             el.textContent = nodeText;
             leftPipelineFlow.appendChild(el);
-            
+
             if (idx < data.leftNodes.length - 1) {
                 const arr = document.createElement("div");
                 arr.className = "flow-step-arrow";
@@ -2650,36 +2871,82 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
 
         // Render right column nodes
         rightPipelineFlow.innerHTML = "";
-        data.rightNodes.forEach((nodeText, idx) => {
-            const el = document.createElement("div");
+        
+        if (version === "V3") {
+            // SPECIAL CASE V3: Render as a Tree
+            rightPipelineFlow.innerHTML = `
+<div class="flow-tree-container" style="min-width: 600px; padding: 20px;">
+    <!-- Root -->
+    <div class="tree-section">
+        <div class="compare-capsule highlight-glow">🛡️ 1-2. NLU Entry & Gateway</div>
+    </div>
+    <div class="tree-connector-v"></div>
+    <!-- Router -->
+    <div class="compare-capsule highlight-glow" style="max-width: 180px;">🎯 3. Intent Classifier</div>
+    
+    <div class="tree-branches-wrapper">
+        <!-- Branch A -->
+        <div class="tree-branch">
+            <div class="branch-line-diag-l"></div>
+            <div class="compare-capsule" style="border-color: #ef4444; font-size: 0.7rem;">A. Bypass/Safety</div>
+        </div>
+        <!-- Branch B -->
+        <div class="tree-branch">
+            <div class="branch-line-v"></div>
+            <div class="compare-capsule highlight-glow" style="border-color: #f59e0b; font-size: 0.7rem;">B. Task Agent</div>
+        </div>
+        <!-- Branch C -->
+        <div class="tree-branch">
+            <div class="branch-line-v"></div>
+            <div class="compare-capsule highlight-glow" style="border-color: #10b981; font-size: 0.7rem;">C. Semantic Cache</div>
+        </div>
+        <!-- Branch D -->
+        <div class="tree-branch">
+            <div class="branch-line-diag-r"></div>
+            <div class="compare-capsule highlight-glow" style="border-color: #14b8a6; font-size: 0.7rem;">D. Strategic RAG</div>
             
-            // Apply neon glow effects for newly introduced features
-            if (version === "V1" && (nodeText.includes("Filtering") || nodeText.includes("Hybrid") || nodeText.includes("Citation"))) {
-                el.className = "compare-capsule highlight-glow";
-            } else if (version === "V2" && nodeText.includes("Caching")) {
-                el.className = "compare-capsule bypass-glow";
-            } else if (version === "V2" && (nodeText.includes("Rewrite") || nodeText.includes("Expansion") || nodeText.includes("Reranker") || nodeText.includes("Parent-Child"))) {
-                el.className = "compare-capsule highlight-glow";
-            } else if (version === "V3" && (nodeText.includes("Tool") || nodeText.includes("Multimodal") || nodeText.includes("Self-Query") || nodeText.includes("Corrective") || nodeText.includes("Self-RAG"))) {
-                el.className = "compare-capsule highlight-glow";
-            } else {
-                el.className = "compare-capsule";
-            }
+            <div class="tree-connector-v"></div>
+            <div class="compare-capsule highlight-glow" style="font-size: 0.65rem; border-style: dashed;">6-10. Context Pipeline</div>
+            
+            <div class="tree-connector-v"></div>
+            <div class="compare-capsule highlight-glow" style="font-size: 0.7rem;">🤖 11. LLM Generation</div>
+        </div>
+    </div>
 
-            el.textContent = nodeText;
-            rightPipelineFlow.appendChild(el);
+    <div class="tree-connector-v"></div>
+    <div class="compare-capsule highlight-glow" style="max-width: 220px;">🎉 12. Citation & Response</div>
+</div>
+`;
+        } else {
+            // V1 and V2: Render as vertical linear capsules
+            data.rightNodes.forEach((nodeText, idx) => {
+                const el = document.createElement("div");
+                
+                // Apply neon glow effects for newly introduced features
+                if (version === "V1" && (nodeText.includes("Filtering") || nodeText.includes("Hybrid") || nodeText.includes("Citation"))) {
+                    el.className = "compare-capsule highlight-glow";
+                } else if (version === "V2" && nodeText.includes("Caching")) {
+                    el.className = "compare-capsule bypass-glow";
+                } else if (version === "V2" && (nodeText.includes("Rewrite") || nodeText.includes("Expansion") || nodeText.includes("Reranker") || nodeText.includes("Parent-Child"))) {
+                    el.className = "compare-capsule highlight-glow";
+                } else {
+                    el.className = "compare-capsule";
+                }
 
-            if (idx < data.rightNodes.length - 1) {
-                const arr = document.createElement("div");
-                arr.className = "flow-step-arrow";
-                arr.style.fontSize = "0.75rem";
-                arr.style.margin = "2px 0";
-                arr.textContent = "⬇️";
-                rightPipelineFlow.appendChild(arr);
-            }
-        });
+                el.textContent = nodeText;
+                rightPipelineFlow.appendChild(el);
 
-        // Render upgrade detail cards
+                if (idx < data.rightNodes.length - 1) {
+                    const arr = document.createElement("div");
+                    arr.className = "flow-step-arrow";
+                    arr.style.fontSize = "0.75rem";
+                    arr.style.margin = "2px 0";
+                    arr.textContent = "⬇️";
+                    rightPipelineFlow.appendChild(arr);
+                }
+            });
+        }
+     // Render upgrade detail cards
         upgradeDetailsContent.innerHTML = "";
         data.upgrades.forEach(upg => {
             const card = document.createElement("div");
@@ -2742,7 +3009,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             text: `<strong>Bước 1: AI Chat CSKH</strong> 💬<br>Đây là buồng lái điều khiển chính! Em có thể:
             <ul>
                 <li>Nhập câu hỏi chính sách thô của Khách hàng, Tài xế, Cửa hàng.</li>
-                <li><strong>Gửi ảnh taplo xe VinFast</strong> để chẩn đoán sự cố tự động.</li>
+                <li><strong>Hỏi đáp đa vai trò</strong> (Khách hàng, Tài xế, Cửa hàng) linh hoạt.</li>
                 <li>Xem <strong>luồng LED sáng nhảy bước</strong> của RAG Pipeline bên phải thời gian thực!</li>
             </ul>`,
             elementSelector: '[data-tab="chat"]'
@@ -2788,7 +3055,7 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             text: `<strong>Bước 6: So Sánh Tiến Hóa Pipeline</strong> 📈<br>Tính năng mới nhất giúp em nhìn lại lịch sử!
             <ul>
                 <li>So sánh trực quan các bước luồng RAG cũ vs RAG mới đặt cạnh nhau.</li>
-                <li>Xem chi tiết độ trễ, token, và **lộ trình đa phương tiện Multimodal / Agentic gợi ý cuốc xe trong V3**!</li>
+                <li>Xem chi tiết độ trễ, token, và **cơ chế tối ưu NLU-Gateway RAG đột phá thực tế trong V3 (Phase 3 - Hiện tại)**!</li>
             </ul>`,
             elementSelector: '[data-tab="pipeline-comparison"]'
         }

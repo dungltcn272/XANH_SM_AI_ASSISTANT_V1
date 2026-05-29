@@ -20,9 +20,9 @@ class RAGConfig:
     CHROMA_COLLECTION_NAME: str = os.getenv("CHROMA_COLLECTION_NAME", "xanh_sm_rag")
     
     # Reranker Configuration
-    # Options: "local" (BAAI/bge-reranker-v2-m3) or "cohere" or "none"
-    RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "none")
-    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+    # Options: "local", "flashrank", "cohere", or "heuristic"
+    RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "local")
+    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
     
     # Crawler Configuration
     MAX_CRAWL_DEPTH: int = int(os.getenv("MAX_CRAWL_DEPTH", "3"))
@@ -37,7 +37,8 @@ class RAGConfig:
 # Fallback values adjustments
 config = RAGConfig()
 
-# If user has not pasted API key yet, automatically run offline mock/heuristic mode
+# If user has not pasted API key yet, automatically run offline mock mode for OpenAI-dependent services
 if not config.OPENAI_API_KEY or config.OPENAI_API_KEY == "YOUR_OPENAI_API_KEY_HERE":
     config.EMBEDDING_PROVIDER = "mock"
-    config.RERANKER_PROVIDER = "none"
+    # Note: Local reranker stays active as it doesn't need an API key
+

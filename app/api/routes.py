@@ -54,6 +54,12 @@ class ChatResponse(BaseModel):
     llm_cost_vnd: Optional[float] = None
     token_usage: Optional[Dict[str, Any]] = None
     compressed_context_len: Optional[int] = None
+    intent: Optional[str] = None
+    gateway_checked: Optional[bool] = None
+    strategy_selected: Optional[str] = None
+    faithfulness_passed: Optional[bool] = None
+    missing_fields: Optional[bool] = None
+
 
 
 class CrawlRequest(BaseModel):
@@ -83,6 +89,20 @@ def get_hybrid_search():
     if hybrid_search is None:
         hybrid_search = XanhSMHybridSearch()
     return hybrid_search
+
+def reset_pipeline_singleton():
+    global pipeline, hybrid_search
+    pipeline = None
+    hybrid_search = None
+    print("[INFO] Global singletons reset: pipeline and hybrid_search set to None.")
+
+def run_ingestion_and_reset():
+    try:
+        run_ingestion()
+        reset_pipeline_singleton()
+    except Exception as e:
+        print(f"[ERROR] run_ingestion_and_reset background task failed: {e}")
+
 
 
 @app.on_event("startup")
@@ -126,7 +146,7 @@ def startup_auto_ingest():
 def api_chat(request: ChatRequest):
     """
     Chat endpoint for Xanh SM RAG.
-    Applies role pre-filtering, query expansion, dense + sparse retrieval, reranking, and citation generation.
+    Applies safety gateway, intent classification, slot filling, strategic search, and faithfulness verification.
     Supports chat history query rewriting and image warning lights vision diagnostics.
     """
     if not request.query.strip():
@@ -135,27 +155,74 @@ def api_chat(request: ChatRequest):
         import base64
         rag = get_pipeline()
         
-        # 1. Run Vision Diagnostics if image is uploaded
+        # 1. Image logic (Currently restricted to basic upload logs)
         actual_query = request.query
         if request.image_base64:
-            try:
-                # Strip base64 headers if present (e.g. data:image/png;base64,...)
-                b64_str = request.image_base64
-                if "," in b64_str:
-                    b64_str = b64_str.split(",", 1)[1]
-                image_bytes = base64.b64decode(b64_str)
-                mime = request.image_mime_type or "image/png"
-                diagnostic_query, vision_usage = rag.run_vision_diagnostics(image_bytes, mime)
-                actual_query = f"{request.query} [Mô tả hình ảnh: {diagnostic_query}]"
-                print(f"[VISION] Combined user query: '{actual_query}'")
-            except Exception as ve:
-                print(f"[WARN] Failed to parse Base64 image in api_chat: {ve}")
+            print("[INFO] Image uploaded, but Vision AI diagnostics are currently disabled per UI policy.")
+            # We skip run_vision_diagnostics and just use the raw text query
+
                 
-        # 2. Run RAG Pipeline
+        # 2. Run NLU-Gateway RAG Pipeline
         result = rag.run(query=actual_query, role=request.role, chat_history=request.chat_history)
         return result
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/chat/stream")
+def api_chat_stream(request: ChatRequest):
+    """
+    Server-Sent Events (SSE) streaming endpoint for real-time pipeline visualization.
+    Streams pipeline stages as they execute, enabling real-time animation on the frontend.
+    """
+    import json
+    from fastapi.responses import StreamingResponse
+    
+    if not request.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+    
+    def event_generator():
+        try:
+            rag = get_pipeline()
+            
+            # Handle vision input (Disabled)
+            actual_query = request.query
+            if request.image_base64:
+                print("[INFO] Image uploaded (stream), but Vision AI diagnostics are currently disabled.")
+
+            
+            # Stream each stage from the generator
+            for stage_event in rag.run_step_by_step(query=actual_query, role=request.role, chat_history=request.chat_history):
+                stage_name = stage_event.get("stage", "Unknown")
+                msg = stage_event.get("msg", "")
+                result = stage_event.get("result", None)
+                
+                event_data = {
+                    "stage": stage_name,
+                    "msg": msg,
+                    "result": result
+                }
+                
+                # Yield SSE formatted data
+                yield f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            error_data = {
+                "stage": "Error",
+                "msg": str(e),
+                "result": None
+            }
+            yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream"
+    )
+
 
 @app.get("/api/search")
 def api_search(query: str, role: Optional[str] = "faq", limit: Optional[int] = 10):
@@ -182,7 +249,7 @@ def api_ingest(background_tasks: BackgroundTasks):
     Triggers re-indexing of all documents inside the data/ folder.
     """
     try:
-        background_tasks.add_task(run_ingestion)
+        background_tasks.add_task(run_ingestion_and_reset)
         return {"status": "success", "message": "Document ingestion started in the background."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -196,7 +263,7 @@ def api_crawl(request: CrawlRequest, background_tasks: BackgroundTasks):
         crawler = GreenSMCrawler(start_url=request.url, max_depth=request.max_depth, max_pages=request.max_pages)
         crawler.crawl()
         # Automatically run ingestion after crawl finishes
-        run_ingestion()
+        run_ingestion_and_reset()
 
     try:
         background_tasks.add_task(run_crawler_bg)
@@ -428,6 +495,63 @@ async def simulate_chunk(
 
 class EmbedRequest(BaseModel):
     texts: List[str]
+
+@app.post("/api/rerank/arena")
+def run_reranker_arena(request: ChatRequest):
+    """
+    Live Reranker Arena: Compares multiple reranking strategies on a real query.
+    """
+    try:
+        from app.rag.chain import XanhSMRAGPipeline
+        from app.retrieval.reranker import XanhSMReranker
+        import time
+
+        pipeline = XanhSMRAGPipeline()
+        query = request.query
+        
+        # 1. Retrieval
+        candidates = pipeline.search_engine.search(query=query, limit=25, role=request.role or "customer")
+        
+        # 2. Define Models to Test (Align with FE table names exactly)
+        test_configs = [
+            {"name": "Heuristic Semantic (Current)", "provider": "heuristic", "model": None},
+            {"name": "MiniLM CrossEncoder", "provider": "local", "model": "cross-encoder/ms-marco-MiniLM-L-6-v2"},
+            {"name": "FlashRank", "provider": "flashrank", "model": "ms-marco-MiniLM-L-12-v2"},
+            {"name": "BGE-reranker-base", "provider": "local", "model": "BAAI/bge-reranker-base"},
+            {"name": "Cohere Rerank", "provider": "cohere", "model": "rerank-v3.0"},
+            {"name": "MonoT5", "provider": "local", "model": "castorini/monot5-base-msmarco-10k"}
+        ]
+        
+        arena_results = []
+        for cfg in test_configs:
+            try:
+                rk = XanhSMReranker(provider=cfg['provider'], model_name=cfg['model'])
+                start = time.time()
+                top_docs = rk.rerank(query, candidates, top_n=3)
+                duration = (time.time() - start) * 1000
+                
+                # Report if a fallback occurred to help user understand the speed
+                display_speed = f"{duration:.1f}ms"
+                if rk.fallback_occurred:
+                    display_speed += " (Fallback)"
+
+                arena_results.append({
+                    "model": cfg['name'],
+                    "speed": display_speed,
+                    "top_chunks": [
+                        {
+                            "source": doc.metadata.get("source", "N/A"),
+                            "score": round(doc.metadata.get("rerank_score", 0), 4),
+                            "content": doc.page_content[:200] + "..."
+                        } for doc in top_docs
+                    ]
+                })
+            except Exception as e:
+                arena_results.append({"model": cfg['name'], "error": str(e)})
+
+        return {"status": "success", "results": arena_results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/simulate/embed")
 def simulate_embed(request: EmbedRequest):
