@@ -1990,7 +1990,10 @@ G.add_edge("terms.md", "refund.md", relation="chính_sách_hoàn_tiền")
             const res = await fetch("/api/evaluate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ openai_api_key: apiKey })
+                body: JSON.stringify({ 
+                    openai_api_key: apiKey,
+                    dataset: currentEvaluationDataset && currentEvaluationDataset.length > 0 ? currentEvaluationDataset : undefined
+                })
             });
 
             if (!res.ok) throw new Error("Evaluation run failed. Please check your API key.");

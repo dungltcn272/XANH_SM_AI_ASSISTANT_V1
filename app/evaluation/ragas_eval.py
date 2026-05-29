@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from app.rag.chain import XanhSMRAGPipeline
 
@@ -10,11 +10,14 @@ class XanhSMEvaluation:
     Runs automated checks for Faithfulness, Retrieval Accuracy, and Citation Coverage.
     """
     
-    def __init__(self):
+    def __init__(self, dataset: Optional[List[Dict[str, Any]]] = None):
         self.pipeline = XanhSMRAGPipeline()
         
-        from app.evaluation.golden_dataset import GOLDEN_DATASET
-        self.test_cases = GOLDEN_DATASET
+        if dataset and len(dataset) > 0:
+            self.test_cases = dataset
+        else:
+            from app.evaluation.golden_dataset import GOLDEN_DATASET
+            self.test_cases = GOLDEN_DATASET
 
     def evaluate_item(self, case: Dict[str, Any]) -> Dict[str, Any]:
         """

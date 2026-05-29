@@ -69,6 +69,7 @@ class CrawlRequest(BaseModel):
 
 class EvaluateRequest(BaseModel):
     openai_api_key: Optional[str] = Field(None, description="OpenAI API Key to override default key")
+    dataset: Optional[List[Dict[str, Any]]] = Field(None, description="Custom evaluation dataset to run instead of the default golden dataset")
 
 class IngestResponse(BaseModel):
     status: str
@@ -304,7 +305,8 @@ def api_evaluate(request: Optional[EvaluateRequest] = None):
             global pipeline
             pipeline = None
             
-        evaluator = XanhSMEvaluation()
+        custom_dataset = request.dataset if request and request.dataset else None
+        evaluator = XanhSMEvaluation(dataset=custom_dataset)
         report = evaluator.run_suite()
         return report
     except Exception as e:
