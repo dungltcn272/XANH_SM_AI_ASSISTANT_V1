@@ -76,7 +76,7 @@ RAG_XANH_SM/
 │   └── ragas_eval.py         # Script chạy đánh giá tự động đo lường chất lượng RAG
 │
 ├── docs/                     # Tài liệu đặc tả kỹ thuật nội bộ
-├── requirements.txt          # Thư viện phụ thuộc (FastAPI, Qdrant-client, Sentence-transformers...)
+├── requirements.txt          # Thư viện phụ thuộc (FastAPI, Qdrant-client, Cohere...)
 └── README.md                 # Hướng dẫn khởi chạy và vận hành
 ```
 

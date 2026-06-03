@@ -369,6 +369,229 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
 
+    def run_debug(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+        """
+        Executes the full RAG pipeline for debugging, bypassing cache and capturing
+        all intermediate steps like raw_candidates, reranked_docs, and expanded_docs.
+        """
+        target_role = role.lower() if role else "faq"
+        role_display = get_role_display_name(target_role)
+        
+        normalized_query = self.gateway.normalize_input(query)
+        safety_res = self.gateway.safety_precheck(normalized_query)
+        
+        # 1. Gateway safety check
+        if not safety_res["safe"]:
+            return {
+                "query": query,
+                "normalized_query": normalized_query,
+                "role": target_role,
+                "answer": f"⚠️ Cảnh báo bảo mật: {safety_res['reason']}",
+                "citations": [],
+                "intent": "sensitive",
+                "gateway_checked": True,
+                "safety_res": safety_res,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0,
+                "raw_candidates": [],
+                "reranked_docs": [],
+                "expanded_docs": []
+            }
+
+        # 2. Unified NLU Gateway Call
+        t_nlu_start = time.time()
+        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history)
+        nlu_latency = (time.time() - t_nlu_start) * 1000
+        
+        rewritten_query = nlu_res["rewritten_query"]
+        intent = nlu_res["intent"]
+        expanded_queries = nlu_res["expanded_queries"]
+        nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+
+        # 3. Handle Sensitive / Safety Block from NLU
+        if intent == "sensitive":
+            refusal_msg = "Xin lỗi, tôi không thể thực hiện yêu cầu này. Tôi là trợ lý ảo của Xanh SM và không được phép chia sẻ thông tin bảo mật, tài liệu hệ thống hoặc các hướng dẫn lập trình."
+            return {
+                "query": query,
+                "normalized_query": normalized_query,
+                "rewritten_query": rewritten_query,
+                "role": target_role,
+                "answer": refusal_msg,
+                "citations": [],
+                "intent": "sensitive",
+                "gateway_checked": True,
+                "safety_res": {"safe": True, "reason": ""},
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0,
+                "raw_candidates": [],
+                "reranked_docs": [],
+                "expanded_docs": [],
+                "num_chunks_before_expansion": 0,
+                "compressed_context_len": 0,
+                "token_usage": {
+                    "unified_nlu": nlu_usage,
+                    "generation": {"prompt_tokens": 0, "completion_tokens": 0},
+                    "total_prompt_tokens": nlu_usage.get("prompt_tokens", 0),
+                    "total_completion_tokens": nlu_usage.get("completion_tokens", 0)
+                }
+            }
+
+        # 4. Handle Small Talk
+        if intent == "small-talk":
+            intercept = self._is_greeting_or_thanks(rewritten_query)
+            answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho quý khách về các quy định dịch vụ Xanh SM hôm nay?"
+            return {
+                "query": query,
+                "normalized_query": normalized_query,
+                "rewritten_query": rewritten_query,
+                "role": target_role,
+                "answer": answer,
+                "citations": [],
+                "intent": "small-talk",
+                "gateway_checked": True,
+                "safety_res": {"safe": True, "reason": ""},
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0,
+                "raw_candidates": [],
+                "reranked_docs": [],
+                "expanded_docs": [],
+                "token_usage": {
+                    "unified_nlu": nlu_usage,
+                    "generation": {"prompt_tokens": 0, "completion_tokens": 0},
+                    "total_prompt_tokens": nlu_usage.get("prompt_tokens", 0),
+                    "total_completion_tokens": nlu_usage.get("completion_tokens", 0)
+                }
+            }
+
+        # 5. Search Strategy Selection
+        strategy = self.select_retrieval_strategy(rewritten_query)
+
+        # 6. Execute Retrieval (Hybrid Search)
+        retrieved_candidates = self.search_engine.search(query=rewritten_query, role=target_role, limit=25, expanded_queries=expanded_queries)
+        raw_candidates_data = [
+            {
+                "content": doc.page_content,
+                "source": doc.metadata.get("source", "unknown"),
+                "section": doc.metadata.get("section", "unknown"),
+                "score": doc.metadata.get("score", 0.0)
+            } for doc in retrieved_candidates
+        ]
+
+        # 7. Rerank
+        top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=10)
+        reranked_docs_data = [
+            {
+                "content": doc.page_content,
+                "source": doc.metadata.get("source", "unknown"),
+                "section": doc.metadata.get("section", "unknown"),
+                "score": doc.metadata.get("rerank_score", 0.0)
+            } for doc in top_docs
+        ]
+
+        # 8. Expand context
+        top_docs_expanded = self.search_engine.expand_context(top_docs)
+        expanded_docs_data = [
+            {
+                "content": doc.page_content,
+                "source": doc.metadata.get("source", "unknown"),
+                "section": doc.metadata.get("section", "unknown"),
+                "score": doc.metadata.get("rerank_score", 0.0),
+                "parent_chunk_id": doc.metadata.get("parent_chunk_id")
+            } for doc in top_docs_expanded
+        ]
+
+        # 9. Compress Context
+        compressed_context = self._compress_context(top_docs_expanded)
+
+        # 10. LLM Generation
+        final_answer = ""
+        citations = []
+        prompt_tokens = 0
+        completion_tokens = 0
+
+        for doc in top_docs_expanded:
+            citations.append({
+                "source": doc.metadata.get("source"),
+                "section": doc.metadata.get("section"),
+                "url": doc.metadata.get("url", ""),
+                "relevance_score": doc.metadata.get("rerank_score", 0.0)
+            })
+
+        system_msg = SYSTEM_PROMPT.format(context=compressed_context, role=role_display)
+        user_msg = USER_PROMPT_TEMPLATE.format(role_display=role_display, query=rewritten_query)
+
+        messages = [{"role": "system", "content": system_msg}]
+        if chat_history and len(chat_history) > 0:
+            for turn in chat_history[-6:]:
+                if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
+                    messages.append({"role": turn["role"], "content": turn["content"]})
+        messages.append({"role": "user", "content": user_msg})
+
+        if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
+            try:
+                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
+                response = client.chat.completions.create(
+                    model=config.LLM_MODEL,
+                    messages=messages,
+                    temperature=0.3
+                )
+                final_answer = response.choices[0].message.content
+                prompt_tokens = response.usage.prompt_tokens
+                completion_tokens = response.usage.completion_tokens
+            except Exception as e:
+                log_warn("LLM_GEN", f"LLM Generation Error in Debug: {str(e)}. Falling back.")
+                final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded, role_display)
+        else:
+            final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded, role_display)
+
+        # Check safety of final answer
+        output_guardrail_passed = True
+        if not self.output_guardrail.check_safe(final_answer):
+            final_answer = "Nội dung vi phạm chính sách an toàn của Xanh SM."
+            citations = []
+            output_guardrail_passed = False
+
+        # Cost calculation
+        total_prompt = prompt_tokens + nlu_usage.get("prompt_tokens", 0)
+        total_comp = completion_tokens + nlu_usage.get("completion_tokens", 0)
+        cost_info = self._calculate_llm_cost(total_prompt, total_comp)
+
+        return {
+            "query": query,
+            "normalized_query": normalized_query,
+            "rewritten_query": rewritten_query,
+            "role": target_role,
+            "answer": final_answer,
+            "citations": citations,
+            "expanded_queries": expanded_queries,
+            "compressed_context_len": len(compressed_context),
+            "num_chunks_before_expansion": len(top_docs),
+            "intent": intent,
+            "gateway_checked": True,
+            "safety_res": {"safe": True, "reason": ""},
+            "strategy_selected": strategy,
+            "faithfulness_passed": True,
+            "faithfulness_score": 1.0,
+            "raw_candidates": raw_candidates_data,
+            "reranked_docs": reranked_docs_data,
+            "expanded_docs": expanded_docs_data,
+            "output_guardrail_passed": output_guardrail_passed,
+            "token_usage": {
+                "unified_nlu": nlu_usage,
+                "generation": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
+                "total_prompt_tokens": total_prompt,
+                "total_completion_tokens": total_comp
+            },
+            "llm_cost_usd": cost_info["cost_usd"],
+            "llm_cost_vnd": cost_info["cost_vnd"]
+        }
+
     def stream_run(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None):
         """
         Stream version of the NLU-Gateway RAG chain with output guardrail validation.

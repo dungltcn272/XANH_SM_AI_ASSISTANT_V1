@@ -116,5 +116,15 @@ export const api = {
     const res = await fetch(`${API_BASE}/conversations/${id}/messages`, { headers });
     if (!res.ok) throw new Error('API Error');
     return res.json();
+  },
+
+  testPipeline: async (query, role = 'faq') => {
+    const res = await fetch(`${API_BASE}/admin/pipeline/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, role })
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
   }
 };

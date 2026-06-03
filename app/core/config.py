@@ -62,8 +62,8 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     
     # Reranker
-    RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "local")
-    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "cohere")
+    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "rerank-v3.0")
     COHERE_API_KEY: str = os.getenv("COHERE_API_KEY", "")
     
     # Crawl / Data
