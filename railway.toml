@@ -1,6 +1,10 @@
 [build]
 builder = "NIXPACKS"
-ignorePaths = ["README.md", "**/README.md", "MINDSET.md", "SKILL.md", ".gitignore", ".dockerignore", "docs/**", "frontend/**"]
+watchPatterns = [
+    "app/**",
+    "requirements.txt",
+    "railway.toml"
+]
 
 [deploy]
 startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
