@@ -2,7 +2,7 @@ import json
 import re
 from typing import Dict, Any, List, Tuple, Optional
 from openai import OpenAI
-from app.config import config
+from app.core.config import settings as config
 from app.rag.prompt import INTENT_CLASSIFIER_PROMPT, SLOT_FILLING_PROMPT
 
 class XanhSMClassifier:
@@ -41,9 +41,19 @@ class XanhSMClassifier:
                 "sub_task": None
             }
 
+        # Check if we are in the middle of a refund calculator slot-filling
+        if chat_history and len(chat_history) > 0:
+            last_msg = chat_history[-1]
+            if last_msg.get("role") == "assistant" and "vui lòng cho biết" in last_msg.get("content", "").lower():
+                return {
+                    "intent": "task-agent",
+                    "confidence": 1.0,
+                    "sub_task": "refund_calculator"
+                }
+
         # Rule-based Task-Agent check for Refund Calculator
         refund_indicators = {"tính phí hủy", "phạt hủy chuyến", "phạt hủy cuốc", "hủy chuyến phạt bao nhiêu", "hủy xe mất bao nhiêu", "phí hủy chuyến"}
-        if any(ind in query_lower for ind in refund_indicators):
+        if any(ind in query_lower for ind in refund_indicators) or ("hủy" in query_lower and any(w in query_lower for w in ["phạt", "phí", "mất", "tiền", "bao nhiêu"])):
             # Check if wait time or vehicle type mentioned
             return {
                 "intent": "task-agent",
@@ -60,7 +70,7 @@ class XanhSMClassifier:
                         role_tag = "User" if turn.get("role") == "user" else "Assistant"
                         history_str += f"{role_tag}: {turn.get('content')}\n"
 
-                client = OpenAI(api_key=config.OPENAI_API_KEY)
+                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
                 user_prompt = f"Lịch sử hội thoại:\n{history_str}\nCâu hỏi người dùng: '{query}'\nJSON kết quả:"
                 response = client.chat.completions.create(
                     model=config.LLM_MODEL,
@@ -149,7 +159,7 @@ class XanhSMClassifier:
                         role_tag = "User" if turn.get("role") == "user" else "Assistant"
                         history_str += f"{role_tag}: {turn.get('content')}\n"
                 
-                client = OpenAI(api_key=config.OPENAI_API_KEY)
+                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
                 response = client.chat.completions.create(
                     model=config.LLM_MODEL,
                     messages=[

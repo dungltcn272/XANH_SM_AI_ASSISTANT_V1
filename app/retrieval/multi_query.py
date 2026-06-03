@@ -2,7 +2,7 @@ import os
 import json
 from typing import List
 from openai import OpenAI
-from app.config import config
+from app.core.config import settings as config
 
 class XanhSMQueryExpansion:
     """
@@ -49,12 +49,12 @@ class XanhSMQueryExpansion:
             return self.expand_query_rule_based(query)
             
         try:
-            client = OpenAI(api_key=config.OPENAI_API_KEY)
+            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
             prompt = (
                 f"Ban la chuyen gia hieu y dinh nguoi dung (Query Understanding). "
-                f"Hay sinh ra 3 cau hoi dong nghia hoac co muc dich tim kiem tuong tu cau hoi duoi duoi bang tieng Viet.\n"
+                f"Hay sinh ra 1 cau hoi dong nghia hoac co muc dich tim kiem tuong tu cau hoi duoi duoi bang tieng Viet.\n"
                 f"Cau hoi goc: '{query}'\n\n"
-                f"Tra ve ket qua duoi dang danh sach JSON cac chuoi: [\"cau 1\", \"cau 2\", \"cau 3\"]"
+                f"Tra ve ket qua duoi dang danh sach JSON cac chuoi: [\"cau 1\"]"
             )
             
             response = client.chat.completions.create(
@@ -72,7 +72,8 @@ class XanhSMQueryExpansion:
             data = json.loads(response.choices[0].message.content)
             for val in data.values():
                 if isinstance(val, list):
-                    return [query] + val
+                    # Limit to 1 extra query to avoid search noise
+                    return [query] + val[:1]
             return self.expand_query_rule_based(query)
         except Exception as e:
             print(f"[WARN] LLM Query Expansion failed: {str(e)}. Falling back to rule-based.")

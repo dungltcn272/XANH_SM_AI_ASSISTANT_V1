@@ -1,238 +1,193 @@
-# 🚗 Xanh SM Enterprise Production RAG System (Phase 3)
+# 🚗 Xanh SM Enterprise Production RAG System (Phase 5)
 
 Hệ thống **Retrieval-Augmented Generation (RAG)** cấp doanh nghiệp (Production-Grade) được thiết kế và tối ưu hóa đặc biệt dành riêng cho **Xanh SM** nhằm phục vụ bốn nhóm đối tượng cốt lõi:
 * 👤 **Khách hàng (Customer)** - Giải đáp về đặt xe, phí hủy chuyến, chính sách hoàn tiền, đặt đồ ăn (Xanh Food), giao hàng.
 * 🚗 **Đối tác tài xế (Driver)** - Giải đáp chiết khấu doanh thu, tác phong làm việc, chế tài phạt.
 * 🏪 **Đối tác cửa hàng (Merchant)** - Giải đáp hoa hồng Xanh Food/Express, quy trình đối soát tuần.
-* 🎧 **Nhân viên CSKH (Agent)** - Truy cập toàn diện để giải quyết các khiếu nại phức tạp.
+* 🎧 **Nhân viên CSKH (Admin/Agent)** - Quản trị hệ thống, đánh giá Benchmarking realtime, theo dõi log truy vấn, Ingestion tự động.
 
-Hệ thống này triển khai kiến trúc **NLU-Gateway RAG (Phase 3)** nâng cao, thực tiễn và tối ưu hóa chi phí vận hành:
-`Question ➔ Safety & Lang Gateway ➔ Intent Classifier ➔ Slot Filling (Task/RAG) ➔ Caching Layer Check (Bypass) ➔ Memory Query Rewrite ➔ Strategy Selector ➔ Strategic Search (Dense / BM25 / Hybrid) ➔ Cross-Encoder Reranker ➔ Parent-Child Context ➔ LLM Synthesizer ➔ Citation Validator (Integrated Faithfulness) ➔ Cost Observability`.
-
-Để hiểu sâu sắc về hệ tư duy thiết kế, sơ đồ và các bài giảng kỹ thuật của dự án, vui lòng đọc [MINDSET.md](file:///c:/Users/DUNG/Desktop/RAG_XANH_SM/MINDSET.md).
+Hệ thống này triển khai kiến trúc **NLU-Gateway RAG (Phase 5)** tiên tiến nhất hiện nay với tốc độ xử lý siêu tốc:
+`Question ➔ Safety Guardrail ➔ Intent Classifier ➔ Slot Filling (Task/RAG) ➔ Memory Query Rewrite ➔ Hybrid Search (Qdrant Dense + BM25) ➔ Cross-Encoder Reranker ➔ Adjacent Context Expansion ➔ LLM Synthesizer ➔ Server-Sent Events (SSE) Stream ➔ Citation Validator`.
 
 > [!IMPORTANT]
-> **🚀 LIVE PRODUCTION DEMO:** Trải nghiệm trực tiếp chatbot RAG CSKH Xanh SM tại địa chỉ: **[ragxanhsmv1-production.up.railway.app](https://ragxanhsmv1-production.up.railway.app/)**
+> **🚀 LIVE PRODUCTION:** Hệ thống hỗ trợ hoàn chỉnh đăng nhập Google Auth, lưu trữ lịch sử chat cá nhân, và giao diện Dashboard quản trị mạnh mẽ.
 
 ---
 
 ## 🏗️ 1. Kiến Trúc Thư Mục Dự Án
 
-Mã nguồn được tổ chức theo cấu trúc module hóa chuẩn sản xuất:
+Mã nguồn được tổ chức theo cấu trúc Full-Stack hiện đại:
 
 ```text
 RAG_XANH_SM/
 │
-├── app/
-│   ├── crawler/
-│   │   ├── crawl.py          # BFS Web Crawler thu thập link nội bộ & Phân loại thông minh
-│   │   └── parser.py         # Chuyển đổi sạch HTML sang Markdown (giữ bảng biểu)
-│   │
-│   ├── ingestion/
-│   │   ├── splitter.py       # Phân đoạn heading-aware & Parent-Child metadata, hỗ trợ PDF
-│   │   ├── embedding.py      # Bộ sinh embeddings thông minh (Tự phục hồi fallback khi key lỗi)
-│   │   └── ingest.py         # Pipeline nạp dữ liệu & dọn dẹp sạch sẽ CSDL vector cũ
+├── app/                      # Backend FastAPI Cốt Lõi
+│   ├── ingestion/            # Pipeline nạp dữ liệu & dọn dẹp sạch sẽ CSDL vector cũ
+│   │   ├── chunking.py       # Phân đoạn heading-aware giữ nguyên context
+│   │   ├── embedding.py      # Bộ sinh Dense Vector (OpenAI)
+│   │   └── ingest.py         # Quét thư mục, bóc tách và Upsert vào Qdrant + Postgres
 │   │
 │   ├── vectordb/
-│   │   └── chroma_client.py  # Quản lý dense vector index (Hỗ trợ Singleton Fallback DB & Shared Filter)
+│   │   └── qdrant_client.py  # Quản lý giao tiếp Qdrant (Hỗ trợ Native Hybrid Search & RRF)
 │   │
 │   ├── retrieval/
-│   │   ├── bm25_retriever.py # Mô hình từ khóa chính xác BM25 (Hỗ trợ lọc Role linh hoạt)
-│   │   ├── hybrid_search.py  # Hybrid Search kết hợp RRF & Logic Tự Động Đồng Bộ/Nạp Startup
+│   │   ├── hybrid_search.py  # Hybrid Search kết hợp Dense/Sparse Vector từ Qdrant
 │   │   ├── multi_query.py    # Query Expansion mở rộng truy vấn đồng nghĩa tiếng Việt
-│   │   └── reranker.py       # Cross-Encoder Reranker xếp hạng lại Top 5 tài liệu
+│   │   └── reranker.py       # Cross-Encoder Reranker xếp hạng lại Top 10 tài liệu
 │   │
 │   ├── rag/
 │   │   ├── prompt.py         # Prompt hệ thống tối ưu hóa tác phong và trích nguồn
-│   │   ├── cache.py          # Bộ đệm Caching thông minh kép (SQLite/PostgreSQL Dual-Driver)
-│   │   ├── gateway.py        # Conversation Gateway (NFC, Safety, Lang Detect)
-│   │   ├── classifier.py     # Intent Classifier & Slot Filling Engine (tích hợp RefundCalculatorTool)
-│   │   └── chain.py          # Chuỗi RAG điều phối toàn diện của hệ thống
+│   │   ├── gateway.py        # Conversation Gateway (Regex chặn từ cấm tức thì ~0ms)
+│   │   ├── classifier.py     # Intent Classifier & Slot Filling (Xử lý Small-talk & Task-agent)
+│   │   └── chain.py          # Chuỗi RAG chính, xử lý SSE Stream trả về Frontend
 │   │
 │   ├── api/
-│   │   ├── routes.py         # FastAPI REST Server endpoints & reload singleton tự động
-│   │   └── streamlit_ui.py   # Streamlit UI cũ (lưu trữ phục vụ tham chiếu)
+│   │   └── routes.py         # FastAPI REST Endpoints (Auth, Chat, Admin, Chunks, Evaluate)
 │   │
-│   └── config.py             # Quản lý biến môi trường và cấu hình hệ thống
+│   └── db/                   # Quản lý Database PostgreSQL (Lịch sử Chat, Users, Logs, Chunks)
 │
-├── data/                     # Thư mục chứa tài liệu chính sách được cấu trúc hóa
-│   ├── customer/             # Chính sách đặc thù khách hàng (terms.md, refund.md)
-│   ├── driver/               # Quy chế tác phong tài xế & chiết khấu thưởng (commission.md)
-│   ├── merchant/             # Quy định đối tác cửa hàng (merchant_policy.md)
-│   └── faq/                  # Hướng dẫn đặt xe, đặt đồ ăn, giúp đỡ chung (booking.md, vn_vi_helps.md...)
+├── data/                     # Thư mục chứa tài liệu Markdown thô (Crawler tạo ra)
 │
-├── FE/                       # Thư mục mã nguồn Front-End cao cấp
-│   ├── index.html            # Cấu trúc Dashboard Dark-Neon điều khiển Cockpit
-│   ├── style.css             # HHSL glassmorphism & render Table/Blockquote
-│   └── app.js                # Xử lý REST API, Lịch sử trò chuyện & citations toggle button
+├── frontend/                 # React + Vite Frontend UI (Stitch Architecture)
+│   ├── src/components/       # Component UI module hóa (ChatLayout, Dashboard...)
+│   └── src/api.js            # Xử lý REST API và đọc luồng SSE theo thời gian thực
 │
-├── MINDSET.md                # Hệ tư duy thiết kế, sơ đồ Mermaid và bài giảng của Thầy Giáo AI
-├── FE_SPEC.md                # Bản tả đặc tính kỹ thuật Front-End dành cho Stitch vẽ UI
-├── requirements.txt          # Các thư viện phụ thuộc của hệ thống (Tích hợp psycopg2-binary, pypdf)
-├── run_tests.py              # Suite chấm điểm và đánh giá tự động RAGAS
-└── README.md                 # Hướng dẫn khởi chạy và vận hành hệ thống
+├── evaluation/               # Hệ thống Benchmark Ragas tự động đánh giá RAG
+├── docs/                     # Tài liệu đặc tả kỹ thuật nội bộ
+├── requirements.txt          # Thư viện phụ thuộc (FastAPI, Qdrant-client, Sentence-transformers...)
+└── README.md                 # Hướng dẫn khởi chạy và vận hành
 ```
 
 ---
 
-## ⚡ 2. Luồng Xử Lý Phase 3 NLU-Gateway RAG
+## ⚡ 2. Luồng Xử Lý Phase 5 NLU-Gateway RAG
 
-Hệ thống hoạt động qua 13 bước khép kín với các lớp bảo vệ và tối ưu hóa hiệu năng vượt trội:
+Hệ thống hoạt động qua các bước khép kín với các lớp bảo vệ và tối ưu hóa hiệu năng vượt trội:
 
 ```mermaid
-flowchart TD
-    User([👤 User Query]) --> NFC[🧠 Unicode NFC Normalization]
-    NFC --> Safety{🛡️ Safety Guardrails}
+graph TD
+    A([👤 User Input]) --> B[🛡️ API Gateway & Guardrails]
+    B -- "Từ chối (~0ms)" --> Block[❌ Chặn nội dung vi phạm]
+    B -- "Hợp lệ" --> C{🧠 Intent Classifier & Slot Filling}
     
-    %% Bypass luồng nhạy cảm
-    Safety -- Vi phạm --> Chặn[❌ Phản hồi từ chối - Bypass 100% LLM/Vector]
+    %% Bypass luồng RAG
+    C -- "Small-talk / Cước phí" --> Task[🤖 Task Agent / Phản hồi nhanh]
     
-    %% Phân loại ý định
-    Safety -- Hợp lệ --> Intent{🧠 Intent Classifier}
+    %% Luồng RAG Chính
+    C -- "Câu hỏi nghiệp vụ" --> D[📝 Query Expansion & Rewrite]
+    D --> E[🔎 Qdrant Hybrid Search]
+    E --> F[⚡ Cross-Encoder Reranker]
+    F --> G[🔄 Adjacent Context Expansion]
+    G --> H[🧠 LLM Context Synthesis]
+    H --> I([📡 Output SSE Stream & Citations])
     
-    Intent -- Small-talk --> LLMDirect[🤖 LLM trực tiếp - Bypass RAG/Vector]
-    Intent -- Task Agent --> Slots{📋 Slot Filling Check}
-    Intent -- RAG / FAQ --> Cache{⚡ Semantic Cache Check}
-    
-    %% Nhánh Task Agent
-    Slots -- Thiếu tham số --> Clarify[💬 Câu hỏi làm rõ gửi User]
-    Slots -- Đủ tham số --> Tool[🔌 Thực thi Tool - e.g. Refund Calculator]
-    
-    %% Nhánh Cache
-    Cache -- Hit >= 0.96 --> TrảCache[⚡ Trả ngay kết quả - Bypass 100% LLM/Vector trong 10ms]
-    Cache -- Miss --> Rewrite[📝 Memory Query Rewrite]
-    
-    %% Nhánh RAG chính
-    Rewrite --> Select{🎯 Strategy Selector}
-    Select -- Mật độ từ khóa/Số liệu --> BM25[🔎 BM25 Exact Search]
-    Select -- Khái niệm/Ngữ nghĩa --> Dense[🔎 Dense Vector Search]
-    Select -- Mặc định --> Hybrid[🔎 Hybrid Search RRF]
-    
-    BM25 --> Rerank[⚡ Cross-Encoder Reranker]
-    Dense --> Rerank
-    Hybrid --> Rerank
-    
-    Rerank --> PC[✂️ Parent-Child Expand Context]
-    PC --> LLM[🤖 LLM Synthesizer]
-    LLM --> Validator[📌 Citation Validator & Cost Tracking]
-    
-    Validator --> Render[🎨 FE Render HTML Table/Blockquote & Citation Toggle]
-    Validator --> Obs[📊 Telemetry & Cost Reporting]
+    style A fill:#00A651,stroke:#fff,color:#fff
+    style I fill:#00A651,stroke:#fff,color:#fff
+    style Block fill:#ff4444,stroke:#fff,color:#fff
+    style Task fill:#0099ff,stroke:#fff,color:#fff
 ```
+
+### Chi tiết các công nghệ và thông số kỹ thuật:
+- **API Gateway & Guardrails**: Sử dụng biểu thức chính quy (`re` Python) để kiểm tra heuristic siêu tốc với độ trễ ~0ms. Chặn tức thì các câu hỏi chứa từ cấm hoặc nhạy cảm.
+- **Intent Classifier & Slot Filling**: Phân loại ý định thành `small-talk`, `task-agent` (như tính phí hủy), `sensitive`, hoặc `rag`. Nhánh bypass **giúp tối ưu tốc độ cực lớn**, giảm độ trễ từ 5s xuống 0.5s và tiết kiệm 100% token Database/LLM cho các câu giao tiếp cơ bản.
+- **Query Expansion & Rewrite**: Dùng LLM (GPT-4o-mini) đẻ thêm **1 câu hỏi đồng nghĩa** (tổng 2 truy vấn song song) để tăng độ phủ tìm kiếm, kết hợp từ điển đồng nghĩa (Rule-based).
+- **Hybrid Search**: Giao tiếp với **Qdrant Vector Database** (`qdrant-client`). Hệ thống quét và lấy ra **Top 25 tài liệu thô** (`limit=25`) bằng công nghệ Native RRF kết hợp Dense Vector (`text-embedding-3-small`) và Sparse Vector (FastEmbed BM25).
+- **Cross-Encoder Reranker**: Chấm điểm lại 25 tài liệu trên bằng PyTorch `sentence_transformers` (mô hình `cross-encoder/ms-marco-MiniLM-L-6-v2`) và chỉ giữ lại **Top 10 tài liệu tinh** khắt khe nhất. Điều này giúp loại bỏ kết quả nhiễu trước khi mở rộng ngữ cảnh.
+- **Adjacent Context Expansion**: Mở rộng ngữ cảnh lân cận xung quanh 10 tài liệu đã qua sàng lọc bằng cách lấy thêm các chunk liền trước (`chunk_index - 1`) và liền sau (`chunk_index + 1`) trực tiếp từ Qdrant. Điều này giúp cung cấp ngữ cảnh cực kỳ đầy đủ mà không làm nhiễu mô hình Rerank hay phình to prompt (Parent-Child).
+- **LLM Synthesis & Stream**: Tổng hợp ngữ cảnh bằng `openai` (GPT-4o-mini), truyền dữ liệu từng chữ về trình duyệt (Server-Sent Events) kèm chuỗi JSON chứa Nguồn tài liệu (`sources`).
 
 ---
 
 ## 🛠️ 3. Các Tính Năng Nổi Bật Chuẩn Production
 
-### 💎 A. Tránh Rò Rỉ Dữ Liệu Chéo (Unified Shared Filter)
-Hệ thống áp dụng phân quyền truy cập tài liệu bảo mật trực tiếp ở tầng Vector Database & BM25, ngăn chặn triệt để Prompt Injection:
-* **Customer**: Được phép truy quét tài liệu trong thư mục `customer` + `faq`.
-* **Driver**: Được phép truy quét tài liệu `driver` + `faq`.
-* **Merchant**: Được phép truy quét tài liệu `merchant` + `faq`.
-* **Agent (CSKH)**: Được phép truy quét toàn bộ kho tài liệu.
+### 💎 A. Trích Dẫn Nguồn Minh Bạch (Citations)
+Mọi câu trả lời từ RAG đều đi kèm với các thẻ trích dẫn chính xác (Nguồn file, mục điều khoản). Frontend sẽ tự động đọc luồng JSON ở cuối Stream và render thành các nút bấm URL để khách hàng có thể click mở file gốc kiểm chứng.
 
-### 💎 B. Cơ Chế Parent-Child Chunking Bảo Toàn Cấu Trúc
-Giải quyết triệt để "Nghịch lý Phân Mảnh" trong RAG: **"Tìm kiếm cần mảnh cực nhỏ để nhạy bén, nhưng LLM cần mảnh lớn để đủ ngữ cảnh."**
-* **Nạp liệu (Ingestion):** Tách tài liệu theo các Heading tiêu đề lớn (`#`, `##`, `###`) làm **Mảnh Cha (Parent - 1000-2000 từ)**. Tiếp tục chia nhỏ Mảnh Cha thành các **Mảnh Con (Child - 100-200 từ)** và đính kèm `parent_content` và `parent_chunk_id` trong metadata.
-* **Truy xuất (Retrieval):** Tìm kiếm tương đồng vector và BM25 chạy trên các **Mảnh Con** (nhạy nhất). Khi kéo kết quả ra, hệ thống tự động gom cụm, loại bỏ trùng lặp và gửi toàn bộ **Mảnh Cha** gốc cho LLM. Giúp LLM đọc trọn vẹn được các bảng biểu cước phí phức tạp và quy định liền mạch!
+### 💎 B. Đồng Bộ Hóa VectorDB & PostgreSQL Tự Động (Ingestion)
+Khi nhân viên bấm nút **Nạp dữ liệu**, hệ thống sẽ:
+1. Xóa toàn bộ dữ liệu Chunk cũ của tài liệu đó trong **Postgres**.
+2. Nạp mới toàn bộ Chunk vào Postgres để hiển thị minh bạch cho Admin.
+3. Sinh Dense + Sparse Vectors và Upsert trực tiếp vào **Qdrant** qua UUID đồng bộ.
 
-### 💎 C. Phân Phối Heuristics Ingest PDF Hợp Đồng
-Hỗ trợ đọc và phân mảnh các tệp PDF phức tạp (ví dụ: Hợp đồng đối tác tài xế). Hệ thống sử dụng `pypdf` bóc tách văn bản thô, áp dụng heuristics layout tự động chuyển đổi các đề mục phẳng hoặc chữ hoa (e.g. *"Điều 1"*, *"CHƯƠNG I"*) thành cấu trúc phân cấp Markdown `#`, `##` trước khi đưa vào bộ chia đoạn Heading-Aware.
+### 💎 C. Tự Động Sửa Lỗi Encoding & OpenMP (Crash-Free)
+Hệ thống được lập trình phòng ngự vững chắc để đối phó với môi trường Windows:
+- Ngăn chặn lỗi C++ `libiomp5md.dll` khi dùng PyTorch.
+- Ép buộc luồng stdout của Windows Console sang `utf-8` để ngăn chặn lỗi Crash `UnicodeEncodeError` khi stream các ký tự Tiếng Việt (Á, Ế, Ố).
 
-### 💎 D. Tự Động Reset Singleton & Reload Tri Thức
-Khi quản trị viên hoặc CSKH bấm nút **Ingest / Re-chunking** trên giao diện Console:
-1. Hệ thống tự động dọn sạch CSDL vector cũ bằng cách gọi `db.clear()`.
-2. Tạo mới cache chỉ mục tĩnh `bm25_corpus.json` để đồng bộ.
-3. Tự động gọi `reset_pipeline_singleton()` đưa các biến toàn cục `pipeline = None` và `hybrid_search = None` về trạng thái ban đầu.
-4. Lượt chat tiếp theo sẽ tự động reload tri thức mới nạp ngay lập tức mà không cần khởi động lại máy chủ!
-
-### 💎 E. Giao Diện Cockpit Dark-Neon & Giám Sát Chi Phí
-* **Hiển thị Led sáng động**: Sơ đồ 13 node LED sáng lên tuần tự theo thời gian thực mô phỏng chính xác đường đi của dữ liệu.
-* **Markdown Render chuẩn HTML**: Tự động chuyển đổi bảng biểu (`| col |`) và trích dẫn (`> ...`) Markdown thô thành thẻ HTML bóng bẩy với viền neon xanh lá Xanh SM.
-* **Reranker Arena ⚔️**: Giao diện đối soát hiệu năng giữa các mô hình Tái xếp hạng (MiniLM, FlashRank, BGE, Cohere) với dữ liệu thật.
-* **Real-time Cost Reporting**: Citation Validator trả về chi tiết số lượng token sử dụng (Prompt/Completion) và quy đổi chi phí ra USD/VND theo thời gian thực cho từng lượt chat.
-* **Citation Toggle Button**: Người dùng có thể ẩn/hiện danh sách nguồn trích dẫn pháp lý một cách linh hoạt.
+### 💎 D. Realtime Benchmarking (Đánh Giá RAGAS)
+Hệ thống tích hợp Framework đánh giá AI `ragas`. Quản trị viên có thể bấm nút đánh giá Realtime trên Dashboard để hệ thống tự động bốc ngẫu nhiên câu hỏi, chạy thử RAG, và tính toán điểm **Faithfulness** (Độ trung thực) và **Answer Relevance** (Độ chính xác).
 
 ---
 
-## 🚀 4. Hướng Dẫn Khởi Chạy & Deploy Railway Cloud
+## 🚀 4. Hướng Dẫn Khởi Chạy Cục Bộ (Local)
 
-### 📦 A. Chạy Cục Bộ (Local Development)
+### 📦 A. Yêu Cầu Môi Trường
+- **Python 3.10+**
+- **Node.js 18+**
+- **Docker & Docker Compose** (Chạy Qdrant và PostgreSQL)
 
-#### 1. Cài đặt các thư viện phụ thuộc:
+### 📦 B. Khởi Động Databases Bằng Docker
 ```bash
-# Tạo môi trường ảo python (khuyên dùng Python 3.10+)
+# Trong thư mục dự án, chạy lệnh:
+docker-compose up -d
+```
+Lệnh này sẽ khởi động:
+- **Qdrant** trên cổng `6333`
+- **PostgreSQL** trên cổng `5432`
+
+### 📦 C. Cài Đặt & Cấu Hình Backend
+1. **Tạo môi trường ảo & Cài thư viện:**
+```bash
 python -m venv venv
 venv\Scripts\activate  # Trên Windows
-source venv/bin/activate  # Trên Linux/macOS
-
-# Cài đặt thư viện
+# source venv/bin/activate  # Trên Linux/macOS
 pip install -r requirements.txt
 ```
 
-#### 2. Cấu hình biến môi trường (`.env`):
-Tạo file `.env` ở thư mục gốc của dự án với nội dung như sau:
+2. **Cấu hình biến môi trường (`.env`):**
+Copy file `.env.example` thành `.env` và điền key OpenAI của bạn:
 ```env
 OPENAI_API_KEY=sk-proj-xxxx...
 EMBEDDING_PROVIDER=openai
 EMBEDDING_MODEL=text-embedding-3-small
 LLM_MODEL=gpt-4o-mini
-DATA_DIR=./data
-CHROMA_PERSIST_DIR=./chroma_db
-RERANKER_PROVIDER=none
+RERANKER_PROVIDER=local
+RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
 
-# Chế độ bypass lỗi DLL SQLite trên Windows Host:
-CHROMA_PROVIDER=fallback
+DATABASE_URL=postgresql://postgres:password@localhost:5432/greensm_db
+QDRANT_URL=http://localhost:6333
 ```
-* **Lưu ý an toàn:** Biến `CHROMA_PROVIDER=fallback` sử dụng bộ tìm kiếm in-memory thuần Python siêu ổn định để tránh lỗi crash DLL C++ của thư viện `hnswlib` trên một số máy Windows. **Điều này không ảnh hưởng đến Deploy Railway** vì ta sẽ ghi đè biến này trên đám mây!
+*Lưu ý:* Lần đầu chạy, hệ thống chưa có dữ liệu vector. Hãy mở Dashboard và bấm **Crawl** -> **Ingestion** để nạp tri thức vào Qdrant!
 
-#### 3. Chạy Server Backend và Front-End:
+3. **Chạy Server FastAPI:**
 ```bash
-# Khởi chạy server FastAPI (Port 8000)
-uvicorn app.api.routes:app --host 0.0.0.0 --port 8000 --reload
+# KHÔNG dùng cờ --reload khi đang test môi trường production
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
-Mở trình duyệt truy cập: **[http://localhost:8000](http://localhost:8000)** để trải nghiệm giao diện Cockpit Dark-Neon đỉnh cao!
 
-#### 4. Chạy Suite Kiểm Thử Tự Động:
+### 📦 D. Cài Đặt & Khởi Chạy Frontend
+Mở một Terminal thứ 2:
 ```bash
-python run_tests.py
+cd frontend
+npm install
+npm run dev
 ```
+Truy cập hệ thống tại: **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
-### ☁️ B. Hướng Dẫn Triển Khai Lên Đám Mây Railway (Railway Deploy)
+## ☁️ 5. Hướng Dẫn Triển Khai Lên Đám Mây Railway (Deploy)
 
-Dự án đã được cấu hình sẵn tệp [railway.toml](file:///c:/Users/DUNG/Desktop/RAG_XANH_SM/railway.toml) và [Procfile](file:///c:/Users/DUNG/Desktop/RAG_XANH_SM/Procfile) để tự động nhận diện và chạy lệnh khởi chạy môi trường sản xuất trên Railway.
+Hệ thống được thiết kế để dễ dàng đưa lên Production thông qua [Railway.app](https://railway.app).
 
-> [!IMPORTANT]
-> **Biến môi trường trên Railway Dashboard sẽ ghi đè file `.env` cục bộ.**
-> Do đó, file `.env` chứa `CHROMA_PROVIDER=fallback` để dev local an toàn trên Windows **hoàn toàn KHÔNG ảnh hưởng** tới tính năng persistent trên cloud. Bạn chỉ cần cấu hình đúng các biến môi trường trên Railway Dashboard như sau:
-
-#### 1. Các Biến Môi Trường Cần Thiết Lập Trên Railway Dashboard (Tab Variables):
-Bạn truy cập vào service của mình trên Railway Dashboard, chuyển sang tab **Variables** và nhấn **Add Variable** cho các biến sau:
-
-| Tên biến | Giá trị đề xuất | Ý nghĩa |
-| :--- | :--- | :--- |
-| `OPENAI_API_KEY` | `sk-proj-xxxxxxxxxxxxxxxx...` | Mã khóa API OpenAI của bạn. |
-| `CHROMA_PROVIDER` | `chromadb` | **BẮT BUỘC:** Chuyển sang sử dụng ChromaDB thật, ghi đè chế độ fallback cục bộ. |
-| `EMBEDDING_PROVIDER` | `openai` | Sử dụng mô hình nhúng text-embedding-3-small hiệu năng cao. |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | Tên mô hình nhúng. |
-| `LLM_MODEL` | `gpt-4o-mini` | Mô hình ngôn ngữ chính cho synthesizer và NLU. |
-| `CHROMA_PERSIST_DIR` | `/app/persistent_storage/chroma_db` | **BẮT BUỘC:** Đường dẫn lưu trữ CSDL vector trên đĩa cứng gắn ngoài (Volume) của Railway. |
-| `DATA_DIR` | `/app/persistent_storage` | **BẮT BUỘC:** Đường dẫn chứa dữ liệu chính sách trên Volume để tránh mất mát khi deploy lại. |
-| `DATABASE_URL` | `postgresql://...` | **BẮT BUỘC (Tùy chọn):** URL kết nối PostgreSQL của Railway cung cấp để sử dụng hệ thống Caching. Nếu không có, hệ thống sẽ dùng SQLite cục bộ. |
-| `PORT` | `8000` | Cổng dịch vụ Railway tự động cấp phát. |
-
-#### 2. Thiết Lập Ổ Đĩa Vĩnh Viễn (Persistent Volume):
-CSDL ChromaDB và tệp cache BM25 cần được lưu giữ vĩnh viễn để tránh bị xóa sạch mỗi lần bạn cập nhật mã nguồn (Redeploy).
-1. Trên giao diện sơ đồ Railway, click vào service **RAG_XANH_SM**.
-2. Nhấn nút **Settings** hoặc nút **+ Add** góc trên ➔ Chọn **Volume**.
-3. Đặt kích thước Volume tùy ý (ví dụ: `1 GB` hoặc `2 GB` là quá đủ cho hàng triệu trang chính sách).
-4. Thiết lập **Mount Path** của Volume là: `/app/persistent_storage` (khớp chính xác với cấu hình `DATA_DIR` và `CHROMA_PERSIST_DIR` ở bảng trên).
-
-#### 3. Cơ chế Khởi Chạy Tự Chữa Lành (Self-Healing) trên Cloud:
-* Khi container khởi chạy lần đầu tiên trên Railway, hệ thống sẽ tự động phát hiện nếu thư mục `/app/persistent_storage` trên Volume mới gắn bị trống.
-* Hệ thống sẽ tự động sao chép (copy) toàn bộ tài liệu Markdown mẫu từ thư mục `data/` trong mã nguồn sang `/app/persistent_storage` trên Volume.
-* Tiếp theo, hệ thống tự động kích hoạt tiến trình phân đoạn (ingestion) để phân mảnh và nạp toàn bộ tri thức vào ChromaDB thực tại `/app/persistent_storage/chroma_db` và ghi file chỉ mục `/app/persistent_storage/chroma_db/bm25_corpus.json`.
-* Nếu biến `DATABASE_URL` được cấu hình, hệ thống sẽ tự động kết nối và khởi tạo bảng `query_cache` trên **PostgreSQL**, sẵn sàng cho hiệu suất caching cực cao!
-* Từ đó về sau, tri thức của bạn được bảo vệ vĩnh viễn trên Volume và hoạt động với hiệu suất tối đa 100%!
+1. Tạo một project trên Railway.
+2. Thêm **PostgreSQL Database** plugin từ Railway.
+3. Liên kết Github Repo của dự án vào Railway.
+4. Chuyển sang tab **Variables** và cấu hình các thông số y hệt file `.env`:
+   - `OPENAI_API_KEY`: Key của bạn.
+   - `DATABASE_URL`: Sử dụng Connection URL nội bộ của PostgreSQL plugin (Railway tự cấp phát).
+   - `QDRANT_URL`: URL cụm Qdrant Cloud của bạn (Nên tạo tài khoản trên Qdrant Cloud miễn phí).
+   - `GOOGLE_CLIENT_ID`: Client ID Google Auth.
+   - `PORT`: `8000`.
+5. Railway sẽ tự động detect Python (thông qua `requirements.txt`) và chạy lệnh `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. 
+6. Đối với frontend (`React/Vite`), bạn có thể deploy lên **Vercel**, **Netlify**, hoặc tạo một service tĩnh (Static Site) thứ 2 ngay trong Railway. Đừng quên thay đổi biến `API_BASE` ở `frontend/src/api.js` trỏ về domain backend Railway của bạn!

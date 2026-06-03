@@ -1,0 +1,43 @@
+{
+  "user": [
+    "https://www.greensm.com/vn-vi/greensm-car",
+    "https://www.greensm.com/vn-vi/greensm-mini",
+    "https://www.greensm.com/vn-vi/greensm-premium",
+    "https://www.greensm.com/vn-vi/greensm-limo",
+    "https://www.greensm.com/vn-vi/green-airport",
+    "https://www.greensm.com/vn-vi/green-tour",
+    "https://www.greensm.com/vn-vi/green-gift-card",
+    "https://www.greensm.com/vn-vi/green-lien-tinh",
+    "https://www.greensm.com/vn-vi/greensm-bike",
+    "https://www.greensm.com/vn-vi/greensm-ngon",
+    "https://www.greensm.com/vn-vi/green-express",
+    "https://www.greensm.com/vn-vi/green-van",
+    "https://www.greensm.com/vn-vi/green-subscription"
+  ],
+  "merchant": [
+    "https://www.greensm.com/vn-vi/green-subscription",
+    "https://www.greensm.com/vn-vi/greensm-merchant",
+    "https://www.greensm.com/vn-vi/business-payment"
+  ],
+  "driver": [
+    "https://www.greensm.com/vn-vi/driver-car",
+    "https://www.greensm.com/vn-vi/driver-bike",
+    "https://www.greensm.com/vn-vi/driver-platform",
+    "https://www.greensm.com/vn-vi/driver-center"
+  ],
+  "green-care": [
+    "https://www.greensm.com/vn-vi/bao-hiem-khach-hang",
+    "https://www.greensm.com/vn-vi/bao-hiem-hang-hoa-xanh-express",
+    "https://www.greensm.com/vn-vi/bao-hiem-giao-do-an"
+  ],
+  "helps": [
+    "https://www.greensm.com/vn-vi/helps"
+  ],
+  "term-policies": [
+    "https://www.greensm.com/vn-vi/terms-policies/general",
+    "https://www.greensm.com/vn-vi/terms-policies/regulations (pdf)",
+    "https://www.greensm.com/vn-vi/terms-policies/privacy-notice",
+    "https://www.greensm.com/vn-vi/terms-policies/service-agreement",
+    "https://www.greensm.com/vn-vi/terms-policies/consumer-protection-policy"
+  ]
+}

@@ -2,7 +2,7 @@ import time
 import unicodedata
 from typing import List, Dict, Any
 from langchain_core.documents import Document
-from app.config import config
+from app.core.config import settings as config
 
 # Global cache for reranker models to prevent reloading
 _MODEL_CACHE = {}

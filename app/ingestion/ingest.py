@@ -1,117 +1,160 @@
 import os
 import sys
-import shutil
-# Make sure app directory is in path
+import uuid
+from typing import List
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app.ingestion.splitter import HeadingAwareSplitter
-from app.vectordb.chroma_client import XanhSMVectorDB
-from app.config import config
+from qdrant_client import QdrantClient
+from qdrant_client.http import models as qdrant_models
+from langchain_core.documents import Document
 
-def run_ingestion(progress_callback=None):
-    msg_start = "Starting legal document ingestion pipeline for Xanh SM..."
-    print(f"[INFO] {msg_start}")
-    if progress_callback:
-        progress_callback("START", msg_start)
-    
-    # 1. Initialize DB, Splitter, and Cache
-    db = XanhSMVectorDB()
-    splitter = HeadingAwareSplitter(chunk_size=700, chunk_overlap=150)
-    
+from app.core.config import settings
+from app.db.database import SessionLocal
+from app.db.models import DocumentChunk
+from app.ingestion.chunking import HeadingAwareSplitter
+from app.ingestion.embedding import get_embedding_model
+from app.vectordb.qdrant_client import vectordb
+
+COLLECTION_NAME = "greensm_knowledge"
+
+def setup_qdrant(client: QdrantClient, vector_size: int = 1536):
+    """Đảm bảo Collection Qdrant đã tồn tại với Named Vectors cho Hybrid Search"""
     try:
-        from app.rag.cache import XanhSMRAGCache
-        cache = XanhSMRAGCache()
-        cache.clear()
-    except Exception as e:
-        print(f"[WARN] Failed to clear cache on ingestion: {e}")
-
-    
-    # 2. Split directory
-    data_dir = os.path.abspath(config.DATA_DIR)
-    msg_read = f"Reading documents from: {data_dir}"
-    print(f"[INFO] {msg_read}")
-    if progress_callback:
-        progress_callback("READING", msg_read)
-
-    # If target data dir is missing or contains no markdown, attempt to populate it
-    # from the bundled repo `data/` folder so ingestion can run on fresh deployments.
-    def _has_markdown(dir_path):
-        return os.path.isdir(dir_path) and any(
-            fname.endswith('.md') for _, _, files in os.walk(dir_path) for fname in files
-        )
-
-    if not _has_markdown(data_dir):
-        repo_data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
-        if _has_markdown(repo_data_dir):
-            try:
-                print(f"[INFO] DATA_DIR '{data_dir}' is empty; copying bundled repo data from '{repo_data_dir}'...")
-                os.makedirs(data_dir, exist_ok=True)
-                files_copied = 0
-                for root, dirs, files in os.walk(repo_data_dir):
-                    rel = os.path.relpath(root, repo_data_dir)
-                    dest_root = os.path.join(data_dir, rel) if rel != '.' else data_dir
-                    os.makedirs(dest_root, exist_ok=True)
-                    for f in files:
-                        if f.endswith('.md'):
-                            shutil.copy2(os.path.join(root, f), os.path.join(dest_root, f))
-                            files_copied += 1
-                print(f"[INFO] Copied {files_copied} markdown files into {data_dir}.")
-            except Exception as e:
-                msg_warn = f"Failed to copy bundled data into {data_dir}: {e}"
-                print(f"[WARN] {msg_warn}")
-                if progress_callback:
-                    progress_callback("WARN", msg_warn)
-                return
-        else:
-            msg_warn = (
-                "No chunks created! Please run crawler or check if the configured data directory contains markdown files. "
-                f"Checked paths: {config.DATA_DIR}, {repo_data_dir}"
+        client.get_collection(collection_name=COLLECTION_NAME)
+        print(f"[INFO] Collection '{COLLECTION_NAME}' already exists. Recreating for Hybrid Search...")
+        client.delete_collection(collection_name=COLLECTION_NAME)
+    except Exception:
+        pass
+        
+    print(f"[INFO] Creating collection '{COLLECTION_NAME}' for Hybrid Search...")
+    client.create_collection(
+        collection_name=COLLECTION_NAME,
+        vectors_config={
+            "dense": qdrant_models.VectorParams(
+                size=vector_size,
+                distance=qdrant_models.Distance.COSINE
             )
-            print(f"[WARN] {msg_warn}")
-            if progress_callback:
-                progress_callback("WARN", msg_warn)
-            return
+        },
+        sparse_vectors_config={
+            "sparse": qdrant_models.SparseVectorParams(
+                index=qdrant_models.SparseIndexParams(
+                    on_disk=False
+                )
+            )
+        }
+    )
+    
+    # Tạo Payload Index để filter scroll/search theo metadata.url và metadata.chunk_index
+    # Bắt buộc phải có index mới có thể dùng Filter trong scroll()
+    print(f"[INFO] Creating payload indexes for 'metadata.url' and 'metadata.chunk_index'...")
+    try:
+        client.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name="metadata.url",
+            field_schema=qdrant_models.PayloadSchemaType.KEYWORD
+        )
+        client.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name="metadata.chunk_index",
+            field_schema=qdrant_models.PayloadSchemaType.INTEGER
+        )
+        print(f"[INFO] Payload indexes created successfully.")
+    except Exception as e:
+        print(f"[WARN] Could not create payload indexes: {e}")
 
-    chunks = splitter.split_directory(data_dir)
-        
-    msg_split = f"Successfully split documents into {len(chunks)} logical chunks."
-    print(f"[INFO] {msg_split}")
-    if progress_callback:
-        progress_callback("SPLIT", msg_split)
+def ingest_data(data_dir: str):
+    db = SessionLocal()
+    qdrant = vectordb.qdrant
+    embedder = get_embedding_model()
+    sparse_model = vectordb.sparse_embedder
     
-    # 3. Add to ChromaDB
-    try:
-        print("[INFO] Clearing existing vector database before importing new documents...")
-        db.clear()
-    except Exception as e:
-        print(f"[WARN] Failed to clear DB: {e}")
-        
-    db.add_documents(chunks)
+    setup_qdrant(qdrant)
     
-    # Save chunks to a static JSON file for fast BM25 load
-    try:
-        import json
-        persist_dir = os.path.abspath(config.CHROMA_PERSIST_DIR)
-        os.makedirs(persist_dir, exist_ok=True)
-        chunks_file = os.path.join(persist_dir, "bm25_corpus.json")
+    splitter = HeadingAwareSplitter(chunk_size=1300, chunk_overlap=200)
+    print("[INFO] Bắt đầu duyệt và chunk file...")
+    chunks: List[Document] = splitter.split_directory(data_dir)
+    
+    if not chunks:
+        print("[WARNING] Không có chunks nào được tạo ra.")
+        return
+
+    print(f"[INFO] Đã tạo tổng cộng {len(chunks)} chunks. Bắt đầu embedding (Dense + Sparse)...")
+    
+    source_map = {}
+    for chunk in chunks:
+        url = chunk.metadata.get("url", chunk.metadata.get("source", "unknown"))
+        if url not in source_map:
+            source_map[url] = []
+        source_map[url].append(chunk)
+
+    for url, file_chunks in source_map.items():
+        print(f"[INFO] Đang nạp dữ liệu cho {url} ({len(file_chunks)} chunks)...")
         
-        serializable_chunks = []
-        for doc in chunks:
-            serializable_chunks.append({
-                "page_content": doc.page_content,
-                "metadata": doc.metadata
-            })
+        category = file_chunks[0].metadata.get("role", "unknown")
+        filename = file_chunks[0].metadata.get("source", "")
+        
+        # Xóa các chunk cũ trong DB nếu có
+        db.query(DocumentChunk).filter(DocumentChunk.source == url).delete()
+        db.commit()
+        
+        texts = [c.page_content for c in file_chunks]
+        
+        # Sinh Dense Vector (OpenAI)
+        try:
+            dense_embeddings = embedder.embed_documents(texts)
+        except Exception as e:
+            print(f"[ERROR] Failed to dense embed chunks for {url}: {e}")
+            continue
             
-        with open(chunks_file, "w", encoding="utf-8") as f:
-            json.dump(serializable_chunks, f, ensure_ascii=False, indent=2)
-        print(f"[SUCCESS] Saved {len(chunks)} chunks to static file for fast BM25 load: {chunks_file}")
-    except Exception as e:
-        print(f"[WARN] Failed to save static chunks file: {e}")
-    
-    msg_complete = "Ingestion complete. Vector store successfully populated!"
-    print(f"[SUCCESS] {msg_complete}")
-    if progress_callback:
-        progress_callback("SUCCESS", msg_complete)
+        # Sinh Sparse Vector (FastEmbed / Splade)
+        try:
+            sparse_embeddings = list(sparse_model.embed(texts))
+        except Exception as e:
+            print(f"[ERROR] Failed to sparse embed chunks for {url}: {e}")
+            continue
+            
+        points = []
+        for i, (chunk, dense_vec, sparse_vec) in enumerate(zip(file_chunks, dense_embeddings, sparse_embeddings)):
+            vector_id = str(uuid.uuid4())
+            
+            payload = {
+                "page_content": chunk.page_content,
+                "metadata": chunk.metadata
+            }
+            payload["metadata"]["chunk_index"] = i
+            payload["metadata"]["url"] = url
+            
+            points.append(qdrant_models.PointStruct(
+                id=vector_id,
+                vector={
+                    "dense": dense_vec,
+                    "sparse": qdrant_models.SparseVector(
+                        indices=sparse_vec.indices.tolist(),
+                        values=sparse_vec.values.tolist()
+                    )
+                },
+                payload=payload
+            ))
+            
+            doc_chunk = DocumentChunk(
+                source=url,
+                section=chunk.metadata.get("section", ""),
+                content=chunk.page_content
+            )
+            db.add(doc_chunk)
+            
+        qdrant.upsert(
+            collection_name=COLLECTION_NAME,
+            points=points
+        )
+        
+        db.commit()
+        print(f"[SUCCESS] Đã nạp thành công {url}.")
+
+    db.close()
+    print("[INFO] Quá trình Ingestion hoàn tất!")
 
 if __name__ == "__main__":
-    run_ingestion()
+    DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
+    ingest_data(DATA_DIR)
