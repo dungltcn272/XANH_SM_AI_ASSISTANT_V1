@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Tuple
 from openai import OpenAI
 from app.retrieval.hybrid_search import XanhSMHybridSearch
 from app.retrieval.reranker import XanhSMReranker
-from app.rag.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, get_role_display_name, FAITHFULNESS_CHECK_PROMPT
+from app.rag.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, FAITHFULNESS_CHECK_PROMPT
 from app.rag.gateway import XanhSMGateway
 from app.rag.classifier import XanhSMClassifier
 from app.rag.guardrail import OutputGuardrail
@@ -145,20 +145,16 @@ class XanhSMRAGPipeline:
             log_warn("GUARDRAIL", f"Faithfulness Check failed: {e}. Defaulting to True.")
             return True, 1.0, f"Error: {e}"
 
-    def run(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+    def run(self, query: str, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Executes the full advanced NLU-Gateway RAG chain.
         """
-        target_role = role.lower() if role else "faq"
-        role_display = get_role_display_name(target_role)
-        
         normalized_query = self.gateway.normalize_input(query)
         safety_res = self.gateway.safety_precheck(normalized_query)
         
         if not safety_res["safe"]:
             return {
                 "query": query,
-                "role": target_role,
                 "answer": f"⚠️ Cảnh báo bảo mật: {safety_res['reason']}",
                 "citations": [],
                 "intent": "sensitive",
@@ -171,13 +167,12 @@ class XanhSMRAGPipeline:
 
         # 2. Early Cache Lookup
         if self.cache:
-            is_hit, hit_res, hit_type = self.cache.get(normalized_query, target_role)
+            is_hit, hit_res, hit_type = self.cache.get(normalized_query)
             if is_hit:
                 log_info("CACHE", f"Early cache hit query via {hit_type} match.")
                 return {
                     "query": query,
                     "rewritten_query": normalized_query,
-                    "role": target_role,
                     "answer": hit_res["answer"],
                     "citations": hit_res["citations"],
                     "intent": "faq",
@@ -206,7 +201,6 @@ class XanhSMRAGPipeline:
             return {
                 "query": query,
                 "rewritten_query": rewritten_query,
-                "role": target_role,
                 "answer": refusal_msg,
                 "citations": [],
                 "intent": "sensitive",
@@ -226,7 +220,6 @@ class XanhSMRAGPipeline:
             return {
                 "query": query,
                 "rewritten_query": rewritten_query,
-                "role": target_role,
                 "answer": answer,
                 "citations": [],
                 "intent": "small-talk",
@@ -239,13 +232,12 @@ class XanhSMRAGPipeline:
 
         # 5. Second Cache Lookup
         if self.cache and rewritten_query != normalized_query:
-            is_hit, hit_res, hit_type = self.cache.get(rewritten_query, target_role)
+            is_hit, hit_res, hit_type = self.cache.get(rewritten_query)
             if is_hit:
                 log_info("CACHE", f"Hit query after rewrite via {hit_type} match.")
                 return {
                     "query": query,
                     "rewritten_query": rewritten_query,
-                    "role": target_role,
                     "answer": hit_res["answer"],
                     "citations": hit_res["citations"],
                     "intent": "faq",
@@ -263,7 +255,7 @@ class XanhSMRAGPipeline:
         log_info("RETRIEVAL", f"Dynamically selected search strategy: {strategy}")
 
         # 7. Execute Retrieval
-        retrieved_candidates = self.search_engine.search(query=rewritten_query, role=target_role, limit=25, expanded_queries=expanded_queries)
+        retrieved_candidates = self.search_engine.search(query=rewritten_query, limit=25, expanded_queries=expanded_queries)
 
         # 8. Rerank
         top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=10)
@@ -289,8 +281,8 @@ class XanhSMRAGPipeline:
                 "relevance_score": doc.metadata.get("rerank_score", 0.0)
             })
 
-        system_msg = SYSTEM_PROMPT.format(context=compressed_context, role=role_display)
-        user_msg = USER_PROMPT_TEMPLATE.format(role_display=role_display, query=rewritten_query)
+        system_msg = SYSTEM_PROMPT.format(context=compressed_context)
+        user_msg = USER_PROMPT_TEMPLATE.format(query=rewritten_query)
 
         messages = [{"role": "system", "content": system_msg}]
         if chat_history and len(chat_history) > 0:
@@ -316,9 +308,9 @@ class XanhSMRAGPipeline:
                 completion_tokens = response.usage.completion_tokens
             except Exception as e:
                 log_warn("LLM_GEN", f"LLM Generation Error: {str(e)}. Falling back to offline synthesis.")
-                final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
+                final_answer = self._generate_fallback_answer(rewritten_query, top_docs)
         else:
-            final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
+            final_answer = self._generate_fallback_answer(rewritten_query, top_docs)
 
         # Check safety of final answer before returning
         if not self.output_guardrail.check_safe(final_answer):
@@ -333,14 +325,13 @@ class XanhSMRAGPipeline:
 
         # Save to Cache
         if self.cache:
-            self.cache.set(normalized_query, final_answer, citations, target_role)
+            self.cache.set(normalized_query, final_answer, citations)
             if rewritten_query != normalized_query:
-                self.cache.set(rewritten_query, final_answer, citations, target_role)
+                self.cache.set(rewritten_query, final_answer, citations)
 
         return {
             "query": query,
             "rewritten_query": rewritten_query,
-            "role": target_role,
             "answer": final_answer,
             "citations": citations,
             "expanded_queries": expanded_queries,
@@ -369,14 +360,11 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
 
-    def run_debug(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+    def run_debug(self, query: str, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Executes the full RAG pipeline for debugging, bypassing cache and capturing
         all intermediate steps like raw_candidates, reranked_docs, and expanded_docs.
         """
-        target_role = role.lower() if role else "faq"
-        role_display = get_role_display_name(target_role)
-        
         normalized_query = self.gateway.normalize_input(query)
         safety_res = self.gateway.safety_precheck(normalized_query)
         
@@ -385,7 +373,6 @@ class XanhSMRAGPipeline:
             return {
                 "query": query,
                 "normalized_query": normalized_query,
-                "role": target_role,
                 "answer": f"⚠️ Cảnh báo bảo mật: {safety_res['reason']}",
                 "citations": [],
                 "intent": "sensitive",
@@ -417,7 +404,6 @@ class XanhSMRAGPipeline:
                 "query": query,
                 "normalized_query": normalized_query,
                 "rewritten_query": rewritten_query,
-                "role": target_role,
                 "answer": refusal_msg,
                 "citations": [],
                 "intent": "sensitive",
@@ -448,7 +434,6 @@ class XanhSMRAGPipeline:
                 "query": query,
                 "normalized_query": normalized_query,
                 "rewritten_query": rewritten_query,
-                "role": target_role,
                 "answer": answer,
                 "citations": [],
                 "intent": "small-talk",
@@ -473,7 +458,7 @@ class XanhSMRAGPipeline:
         strategy = self.select_retrieval_strategy(rewritten_query)
 
         # 6. Execute Retrieval (Hybrid Search)
-        retrieved_candidates = self.search_engine.search(query=rewritten_query, role=target_role, limit=25, expanded_queries=expanded_queries)
+        retrieved_candidates = self.search_engine.search(query=rewritten_query, limit=25, expanded_queries=expanded_queries)
         raw_candidates_data = [
             {
                 "content": doc.page_content,
@@ -523,8 +508,8 @@ class XanhSMRAGPipeline:
                 "relevance_score": doc.metadata.get("rerank_score", 0.0)
             })
 
-        system_msg = SYSTEM_PROMPT.format(context=compressed_context, role=role_display)
-        user_msg = USER_PROMPT_TEMPLATE.format(role_display=role_display, query=rewritten_query)
+        system_msg = SYSTEM_PROMPT.format(context=compressed_context)
+        user_msg = USER_PROMPT_TEMPLATE.format(query=rewritten_query)
 
         messages = [{"role": "system", "content": system_msg}]
         if chat_history and len(chat_history) > 0:
@@ -546,9 +531,9 @@ class XanhSMRAGPipeline:
                 completion_tokens = response.usage.completion_tokens
             except Exception as e:
                 log_warn("LLM_GEN", f"LLM Generation Error in Debug: {str(e)}. Falling back.")
-                final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded, role_display)
+                final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded)
         else:
-            final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded, role_display)
+            final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded)
 
         # Check safety of final answer
         output_guardrail_passed = True
@@ -566,7 +551,6 @@ class XanhSMRAGPipeline:
             "query": query,
             "normalized_query": normalized_query,
             "rewritten_query": rewritten_query,
-            "role": target_role,
             "answer": final_answer,
             "citations": citations,
             "expanded_queries": expanded_queries,
@@ -592,21 +576,19 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
 
-    def stream_run(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None):
+    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None):
         """
         Stream version of the NLU-Gateway RAG chain with output guardrail validation.
         """
         return self.output_guardrail.sanitize_stream(
-            self._stream_run_raw(query=query, role=role, chat_history=chat_history)
+            self._stream_run_raw(query=query, chat_history=chat_history)
         )
 
-    def _stream_run_raw(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None):
+    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None):
         """
         Internal raw streaming implementation of the RAG chain.
         """
         t_start = time.time()
-        target_role = role.lower() if role else "faq"
-        role_display = get_role_display_name(target_role)
         
         metrics = {
             "search_latency_ms": 0, "generation_latency_ms": 0, "rewrite_latency_ms": 0,
@@ -627,7 +609,7 @@ class XanhSMRAGPipeline:
 
         # 2. Early Cache Lookup
         if self.cache:
-            is_hit, hit_res, hit_type = self.cache.get(normalized_query, target_role)
+            is_hit, hit_res, hit_type = self.cache.get(normalized_query)
             if is_hit:
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                 metrics["intent"] = "faq"
@@ -688,7 +670,7 @@ class XanhSMRAGPipeline:
 
         # 5. Second Cache Lookup
         if self.cache and rewritten_query != normalized_query:
-            is_hit, hit_res, hit_type = self.cache.get(rewritten_query, target_role)
+            is_hit, hit_res, hit_type = self.cache.get(rewritten_query)
             if is_hit:
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                 metrics["intent"] = "faq"
@@ -707,7 +689,7 @@ class XanhSMRAGPipeline:
             strategy = self.select_retrieval_strategy(rewritten_query)
             yield from yield_msg('data: {"step": "Đang truy xuất dữ liệu (Hybrid)..."}\n\n')
             t_search_start = time.time()
-            retrieved_candidates = self.search_engine.search(query=rewritten_query, role=target_role, limit=25, expanded_queries=expanded_queries)
+            retrieved_candidates = self.search_engine.search(query=rewritten_query, limit=25, expanded_queries=expanded_queries)
             metrics["search_latency_ms"] = (time.time() - t_search_start) * 1000
 
             yield from yield_msg('data: {"step": "Đang chấm điểm & Reranking tài liệu..."}\n\n')
@@ -722,12 +704,12 @@ class XanhSMRAGPipeline:
 
             yield from yield_msg('data: {"step": "Đang khởi tạo LLM & Tổng hợp câu trả lời..."}\n\n')
             t_gen_start = time.time()
-            messages = [{"role": "system", "content": SYSTEM_PROMPT.format(context=compressed_context, role=role_display)}]
+            messages = [{"role": "system", "content": SYSTEM_PROMPT.format(context=compressed_context)}]
             if chat_history and len(chat_history) > 0:
                 for turn in chat_history[-6:]:
                     if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
                         messages.append({"role": turn["role"], "content": turn["content"]})
-            messages.append({"role": "user", "content": USER_PROMPT_TEMPLATE.format(role_display=role_display, query=rewritten_query)})
+            messages.append({"role": "user", "content": USER_PROMPT_TEMPLATE.format(query=rewritten_query)})
 
             final_answer = ""
             client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
@@ -757,9 +739,9 @@ class XanhSMRAGPipeline:
             yield from yield_msg(f'data: {json.dumps({"sources": citations})}\n\n')
             
             if self.cache and final_answer:
-                self.cache.set(normalized_query, final_answer, citations, target_role)
+                self.cache.set(normalized_query, final_answer, citations)
                 if rewritten_query != normalized_query:
-                    self.cache.set(rewritten_query, final_answer, citations, target_role)
+                    self.cache.set(rewritten_query, final_answer, citations)
             
             yield from yield_msg(f'data: {json.dumps({"metrics": metrics})}\n\n')
                 
@@ -822,14 +804,14 @@ class XanhSMRAGPipeline:
                 
         return "Lỗi cảnh báo kỹ thuật xe điện VinFast", {"prompt_tokens": 0, "completion_tokens": 0}
 
-    def _generate_fallback_answer(self, query: str, docs: List[Any], role_display: str) -> str:
+    def _generate_fallback_answer(self, query: str, docs: List[Any]) -> str:
         """
         Creates a cautious deterministic fallback response when synthesis is skipped.
         """
         if not docs:
             return (
-                f"Chào {role_display}, rất tiếc là tài liệu chính sách hiện tại của Xanh SM "
-                f"không có thông tin về vấn đề này."
+                "Rất tiếc, tài liệu chính sách hiện tại của Xanh SM "
+                "không có thông tin về vấn đề này."
             )
 
         first_doc = docs[0]
@@ -838,7 +820,7 @@ class XanhSMRAGPipeline:
 
         # Cautious phrasing to avoid "blind citation"
         answer = (
-            f"Chào {role_display}, hiện tại tôi chưa tìm thấy câu trả lời trực tiếp trong chính sách, "
+            "Hiện tại tôi chưa tìm thấy câu trả lời trực tiếp trong chính sách, "
             f"nhưng bạn có thể tham khảo thông tin liên quan tại mục **\"{section}\"** của tài liệu **{source}**:\n\n"
             f"> {first_doc.page_content.strip()[:600]}...\n\n"
             f"Để được hỗ trợ chính xác nhất, quý khách vui lòng liên hệ Tổng đài Xanh SM: **1900 2088**."

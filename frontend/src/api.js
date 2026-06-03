@@ -5,7 +5,7 @@ export const api = {
     return localStorage.getItem('access_token');
   },
 
-  chatStream: async (query, role = 'faq', conversation_id = null) => {
+  chatStream: async (query, conversation_id = null) => {
     const token = api.getAuthToken();
     const headers = { 'Content-Type': 'application/json' };
     if (token) {
@@ -15,7 +15,7 @@ export const api = {
     return fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ query, role, conversation_id })
+      body: JSON.stringify({ query, conversation_id })
     });
   },
   
@@ -118,11 +118,11 @@ export const api = {
     return res.json();
   },
 
-  testPipeline: async (query, role = 'faq') => {
+  testPipeline: async (query) => {
     const res = await fetch(`${API_BASE}/admin/pipeline/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, role })
+      body: JSON.stringify({ query })
     });
     if (!res.ok) throw new Error('API Error');
     return res.json();

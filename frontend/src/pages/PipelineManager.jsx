@@ -10,7 +10,6 @@ export default function PipelineManager() {
 
   // States for debugger
   const [testQuery, setTestQuery] = useState("");
-  const [testRole, setTestRole] = useState("faq");
   const [isDebugMode, setIsDebugMode] = useState(false);
   const [debugData, setDebugData] = useState(null);
   const [debugStepIndex, setDebugStepIndex] = useState(0);
@@ -184,7 +183,7 @@ export default function PipelineManager() {
     setLoadingDebug(true);
     setDebugError("");
     try {
-      const data = await api.testPipeline(testQuery, 'faq');
+      const data = await api.testPipeline(testQuery);
       setDebugData(data);
       setIsDebugMode(true);
       setDebugStepIndex(0); // Start at user_input
@@ -302,12 +301,6 @@ export default function PipelineManager() {
             <div>
               <span className="text-xs font-bold text-[#00c897] uppercase tracking-wider block mb-1">Dữ liệu thô nhận được từ người dùng (Query)</span>
               <div className={blockStyle}>{debugData.query}</div>
-            </div>
-            <div>
-              <span className="text-xs font-bold text-[#00c897] uppercase tracking-wider block mb-1">Quyền truy cập thử nghiệm (Role)</span>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 text-sm text-white/90 font-medium">
-                {debugData.role === 'faq' ? 'faq (Hỏi đáp chính sách cước phí)' : debugData.role}
-              </div>
             </div>
           </div>
         );

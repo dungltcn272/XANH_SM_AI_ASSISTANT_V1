@@ -92,7 +92,7 @@ def ingest_data(data_dir: str):
     for url, file_chunks in source_map.items():
         log_info("INGESTION", f"Đang nạp dữ liệu cho {url} ({len(file_chunks)} chunks)...")
         
-        category = file_chunks[0].metadata.get("role", "unknown")
+        category = file_chunks[0].metadata.get("category", file_chunks[0].metadata.get("role", "unknown"))
         filename = file_chunks[0].metadata.get("source", "")
         
         # Xóa các chunk cũ trong DB nếu có

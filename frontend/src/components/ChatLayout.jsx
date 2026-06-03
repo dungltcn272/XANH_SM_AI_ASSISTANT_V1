@@ -63,7 +63,7 @@ export default function ChatLayout() {
     setLoading(true);
 
     try {
-      const response = await api.chatStream(userQuery, 'faq', currentConvIdRef.current);
+      const response = await api.chatStream(userQuery, currentConvIdRef.current);
       if (!response.ok) throw new Error('API Error');
       
       setMessages(prev => [...prev, { role: 'assistant', content: '', latency_ms: null, metrics: null }]);

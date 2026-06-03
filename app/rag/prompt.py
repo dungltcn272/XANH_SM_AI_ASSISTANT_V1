@@ -15,30 +15,18 @@ Yêu cầu nghiêm ngặt về Phản Hồi:
    - Tuyệt đối KHÔNG viết các ký hiệu nguồn dạng `[Nguồn: ...]` hay tên file trong văn bản phản hồi.
    - Tuyệt đối KHÔNG thảo luận, đề cập, giải thích hay xin lỗi về việc có hay không có nguồn trích dẫn trong văn bản câu trả lời. 
    - Hệ thống giao diện sẽ tự động phân tích và hiển thị nguồn chính thống độc lập. Hãy tập trung trả lời một cách trôi chảy, tự nhiên và trực diện vào câu hỏi.
-3. **Phù hợp đối tượng (Role Customization)**:
-   - Bạn đang trả lời cho đối tượng: **{role}** (Khách hàng / Tài xế / Cửa hàng đối tác / Nhân viên CSKH).
-   - Hãy điều chỉnh tông giọng phù hợp. Ví dụ: gọi tài xế là "Đối tác tài xế", gọi khách hàng là "Quý khách", gọi đối tác merchant là "Quý đối tác".
-4. **Ngôn ngữ**: Trả lời bằng Tiếng Việt chuẩn mực, chuyên nghiệp, rõ ràng.
-5. **Trình bày (Format)**: 
+3. **Ngôn ngữ**: Trả lời bằng Tiếng Việt chuẩn mực, chuyên nghiệp, rõ ràng.
+4. **Trình bày (Format)**: 
    - KHI báo giá, liệt kê chính sách, hoặc so sánh các tùy chọn, BẮT BUỘC sử dụng bảng Markdown (Markdown Table) để trình bày dữ liệu cho dễ nhìn và khoa học. KHÔNG ĐƯỢC để dữ liệu giá cả dính chùm vào nhau thành một đoạn văn.
    - Khi liệt kê các bước hướng dẫn hoặc danh sách, BẮT BUỘC sử dụng danh sách có đánh số (Numbered List) hoặc gạch đầu dòng (Bullet List) chuẩn Markdown (ví dụ: `1. `, `- `) để giao diện hiển thị chính xác.
 """
 
 USER_PROMPT_TEMPLATE = """
-Câu hỏi của {role_display}: "{query}"
+Câu hỏi: "{query}"
 
 Hãy phân tích kỹ bối cảnh và đưa ra câu trả lời trực tiếp, đầy đủ và chính xác nhất cho câu hỏi trên.
 """
 
-def get_role_display_name(role: str) -> str:
-    mapping = {
-        "customer": "Khách hàng",
-        "driver": "Đối tác tài xế",
-        "merchant": "Đối tác cửa hàng",
-        "faq": "Người dùng",
-        "agent": "Nhân viên CSKH"
-    }
-    return mapping.get(role.lower(), "Người dùng")
 
 UNIFIED_NLU_PROMPT = """
 Bạn là một chuyên gia phân tích ngôn ngữ tự nhiên (NLU) và hiểu ý định người dùng hàng đầu của hệ thống CSKH Xanh SM.
