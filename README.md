@@ -234,3 +234,20 @@ Hệ thống được thiết kế để dễ dàng đưa lên Production thông
    - `PORT`: `8000`.
 5. Railway sẽ tự động detect Python (thông qua `requirements.txt`) và chạy lệnh `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. 
 6. Đối với frontend (`React/Vite`), bạn có thể deploy lên **Vercel**, **Netlify**, hoặc tạo một service tĩnh (Static Site) thứ 2 ngay trong Railway. Đừng quên thay đổi biến `API_BASE` ở `frontend/src/api.js` trỏ về domain backend Railway của bạn!
+
+---
+
+## 🧪 6. Quy Trình Chạy Đánh Giá Chất Lượng RAG (Ragas Benchmark)
+
+Dự án được trang bị bộ benchmark chất lượng tìm kiếm & trả lời tự động bằng LLM-as-a-Judge kết hợp các chỉ số truyền thống (Recall, MRR, NDCG).
+
+### Khởi chạy đánh giá tự động:
+Chạy lệnh python từ thư mục gốc của dự án:
+```bash
+.\venv\Scripts\python.exe evaluation/ragas_eval.py
+```
+
+### Kết quả xuất bản:
+* Kết quả tóm tắt điểm trung bình sẽ hiển thị trực tiếp trên Terminal sau khi chạy xong.
+* Báo cáo đầy đủ cho từng câu hỏi kiểm thử được ghi nhận tự động vào [evaluation_report.json](file:///c:/Users/DUNG/Desktop/RAG_XANH_SM/evaluation_report.json).
+* Để biết thêm chi tiết về cơ chế chấm điểm và cấu trúc bộ câu hỏi (Golden Dataset), tham khảo [EVALUATION.md](file:///c:/Users/DUNG/Desktop/RAG_XANH_SM/evaluation/EVALUATION.md).

@@ -53,9 +53,9 @@ Trong quá trình nạp dữ liệu (Ingestion), tài liệu được bóc tách
 ### 3. Unified NLU Gateway 3-trong-1 (Hợp nhất Gateway)
 Thay vì thực hiện 3 cuộc gọi LLM tuần tự độc lập (viết lại câu hỏi, phân loại ý định, và sinh câu hỏi đồng nghĩa) tốn tới ~5 giây, hệ thống sử dụng một prompt hợp nhất `UNIFIED_NLU_PROMPT` để giải quyết cả 3 tác vụ trong **1 lần gọi LLM duy nhất**:
 1. **Rewrite**: Viết lại câu hỏi thô thành câu hỏi độc lập có đủ bối cảnh từ lịch sử trò chuyện.
-2. **Classify**: Phân loại ý định của người dùng thành `small-talk` (lời chào, xã giao) hoặc `rag` (các câu hỏi tra cứu thông tin). Logic phức tạp và lỗi thời của `task-agent` đã bị loại bỏ hoàn toàn để tối giản luồng xử lý.
+2. **Classify**: Phân loại ý định của người dùng thành `small-talk` (lời chào, xã giao), `sensitive` (tấn công hệ thống, jailbreak, yêu cầu tiết lộ prompt/file mật) hoặc `rag` (các câu hỏi tra cứu thông tin chính sách).
 3. **Expand**: Sinh ra tối đa 1 câu hỏi đồng nghĩa tương đương hỗ trợ tìm kiếm Hybrid Search.
-- **Kết quả**: Giảm độ trễ tiền RAG từ ~5.0 giây xuống còn **~1.5 - 2.0 giây** mà vẫn đảm bảo độ chính xác.
+- **Kết quả**: Giảm độ trễ tiền RAG từ ~5.0 giây xuống còn **~1.5 - 2.0 giây** mà vẫn đảm bảo độ chính xác và an toàn.
 
 ### 4. Strategic Hybrid Search (Dense + Sparse)
 Qdrant Vector DB được thiết lập với khả năng **Hybrid Search**.
@@ -83,4 +83,11 @@ Bước cuối cùng, LLM sẽ nhận ngữ cảnh (đã được tinh lọc và
 Trong mô hình streaming Server-Sent Events (SSE), việc timing tổng độ trễ bằng hiệu thời gian thô có nhược điểm lớn là tính gộp cả thời gian chờ gửi tin (network delays và tốc độ render typewriter của client). Hệ thống của chúng tôi áp dụng cơ chế đo lường cải tiến:
 - **First Token Locking (Chốt Số Đo ở Ký Tự Đầu Tiên)**: Hệ thống ghi nhận và chốt số đo `generation_latency_ms` và `total_latency_ms` ngay khi nhận được **ký tự đầu tiên chứa nội dung** từ OpenAI (Time To First Token - TTFT). Điều này giúp loại bỏ hoàn toàn thời gian LLM nhả chữ/typewriter kéo dài sau đó, phản ánh chính xác tốc độ xử lý thực tế của hệ thống.
 - **Bypass / Instant Response Timing**: Với các phản hồi nhanh (như small-talk hoặc cache-hit), độ trễ được chốt ngay trước khi luồng tokens được gửi đi, giữ số đo cực kỳ nhỏ và chuẩn xác.
+
+### 9. Telemetry & Quality Evaluation (Ghi nhận Số liệu Thử nghiệm)
+Nhằm phục vụ đánh giá chất lượng RAG tự động qua Ragas benchmark:
+- **Số lượng Chunk trước mở rộng (num_chunks_before_expansion)**: Số lượng tài liệu liên quan tối đa được giữ lại sau bước Reranking của Cohere (tối đa là 10) và ngay trước khi thực hiện mở rộng `expand_context`.
+- **Độ dài ngữ cảnh (compressed_context_len)**: Tổng số lượng ký tự của ngữ cảnh gộp cuối cùng đưa vào prompt để gửi tới LLM.
+- **Heuristic và LLM Judge**: Hệ thống kết hợp việc đếm từ khóa mong đợi (`expected_keywords`) và sử dụng LLM Judge chấm điểm `correctness`, `faithfulness`, `relevancy` và `context_recall`.
+
 

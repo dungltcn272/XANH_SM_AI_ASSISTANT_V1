@@ -83,7 +83,7 @@ class XanhSMEvaluation:
         
         if self.llm_client:
             try:
-                context_str = str([d["content"][:200] for d in top_docs[:5]])
+                context_str = str([d["content"] for d in top_docs[:5]])
                 prompt = f"""Evaluate the RAG system response based on the query and context. Provide scores from 0.0 to 1.0 for four metrics:
 1. faithfulness: Is the answer supported by the Context? (1.0 = fully supported). If Context is empty and answer says "I don't know", score 1.0.
 2. correctness: Does the answer correctly address the Query and match Expected Keywords ({expected})?
@@ -109,6 +109,8 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 recall_10 = recall_5 # approximate recall_10 with recall_5 for LLM judge
             except Exception as e:
                 log_warn("EVAL", f"LLM Judge error: {e}")
+        num_chunks_before_expansion = result.get("num_chunks_before_expansion", 0)
+        compressed_context_len = result.get("compressed_context_len", 0)
         
         print(f"   -> AI Answer: {answer[:100]}...")
         print(f"   -> R@5: {recall_5:.2f} | MRR: {mrr:.2f} | Faithfulness: {faithfulness:.2f} | Correctness: {correctness:.2f}")
@@ -116,6 +118,8 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         return {
             "query": query,
             "latency_seconds": round(latency, 3),
+            "num_chunks_before_expansion": num_chunks_before_expansion,
+            "compressed_context_len": compressed_context_len,
             "retrieval": {
                 "recall_5": recall_5,
                 "recall_10": recall_10,
@@ -136,7 +140,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         print("\n[*] Starting Automated Quality Evaluation Suite (RAGAS)...")
         results = []
         
-        avg = {"recall_5": 0, "recall_10": 0, "mrr": 0, "ndcg_5": 0, "faithfulness": 0, "correctness": 0, "relevancy": 0, "latency": 0}
+        avg = {"recall_5": 0, "recall_10": 0, "mrr": 0, "ndcg_5": 0, "faithfulness": 0, "correctness": 0, "relevancy": 0, "latency": 0, "num_chunks": 0, "context_len": 0}
         
         for idx, case in enumerate(self.test_cases):
             try:
@@ -154,6 +158,8 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 for k in ["faithfulness", "correctness", "relevancy"]:
                     avg[k] += res["generation"][k]
                 avg["latency"] += res["latency_seconds"]
+                avg["num_chunks"] += res["num_chunks_before_expansion"]
+                avg["context_len"] += res["compressed_context_len"]
                 
             except Exception as e:
                 log_error("EVAL", f"Failed to evaluate: {e}")
@@ -161,6 +167,8 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         count = len(results) if len(results) > 0 else 1
         metrics = {
             "average_latency_sec": round(avg["latency"] / count, 3),
+            "average_num_chunks_before_expansion": round(avg["num_chunks"] / count, 2),
+            "average_context_len": round(avg["context_len"] / count, 1),
             "retrieval": {k: round(v / count, 3) for k, v in avg.items() if k in ["recall_5", "recall_10", "mrr", "ndcg_5"]},
             "generation": {k: round(v / count, 3) for k, v in avg.items() if k in ["faithfulness", "correctness", "relevancy"]},
             "total_cases": len(results)

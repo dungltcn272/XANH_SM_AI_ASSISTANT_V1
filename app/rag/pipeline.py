@@ -57,24 +57,23 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
             is_blocked = True
             final_answer = "Nội dung vi phạm chính sách an toàn của Xanh SM."
         elif event.startswith("data: ") and "[DONE]" not in event:
-            # Parse JSON objects from SSE stream
-            data_str = event.replace("data: ", "").replace("\n", "").strip()
+            # Extract raw token content (preserving exact spacing and newlines)
+            raw_event = event[6:]  # Strip "data: "
+            if raw_event.endswith("\n\n"):
+                raw_event = raw_event[:-2]
+            elif raw_event.endswith("\n"):
+                raw_event = raw_event[:-1]
             
-            # Try to parse as JSON to extract rewritten_query or metrics
+            # Try to parse as JSON to extract metrics
             try:
-                data_obj = json.loads(data_str)
-                
-                # Extract metrics if present (ensure data_obj is a dict)
+                data_obj = json.loads(raw_event)
                 if isinstance(data_obj, dict) and "metrics" in data_obj:
-                    # Update rewritten_query if present in metrics
                     if "rewritten_query" in data_obj["metrics"]:
                         rewritten_query = data_obj["metrics"]["rewritten_query"]
-                    # Update other metrics
                     metrics.update(data_obj["metrics"])
-                    
             except (json.JSONDecodeError, TypeError):
-                # Not JSON, just accumulate as part of final answer
-                final_answer += data_str + " "
+                # Not JSON, accumulate directly
+                final_answer += raw_event
         
         yield event
     
@@ -112,7 +111,7 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
                 )
                 new_db.add(req_log)
                 new_db.commit()
-                log_info("CHAT", f"Saved request log with metrics - Latency: {metrics.get('total_latency_ms', 0):.0f}ms (Rewrite: {metrics.get('rewrite_latency_ms', 0):.0f}ms, Classify: {metrics.get('classification_latency_ms', 0):.0f}ms, Expand: {metrics.get('expansion_latency_ms', 0):.0f}ms, Search: {metrics.get('search_latency_ms', 0):.0f}ms, Rerank: {metrics.get('rerank_latency_ms', 0):.0f}ms, Gen: {metrics.get('generation_latency_ms', 0):.0f}ms), Tokens: {metrics.get('total_tokens', 0)}, Cost: ${metrics.get('cost_usd', 0):.6f}")
+                log_info("CHAT", f"Saved request log with metrics - Latency: {metrics.get('total_latency_ms', 0):.0f}ms (Rewrite: {metrics.get('rewrite_latency_ms', 0):.0f}ms, Classify: {metrics.get('classification_latency_ms', 0):.0f}ms, Expand: {metrics.get('expansion_latency_ms', 0):.0f}ms, Search: {metrics.get('search_latency_ms', 0):.0f}ms, Rerank: {metrics.get('rerank_latency_ms', 0):.0f}ms, Gen: {metrics.get('generation_latency_ms', 0):.0f}ms), Chunks: {metrics.get('num_chunks_before_expansion', 0)}, ContextLen: {metrics.get('compressed_context_len', 0)}, Tokens: {metrics.get('total_tokens', 0)}, Cost: ${metrics.get('cost_usd', 0):.6f}")
             except Exception as e:
                 log_warn("CHAT", f"Failed to log request: {e}")
                 new_db.rollback()

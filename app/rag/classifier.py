@@ -30,7 +30,7 @@ class XanhSMClassifier:
         if not safety_res["safe"]:
             return {
                 "rewritten_query": query,
-                "intent": "small-talk", # Redirect to a safe template answer
+                "intent": "sensitive", # Blocked immediately by gateway rule
                 "expanded_queries": [query],
                 "safety_blocked": True,
                 "safety_reason": safety_res["reason"]
@@ -71,7 +71,7 @@ class XanhSMClassifier:
                 
                 # Normalize output to ensure schema matches
                 intent = result.get("intent", "rag")
-                if intent not in ["small-talk", "rag"]:
+                if intent not in ["small-talk", "rag", "sensitive"]:
                     intent = "rag"
                     
                 rewritten_query = result.get("rewritten_query", query)

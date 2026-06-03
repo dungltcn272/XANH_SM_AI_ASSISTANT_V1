@@ -198,7 +198,26 @@ class XanhSMRAGPipeline:
         expanded_queries = nlu_res["expanded_queries"]
         nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
 
-        # 4. Handle Small Talk
+        # 4. Handle Sensitive / Safety Block
+        if intent == "sensitive":
+            refusal_msg = "Xin lỗi, tôi không thể thực hiện yêu cầu này. Tôi là trợ lý ảo của Xanh SM và không được phép chia sẻ thông tin bảo mật, tài liệu hệ thống hoặc các hướng dẫn lập trình."
+            return {
+                "query": query,
+                "rewritten_query": rewritten_query,
+                "role": target_role,
+                "answer": refusal_msg,
+                "citations": [],
+                "intent": "sensitive",
+                "gateway_checked": True,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0,
+                "num_chunks_before_expansion": 0,
+                "compressed_context_len": 0
+            }
+
+        # 5. Handle Small Talk
         if intent == "small-talk":
             intercept = self._is_greeting_or_thanks(rewritten_query)
             answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho quý khách về các quy định dịch vụ Xanh SM hôm nay?"
@@ -246,6 +265,7 @@ class XanhSMRAGPipeline:
 
         # 8. Rerank
         top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=10)
+        num_chunks_before_expansion = len(top_docs)
 
         # 9. Expand context
         top_docs = self.search_engine.expand_context(top_docs)
@@ -317,6 +337,7 @@ class XanhSMRAGPipeline:
             "citations": citations,
             "expanded_queries": expanded_queries,
             "compressed_context_len": len(compressed_context),
+            "num_chunks_before_expansion": num_chunks_before_expansion,
             "intent": intent,
             "gateway_checked": True,
             "strategy_selected": strategy,
@@ -351,7 +372,8 @@ class XanhSMRAGPipeline:
         metrics = {
             "search_latency_ms": 0, "generation_latency_ms": 0, "rewrite_latency_ms": 0,
             "classification_latency_ms": 0, "expansion_latency_ms": 0, "rerank_latency_ms": 0,
-            "total_tokens": 0, "cost_usd": 0.0, "expanded_queries": [], "rewritten_query": ""
+            "total_tokens": 0, "cost_usd": 0.0, "expanded_queries": [], "rewritten_query": "",
+            "num_chunks_before_expansion": 0, "compressed_context_len": 0
         }
         
         def yield_msg(val):
@@ -398,7 +420,20 @@ class XanhSMRAGPipeline:
         metrics["expanded_queries"] = expanded_queries
         metrics["total_tokens"] += nlu_usage.get("prompt_tokens", 0) + nlu_usage.get("completion_tokens", 0)
 
-        # 4. Handle Small Talk
+        # 4. Handle Sensitive / Safety Block
+        if intent == "sensitive":
+            refusal_msg = "Xin lỗi, tôi không thể thực hiện yêu cầu này. Tôi là trợ lý ảo của Xanh SM và không được phép chia sẻ thông tin bảo mật, tài liệu hệ thống hoặc các hướng dẫn lập trình."
+            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+            import re
+            for token in re.split(r'(\s+)', refusal_msg):
+                if token:
+                    safe_token = token.replace('\n', '\ndata: ')
+                    yield from yield_msg(f"data: {safe_token}\n\n")
+            yield from yield_msg(f'data: {json.dumps({"metrics": metrics, "step": "sensitive"})}\n\n')
+            yield from yield_msg("data: [DONE]\n\n")
+            return
+
+        # 5. Handle Small Talk
         if intent == "small-talk":
             intercept = self._is_greeting_or_thanks(rewritten_query)
             answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?"
@@ -440,9 +475,11 @@ class XanhSMRAGPipeline:
             t_rerank_start = time.time()
             top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=10)
             metrics["rerank_latency_ms"] = (time.time() - t_rerank_start) * 1000
+            metrics["num_chunks_before_expansion"] = len(top_docs)
             
             top_docs = self.search_engine.expand_context(top_docs)
             compressed_context = self._compress_context(top_docs)
+            metrics["compressed_context_len"] = len(compressed_context)
 
             yield from yield_msg('data: {"step": "Đang khởi tạo LLM & Tổng hợp câu trả lời..."}\n\n')
             t_gen_start = time.time()
