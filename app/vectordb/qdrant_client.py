@@ -33,7 +33,7 @@ class VectorDBClient:
     def dense_embedder(self):
         return self.dense_model
 
-    def hybrid_search(self, query: str, limit: int = 25, role: str = None) -> list[Document]:
+    def hybrid_search(self, query: str, limit: int = 25) -> list[Document]:
         """Thực hiện Hybrid Search bằng tính năng RRF tích hợp sẵn của Qdrant"""
         # Sinh Dense Vector
         dense_vector = self.dense_embedder.embed_query(query)

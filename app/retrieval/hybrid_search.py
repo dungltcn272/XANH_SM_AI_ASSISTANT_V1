@@ -144,7 +144,7 @@ class XanhSMHybridSearch:
         return expanded_docs
 
 
-    def search(self, query: str, role: str = None, limit: int = 25, expanded_queries: List[str] = None) -> List[Document]:
+    def search(self, query: str, limit: int = 25, expanded_queries: List[str] = None) -> List[Document]:
         """
         Chạy Multi-Query Expansion, sau đó gọi trực tiếp Hybrid Search của Qdrant 
         cho từng query và gom kết quả. Tiếp theo mở rộng ngữ cảnh (Adjacent Context).
@@ -158,7 +158,7 @@ class XanhSMHybridSearch:
         
         for q in expanded_queries:
             # db.hybrid_search gọi thẳng API Qdrant (Prefetch Dense + Sparse -> RRF)
-            fused_docs = self.db.hybrid_search(query=q, limit=limit, role=role)
+            fused_docs = self.db.hybrid_search(query=q, limit=limit)
             for doc in fused_docs:
                 doc_id = doc.metadata.get("chunk_id", doc.page_content[:50])
                 if doc_id not in all_docs_map:

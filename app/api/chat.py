@@ -15,7 +15,6 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     query: str
-    role: str = "faq"
     conversation_id: Optional[str] = None
 
 
@@ -106,8 +105,7 @@ async def chat_endpoint(
             db=db,
             user_id=user_identifier,
             conversation_id=conv_id,
-            question=req.query,
-            role=req.role
+            question=req.query
         ),
         media_type="text/event-stream",
         headers={

@@ -143,7 +143,7 @@ export default function CommandCenter() {
                     {(log.total_latency_ms || 0).toFixed(0)}ms
                   </td>
                   <td className="px-6 py-4 text-sm text-on-surface-variant">
-                    {new Date(log.created_at + 'Z').toLocaleTimeString('vi-VN')}
+                    {new Date(log.created_at).toLocaleTimeString('vi-VN')}
                   </td>
                 </tr>
               ))}

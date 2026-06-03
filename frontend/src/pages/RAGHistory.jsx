@@ -69,7 +69,7 @@ export default function RAGHistory() {
                     </p>
                   )}
                   <div className="text-xs text-on-surface-variant flex gap-4 mt-2 font-medium flex-wrap">
-                    <span>🕐 {new Date(log.created_at + 'Z').toLocaleString('vi-VN')}</span>
+                    <span>🕐 {new Date(log.created_at).toLocaleString('vi-VN')}</span>
                     <span>ID: <span className="font-mono">{log.conversation_id?.substring(0, 8) || 'N/A'}...</span></span>
                   </div>
                 </div>

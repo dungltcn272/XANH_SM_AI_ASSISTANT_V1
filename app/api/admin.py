@@ -14,14 +14,13 @@ router = APIRouter()
 
 class PipelineTestRequest(BaseModel):
     query: str
-    role: str = "faq"
 
 @router.post("/pipeline/test")
 def test_pipeline(req: PipelineTestRequest):
     from app.rag.chain import XanhSMRAGPipeline
     pipeline = XanhSMRAGPipeline()
     try:
-        res = pipeline.run_debug(query=req.query, role=req.role)
+        res = pipeline.run_debug(query=req.query)
         return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

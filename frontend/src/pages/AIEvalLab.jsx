@@ -43,7 +43,8 @@ export default function AIEvalLab() {
     setLogs(["[SYSTEM] Khởi động quá trình đánh giá toàn diện RAGAS Benchmark..."]);
     
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/admin/evaluate', {
+      const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
+      const response = await fetch(`${apiBase}/admin/evaluate`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });

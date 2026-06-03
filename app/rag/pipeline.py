@@ -6,7 +6,7 @@ from app.rag.guardrail import OutputGuardrail
 from app.core.logger import log_info, log_warn
 import json
 
-def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, question: str, role: str = "faq"):
+def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, question: str):
     """
     Kết nối Endpoint `/chat` với NLU-Gateway Pipeline (Phase 4).
     Sử dụng XanhSMRAGPipeline để stream text theo định dạng SSE.
@@ -52,7 +52,7 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
     yield f'data: {{"conversation_id": "{conversation_id}"}}\n\n'
     
     # Chạy streaming qua Guardrail
-    for event in guardrail.sanitize_stream(pipeline.stream_run(query=question, role=role, chat_history=chat_history)):
+    for event in guardrail.sanitize_stream(pipeline.stream_run(query=question, chat_history=chat_history)):
         if "Nội dung vi phạm" in event:
             is_blocked = True
             final_answer = "Nội dung vi phạm chính sách an toàn của Xanh SM."

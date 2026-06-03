@@ -15,7 +15,7 @@ class XanhSMRAGCache:
     def __init__(self):
         self.embeddings = get_embedding_model()
 
-    def get(self, query: str, role: str) -> Tuple[bool, Dict[str, Any], str]:
+    def get(self, query: str) -> Tuple[bool, Dict[str, Any], str]:
         q_clean = query.strip().lower()
         db: Session = SessionLocal()
         try:
@@ -42,8 +42,8 @@ class XanhSMRAGCache:
                 engine.dispose()
             except Exception:
                 pass
-
-    def set(self, query: str, answer: str, citations: List[Dict[str, Any]], role: str):
+ 
+    def set(self, query: str, answer: str, citations: List[Dict[str, Any]]):
         q_clean = query.strip().lower()
         db: Session = SessionLocal()
         try:

@@ -167,7 +167,7 @@ class HeadingAwareSplitter:
             
         return chunks
 
-    def split_file(self, filepath: str, role: str) -> List[Document]:
+    def split_file(self, filepath: str, category: str) -> List[Document]:
         """
         Splits a single markdown or PDF file into enriched Document chunks.
         Sử dụng pymupdf4llm thay thế pypdf để giữ được bảng và heading.
@@ -215,7 +215,7 @@ class HeadingAwareSplitter:
                 meta = {
                     "source": filename,
                     "url": frontmatter_meta.get("url", f"file://{filename}"),
-                    "role": role,
+                    "category": category,
                     "parent_chunk_id": parent_chunk_id,
                 }
                 
@@ -269,9 +269,9 @@ class HeadingAwareSplitter:
                 for file in files:
                     if file.lower().endswith((".md", ".pdf")):
                         filepath = os.path.join(root, file)
-                        log_info("INGESTION", f"Splitting: {filepath} (Role: {category})")
+                        log_info("INGESTION", f"Splitting: {filepath} (Category: {category})")
                         try:
-                            chunks = self.split_file(filepath, role=category)
+                            chunks = self.split_file(filepath, category=category)
                             all_documents.extend(chunks)
                         except Exception as e:
                             log_error("INGESTION", f"Error splitting {file}: {e}")
