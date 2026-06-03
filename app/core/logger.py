@@ -1,5 +1,4 @@
 import os
-import csv
 import datetime
 import threading
 import sys
@@ -7,26 +6,8 @@ import json
 from typing import Optional, Any
 
 LOCK = threading.Lock()
-# Put logs in the root project directory's 'logs' folder
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-LOGS_DIR = os.path.join(PROJECT_ROOT, "logs")
-
-def init_logs():
-    os.makedirs(LOGS_DIR, exist_ok=True)
-    headers = ["timestamp", "level", "phase", "error_type", "message", "details"]
-    for filename in ["system_logs.csv", "error_log.csv"]:
-        filepath = os.path.join(LOGS_DIR, filename)
-        if not os.path.exists(filepath):
-            with open(filepath, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(headers)
 
 def log_event(level: str, phase: str, message: str, error_type: Optional[str] = None, details: Any = None):
-    try:
-        init_logs()
-    except Exception:
-        pass # Safeguard to avoid crashing application if log directory is unwritable
-        
     timestamp = datetime.datetime.now().isoformat()
     
     # Auto-resolve error type if exception context exists
@@ -45,22 +26,20 @@ def log_event(level: str, phase: str, message: str, error_type: Optional[str] = 
         except Exception:
             details_str = str(details)
             
-    row = [timestamp, level.upper(), phase.upper(), error_type or "", message, details_str]
-    
-    # Write to system_logs.csv (all events) and error_log.csv (warn, error)
-    targets = ["system_logs.csv"]
-    if level.upper() in ("WARN", "ERROR") or error_type:
-        targets.append("error_log.csv")
-        
+    # Print to standard output for cloud logs (Railway)
     with LOCK:
-        for filename in targets:
-            filepath = os.path.join(LOGS_DIR, filename)
-            try:
-                with open(filepath, "a", newline="", encoding="utf-8") as f:
-                    writer = csv.writer(f)
-                    writer.writerow(row)
-            except Exception:
-                pass
+        log_line = f"[{timestamp}] [{level.upper()}] [{phase.upper()}] {message}"
+        if error_type:
+            log_line += f" (Error: {error_type})"
+        if details_str:
+            log_line += f" | Details: {details_str}"
+        
+        if level.upper() in ("ERROR", "WARN"):
+            sys.stderr.write(log_line + "\n")
+            sys.stderr.flush()
+        else:
+            sys.stdout.write(log_line + "\n")
+            sys.stdout.flush()
 
     # Save to database (SystemLog table)
     try:
