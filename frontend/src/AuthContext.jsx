@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -30,7 +32,7 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogle = async (credential) => {
     try {
-      const res = await fetch('http://localhost:8000/api/auth/google', {
+      const res = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: credential })
@@ -59,7 +61,7 @@ export const AuthProvider = ({ children }) => {
 
   const loginAsGuest = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/auth/guest', {
+      const res = await fetch(`${API_BASE}/auth/guest`, {
         method: 'POST'
       });
       if (!res.ok) throw new Error('Guest login failed');

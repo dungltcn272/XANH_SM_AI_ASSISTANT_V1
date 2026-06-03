@@ -280,6 +280,7 @@ Hệ thống được thiết kế để dễ dàng đưa lên Production thông
    - `QDRANT_URL`: URL cụm Qdrant Cloud của bạn (Nên tạo tài khoản trên Qdrant Cloud miễn phí).
    - `GOOGLE_CLIENT_ID`: Client ID Google Auth.
    - `PORT`: `8000`.
+   - `HF_TOKEN`: (Tùy chọn nhưng khuyến nghị) Token Hugging Face của bạn để tải các mô hình FastEmbed nhanh hơn và tránh lỗi giới hạn lượt tải (rate limits).
 5. Railway sẽ tự động detect Python (thông qua `requirements.txt`) và chạy lệnh `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
 
 ### 🌐 B. Frontend - Triển Khai Lên Vercel
