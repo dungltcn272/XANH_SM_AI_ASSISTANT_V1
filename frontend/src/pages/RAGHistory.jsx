@@ -108,6 +108,23 @@ export default function RAGHistory() {
               </div>
             </div>
 
+            {/* Detailed Latency Breakdown */}
+            {(log.rewrite_latency_ms > 0 || log.classification_latency_ms > 0 || log.expansion_latency_ms > 0 || log.rerank_latency_ms > 0) && (
+              <div className="text-xs text-on-surface-variant/70 flex gap-4 mt-2 px-1 py-1 rounded bg-surface-container-low/30 border border-outline-variant/10 flex-wrap font-medium">
+                <span className="font-semibold text-primary">Chi tiết các bước:</span>
+                {log.rewrite_latency_ms > 0 && (
+                  log.classification_latency_ms === 0 && log.expansion_latency_ms === 0 ? (
+                    <span>🔮 NLU Gateway: {log.rewrite_latency_ms.toFixed(0)}ms</span>
+                  ) : (
+                    <span>📝 Rewrite: {log.rewrite_latency_ms.toFixed(0)}ms</span>
+                  )
+                )}
+                {log.classification_latency_ms > 0 && <span>🧠 Classify: {log.classification_latency_ms.toFixed(0)}ms</span>}
+                {log.expansion_latency_ms > 0 && <span>🔍 Expand: {log.expansion_latency_ms.toFixed(0)}ms</span>}
+                {log.rerank_latency_ms > 0 && <span>⚡ Rerank: {log.rerank_latency_ms.toFixed(0)}ms</span>}
+              </div>
+            )}
+
             {/* Token Count */}
             <div className="flex gap-3 items-center">
               <span className="text-xs font-mono bg-surface-container-high px-3 py-1 rounded text-on-surface-variant font-bold border border-outline-variant/30">

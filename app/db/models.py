@@ -54,6 +54,10 @@ class RagRequestLog(Base):
     search_latency_ms = Column(Float, default=0)
     generation_latency_ms = Column(Float, default=0)
     total_latency_ms = Column(Float, default=0)
+    rewrite_latency_ms = Column(Float, default=0)
+    classification_latency_ms = Column(Float, default=0)
+    expansion_latency_ms = Column(Float, default=0)
+    rerank_latency_ms = Column(Float, default=0)
     total_tokens = Column(Integer, default=0)
     cost_usd = Column(Float, default=0)
     
@@ -107,3 +111,14 @@ class DocumentChunk(Base):
     section = Column(String)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class SystemLog(Base):
+    __tablename__ = "system_logs"
+    id = Column(String, primary_key=True, default=lambda: generate_id("log"))
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    level = Column(String, nullable=False)
+    phase = Column(String, nullable=False)
+    error_type = Column(String, nullable=True)
+    message = Column(Text, nullable=False)
+    details = Column(Text, nullable=True)
+

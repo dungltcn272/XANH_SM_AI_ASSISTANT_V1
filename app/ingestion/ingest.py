@@ -15,6 +15,7 @@ from app.db.models import DocumentChunk
 from app.ingestion.chunking import HeadingAwareSplitter
 from app.ingestion.embedding import get_embedding_model
 from app.vectordb.qdrant_client import vectordb
+from app.core.logger import log_info, log_warn, log_error
 
 COLLECTION_NAME = "greensm_knowledge"
 
@@ -22,12 +23,12 @@ def setup_qdrant(client: QdrantClient, vector_size: int = 1536):
     """Đảm bảo Collection Qdrant đã tồn tại với Named Vectors cho Hybrid Search"""
     try:
         client.get_collection(collection_name=COLLECTION_NAME)
-        print(f"[INFO] Collection '{COLLECTION_NAME}' already exists. Recreating for Hybrid Search...")
+        log_info("INGESTION", f"Collection '{COLLECTION_NAME}' already exists. Recreating for Hybrid Search...")
         client.delete_collection(collection_name=COLLECTION_NAME)
     except Exception:
         pass
         
-    print(f"[INFO] Creating collection '{COLLECTION_NAME}' for Hybrid Search...")
+    log_info("INGESTION", f"Creating collection '{COLLECTION_NAME}' for Hybrid Search...")
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config={
@@ -47,7 +48,7 @@ def setup_qdrant(client: QdrantClient, vector_size: int = 1536):
     
     # Tạo Payload Index để filter scroll/search theo metadata.url và metadata.chunk_index
     # Bắt buộc phải có index mới có thể dùng Filter trong scroll()
-    print(f"[INFO] Creating payload indexes for 'metadata.url' and 'metadata.chunk_index'...")
+    log_info("INGESTION", "Creating payload indexes for 'metadata.url' and 'metadata.chunk_index'...")
     try:
         client.create_payload_index(
             collection_name=COLLECTION_NAME,
@@ -59,9 +60,9 @@ def setup_qdrant(client: QdrantClient, vector_size: int = 1536):
             field_name="metadata.chunk_index",
             field_schema=qdrant_models.PayloadSchemaType.INTEGER
         )
-        print(f"[INFO] Payload indexes created successfully.")
+        log_info("INGESTION", "Payload indexes created successfully.")
     except Exception as e:
-        print(f"[WARN] Could not create payload indexes: {e}")
+        log_warn("INGESTION", f"Could not create payload indexes: {e}")
 
 def ingest_data(data_dir: str):
     db = SessionLocal()
@@ -71,15 +72,15 @@ def ingest_data(data_dir: str):
     
     setup_qdrant(qdrant)
     
-    splitter = HeadingAwareSplitter(chunk_size=1300, chunk_overlap=200)
-    print("[INFO] Bắt đầu duyệt và chunk file...")
+    splitter = HeadingAwareSplitter(chunk_size=400, chunk_overlap=50)
+    log_info("INGESTION", "Bắt đầu duyệt và chunk file...")
     chunks: List[Document] = splitter.split_directory(data_dir)
     
     if not chunks:
-        print("[WARNING] Không có chunks nào được tạo ra.")
+        log_warn("INGESTION", "Không có chunks nào được tạo ra.")
         return
 
-    print(f"[INFO] Đã tạo tổng cộng {len(chunks)} chunks. Bắt đầu embedding (Dense + Sparse)...")
+    log_info("INGESTION", f"Đã tạo tổng cộng {len(chunks)} chunks. Bắt đầu embedding (Dense + Sparse)...")
     
     source_map = {}
     for chunk in chunks:
@@ -89,7 +90,7 @@ def ingest_data(data_dir: str):
         source_map[url].append(chunk)
 
     for url, file_chunks in source_map.items():
-        print(f"[INFO] Đang nạp dữ liệu cho {url} ({len(file_chunks)} chunks)...")
+        log_info("INGESTION", f"Đang nạp dữ liệu cho {url} ({len(file_chunks)} chunks)...")
         
         category = file_chunks[0].metadata.get("role", "unknown")
         filename = file_chunks[0].metadata.get("source", "")
@@ -104,14 +105,14 @@ def ingest_data(data_dir: str):
         try:
             dense_embeddings = embedder.embed_documents(texts)
         except Exception as e:
-            print(f"[ERROR] Failed to dense embed chunks for {url}: {e}")
+            log_error("INGESTION", f"Failed to dense embed chunks for {url}: {e}")
             continue
             
         # Sinh Sparse Vector (FastEmbed / Splade)
         try:
             sparse_embeddings = list(sparse_model.embed(texts))
         except Exception as e:
-            print(f"[ERROR] Failed to sparse embed chunks for {url}: {e}")
+            log_error("INGESTION", f"Failed to sparse embed chunks for {url}: {e}")
             continue
             
         points = []
@@ -150,10 +151,10 @@ def ingest_data(data_dir: str):
         )
         
         db.commit()
-        print(f"[SUCCESS] Đã nạp thành công {url}.")
+        log_info("INGESTION", f"Đã nạp thành công {url}.")
 
     db.close()
-    print("[INFO] Quá trình Ingestion hoàn tất!")
+    log_info("INGESTION", "Quá trình Ingestion hoàn tất!")
 
 if __name__ == "__main__":
     DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")

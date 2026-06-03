@@ -285,17 +285,28 @@ export default function ChatLayout() {
               </div>
 
               {/* Citations / Sources */}
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="flex gap-2 flex-wrap mt-2">
-                  {msg.sources.slice(0, 1).map((src, i) => (
-                    <a key={i} href={src.url || '#'} target="_blank" rel="noopener noreferrer" 
-                       className="flex items-center gap-1 text-xs font-medium bg-surface-container-high text-primary px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary hover:text-white transition-colors">
-                      <Link2 size={12} />
-                      {src.source ? src.source.replace(/\.(md|html|txt)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Tài liệu Xanh SM'}
-                    </a>
-                  ))}
-                </div>
-              )}
+              {msg.sources && msg.sources.length > 0 && (() => {
+                const uniqueSources = [];
+                const seenSources = new Set();
+                for (const src of msg.sources) {
+                  const normalizedSource = (src.source || '').toLowerCase().trim();
+                  if (normalizedSource && !seenSources.has(normalizedSource)) {
+                    seenSources.add(normalizedSource);
+                    uniqueSources.push(src);
+                  }
+                }
+                return (
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    {uniqueSources.slice(0, 3).map((src, i) => (
+                      <a key={i} href={src.url || '#'} target="_blank" rel="noopener noreferrer" 
+                         className="flex items-center gap-1 text-xs font-medium bg-surface-container-high text-primary px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary hover:text-white transition-colors">
+                        <Link2 size={12} />
+                        {src.source ? src.source.replace(/\.(md|html|txt)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Tài liệu Xanh SM'}
+                      </a>
+                    ))}
+                  </div>
+                );
+              })()}
               
               {/* Response Time / Latency - for assistant messages only */}
               {msg.role === 'assistant' && msg.latency_ms && (

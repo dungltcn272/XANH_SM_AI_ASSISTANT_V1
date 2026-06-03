@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from langchain_core.documents import Document
 from app.vectordb.qdrant_client import vectordb
 from app.retrieval.multi_query import XanhSMQueryExpansion
-from app.core.config import safe_print
+from app.core.logger import log_info, log_warn, log_error
 
 class XanhSMHybridSearch:
     """
@@ -16,83 +16,133 @@ class XanhSMHybridSearch:
 
     def expand_context(self, base_docs: List[Document]) -> List[Document]:
         """
-        Chiến thuật 'Adjacent Context Expansion' (Sliding Window Context).
-        Với mỗi document được tìm thấy (chunk N), lấy thêm chunk N-1 và N+1 
-        để bảo đảm ngữ cảnh đầy đủ mà không làm phình to prompt như Parent-Child.
-        
-        LƯU Ý: Payload Qdrant lưu theo cấu trúc {"page_content":..., "metadata":{...}}
-        nên filter phải dùng dot notation: "metadata.url" và "metadata.chunk_index".
+        Chiến thuật Parent-Child Retrieval tùy biến động theo điểm số Rerank:
+        1. Ngưỡng mở rộng: Rerank Score >= 0.7.
+        2. Nếu chunk đạt điểm >= 0.7, tiến hành truy vấn Qdrant lấy toàn bộ các chunk lân cận
+           có chung parent_chunk_id (giới hạn tối đa 10 chunks) để tái cấu trúc trọn vẹn mục lớn.
+        3. Ghép các chunk con liên tiếp bằng '\n\n', loại bỏ tiêu đề lặp lại ở các chunk con thứ cấp (idx > 0).
+        4. Nếu chunk có điểm < 0.7, giữ nguyên để tránh phình to prompt.
+        5. Đảm bảo loại bỏ trùng lặp nếu chunk thô đã nằm trong một mục lớn đã được mở rộng.
         """
         from qdrant_client.http import models as qdrant_models
         from app.vectordb.qdrant_client import COLLECTION_NAME
-        
-        expanded_docs = []
+
+        EXPANSION_THRESHOLD = 0.7
+        MAX_CHUNKS_PER_SECTION = 10
+
+        # Phân loại tài liệu
+        docs_to_expand = []
+        docs_to_keep = []
+
         for doc in base_docs:
-            chunk_index = doc.metadata.get("chunk_index")
-            url = doc.metadata.get("url")
+            parent_id = doc.metadata.get("parent_chunk_id")
+            score = doc.metadata.get("rerank_score", 0.0)
             
-            if chunk_index is None or url is None:
-                # Không có đủ metadata để expand → giữ nguyên
-                expanded_docs.append(doc)
-                continue
-                
-            # Tạo filter để tìm các chunk lân cận cùng url
-            target_indices = [chunk_index - 1, chunk_index, chunk_index + 1]
-            target_indices = [i for i in target_indices if i >= 0]
-            
-            # Sử dụng dot notation vì url và chunk_index nằm BÊN TRONG "metadata"
-            q_filter = qdrant_models.Filter(
-                must=[
-                    qdrant_models.FieldCondition(
-                        key="metadata.url",
-                        match=qdrant_models.MatchValue(value=url)
-                    ),
-                    qdrant_models.FieldCondition(
-                        key="metadata.chunk_index",
-                        match=qdrant_models.MatchAny(any=target_indices)
-                    )
-                ]
-            )
-            
-            # Lấy các chunk lân cận
+            if parent_id and score >= EXPANSION_THRESHOLD:
+                docs_to_expand.append(doc)
+            else:
+                docs_to_keep.append(doc)
+
+        expanded_docs = []
+        covered_chunk_ids = set()
+
+        # Nhóm docs_to_expand theo parent_chunk_id
+        parent_groups = {}
+        for doc in docs_to_expand:
+            pid = doc.metadata.get("parent_chunk_id")
+            if pid not in parent_groups:
+                parent_groups[pid] = []
+            parent_groups[pid].append(doc)
+
+        # Xử lý các nhóm cần mở rộng Parent-Child
+        for pid, group_docs in parent_groups.items():
+            # Chọn base doc tốt nhất để lấy metadata
+            best_doc = max(group_docs, key=lambda x: x.metadata.get("rerank_score", 0.0))
+            section_name = best_doc.metadata.get("section", "")
+            url = best_doc.metadata.get("url", "")
+
             try:
-                safe_print(f"[DEBUG] Calling qdrant.scroll for url={url}, chunk={chunk_index}...")
+                log_info("RETRIEVAL", f"Parent-Child: Scrolling chunks for parent={pid} (section={section_name})")
+                q_filter = qdrant_models.Filter(
+                    must=[
+                        qdrant_models.FieldCondition(
+                            key="metadata.parent_chunk_id",
+                            match=qdrant_models.MatchValue(value=pid)
+                        )
+                    ]
+                )
                 results = self.db.qdrant.scroll(
                     collection_name=COLLECTION_NAME,
                     scroll_filter=q_filter,
-                    limit=3,
+                    limit=MAX_CHUNKS_PER_SECTION,
                     with_payload=True,
                     with_vectors=False
                 )[0]
-                safe_print(f"[DEBUG] Scroll returned {len(results)} records successfully.")
-                
-                if not results:
-                    # scroll không tìm thấy gì (có thể index chưa được tạo) → fallback
-                    safe_print(f"[WARN] expand_context: No adjacent chunks found for {url}[{chunk_index}]. Using original doc.")
-                    expanded_docs.append(doc)
-                    continue
-                
-                # Sắp xếp theo chunk_index
-                results.sort(key=lambda x: x.payload.get("metadata", {}).get("chunk_index", 0))
-                
-                merged_content = "\n\n... ".join([r.payload.get("page_content", "") for r in results if r.payload.get("page_content")])
-                
-                if not merged_content:
-                    expanded_docs.append(doc)
-                    continue
-                
-                # Tạo Document mới với nội dung đã ghép nối
-                merged_doc = Document(
-                    page_content=merged_content,
-                    metadata=doc.metadata
-                )
-                expanded_docs.append(merged_doc)
-                safe_print(f"[INFO] Expanded context for {url} (Chunks: {[r.payload.get('metadata', {}).get('chunk_index') for r in results]})")
+                log_info("RETRIEVAL", f"Scroll returned {len(results)} chunks for parent={pid}.")
             except Exception as e:
-                safe_print(f"[ERROR] Failed to expand context for {url}: {e}")
+                log_error("RETRIEVAL", f"Failed to scroll parent chunks for {pid}: {e}")
+                # Fallback: dùng lại các tài liệu gốc trong nhóm này
+                for d in group_docs:
+                    c_id = d.metadata.get("chunk_id")
+                    if c_id:
+                        covered_chunk_ids.add(c_id)
+                expanded_docs.extend(group_docs)
+                continue
+
+            if not results:
+                # Fallback nếu rỗng
+                for d in group_docs:
+                    c_id = d.metadata.get("chunk_id")
+                    if c_id:
+                        covered_chunk_ids.add(c_id)
+                expanded_docs.extend(group_docs)
+                continue
+
+            # Sắp xếp các chunk con theo thứ tự index tăng dần
+            results.sort(key=lambda x: x.payload.get("metadata", {}).get("chunk_index", 0))
+
+            block_contents = []
+            for i, r in enumerate(results):
+                content = r.payload.get("page_content", "").strip()
+                c_id = r.payload.get("metadata", {}).get("chunk_id")
+                if c_id:
+                    covered_chunk_ids.add(c_id)
+
+                if not content:
+                    continue
+
+                # Loại bỏ tiêu đề lặp lại ở các chunk thứ cấp (idx > 0)
+                c_idx = r.payload.get("metadata", {}).get("chunk_index", 0)
+                if c_idx > 0 and section_name and section_name != "Introduction":
+                    prefix = f"### {section_name}"
+                    if content.startswith(prefix):
+                        content = content[len(prefix):].strip()
+
+                block_contents.append(content)
+
+            merged_content = "\n\n".join(block_contents)
+            
+            merged_doc = Document(
+                page_content=merged_content,
+                metadata=best_doc.metadata.copy()
+            )
+            expanded_docs.append(merged_doc)
+            log_info("RETRIEVAL", f"Expanded parent section for {url} (parent={pid})")
+
+        # Xử lý các tài liệu giữ nguyên (không mở rộng)
+        for doc in docs_to_keep:
+            c_id = doc.metadata.get("chunk_id")
+            # Chỉ thêm nếu chunk này chưa được gộp trong bất kỳ khối parent-child nào ở trên
+            if not c_id or c_id not in covered_chunk_ids:
                 expanded_docs.append(doc)
-                
+                if c_id:
+                    covered_chunk_ids.add(c_id)
+
+        # Sắp xếp lại theo điểm số rerank giảm dần để bảo toàn độ liên quan chính xác
+        expanded_docs.sort(key=lambda x: x.metadata.get("rerank_score", 0.0), reverse=True)
+
         return expanded_docs
+
 
     def search(self, query: str, role: str = None, limit: int = 25, expanded_queries: List[str] = None) -> List[Document]:
         """
@@ -101,7 +151,7 @@ class XanhSMHybridSearch:
         """
         if expanded_queries is None:
             expanded_queries = self.expander.get_queries(query)
-        safe_print(f"[INFO] Expanded queries for search: {expanded_queries}")
+        log_info("RETRIEVAL", f"Expanded queries for search: {expanded_queries}")
         
         # Dùng set để deduplicate theo chunk_id
         all_docs_map = {}
@@ -116,6 +166,6 @@ class XanhSMHybridSearch:
                     
         unique_docs = list(all_docs_map.values())
         
-        safe_print(f"[SUCCESS] Native Qdrant Hybrid Search returned {len(unique_docs)} unique documents.")
+        log_info("RETRIEVAL", f"Native Qdrant Hybrid Search returned {len(unique_docs)} unique documents.")
         
         return unique_docs[:limit]

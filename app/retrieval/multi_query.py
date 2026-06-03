@@ -3,6 +3,7 @@ import json
 from typing import List
 from openai import OpenAI
 from app.core.config import settings as config
+from app.core.logger import log_warn
 
 class XanhSMQueryExpansion:
     """
@@ -76,7 +77,7 @@ class XanhSMQueryExpansion:
                     return [query] + val[:1]
             return self.expand_query_rule_based(query)
         except Exception as e:
-            print(f"[WARN] LLM Query Expansion failed: {str(e)}. Falling back to rule-based.")
+            log_warn("RETRIEVAL", f"LLM Query Expansion failed: {str(e)}. Falling back to rule-based.")
             return self.expand_query_rule_based(query)
 
     def get_queries(self, query: str) -> List[str]:

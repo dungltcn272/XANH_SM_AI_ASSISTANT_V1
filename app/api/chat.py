@@ -6,6 +6,7 @@ from app.db.database import get_db
 from app.db.models import Conversation
 from app.core.security import get_current_entity
 from app.rag.pipeline import stream_chat_pipeline
+from app.core.logger import log_error
 from typing import Optional, AsyncGenerator
 import asyncio
 
@@ -42,9 +43,7 @@ async def _run_stream_in_thread(gen_func, **kwargs) -> AsyncGenerator[str, None]
             for chunk in gen_func(**kwargs):
                 loop.call_soon_threadsafe(async_queue.put_nowait, chunk)
         except Exception as e:
-            import traceback
-            print("[ERROR] Exception in chat stream background thread:")
-            traceback.print_exc()
+            log_error("CHAT", f"Exception in chat stream background thread: {e}")
             loop.call_soon_threadsafe(async_queue.put_nowait, e)
         finally:
             db_session.close()

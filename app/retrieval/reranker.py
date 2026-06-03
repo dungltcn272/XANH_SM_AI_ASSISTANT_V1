@@ -3,6 +3,7 @@ import unicodedata
 from typing import List, Dict, Any
 from langchain_core.documents import Document
 from app.core.config import settings as config
+from app.core.logger import log_info, log_warn
 
 # Global cache for reranker models to prevent reloading
 _MODEL_CACHE = {}
@@ -34,9 +35,9 @@ class XanhSMReranker:
                 from flashrank import Ranker
                 self.model = Ranker(model_name=self.model_name or "ms-marco-MiniLM-L-12-v2", cache_dir="/tmp")
                 _MODEL_CACHE[cache_key] = self.model
-                print(f"[+] Initialized FlashRank: {self.model_name or 'ms-marco-MiniLM-L-12-v2'}")
+                log_info("RERANK", f"Initialized FlashRank: {self.model_name or 'ms-marco-MiniLM-L-12-v2'}")
             except Exception as e:
-                print(f"[!] FlashRank failed: {e}. Falling back to heuristic.")
+                log_warn("RERANK", f"FlashRank failed: {e}. Falling back to heuristic.")
                 self.provider = "heuristic"
                 self.fallback_occurred = True
 
@@ -49,13 +50,13 @@ class XanhSMReranker:
                 # Special handling for MonoT5 as it's not a standard CrossEncoder
                 if "monot5" in m_name.lower():
                     m_name = "cross-encoder/ms-marco-en-electra-base" 
-                    print(f"[INFO] MonoT5 redirected to ELECTRA Cross-Encoder for compatibility: {m_name}")
+                    log_info("RERANK", f"MonoT5 redirected to ELECTRA Cross-Encoder for compatibility: {m_name}")
                 
                 self.model = CrossEncoder(m_name, max_length=512)
                 _MODEL_CACHE[cache_key] = self.model
-                print(f"[+] Initialized Local Cross-Encoder: {m_name}")
+                log_info("RERANK", f"Initialized Local Cross-Encoder: {m_name}")
             except Exception as e:
-                print(f"[!] Local CrossEncoder failed: {e}. Falling back to heuristic.")
+                log_warn("RERANK", f"Local CrossEncoder failed: {e}. Falling back to heuristic.")
                 self.provider = "heuristic"
                 self.fallback_occurred = True
 
@@ -68,9 +69,9 @@ class XanhSMReranker:
                     raise ValueError("COHERE_API_KEY is missing in config.")
                 self.model = cohere.Client(api_key)
                 _MODEL_CACHE[cache_key] = self.model
-                print(f"[+] Initialized Cohere Rerank: {self.model_name or 'rerank-v3.0'}")
+                log_info("RERANK", f"Initialized Cohere Rerank: {self.model_name or 'rerank-v3.0'}")
             except Exception as e:
-                print(f"[!] Cohere failed: {e}. Falling back to heuristic.")
+                log_warn("RERANK", f"Cohere failed: {e}. Falling back to heuristic.")
                 self.provider = "heuristic"
                 self.fallback_occurred = True
 
@@ -145,4 +146,4 @@ class XanhSMReranker:
 
     def _log_time(self, start_time: float):
         elapsed = (time.time() - start_time) * 1000
-        print(f"[Rerank] {self.provider} took {elapsed:.2f}ms")
+        log_info("RERANK", f"{self.provider} took {elapsed:.2f}ms")

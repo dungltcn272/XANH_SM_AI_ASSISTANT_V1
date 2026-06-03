@@ -13,6 +13,7 @@ if sys.stdout.encoding.lower() != 'utf-8':
 
 from app.rag.chain import XanhSMRAGPipeline
 from app.core.config import settings
+from app.core.logger import log_warn, log_error
 from openai import OpenAI
 
 class XanhSMEvaluation:
@@ -107,7 +108,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 recall_5 = float(scores.get("context_recall", recall_5))
                 recall_10 = recall_5 # approximate recall_10 with recall_5 for LLM judge
             except Exception as e:
-                print(f"[WARN] LLM Judge error: {e}")
+                log_warn("EVAL", f"LLM Judge error: {e}")
         
         print(f"   -> AI Answer: {answer[:100]}...")
         print(f"   -> R@5: {recall_5:.2f} | MRR: {mrr:.2f} | Faithfulness: {faithfulness:.2f} | Correctness: {correctness:.2f}")
@@ -155,7 +156,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 avg["latency"] += res["latency_seconds"]
                 
             except Exception as e:
-                print(f"[ERROR] Failed to evaluate: {e}")
+                log_error("EVAL", f"Failed to evaluate: {e}")
             
         count = len(results) if len(results) > 0 else 1
         metrics = {

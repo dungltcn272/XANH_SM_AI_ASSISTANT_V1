@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import Table
 from app.db.database import get_db, Base
-from app.db.models import RagRequestLog, User, Conversation, DocumentChunk
+from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog
 from fastapi.responses import StreamingResponse
 import asyncio
 
@@ -42,6 +42,12 @@ def get_eval_results():
 def get_rag_logs(limit: int = 50, db: Session = Depends(get_db)):
     logs = db.query(RagRequestLog).order_by(RagRequestLog.created_at.desc()).limit(limit).all()
     return logs
+
+@router.get("/system-logs")
+def get_system_logs(limit: int = 100, db: Session = Depends(get_db)):
+    logs = db.query(SystemLog).order_by(SystemLog.timestamp.desc()).limit(limit).all()
+    return logs
+
 
 @router.get("/users")
 def get_users(limit: int = 50, db: Session = Depends(get_db)):
@@ -93,23 +99,34 @@ async def evaluate_rag():
         yield 'data: {"step": "Đang lấy tập dữ liệu Golden Dataset..."}\n\n'
         
         try:
-            # Chạy script evaluation qua subprocess bằng chính python đang chạy FastAPI
             import subprocess
             import sys
             import os
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
+            env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+            env["TQDM_DISABLE"] = "1"
+            
             process = subprocess.Popen(
-                [sys.executable, "-u", "evaluation/ragas_eval.py"], 
+                [sys.executable, "-W", "ignore", "-u", "evaluation/ragas_eval.py"], 
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.STDOUT,
                 env=env
             )
             
-            for line in iter(process.stdout.readline, b''):
-                line = line.decode('utf-8', errors='replace').strip()
-                if line:
-                    yield f'data: {{"step": "{line}"}}\n\n'
+            loop = asyncio.get_event_loop()
+            
+            def read_line():
+                return process.stdout.readline()
+            
+            while True:
+                line = await loop.run_in_executor(None, read_line)
+                if not line:
+                    break
+                line_str = line.decode('utf-8', errors='replace').strip()
+                if line_str:
+                    data_json = json.dumps({"step": line_str}, ensure_ascii=False)
+                    yield f"data: {data_json}\n\n"
                     await asyncio.sleep(0.1)
                     
             process.wait()
@@ -118,7 +135,10 @@ async def evaluate_rag():
             else:
                 yield 'data: {"error": "Lỗi trong quá trình đánh giá."}\n\n'
         except Exception as e:
-            yield f'data: {{"error": "{str(e)}"}}\n\n'
+            import traceback
+            traceback.print_exc()
+            err_msg = json.dumps({"error": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False)
+            yield f"data: {err_msg}\n\n"
             
         yield "data: [DONE]\n\n"
 
@@ -139,17 +159,29 @@ async def run_crawler():
             import os
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
+            env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+            env["TQDM_DISABLE"] = "1"
+            
             process = subprocess.Popen(
-                [sys.executable, "-u", "crawler/run_crawler.py"], 
+                [sys.executable, "-W", "ignore", "-u", "crawler/run_crawler.py"], 
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.STDOUT,
                 env=env
             )
             
-            for line in iter(process.stdout.readline, b''):
-                line = line.decode('utf-8', errors='replace').strip()
-                if line:
-                    yield f'data: {{"step": "{line}"}}\n\n'
+            loop = asyncio.get_event_loop()
+            
+            def read_line():
+                return process.stdout.readline()
+            
+            while True:
+                line = await loop.run_in_executor(None, read_line)
+                if not line:
+                    break
+                line_str = line.decode('utf-8', errors='replace').strip()
+                if line_str:
+                    data_json = json.dumps({"step": line_str}, ensure_ascii=False)
+                    yield f"data: {data_json}\n\n"
                     await asyncio.sleep(0.05)
                     
             process.wait()
@@ -158,7 +190,10 @@ async def run_crawler():
             else:
                 yield 'data: {"error": "Lỗi trong quá trình cào dữ liệu."}\n\n'
         except Exception as e:
-            yield f'data: {{"error": "{str(e)}"}}\n\n'
+            import traceback
+            traceback.print_exc()
+            err_msg = json.dumps({"error": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False)
+            yield f"data: {err_msg}\n\n"
             
         yield "data: [DONE]\n\n"
 
@@ -179,17 +214,29 @@ async def run_ingestion():
             import os
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
+            env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+            env["TQDM_DISABLE"] = "1"
+            
             process = subprocess.Popen(
-                [sys.executable, "-u", "app/ingestion/ingest.py"], 
+                [sys.executable, "-W", "ignore", "-u", "app/ingestion/ingest.py"], 
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.STDOUT,
                 env=env
             )
             
-            for line in iter(process.stdout.readline, b''):
-                line = line.decode('utf-8', errors='replace').strip()
-                if line:
-                    yield f'data: {{"step": "{line}"}}\n\n'
+            loop = asyncio.get_event_loop()
+            
+            def read_line():
+                return process.stdout.readline()
+            
+            while True:
+                line = await loop.run_in_executor(None, read_line)
+                if not line:
+                    break
+                line_str = line.decode('utf-8', errors='replace').strip()
+                if line_str:
+                    data_json = json.dumps({"step": line_str}, ensure_ascii=False)
+                    yield f"data: {data_json}\n\n"
                     await asyncio.sleep(0.05)
                     
             process.wait()
@@ -198,7 +245,10 @@ async def run_ingestion():
             else:
                 yield 'data: {"error": "Lỗi trong quá trình nạp dữ liệu."}\n\n'
         except Exception as e:
-            yield f'data: {{"error": "{str(e)}"}}\n\n'
+            import traceback
+            traceback.print_exc()
+            err_msg = json.dumps({"error": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False)
+            yield f"data: {err_msg}\n\n"
             
         yield "data: [DONE]\n\n"
 

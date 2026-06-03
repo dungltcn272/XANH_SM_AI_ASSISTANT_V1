@@ -3,6 +3,7 @@ from app.rag.chain import XanhSMRAGPipeline
 from app.memory.memory_service import MemoryService
 from app.db.models import RagRequestLog
 from app.rag.guardrail import OutputGuardrail
+from app.core.logger import log_info, log_warn
 import json
 
 def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, question: str, role: str = "faq"):
@@ -100,6 +101,10 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
                     search_latency_ms=metrics.get("search_latency_ms", 0),
                     generation_latency_ms=metrics.get("generation_latency_ms", 0),
                     total_latency_ms=metrics.get("total_latency_ms", 0),
+                    rewrite_latency_ms=metrics.get("rewrite_latency_ms", 0),
+                    classification_latency_ms=metrics.get("classification_latency_ms", 0),
+                    expansion_latency_ms=metrics.get("expansion_latency_ms", 0),
+                    rerank_latency_ms=metrics.get("rerank_latency_ms", 0),
                     total_tokens=metrics.get("total_tokens", 0),
                     cost_usd=metrics.get("cost_usd", 0.0),
                     blocked_by_guardrail=is_blocked,
@@ -107,9 +112,9 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
                 )
                 new_db.add(req_log)
                 new_db.commit()
-                print(f"[INFO] Saved request log with metrics - Latency: {metrics.get('total_latency_ms', 0):.0f}ms, Tokens: {metrics.get('total_tokens', 0)}, Cost: ${metrics.get('cost_usd', 0):.6f}")
+                log_info("CHAT", f"Saved request log with metrics - Latency: {metrics.get('total_latency_ms', 0):.0f}ms (Rewrite: {metrics.get('rewrite_latency_ms', 0):.0f}ms, Classify: {metrics.get('classification_latency_ms', 0):.0f}ms, Expand: {metrics.get('expansion_latency_ms', 0):.0f}ms, Search: {metrics.get('search_latency_ms', 0):.0f}ms, Rerank: {metrics.get('rerank_latency_ms', 0):.0f}ms, Gen: {metrics.get('generation_latency_ms', 0):.0f}ms), Tokens: {metrics.get('total_tokens', 0)}, Cost: ${metrics.get('cost_usd', 0):.6f}")
             except Exception as e:
-                print(f"[WARN] Failed to log request: {e}")
+                log_warn("CHAT", f"Failed to log request: {e}")
                 new_db.rollback()
     finally:
         new_db.close()

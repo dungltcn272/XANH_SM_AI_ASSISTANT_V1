@@ -50,3 +50,4 @@ qdrant_data/
 .vscode/
 
 /data
+/logs/

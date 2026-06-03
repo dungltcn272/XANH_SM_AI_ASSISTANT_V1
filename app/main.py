@@ -1,9 +1,14 @@
 import os
 import sys
 import io
+import asyncio
 
 # Prevent OpenMP crash on Windows
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+# Force WindowsProactorEventLoopPolicy to support asyncio subprocesses
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # Force UTF-8 encoding for all stdout/stderr on Windows
 # This MUST be done before any other imports to prevent UnicodeEncodeError
@@ -33,6 +38,16 @@ from app.db.database import engine, Base
 
 # Tạo các bảng trong CSDL
 Base.metadata.create_all(bind=engine)
+
+# Chạy ALTER TABLE động để thêm các cột latency mới vào bảng rag_request_logs nếu chưa tồn tại
+from sqlalchemy import text
+with engine.connect() as conn:
+    for col in ["rewrite_latency_ms", "classification_latency_ms", "expansion_latency_ms", "rerank_latency_ms"]:
+        try:
+            conn.execute(text(f"ALTER TABLE rag_request_logs ADD COLUMN {col} FLOAT DEFAULT 0;"))
+            conn.commit()
+        except Exception:
+            pass
 
 app = FastAPI(
     title="GreenSM Production RAG",

@@ -10,7 +10,10 @@ from app.db.models import GuestSession, User, UserRole
 from app.core.security import create_access_token
 from app.core.config import settings
 
+from app.core.logger import log_error
+
 router = APIRouter()
+
 
 class GoogleAuthRequest(BaseModel):
     token: str
@@ -66,5 +69,5 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
         }
         
     except ValueError as e:
-        print(f"Token verification failed: {e}")
+        log_error("AUTH", f"Token verification failed: {e}", error_type="ValueError")
         raise HTTPException(status_code=401, detail="Invalid Google token")
