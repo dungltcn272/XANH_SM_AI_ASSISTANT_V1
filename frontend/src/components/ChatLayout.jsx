@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
 import { User, Loader2, Link2, PlusCircle, Mic, ArrowUp } from 'lucide-react';
 import { api } from '../api';
+import { useAuth } from '../AuthContext';
 
 const XanhSMIcon = ({ className = "w-6 h-6" }) => (
   <img 
@@ -15,6 +16,7 @@ const XanhSMIcon = ({ className = "w-6 h-6" }) => (
 
 
 export default function ChatLayout() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -320,9 +322,18 @@ export default function ChatLayout() {
             </div>
 
             {msg.role === 'user' && (
-              <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0 shadow-sm order-2 border border-primary/10">
-                <User size={20} />
-              </div>
+              user?.type === 'user' ? (
+                <div 
+                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-bold shadow-md uppercase border border-primary/20 shrink-0 order-2"
+                  title={user.email}
+                >
+                  {user.name ? user.name[0] : <User size={18} />}
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0 shadow-sm order-2 border border-primary/10">
+                  <User size={20} />
+                </div>
+              )
             )}
           </div>
           );

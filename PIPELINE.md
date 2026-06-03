@@ -11,10 +11,10 @@ graph TD
     B -- Từ chối --> C[Chặn nội dung vi phạm]:::error
     B -- Hợp lệ --> D{1. Early Cache Lookup}
     
-    D -- Cache Hit (~5ms) --> K([📡 Trả về kết quả ngay lập tức])
+    D -- Cache Hit (~5ms) --> K([📡 Output Response SSE]):::input
     D -- Cache Miss --> E[🔮 2. Unified NLU Gateway 3-trong-1]
     
-    E -- small-talk --> F[🤖 Trả lời xã giao nhanh]
+    E -- small-talk --> F[🤖 Task Agent / Phản hồi nhanh]
     E -- rag --> G{⚡ 3. Second Cache Lookup}
     
     G -- Cache Hit --> K
@@ -23,11 +23,20 @@ graph TD
     H --> I[Cross-Encoder Reranker]
     I --> J[Parent-Child Section Expansion]
     J --> L[LLM Synthesizer]
-    L --> M[Lưu cache kép câu gốc & viết lại]
+    
+    %% Hai luồng sinh mới đi qua Output Guardrail
+    F --> GuardOut[🛡️ Output Guardrails]:::guard
+    L --> GuardOut
+    
+    %% Phân tách an toàn đầu ra
+    GuardOut -- Vi phạm --> C
+    GuardOut -- Hợp lệ --> M[Lưu cache kép câu gốc & viết lại]
     M --> K
+    C --> K
     
     classDef input fill:#00c897,color:#fff,stroke-width:0px,border-radius:20px;
     classDef error fill:#ff4444,color:#fff,stroke-width:0px;
+    classDef guard fill:#f43f5e,color:#fff,stroke-width:0px;
     
     classDef default fill:#1e293b,color:#fff,stroke:#475569,stroke-width:1px;
     linkStyle default stroke:#64748b,stroke-width:2px;

@@ -87,8 +87,16 @@ export default function PipelineManager() {
       color: "border-violet-500 text-violet-400 shadow-[0_0_15px_rgba(139,92,246,0.15)]",
       status: "Đang hoạt động"
     },
+    output_guardrail: {
+      title: "9. Output Guardrails (Kiểm duyệt đầu ra)",
+      desc: "Chốt chặn bảo mật cuối cùng. Kiểm tra câu trả lời đầu ra trước khi trả về cho khách hàng để ngăn chặn rò rỉ prompt, thông tin nhạy cảm (PII) hoặc ngôn từ không phù hợp.",
+      details: "Tự động thay thế câu trả lời bằng cảnh báo nếu phát hiện vi phạm chính sách an toàn thông tin của doanh nghiệp.",
+      icon: Shield,
+      color: "border-rose-500 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.15)]",
+      status: "Đang hoạt động"
+    },
     output: {
-      title: "9. Output Response (Stream SSE)",
+      title: "10. Output Response (Stream SSE)",
       desc: "Truyền phát câu trả lời dạng stream thời gian thực (SSE) trực tiếp lên UI cho người dùng.",
       details: "Ghi nhận log telemetry (độ trễ, số chunk, độ dài ngữ cảnh) để cập nhật và giám sát chất lượng hệ thống RAG.",
       icon: MessageSquare,
@@ -158,237 +166,293 @@ export default function PipelineManager() {
 
             {/* Node 1: User Input */}
             <div 
-              className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-72 text-center relative ${activeNode === 'user_input' ? 'border-[#00c897] bg-white/10 ring-1 ring-[#00c897]/50' : 'border-white/10'}`}
+              className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-48 text-center relative ${activeNode === 'user_input' ? 'border-[#00c897] bg-white/10 ring-1 ring-[#00c897]/50' : 'border-white/10'}`}
               onMouseEnter={() => setActiveNode('user_input')}
               onMouseLeave={() => setActiveNode(null)}
             >
-              <div className="font-bold text-[#00c897] flex items-center justify-center gap-2">
-                <PlayCircle size={18} />
+              <div className="font-bold text-[#00c897] text-[13px] flex items-center justify-center gap-1.5">
+                <PlayCircle size={14} />
                 <span>User Input</span>
               </div>
-              <p className="text-xs text-white/50 mt-1">Nhận câu hỏi truy vấn</p>
+              <p className="text-[10px] text-white/50 mt-0.5">Nhận câu hỏi truy vấn</p>
             </div>
 
             {/* Link 1 -> 2 */}
-            <svg className="w-16 h-10" viewBox="0 0 64 40">
-              <path d="M32 0 V40" stroke="#00c897" strokeWidth="2.5" className="flow-line" />
-              <path d="M28 32 L32 40 L36 32" stroke="#00c897" strokeWidth="2" fill="none" />
+            <svg className="w-16 h-6" viewBox="0 0 64 24">
+              <line x1="32" y1="0" x2="32" y2="24" stroke="#00c897" strokeWidth="2.5" className="flow-line" />
+              <path d="M28 18 L32 24 L36 18" stroke="#00c897" strokeWidth="2" fill="none" />
             </svg>
 
             {/* Node 2: Gateway */}
             <div 
-              className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-72 text-center ${activeNode === 'gateway' ? 'border-blue-500 bg-white/10 ring-1 ring-blue-500/50' : 'border-white/10'}`}
+              className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-48 text-center ${activeNode === 'gateway' ? 'border-blue-500 bg-white/10 ring-1 ring-blue-500/50' : 'border-white/10'}`}
               onMouseEnter={() => setActiveNode('gateway')}
               onMouseLeave={() => setActiveNode(null)}
             >
-              <div className="font-bold text-blue-400 flex items-center justify-center gap-2">
-                <Shield size={18} />
+              <div className="font-bold text-blue-400 text-[13px] flex items-center justify-center gap-1.5">
+                <Shield size={14} />
                 <span>API Gateway & Guardrails</span>
               </div>
-              <p className="text-xs text-white/50 mt-1">Kiểm tra bảo mật & An toàn</p>
+              <p className="text-[10px] text-white/50 mt-0.5">Kiểm tra bảo mật & An toàn</p>
             </div>
 
             {/* Link 2 -> Split (Block vs Intent) */}
-            <div className="w-full flex justify-center h-12 relative">
-              <svg className="w-[360px] h-12" viewBox="0 0 360 48" preserveAspectRatio="none">
+            <div className="w-full flex justify-center h-8 relative max-w-[520px]">
+              <svg className="w-[520px] h-8" viewBox="0 0 520 32" preserveAspectRatio="none">
                 {/* Line down and left to Block */}
-                <path d="M180 0 V16 H80 V48" stroke="#ef4444" strokeWidth="2.5" className="flow-line" />
-                <path d="M76 40 L80 48 L84 40" stroke="#ef4444" strokeWidth="2" fill="none" />
+                <path d="M260 0 V12 H80 V32" stroke="#ef4444" strokeWidth="2.5" className="flow-line" fill="none" />
+                <path d="M76 26 L80 32 L84 26" stroke="#ef4444" strokeWidth="2" fill="none" />
                 
                 {/* Line down and right to NLU */}
-                <path d="M180 0 V16 H280 V48" stroke="#3b82f6" strokeWidth="2.5" className="flow-line" />
-                <path d="M276 40 L280 48 L284 40" stroke="#3b82f6" strokeWidth="2" fill="none" />
+                <path d="M260 0 V12 H440 V32" stroke="#3b82f6" strokeWidth="2.5" className="flow-line" fill="none" />
+                <path d="M436 26 L440 32 L444 26" stroke="#3b82f6" strokeWidth="2" fill="none" />
                 
-                <text x="110" y="12" fill="#ef4444" className="text-[10px] font-bold" textAnchor="middle">Từ chối (Vi phạm)</text>
-                <text x="250" y="12" fill="#3b82f6" className="text-[10px] font-bold" textAnchor="middle">Hợp lệ</text>
+                <text x="170" y="10" fill="#ef4444" className="text-[8px] font-bold" textAnchor="middle">Từ chối (Vi phạm)</text>
+                <text x="350" y="10" fill="#3b82f6" className="text-[8px] font-bold" textAnchor="middle">Hợp lệ</text>
               </svg>
             </div>
 
             {/* Row 3: Block vs Intent */}
-            <div className="flex justify-between w-full max-w-[640px] gap-6">
+            <div className="flex justify-between w-full max-w-[520px] gap-4">
               {/* Left Column: Block */}
               <div 
-                className={`glow-card cursor-pointer p-4 rounded-xl border bg-red-950/10 w-64 text-center ${activeNode === 'block_violation' ? 'border-red-500 bg-red-950/20 ring-1 ring-red-500/50' : 'border-red-900/30'}`}
+                className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-red-950/10 w-40 text-center ${activeNode === 'block_violation' ? 'border-red-500 bg-red-950/20 ring-1 ring-red-500/50' : 'border-red-900/30'}`}
                 onMouseEnter={() => setActiveNode('block_violation')}
                 onMouseLeave={() => setActiveNode(null)}
               >
-                <div className="font-bold text-red-400 flex items-center justify-center gap-2">
-                  <AlertTriangle size={18} />
+                <div className="font-bold text-red-400 text-[13px] flex items-center justify-center gap-1.5">
+                  <AlertTriangle size={14} />
                   <span>Chặn nội dung vi phạm</span>
                 </div>
-                <p className="text-xs text-red-400/50 mt-1">Dừng pipeline & cảnh báo</p>
+                <p className="text-[10px] text-red-400/50 mt-0.5">Dừng pipeline & cảnh báo</p>
               </div>
 
               {/* Right Column: Intent Classifier */}
               <div 
-                className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-64 text-center ${activeNode === 'nlu_intent' ? 'border-indigo-500 bg-white/10 ring-1 ring-indigo-500/50' : 'border-white/10'}`}
+                className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-40 text-center ${activeNode === 'nlu_intent' ? 'border-indigo-500 bg-white/10 ring-1 ring-indigo-500/50' : 'border-white/10'}`}
                 onMouseEnter={() => setActiveNode('nlu_intent')}
                 onMouseLeave={() => setActiveNode(null)}
               >
-                <div className="font-bold text-indigo-400 flex items-center justify-center gap-2">
-                  <Brain size={18} />
+                <div className="font-bold text-indigo-400 text-[13px] flex items-center justify-center gap-1.5">
+                  <Brain size={14} />
                   <span>Intent Classifier & Slots</span>
                 </div>
-                <p className="text-xs text-white/50 mt-1">Phân tích ý định & Thực thể</p>
+                <p className="text-[10px] text-white/50 mt-0.5">Phân tích ý định & Thực thể</p>
               </div>
             </div>
 
             {/* Link 3 Right -> Split (Task Agent vs Query Expansion) */}
-            <div className="w-full flex justify-center h-12 relative">
-              {/* Invisible spacer on the left to align with Right Column */}
-              <div className="w-64"></div>
-              <div className="w-[320px] flex justify-center relative">
-                <svg className="w-[280px] h-12" viewBox="0 0 280 48" preserveAspectRatio="none">
+            <div className="w-full flex justify-between w-full max-w-[520px] gap-4 relative">
+              {/* Left Column: Red flow line */}
+              <div className="w-40 flex justify-center">
+                <svg className="w-16 h-8" viewBox="0 0 64 100" preserveAspectRatio="none">
+                  <line x1="32" y1="0" x2="32" y2="100" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="4 4" className="flow-line" />
+                </svg>
+              </div>
+              {/* Right Column: Split line */}
+              <div className="w-[336px] flex justify-center relative">
+                <svg className="w-[336px] h-8" viewBox="0 0 336 32" preserveAspectRatio="none">
                   {/* Down and left to Task Agent */}
-                  <path d="M140 0 V16 H50 V48" stroke="#f59e0b" strokeWidth="2.5" className="flow-line" />
-                  <path d="M46 40 L50 48 L54 40" stroke="#f59e0b" strokeWidth="2" fill="none" />
+                  <path d="M168 0 V12 H72 V32" stroke="#f59e0b" strokeWidth="2.5" className="flow-line" fill="none" />
+                  <path d="M68 26 L72 32 L76 26" stroke="#f59e0b" strokeWidth="2" fill="none" />
                   
                   {/* Down and right to Query Expansion */}
-                  <path d="M140 0 V16 H230 V48" stroke="#a855f7" strokeWidth="2.5" className="flow-line" />
-                  <path d="M226 40 L230 48 L234 40" stroke="#a855f7" strokeWidth="2" fill="none" />
+                  <path d="M168 0 V12 H264 V32" stroke="#a855f7" strokeWidth="2.5" className="flow-line" fill="none" />
+                  <path d="M260 26 L264 32 L268 26" stroke="#a855f7" strokeWidth="2" fill="none" />
                   
-                  <text x="75" y="12" fill="#f59e0b" className="text-[9px] font-bold" textAnchor="middle">Small-talk/Cước đơn</text>
-                  <text x="205" y="12" fill="#a855f7" className="text-[9px] font-bold" textAnchor="middle">Hỏi đáp nghiệp vụ</text>
+                  <text x="110" y="10" fill="#f59e0b" className="text-[7.5px] font-bold" textAnchor="middle">Small-talk/Cước đơn</text>
+                  <text x="226" y="10" fill="#a855f7" className="text-[7.5px] font-bold" textAnchor="middle">Hỏi đáp nghiệp vụ</text>
                 </svg>
               </div>
             </div>
 
             {/* Row 4: Task Agent vs Query Expansion */}
-            <div className="flex justify-end w-full max-w-[640px] gap-6">
-              {/* Task Agent */}
-              <div 
-                className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-60 text-center ${activeNode === 'task_agent' ? 'border-amber-500 bg-white/10 ring-1 ring-amber-500/50' : 'border-white/10'}`}
-                onMouseEnter={() => setActiveNode('task_agent')}
-                onMouseLeave={() => setActiveNode(null)}
-              >
-                <div className="font-bold text-amber-400 flex items-center justify-center gap-2">
-                  <Zap size={18} />
-                  <span>Task Agent (Fast Path)</span>
-                </div>
-                <p className="text-xs text-white/50 mt-1">Trả lời nhanh cước/smalltalk</p>
+            <div className="flex justify-between w-full max-w-[520px] gap-4">
+              {/* Left Column: Red flow line */}
+              <div className="w-40 flex justify-center items-center h-[60px]">
+                <svg className="w-16 h-full" viewBox="0 0 64 100" preserveAspectRatio="none">
+                  <line x1="32" y1="0" x2="32" y2="100" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="4 4" className="flow-line" />
+                </svg>
               </div>
-
-              {/* Query Expansion */}
-              <div 
-                className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-60 text-center ${activeNode === 'query_expansion' ? 'border-purple-500 bg-white/10 ring-1 ring-purple-500/50' : 'border-white/10'}`}
-                onMouseEnter={() => setActiveNode('query_expansion')}
-                onMouseLeave={() => setActiveNode(null)}
-              >
-                <div className="font-bold text-purple-400 flex items-center justify-center gap-2">
-                  <Cpu size={18} />
-                  <span>Query Expansion & Rewrite</span>
+              
+              {/* Right Column: Task Agent & Query Expansion */}
+              <div className="flex gap-4 w-[336px]">
+                {/* Task Agent */}
+                <div 
+                  className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-36 text-center ${activeNode === 'task_agent' ? 'border-amber-500 bg-white/10 ring-1 ring-amber-500/50' : 'border-white/10'}`}
+                  onMouseEnter={() => setActiveNode('task_agent')}
+                  onMouseLeave={() => setActiveNode(null)}
+                >
+                  <div className="font-bold text-amber-400 text-[13px] flex items-center justify-center gap-1.5">
+                    <Zap size={14} />
+                    <span>Task Agent (Fast Path)</span>
+                  </div>
+                  <p className="text-[10px] text-white/50 mt-0.5">Trả lời nhanh cước/smalltalk</p>
                 </div>
-                <p className="text-xs text-white/50 mt-1">Tối ưu hóa câu hỏi</p>
+
+                {/* Query Expansion */}
+                <div 
+                  className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-36 text-center ${activeNode === 'query_expansion' ? 'border-purple-500 bg-white/10 ring-1 ring-purple-500/50' : 'border-white/10'}`}
+                  onMouseEnter={() => setActiveNode('query_expansion')}
+                  onMouseLeave={() => setActiveNode(null)}
+                >
+                  <div className="font-bold text-purple-400 text-[13px] flex items-center justify-center gap-1.5">
+                    <Cpu size={14} />
+                    <span>Query Expansion & Rewrite</span>
+                  </div>
+                  <p className="text-[10px] text-white/50 mt-0.5">Tối ưu hóa câu hỏi</p>
+                </div>
               </div>
             </div>
 
             {/* RAG Main Stream starting from Query Expansion */}
-            <div className="w-full flex justify-end w-full max-w-[640px]">
-              <div className="w-60 flex flex-col items-center">
-                
-                {/* Link Query Expansion -> Hybrid Search */}
-                <svg className="w-16 h-10" viewBox="0 0 64 40">
-                  <path d="M32 0 V40" stroke="#a855f7" strokeWidth="2.5" className="flow-line" />
-                  <path d="M28 32 L32 40 L36 32" stroke="#a855f7" strokeWidth="2" fill="none" />
+            <div className="w-full flex justify-between w-full max-w-[520px] gap-4">
+              {/* Left Column: Red flow line */}
+              <div className="w-40 flex justify-center">
+                <svg className="w-16 h-full min-h-[300px]" viewBox="0 0 64 100" preserveAspectRatio="none">
+                  <line x1="32" y1="0" x2="32" y2="100" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="4 4" className="flow-line" />
                 </svg>
+              </div>
 
-                {/* Node 5: Hybrid Search */}
-                <div 
-                  className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-60 text-center ${activeNode === 'hybrid_search' ? 'border-cyan-500 bg-white/10 ring-1 ring-cyan-500/50' : 'border-white/10'}`}
-                  onMouseEnter={() => setActiveNode('hybrid_search')}
-                  onMouseLeave={() => setActiveNode(null)}
-                >
-                  <div className="font-bold text-cyan-400 flex items-center justify-center gap-2">
-                    <Search size={18} />
-                    <span>Hybrid Search (Qdrant & BM25)</span>
-                  </div>
-                  <p className="text-xs text-white/50 mt-1">Truy vấn vector & từ khóa</p>
+              {/* Right Column: RAG Main Stream */}
+              <div className="w-[336px] flex justify-between">
+                {/* Yellow flow line under Task Agent */}
+                <div className="w-36 flex justify-center">
+                  <svg className="w-16 h-full min-h-[300px]" viewBox="0 0 64 100" preserveAspectRatio="none">
+                    <line x1="32" y1="0" x2="32" y2="100" stroke="#f59e0b" strokeWidth="2.5" strokeDasharray="6 4" className="flow-line" />
+                  </svg>
                 </div>
 
-                {/* Link Hybrid Search -> Reranker */}
-                <svg className="w-16 h-10" viewBox="0 0 64 40">
-                  <path d="M32 0 V40" stroke="#06b6d4" strokeWidth="2.5" className="flow-line" />
-                  <path d="M28 32 L32 40 L36 32" stroke="#06b6d4" strokeWidth="2" fill="none" />
-                </svg>
+                {/* RAG Main Stream */}
+                <div className="w-36 flex flex-col items-center">
+                  
+                  {/* Link Query Expansion -> Hybrid Search */}
+                  <svg className="w-16 h-8" viewBox="0 0 64 32">
+                    <line x1="32" y1="0" x2="32" y2="32" stroke="#a855f7" strokeWidth="2.5" className="flow-line" />
+                    <path d="M28 26 L32 32 L36 26" stroke="#a855f7" strokeWidth="2" fill="none" />
+                  </svg>
 
-                {/* Node 6: Reranker */}
-                <div 
-                  className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-60 text-center ${activeNode === 'reranker' ? 'border-pink-500 bg-white/10 ring-1 ring-pink-500/50' : 'border-white/10'}`}
-                  onMouseEnter={() => setActiveNode('reranker')}
-                  onMouseLeave={() => setActiveNode(null)}
-                >
-                  <div className="font-bold text-pink-400 flex items-center justify-center gap-2">
-                    <Layers size={18} />
-                    <span>Cohere Reranker</span>
+                  {/* Node 5: Hybrid Search */}
+                  <div 
+                    className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-36 text-center ${activeNode === 'hybrid_search' ? 'border-cyan-500 bg-white/10 ring-1 ring-cyan-500/50' : 'border-white/10'}`}
+                    onMouseEnter={() => setActiveNode('hybrid_search')}
+                    onMouseLeave={() => setActiveNode(null)}
+                  >
+                    <div className="font-bold text-cyan-400 text-[13px] flex items-center justify-center gap-1.5">
+                      <Search size={14} />
+                      <span>Hybrid Search</span>
+                    </div>
+                    <p className="text-[10px] text-white/50 mt-0.5">Truy vấn vector & từ khóa</p>
                   </div>
-                  <p className="text-xs text-white/50 mt-1">Sắp xếp mức độ liên quan</p>
-                </div>
 
-                {/* Link Reranker -> Parent-Child Expansion */}
-                <svg className="w-16 h-10" viewBox="0 0 64 40">
-                  <path d="M32 0 V40" stroke="#ec4799" strokeWidth="2.5" className="flow-line" />
-                  <path d="M28 32 L32 40 L36 32" stroke="#ec4799" strokeWidth="2" fill="none" />
-                </svg>
+                  {/* Link Hybrid Search -> Reranker */}
+                  <svg className="w-16 h-8" viewBox="0 0 64 32">
+                    <line x1="32" y1="0" x2="32" y2="32" stroke="#06b6d4" strokeWidth="2.5" className="flow-line" />
+                    <path d="M28 26 L32 32 L36 26" stroke="#06b6d4" strokeWidth="2" fill="none" />
+                  </svg>
 
-                {/* Node 7: Parent-Child Expansion */}
-                <div 
-                  className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-60 text-center ${activeNode === 'context_expansion' ? 'border-teal-500 bg-white/10 ring-1 ring-teal-500/50' : 'border-white/10'}`}
-                  onMouseEnter={() => setActiveNode('context_expansion')}
-                  onMouseLeave={() => setActiveNode(null)}
-                >
-                  <div className="font-bold text-teal-400 flex items-center justify-center gap-2">
-                    <Layers size={18} />
-                    <span>Parent-Child Expansion</span>
+                  {/* Node 6: Reranker */}
+                  <div 
+                    className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-36 text-center ${activeNode === 'reranker' ? 'border-pink-500 bg-white/10 ring-1 ring-pink-500/50' : 'border-white/10'}`}
+                    onMouseEnter={() => setActiveNode('reranker')}
+                    onMouseLeave={() => setActiveNode(null)}
+                  >
+                    <div className="font-bold text-pink-400 text-[13px] flex items-center justify-center gap-1.5">
+                      <Layers size={14} />
+                      <span>Cohere Reranker</span>
+                    </div>
+                    <p className="text-[10px] text-white/50 mt-0.5">Sắp xếp liên quan</p>
                   </div>
-                  <p className="text-xs text-white/50 mt-1">Mở rộng ngữ cảnh & gộp chunk</p>
-                </div>
 
-                {/* Link Context Expansion -> LLM */}
-                <svg className="w-16 h-10" viewBox="0 0 64 40">
-                  <path d="M32 0 V40" stroke="#14b8a6" strokeWidth="2.5" className="flow-line" />
-                  <path d="M28 32 L32 40 L36 32" stroke="#14b8a6" strokeWidth="2" fill="none" />
-                </svg>
+                  {/* Link Reranker -> Parent-Child Expansion */}
+                  <svg className="w-16 h-8" viewBox="0 0 64 32">
+                    <line x1="32" y1="0" x2="32" y2="32" stroke="#ec4799" strokeWidth="2.5" className="flow-line" />
+                    <path d="M28 26 L32 32 L36 26" stroke="#ec4799" strokeWidth="2" fill="none" />
+                  </svg>
 
-                {/* Node 8: LLM */}
-                <div 
-                  className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-60 text-center ${activeNode === 'llm_gen' ? 'border-violet-500 bg-white/10 ring-1 ring-violet-500/50' : 'border-white/10'}`}
-                  onMouseEnter={() => setActiveNode('llm_gen')}
-                  onMouseLeave={() => setActiveNode(null)}
-                >
-                  <div className="font-bold text-violet-400 flex items-center justify-center gap-2">
-                    <Sparkles size={18} />
-                    <span>LLM Generation (Gemini)</span>
+                  {/* Node 7: Parent-Child Expansion */}
+                  <div 
+                    className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-36 text-center ${activeNode === 'context_expansion' ? 'border-teal-500 bg-white/10 ring-1 ring-teal-500/50' : 'border-white/10'}`}
+                    onMouseEnter={() => setActiveNode('context_expansion')}
+                    onMouseLeave={() => setActiveNode(null)}
+                  >
+                    <div className="font-bold text-teal-400 text-[13px] flex items-center justify-center gap-1.5">
+                      <Layers size={14} />
+                      <span>Parent-Child Expansion</span>
+                    </div>
+                    <p className="text-[10px] text-white/50 mt-0.5">Mở rộng ngữ cảnh</p>
                   </div>
-                  <p className="text-xs text-white/50 mt-1">Tổng hợp & sinh câu trả lời</p>
-                </div>
 
+                  {/* Link Context Expansion -> LLM */}
+                  <svg className="w-16 h-8" viewBox="0 0 64 32">
+                    <line x1="32" y1="0" x2="32" y2="32" stroke="#14b8a6" strokeWidth="2.5" className="flow-line" />
+                    <path d="M28 26 L32 32 L36 26" stroke="#14b8a6" strokeWidth="2" fill="none" />
+                  </svg>
+
+                  {/* Node 8: LLM */}
+                  <div 
+                    className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-36 text-center ${activeNode === 'llm_gen' ? 'border-violet-500 bg-white/10 ring-1 ring-violet-500/50' : 'border-white/10'}`}
+                    onMouseEnter={() => setActiveNode('llm_gen')}
+                    onMouseLeave={() => setActiveNode(null)}
+                  >
+                    <div className="font-bold text-violet-400 text-[13px] flex items-center justify-center gap-1.5">
+                      <Sparkles size={14} />
+                      <span>LLM (Gemini)</span>
+                    </div>
+                    <p className="text-[10px] text-white/50 mt-0.5">Sinh câu trả lời</p>
+                  </div>
+
+                </div>
               </div>
             </div>
 
             {/* Merge Links back to Output */}
-            <div className="w-full flex justify-center h-16 relative">
-              <svg className="w-[500px] h-16" viewBox="0 0 500 64" preserveAspectRatio="none">
-                {/* Flow from Task Agent down & right to Output */}
-                <path d="M125 0 V24 H250 V64" stroke="#f59e0b" strokeWidth="2" className="flow-line" fill="none" />
-                <path d="M246 56 L250 64 L254 56" stroke="#f59e0b" strokeWidth="2" fill="none" />
+            <div className="w-full flex justify-center h-12 relative max-w-[520px]">
+              <svg className="w-[520px] h-12" viewBox="0 0 520 48" preserveAspectRatio="none">
+                {/* Flow from Block Violation (red) */}
+                <path d="M80 0 V16 H260 V48" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 4" className="flow-line" fill="none" />
+                <path d="M256 42 L260 48 L264 42" stroke="#ef4444" strokeWidth="2" fill="none" />
 
-                {/* Flow from LLM (centered at right col, which is approx at x=375) down & left to Output */}
-                <path d="M375 0 V24 H250 V64" stroke="#8b5cf6" strokeWidth="2" className="flow-line" fill="none" />
-                <path d="M246 56 L250 64 L254 56" stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                {/* Flow from Task Agent (orange) */}
+                <path d="M256 0 V16 H260 V48" stroke="#f59e0b" strokeWidth="2" className="flow-line" fill="none" />
+                <path d="M256 42 L260 48 L264 42" stroke="#f59e0b" strokeWidth="2" fill="none" />
+
+                {/* Flow from LLM (purple) */}
+                <path d="M448 0 V16 H260 V48" stroke="#8b5cf6" strokeWidth="2" className="flow-line" fill="none" />
+                <path d="M256 42 L260 48 L264 42" stroke="#8b5cf6" strokeWidth="2" fill="none" />
               </svg>
             </div>
 
+            {/* Node 8.5: Output Guardrail */}
+            <div 
+              className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-48 text-center ${activeNode === 'output_guardrail' ? 'border-rose-500 bg-white/10 ring-1 ring-rose-500/50' : 'border-white/10'}`}
+              onMouseEnter={() => setActiveNode('output_guardrail')}
+              onMouseLeave={() => setActiveNode(null)}
+            >
+              <div className="font-bold text-rose-400 text-[13px] flex items-center justify-center gap-1.5">
+                <Shield size={14} />
+                <span>Output Guardrails</span>
+              </div>
+              <p className="text-[10px] text-white/50 mt-0.5">Kiểm duyệt an toàn đầu ra</p>
+            </div>
+
+            {/* Link 8.5 -> 9 */}
+            <svg className="w-16 h-6" viewBox="0 0 64 24">
+              <line x1="32" y1="0" x2="32" y2="24" stroke="#00c897" strokeWidth="2.5" className="flow-line" />
+              <path d="M28 18 L32 24 L36 18" stroke="#00c897" strokeWidth="2" fill="none" />
+            </svg>
+
             {/* Node 9: Output */}
             <div 
-              className={`glow-card cursor-pointer p-4 rounded-xl border bg-white/5 w-72 text-center ${activeNode === 'output' ? 'border-[#00c897] bg-white/10 ring-1 ring-[#00c897]/50' : 'border-white/10'}`}
+              className={`glow-card cursor-pointer p-2.5 rounded-lg border bg-white/5 w-48 text-center ${activeNode === 'output' ? 'border-[#00c897] bg-white/10 ring-1 ring-[#00c897]/50' : 'border-white/10'}`}
               onMouseEnter={() => setActiveNode('output')}
               onMouseLeave={() => setActiveNode(null)}
             >
-              <div className="font-bold text-[#00c897] flex items-center justify-center gap-2">
-                <MessageSquare size={18} />
+              <div className="font-bold text-[#00c897] text-[13px] flex items-center justify-center gap-1.5">
+                <MessageSquare size={14} />
                 <span>Output Response (SSE)</span>
               </div>
-              <p className="text-xs text-white/50 mt-1">Truyền phát câu trả lời thời gian thực</p>
+              <p className="text-[10px] text-white/50 mt-0.5">Truyền phát thời gian thực</p>
             </div>
 
           </div>

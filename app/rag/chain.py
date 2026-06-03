@@ -11,6 +11,7 @@ from app.retrieval.reranker import XanhSMReranker
 from app.rag.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, get_role_display_name, FAITHFULNESS_CHECK_PROMPT
 from app.rag.gateway import XanhSMGateway
 from app.rag.classifier import XanhSMClassifier
+from app.rag.guardrail import OutputGuardrail
 from app.core.config import settings as config
 from app.core.logger import log_info, log_warn, log_error
 
@@ -26,6 +27,7 @@ class XanhSMRAGPipeline:
         self.reranker = XanhSMReranker()
         self.gateway = XanhSMGateway()
         self.classifier = XanhSMClassifier()
+        self.output_guardrail = OutputGuardrail()
         try:
             from app.rag.cache import XanhSMRAGCache
             self.cache = XanhSMRAGCache()
@@ -318,6 +320,12 @@ class XanhSMRAGPipeline:
         else:
             final_answer = self._generate_fallback_answer(rewritten_query, top_docs, role_display)
 
+        # Check safety of final answer before returning
+        if not self.output_guardrail.check_safe(final_answer):
+            final_answer = "Nội dung vi phạm chính sách an toàn của Xanh SM."
+            citations = []
+            intent = "sensitive"
+
         # Cost calculation
         total_prompt = prompt_tokens + nlu_usage.get("prompt_tokens", 0)
         total_comp = completion_tokens + nlu_usage.get("completion_tokens", 0)
@@ -363,7 +371,15 @@ class XanhSMRAGPipeline:
 
     def stream_run(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None):
         """
-        Stream version of the NLU-Gateway RAG chain.
+        Stream version of the NLU-Gateway RAG chain with output guardrail validation.
+        """
+        return self.output_guardrail.sanitize_stream(
+            self._stream_run_raw(query=query, role=role, chat_history=chat_history)
+        )
+
+    def _stream_run_raw(self, query: str, role: str = None, chat_history: List[Dict[str, str]] = None):
+        """
+        Internal raw streaming implementation of the RAG chain.
         """
         t_start = time.time()
         target_role = role.lower() if role else "faq"
