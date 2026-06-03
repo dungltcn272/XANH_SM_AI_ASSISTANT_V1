@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.db.models import Message, ConversationSummary, MemoryFact
+from app.db.models import Message, ConversationSummary
 from datetime import datetime
 
 class MemoryService:

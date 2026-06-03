@@ -65,38 +65,12 @@ class RagRequestLog(Base):
     blocked_by_guardrail = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-class RetrievalLog(Base):
-    __tablename__ = "retrieval_logs"
-    id = Column(String, primary_key=True, default=lambda: generate_id("ret"))
-    request_id = Column(String, ForeignKey("rag_request_logs.id"))
-    chunk_id = Column(String) # ID bên Qdrant
-    score = Column(Float)
-    rank = Column(Integer)
-
-class EvaluationScore(Base):
-    __tablename__ = "evaluation_scores"
-    id = Column(String, primary_key=True, default=lambda: generate_id("eval"))
-    request_id = Column(String, ForeignKey("rag_request_logs.id"))
-    faithfulness = Column(Float, nullable=True)
-    context_precision = Column(Float, nullable=True)
-    answer_relevancy = Column(Float, nullable=True)
-    evaluated_at = Column(DateTime(timezone=True), server_default=func.now())
-
 class ConversationSummary(Base):
     __tablename__ = "conversation_summaries"
     id = Column(String, primary_key=True, default=lambda: generate_id("sum"))
     conversation_id = Column(String, ForeignKey("conversations.id"))
     summary = Column(Text, nullable=False)
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
-
-class MemoryFact(Base):
-    __tablename__ = "memory_facts"
-    id = Column(String, primary_key=True, default=lambda: generate_id("fact"))
-    user_id = Column(String, ForeignKey("users.id"), nullable=True)
-    content = Column(Text, nullable=False)
-    importance_score = Column(Float, default=0.0)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
 class SemanticCache(Base):
     __tablename__ = "semantic_cache"
     id = Column(String, primary_key=True, default=lambda: generate_id("cache"))
