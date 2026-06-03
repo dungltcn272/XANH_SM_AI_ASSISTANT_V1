@@ -13,7 +13,10 @@ class VectorDBClient:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(VectorDBClient, cls).__new__(cls)
-            cls._instance.client = QdrantClient(url=settings.QDRANT_URL)
+            cls._instance.client = QdrantClient(
+                url=settings.QDRANT_URL,
+                api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None
+            )
             cls._instance.dense_model = get_embedding_model()
             cls._instance.sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
         return cls._instance
