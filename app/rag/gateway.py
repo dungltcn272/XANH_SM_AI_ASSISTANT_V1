@@ -132,9 +132,9 @@ class XanhSMGateway:
         tokens = q_no_accent.split()
         is_short = len(tokens) <= 6
 
-        is_greet = any(q_no_accent == phrase or q_no_accent.startswith(phrase + " ") or phrase in q_no_accent for phrase in greeting_phrases) and is_short
-        is_thank = any(phrase in q_no_accent for phrase in thanks_phrases) and is_short
-        is_farewell = any(phrase in q_no_accent for phrase in farewell_phrases) and is_short
+        is_greet = any(re.search(rf'\b{phrase}\b', q_no_accent) for phrase in greeting_phrases) and is_short
+        is_thank = any(re.search(rf'\b{phrase}\b', q_no_accent) for phrase in thanks_phrases) and is_short
+        is_farewell = any(re.search(rf'\b{phrase}\b', q_no_accent) for phrase in farewell_phrases) and is_short
 
         if not (is_greet or is_thank or is_farewell):
             if len(tokens) <= 4:

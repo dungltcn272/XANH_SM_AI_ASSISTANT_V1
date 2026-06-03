@@ -1,0 +1,68 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "secondary": "#006a68",
+        "surface-container-lowest": "var(--surface-container-lowest)",
+        "primary": "#006c50",
+        "primary-fixed": "#60fcc7",
+        "on-secondary-container": "#006e6c",
+        "tertiary-fixed": "#d2e4ff",
+        "on-secondary": "#ffffff",
+        "on-primary": "#ffffff",
+        "on-secondary-fixed": "#00201f",
+        "on-primary-container": "#004d38",
+        "on-tertiary-fixed": "#001c37",
+        "on-tertiary": "#ffffff",
+        "surface-container": "var(--surface-container)",
+        "outline": "var(--outline)",
+        "surface-tint": "#006c50",
+        "primary-fixed-dim": "#3adfac",
+        "tertiary-fixed-dim": "#b0c8eb",
+        "on-tertiary-fixed-variant": "#314865",
+        "inverse-primary": "#3adfac",
+        "secondary-fixed-dim": "#1bddd9",
+        "surface-bright": "#f8f9ff",
+        "surface-dim": "#cbdbf5",
+        "surface-variant": "#d3e4fe",
+        "inverse-surface": "#213145",
+        "tertiary": "#49607e",
+        "secondary-container": "#4df6f2",
+        "error-container": "#ffdad6",
+        "on-primary-fixed": "#002116",
+        "surface-container-high": "var(--surface-container-high)",
+        "inverse-on-surface": "#eaf1ff",
+        "tertiary-container": "#9bb2d4",
+        "background": "var(--background)",
+        "surface": "var(--surface)",
+        "on-error": "#ffffff",
+        "error": "#ba1a1a",
+        "on-secondary-fixed-variant": "#00504e",
+        "on-tertiary-container": "#2d4561",
+        "on-background": "var(--on-background)",
+        "outline-variant": "var(--outline-variant)",
+        "secondary-fixed": "#51f9f5",
+        "on-error-container": "#93000a",
+        "surface-container-low": "var(--surface-container-low)",
+        "primary-container": "#00c897",
+        "surface-container-highest": "var(--surface-container-highest)",
+        "on-primary-fixed-variant": "#00513b",
+        "on-surface-variant": "var(--on-surface-variant)",
+        "on-surface": "var(--on-surface)"
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+      }
+    },
+  },
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/container-queries')
+  ],
+}

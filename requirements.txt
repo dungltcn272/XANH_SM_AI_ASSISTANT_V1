@@ -3,7 +3,8 @@ uvicorn
 pydantic
 requests
 beautifulsoup4
-chromadb
+markdownify
+qdrant-client
 rank-bm25
 langchain
 langchain-community
@@ -13,9 +14,19 @@ langgraph
 openai
 numpy
 markdown
-ragas
-streamlit
-graphviz
 psycopg2-binary
-pypdf
-
+sqlalchemy
+pymupdf
+pymupdf4llm
+easyocr
+langchain-qdrant
+python-jose[cryptography]
+passlib[bcrypt]
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+pydantic-settings
+fastembed
+sentence-transformers
+cohere
+## flashrank

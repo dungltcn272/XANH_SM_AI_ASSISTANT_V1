@@ -1,191 +1,171 @@
 from typing import List, Dict, Any
 from langchain_core.documents import Document
-from app.vectordb.chroma_client import XanhSMVectorDB
-from app.retrieval.bm25_retriever import XanhSMBM25Retriever
+from app.vectordb.qdrant_client import vectordb
 from app.retrieval.multi_query import XanhSMQueryExpansion
-from app.config import config
+from app.core.logger import log_info, log_warn, log_error
 
 class XanhSMHybridSearch:
     """
-    State-of-the-art Hybrid Search pipeline:
-    Query Expansion ➔ Dense Search (Chroma) + Sparse Search (BM25) ➔ Reciprocal Rank Fusion (RRF).
+    Hybrid Search pipeline tối ưu (Phase 4):
+    Sử dụng trực tiếp Qdrant Hybrid Search (Dense + Sparse/BM25) tích hợp sẵn RRF Fusion.
     """
     
     def __init__(self):
-        self.db = XanhSMVectorDB()
-        self.bm25_retriever = XanhSMBM25Retriever()
+        self.db = vectordb
         self.expander = XanhSMQueryExpansion()
-        self.splitter = None
-        
-        # Fit BM25 corpus on initialization
-        self._fit_bm25_corpus()
 
-    def _fit_bm25_corpus(self):
+    def expand_context(self, base_docs: List[Document]) -> List[Document]:
         """
-        Loads pre-split chunks from static JSON file for instant startup,
-        otherwise falls back to parsing and splitting raw data directories.
+        Chiến thuật Parent-Child Retrieval tùy biến động theo điểm số Rerank:
+        1. Ngưỡng mở rộng: Rerank Score >= 0.7.
+        2. Nếu chunk đạt điểm >= 0.7, tiến hành truy vấn Qdrant lấy toàn bộ các chunk lân cận
+           có chung parent_chunk_id (giới hạn tối đa 10 chunks) để tái cấu trúc trọn vẹn mục lớn.
+        3. Ghép các chunk con liên tiếp bằng '\n\n', loại bỏ tiêu đề lặp lại ở các chunk con thứ cấp (idx > 0).
+        4. Nếu chunk có điểm < 0.7, giữ nguyên để tránh phình to prompt.
+        5. Đảm bảo loại bỏ trùng lặp nếu chunk thô đã nằm trong một mục lớn đã được mở rộng.
         """
-        import os
-        import json
-        
-        persist_dir = os.path.abspath(config.CHROMA_PERSIST_DIR)
-        chunks_file = os.path.join(persist_dir, "bm25_corpus.json")
-        chunks = []
-        loaded_from_static = False
-        
-        # 1. Attempt to load from static JSON file
-        if os.path.exists(chunks_file):
-            print(f"[INFO] Loading pre-split document chunks from static file: {chunks_file}")
+        from qdrant_client.http import models as qdrant_models
+        from app.vectordb.qdrant_client import COLLECTION_NAME
+
+        EXPANSION_THRESHOLD = 0.7
+        MAX_CHUNKS_PER_SECTION = 10
+
+        # Phân loại tài liệu
+        docs_to_expand = []
+        docs_to_keep = []
+
+        for doc in base_docs:
+            parent_id = doc.metadata.get("parent_chunk_id")
+            score = doc.metadata.get("rerank_score", 0.0)
+            
+            if parent_id and score >= EXPANSION_THRESHOLD:
+                docs_to_expand.append(doc)
+            else:
+                docs_to_keep.append(doc)
+
+        expanded_docs = []
+        covered_chunk_ids = set()
+
+        # Nhóm docs_to_expand theo parent_chunk_id
+        parent_groups = {}
+        for doc in docs_to_expand:
+            pid = doc.metadata.get("parent_chunk_id")
+            if pid not in parent_groups:
+                parent_groups[pid] = []
+            parent_groups[pid].append(doc)
+
+        # Xử lý các nhóm cần mở rộng Parent-Child
+        for pid, group_docs in parent_groups.items():
+            # Chọn base doc tốt nhất để lấy metadata
+            best_doc = max(group_docs, key=lambda x: x.metadata.get("rerank_score", 0.0))
+            section_name = best_doc.metadata.get("section", "")
+            url = best_doc.metadata.get("url", "")
+
             try:
-                with open(chunks_file, "r", encoding="utf-8") as f:
-                    serialized_chunks = json.load(f)
-                    
-                for c in serialized_chunks:
-                    chunks.append(Document(
-                        page_content=c["page_content"],
-                        metadata=c["metadata"]
-                    ))
-                print(f"[SUCCESS] Loaded {len(chunks)} chunks instantly from static file.")
-                loaded_from_static = True
+                log_info("RETRIEVAL", f"Parent-Child: Scrolling chunks for parent={pid} (section={section_name})")
+                q_filter = qdrant_models.Filter(
+                    must=[
+                        qdrant_models.FieldCondition(
+                            key="metadata.parent_chunk_id",
+                            match=qdrant_models.MatchValue(value=pid)
+                        )
+                    ]
+                )
+                results = self.db.qdrant.scroll(
+                    collection_name=COLLECTION_NAME,
+                    scroll_filter=q_filter,
+                    limit=MAX_CHUNKS_PER_SECTION,
+                    with_payload=True,
+                    with_vectors=False
+                )[0]
+                log_info("RETRIEVAL", f"Scroll returned {len(results)} chunks for parent={pid}.")
             except Exception as e:
-                print(f"[WARN] Failed to load static chunks file: {e}. Falling back to parsing.")
-                chunks = []
-                
-        # 2. Dynamic Fallback: If static load failed or file missing, parse directories
-        if not loaded_from_static:
-            # --- Resilient Auto-Sync for Persistent Railway Volume ---
-            import shutil
-            
-            default_data_dir = "./data"
-            target_data_dir = config.DATA_DIR
-            
-            abs_default = os.path.abspath(default_data_dir)
-            abs_target = os.path.abspath(target_data_dir)
-            
-            if abs_default != abs_target:
-                has_files = False
-                if os.path.exists(abs_target):
-                    for root, dirs, files in os.walk(abs_target):
-                        if files:
-                            has_files = True
-                            break
-                
-                if not has_files and os.path.exists(abs_default):
-                    print(f"[INFO] Target DATA_DIR '{target_data_dir}' is empty. Copying default bundled files from '{default_data_dir}'...")
-                    try:
-                        os.makedirs(abs_target, exist_ok=True)
-                        for item in os.listdir(abs_default):
-                            s = os.path.join(abs_default, item)
-                            d = os.path.join(abs_target, item)
-                            if os.path.isdir(s):
-                                shutil.copytree(s, d, dirs_exist_ok=True)
-                            else:
-                                shutil.copy2(s, d)
-                        print("[OK] Bundled files copied to persistent volume successfully!")
-                    except Exception as e:
-                        print(f"[WARN] Failed to copy default files: {e}")
-            # ---------------------------------------------------------
-            
-            print("[INFO] Loading files to build BM25 sparse index dynamically...")
-            try:
-                # Dynamic lazy import to prevent C++ / DLL conflicts on Windows during startup
-                from app.ingestion.splitter import HeadingAwareSplitter
-                self.splitter = HeadingAwareSplitter()
-                chunks = self.splitter.split_directory(config.DATA_DIR)
-                
-                # Save static file for subsequent startups
-                try:
-                    os.makedirs(persist_dir, exist_ok=True)
-                    serializable = [{"page_content": doc.page_content, "metadata": doc.metadata} for doc in chunks]
-                    with open(chunks_file, "w", encoding="utf-8") as f:
-                        json.dump(serializable, f, ensure_ascii=False, indent=2)
-                    print(f"[INFO] Saved static chunks cache for next startup: {chunks_file}")
-                except Exception as ex:
-                    print(f"[WARN] Failed to save static cache on fallback: {ex}")
-            except Exception as e:
-                print(f"[ERROR] Failed to build BM25 corpus dynamically: {e}")
+                log_error("RETRIEVAL", f"Failed to scroll parent chunks for {pid}: {e}")
+                # Fallback: dùng lại các tài liệu gốc trong nhóm này
+                for d in group_docs:
+                    c_id = d.metadata.get("chunk_id")
+                    if c_id:
+                        covered_chunk_ids.add(c_id)
+                expanded_docs.extend(group_docs)
+                continue
 
-        # 3. Fit retriever and populate database if fallback
-        if chunks:
-            try:
-                self.bm25_retriever.fit(chunks)
-                
-                # Resilient auto-load for Fallback Vector DB on startup
-                if config.CHROMA_PROVIDER == "fallback":
-                    self.db.clear()
-                    self.db.add_documents(chunks)
-                elif config.CHROMA_PROVIDER == "chromadb":
-                    from langchain_community.vectorstores import Chroma
-                    if self.db._vector_store and isinstance(self.db._vector_store, Chroma):
-                        try:
-                            count = self.db._vector_store._collection.count()
-                            if count == 0:
-                                print("[INFO] Chroma DB is empty on startup. Automatically populating from preloaded data...")
-                                self.db.add_documents(chunks)
-                                print("[OK] Smart auto-ingestion completed on startup!")
-                        except Exception as ex:
-                            print(f"[WARN] Failed to auto-populate Chroma DB: {ex}")
-            except Exception as e:
-                print(f"[ERROR] Failed to fit BM25 or populate vector DB: {e}")
+            if not results:
+                # Fallback nếu rỗng
+                for d in group_docs:
+                    c_id = d.metadata.get("chunk_id")
+                    if c_id:
+                        covered_chunk_ids.add(c_id)
+                expanded_docs.extend(group_docs)
+                continue
 
-    def reciprocal_rank_fusion(self, dense_runs: List[List[Document]], sparse_runs: List[List[Document]], k: int = 60) -> List[Document]:
-        """
-        Reciprocal Rank Fusion (RRF) algorithm.
-        Merges multi-run dense and sparse retrieval ranks into a single scoring system.
-        """
-        rrf_scores: Dict[str, float] = {}
-        doc_map: Dict[str, Document] = {}
-        
-        # Helper function to process individual runs
-        def process_run(run_results: List[Document]):
-            for rank, doc in enumerate(run_results):
-                doc_id = doc.metadata.get("chunk_id") or doc.metadata.get("id") or doc.page_content[:100]
-                doc_map[doc_id] = doc
-                
-                score = 1.0 / (k + rank + 1)
-                rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + score
+            # Sắp xếp các chunk con theo thứ tự index tăng dần
+            results.sort(key=lambda x: x.payload.get("metadata", {}).get("chunk_index", 0))
 
-        for run in dense_runs:
-            process_run(run)
-        for run in sparse_runs:
-            process_run(run)
+            block_contents = []
+            for i, r in enumerate(results):
+                content = r.payload.get("page_content", "").strip()
+                c_id = r.payload.get("metadata", {}).get("chunk_id")
+                if c_id:
+                    covered_chunk_ids.add(c_id)
+
+                if not content:
+                    continue
+
+                # Loại bỏ tiêu đề lặp lại ở các chunk thứ cấp (idx > 0)
+                c_idx = r.payload.get("metadata", {}).get("chunk_index", 0)
+                if c_idx > 0 and section_name and section_name != "Introduction":
+                    prefix = f"### {section_name}"
+                    if content.startswith(prefix):
+                        content = content[len(prefix):].strip()
+
+                block_contents.append(content)
+
+            merged_content = "\n\n".join(block_contents)
             
-        if not rrf_scores:
-            return []
-            
-        sorted_ids = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
-        
-        merged_docs = []
-        for doc_id, score in sorted_ids:
-            doc = doc_map[doc_id]
-            copied_doc = Document(
-                page_content=doc.page_content,
-                metadata=doc.metadata.copy()
+            merged_doc = Document(
+                page_content=merged_content,
+                metadata=best_doc.metadata.copy()
             )
-            copied_doc.metadata["rrf_score"] = score
-            merged_docs.append(copied_doc)
-            
-        return merged_docs
+            expanded_docs.append(merged_doc)
+            log_info("RETRIEVAL", f"Expanded parent section for {url} (parent={pid})")
+
+        # Xử lý các tài liệu giữ nguyên (không mở rộng)
+        for doc in docs_to_keep:
+            c_id = doc.metadata.get("chunk_id")
+            # Chỉ thêm nếu chunk này chưa được gộp trong bất kỳ khối parent-child nào ở trên
+            if not c_id or c_id not in covered_chunk_ids:
+                expanded_docs.append(doc)
+                if c_id:
+                    covered_chunk_ids.add(c_id)
+
+        # Sắp xếp lại theo điểm số rerank giảm dần để bảo toàn độ liên quan chính xác
+        expanded_docs.sort(key=lambda x: x.metadata.get("rerank_score", 0.0), reverse=True)
+
+        return expanded_docs
+
 
     def search(self, query: str, role: str = None, limit: int = 25, expanded_queries: List[str] = None) -> List[Document]:
         """
-        Runs Multi-Query Expansion, Hybrid Retrieval, and fuses scores.
+        Chạy Multi-Query Expansion, sau đó gọi trực tiếp Hybrid Search của Qdrant 
+        cho từng query và gom kết quả. Tiếp theo mở rộng ngữ cảnh (Adjacent Context).
         """
         if expanded_queries is None:
             expanded_queries = self.expander.get_queries(query)
-        print(f"[INFO] Expanded queries for search: {expanded_queries}")
+        log_info("RETRIEVAL", f"Expanded queries for search: {expanded_queries}")
         
-        dense_runs: List[List[Document]] = []
-        sparse_runs: List[List[Document]] = []
+        # Dùng set để deduplicate theo chunk_id
+        all_docs_map = {}
         
         for q in expanded_queries:
-            dense_res = self.db.search(query=q, k=limit, role=role)
-            dense_runs.append(dense_res)
-            
-            sparse_res = self.bm25_retriever.search(query=q, k=limit, role=role)
-            sparse_runs.append(sparse_res)
-            
-        fused_docs = self.reciprocal_rank_fusion(dense_runs, sparse_runs)
+            # db.hybrid_search gọi thẳng API Qdrant (Prefetch Dense + Sparse -> RRF)
+            fused_docs = self.db.hybrid_search(query=q, limit=limit, role=role)
+            for doc in fused_docs:
+                doc_id = doc.metadata.get("chunk_id", doc.page_content[:50])
+                if doc_id not in all_docs_map:
+                    all_docs_map[doc_id] = doc
+                    
+        unique_docs = list(all_docs_map.values())
         
-        print(f"[SUCCESS] Hybrid Search matched {len(fused_docs)} unified documents.")
-        return fused_docs[:limit]
+        log_info("RETRIEVAL", f"Native Qdrant Hybrid Search returned {len(unique_docs)} unique documents.")
+        
+        return unique_docs[:limit]
