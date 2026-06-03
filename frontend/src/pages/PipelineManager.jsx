@@ -166,7 +166,7 @@ export default function PipelineManager() {
         desc: "Hệ thống sử dụng mô hình NLU Gateway nâng cao kết hợp RAG thông minh (Parent-Child Expansion & Reranker) và Guardrails an toàn.",
         details: "Di chuột qua bất kỳ hộp quy trình nào trong sơ đồ để xem mô tả chi tiết, chức năng và cơ chế hoạt động của từng công đoạn.",
         icon: Brain,
-        color: "border-primary text-primary",
+        color: "border-[#00c897] text-[#00c897]",
         status: "Online"
       };
     }
@@ -184,7 +184,7 @@ export default function PipelineManager() {
     setLoadingDebug(true);
     setDebugError("");
     try {
-      const data = await api.testPipeline(testQuery, testRole);
+      const data = await api.testPipeline(testQuery, 'faq');
       setDebugData(data);
       setIsDebugMode(true);
       setDebugStepIndex(0); // Start at user_input
@@ -681,34 +681,21 @@ export default function PipelineManager() {
       </div>
 
       {/* RAG Pipeline Debugger Panel */}
-      <div className="bg-[#0d1527]/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 mb-8 shadow-xl relative overflow-hidden">
+      <div className="bg-[#070c18] border border-white/10 rounded-3xl p-6 mb-8 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
         
         <form onSubmit={handleStartDebug} className="flex flex-col md:flex-row gap-4 items-end relative z-10">
           <div className="flex-1 w-full">
-            <label className="block text-xs font-bold text-primary uppercase tracking-wider mb-2">Nhập câu hỏi thử nghiệm</label>
+            <label className="block text-xs font-bold text-[#00c897] uppercase tracking-wider mb-2">Nhập câu hỏi thử nghiệm</label>
             <input 
               type="text" 
               value={testQuery}
               onChange={(e) => setTestQuery(e.target.value)}
               disabled={loadingDebug}
               placeholder="Ví dụ: Phí hủy chuyến xe VF 8 là bao nhiêu? / xin chào chatbot..."
-              className="w-full bg-white/10 border border-white/20 focus:border-primary/50 text-white placeholder-white/40 rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
+              className="w-full bg-white/10 border border-white/20 focus:border-[#00c897]/50 text-white placeholder-white/40 rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
             />
-          </div>
-          
-          <div className="w-full md:w-48">
-            <label className="block text-xs font-bold text-primary uppercase tracking-wider mb-2">Vai trò (Role)</label>
-            <select
-              value={testRole}
-              onChange={(e) => setTestRole(e.target.value)}
-              disabled={loadingDebug}
-              className="w-full bg-white/10 border border-white/20 focus:border-primary/50 text-white rounded-xl px-3 py-3 text-sm focus:outline-none cursor-pointer transition-all"
-            >
-              <option value="faq">faq (Hỏi đáp chính sách)</option>
-              <option value="driver">driver (Tài xế/Đối tác)</option>
-            </select>
           </div>
           
           <button 
@@ -717,7 +704,7 @@ export default function PipelineManager() {
             className={`w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
               loadingDebug 
                 ? 'bg-white/10 text-white/75 cursor-not-allowed'
-                : 'bg-primary hover:bg-primary-hover text-[#0d1527] shadow-[0_0_15px_rgba(0,200,151,0.25)] hover:shadow-[0_0_20px_rgba(0,200,151,0.4)] hover:scale-[1.02]'
+                : 'bg-[#00c897] hover:bg-[#00b084] text-[#090e17] shadow-[0_0_15px_rgba(0,200,151,0.25)] hover:shadow-[0_0_20px_rgba(0,200,151,0.4)] hover:scale-[1.02]'
             }`}
           >
             {loadingDebug ? (
@@ -745,12 +732,12 @@ export default function PipelineManager() {
         {isDebugMode && debugData && (
           <div className="mt-6 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
             <div className="flex items-center gap-3">
-              <span className="px-3 py-1 bg-primary/20 border border-primary/30 text-primary text-xs font-bold rounded-full">
+              <span className="px-3 py-1 bg-[#00c897]/20 border border-[#00c897]/30 text-[#00c897] text-xs font-bold rounded-full">
                 Debug Session Active
               </span>
               <span className="text-xs text-white/90 font-sans">
                 Bước <strong className="text-white font-mono">{debugStepIndex + 1}/{debugSteps.length}</strong>:{" "}
-                <span className="font-bold text-primary font-sans">{NODES[debugSteps[debugStepIndex]]?.title.replace(/^\d+\.\s*/, '')}</span>
+                <span className="font-bold text-[#00c897] font-sans">{NODES[debugSteps[debugStepIndex]]?.title.replace(/^\d+\.\s*/, '')}</span>
               </span>
             </div>
             
@@ -767,7 +754,7 @@ export default function PipelineManager() {
               <button 
                 onClick={handleNextStep}
                 disabled={debugStepIndex === debugSteps.length - 1}
-                className="flex items-center gap-1.5 px-3 py-2 bg-primary text-[#0d1527] hover:bg-primary-hover disabled:bg-white/10 disabled:text-white/60 border border-white/5 rounded-lg text-xs font-bold transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#00c897] text-[#090e17] hover:bg-[#00b084] disabled:bg-white/10 disabled:text-white/60 border border-white/5 rounded-lg text-xs font-bold transition-colors"
               >
                 <span>Tiếp theo</span>
                 <ArrowRight size={13} />
@@ -792,7 +779,7 @@ export default function PipelineManager() {
         <div className="xl:col-span-8 rounded-3xl border border-outline-variant/20 dark:border-white/10 overflow-hidden flex flex-col bg-[#0b121e] p-6 md:p-8 shadow-2xl relative">
           
           {isDebugMode && (
-            <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[10px] text-primary bg-primary/5 border border-primary/20 px-2.5 py-1 rounded-md font-sans">
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[10px] text-[#00c897] bg-[#00c897]/5 border border-[#00c897]/20 px-2.5 py-1 rounded-md font-sans">
               <Info size={10} />
               <span>Click vào node được kích hoạt để xem chi tiết Runtime dữ liệu</span>
             </div>
@@ -1198,7 +1185,7 @@ export default function PipelineManager() {
               
               <div className="space-y-5">
                 <div>
-                  <h4 className="text-xs font-bold text-primary uppercase tracking-widest mb-1.5">Mô tả công việc</h4>
+                  <h4 className="text-xs font-bold text-[#00c897] uppercase tracking-widest mb-1.5">Mô tả công việc</h4>
                   <p className="text-sm text-white/80 leading-relaxed font-medium font-sans">{activeInfo.desc}</p>
                 </div>
 
@@ -1211,12 +1198,12 @@ export default function PipelineManager() {
 
                 {/* Direct Instruction for Debug details */}
                 {isDebugMode && debugData && debugSteps.includes(effectiveActiveNode) && (
-                  <div className="bg-primary/5 border border-primary/20 p-4 rounded-xl text-center">
-                    <span className="text-xs font-bold text-primary block mb-1">CÓ DỮ LIỆU THỬ NGHIỆM</span>
+                  <div className="bg-[#00c897]/5 border border-[#00c897]/20 p-4 rounded-xl text-center">
+                    <span className="text-xs font-bold text-[#00c897] block mb-1">CÓ DỮ LIỆU THỬ NGHIỆM</span>
                     <p className="text-[11px] text-white/90 mb-2">Nhấn trực tiếp vào hộp Node trên sơ đồ để mở Dialog xem chi tiết Input và Output.</p>
                     <button 
                       onClick={() => handleNodeClick(effectiveActiveNode)}
-                      className="px-3 py-1.5 bg-primary text-[#0d1527] rounded-lg text-xs font-bold hover:bg-primary-hover transition-colors inline-flex items-center gap-1"
+                      className="px-3 py-1.5 bg-[#00c897] text-[#090e17] rounded-lg text-xs font-bold hover:bg-[#00b084] transition-colors inline-flex items-center gap-1"
                     >
                       <Code size={12} />
                       <span>Xem dữ liệu Node</span>
@@ -1287,7 +1274,7 @@ export default function PipelineManager() {
 
               {/* Documentation/Architecture Section */}
               <div className="space-y-3 pt-4 border-t border-white/5 font-sans">
-                <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#00c897] uppercase tracking-wider">
                   <Info size={14} />
                   <span>MÔ TẢ KIẾN TRÚC (SPECIFICATIONS)</span>
                 </div>
