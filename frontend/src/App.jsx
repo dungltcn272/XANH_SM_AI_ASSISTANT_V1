@@ -41,11 +41,20 @@ function MainLayout({ children }) {
   }, []);
 
   useEffect(() => {
-    if (user?.type === 'user') {
-      api.getConversations().then(setConversations).catch(console.error);
-    } else {
-      setConversations([]);
-    }
+    const fetchConvs = () => {
+      if (user?.type === 'user') {
+        api.getConversations().then(setConversations).catch(console.error);
+      } else {
+        setConversations([]);
+      }
+    };
+    
+    fetchConvs();
+    
+    window.addEventListener('refresh-conversations', fetchConvs);
+    return () => {
+      window.removeEventListener('refresh-conversations', fetchConvs);
+    };
   }, [user]);
 
   const toggleTheme = () => {
@@ -73,7 +82,13 @@ function MainLayout({ children }) {
       {/* Sidebar for Guest/User Chat */}
       {!isAdmin && (
         <div className="w-72 bg-surface-container-lowest/60 backdrop-blur-xl border-r border-outline-variant/30 flex flex-col p-6 z-10 shadow-lg shrink-0 hidden md:flex">
-          <div className="flex flex-col gap-1.5 mb-8 items-start">
+          <div 
+            className="flex flex-col gap-1.5 mb-8 items-start cursor-pointer hover:opacity-85 transition-opacity" 
+            onClick={() => {
+              navigate('/');
+              window.dispatchEvent(new Event('refresh-conversations'));
+            }}
+          >
             <img 
               src="/logo.svg" 
               alt="Xanh SM Logo" 
@@ -91,7 +106,13 @@ function MainLayout({ children }) {
               <div className="mt-8">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-xs font-bold tracking-wider text-on-surface-variant/70 uppercase">LỊCH SỬ CHAT</span>
-                  <button onClick={() => navigate('/')} className="text-primary hover:bg-primary/10 p-1 rounded-full transition-colors">
+                  <button 
+                    onClick={() => {
+                      navigate('/');
+                      window.dispatchEvent(new Event('refresh-conversations'));
+                    }} 
+                    className="text-primary hover:bg-primary/10 p-1 rounded-full transition-colors"
+                  >
                     <Plus size={16} />
                   </button>
                 </div>
