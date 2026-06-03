@@ -11,3 +11,10 @@ chroma_db/
 .env.production
 .env.development
 .env.staging
+frontend/
+docs/
+*.md
+**/README.md
+PIPELINE.md
+Procfile
+railway.toml

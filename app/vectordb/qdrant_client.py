@@ -69,9 +69,11 @@ class VectorDBClient:
         docs = []
         for hit in results.points:
             payload = hit.payload or {}
+            meta = payload.get("metadata", {}).copy()
+            meta["score"] = hit.score if hit.score is not None else 0.0
             docs.append(Document(
                 page_content=payload.get("page_content", ""),
-                metadata=payload.get("metadata", {})
+                metadata=meta
             ))
             
         return docs
