@@ -89,6 +89,15 @@ export const api = {
     return res.json();
   },
 
+  deleteAllTableData: async (tableName) => {
+    const res = await fetch(`${API_BASE}/admin/db/table/${tableName}/delete_all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getConversations: async () => {
     const token = api.getAuthToken();
     const headers = {};

@@ -19,6 +19,7 @@ export default function DatabaseManager() {
 
   // Pagination
   const [page, setPage] = useState(0);
+  const [pageInput, setPageInput] = useState('1');
   const limit = 50;
 
   useEffect(() => {
@@ -57,6 +58,11 @@ export default function DatabaseManager() {
     fetchTableData();
   }, [selectedTable, page]);
 
+  // Synchronize pageInput with page state
+  useEffect(() => {
+    setPageInput((page + 1).toString());
+  }, [page]);
+
   const toggleSelectAll = () => {
     if (selectedIds.size === data.length) {
       setSelectedIds(new Set());
@@ -93,11 +99,64 @@ export default function DatabaseManager() {
     setDeleting(false);
   };
 
+  const handleDeleteAll = async () => {
+    if (!selectedTable) return;
+    const confirm1 = window.confirm(`BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ BẢN GHI CỦA BẢNG "${selectedTable}"?\nHành động này sẽ xóa sạch tất cả các dòng dữ liệu và KHÔNG THỂ HOÀN TÁC!`);
+    if (!confirm1) return;
+    
+    const confirm2 = window.prompt(`Để xác nhận xóa toàn bộ bảng, vui lòng nhập chính xác tên bảng: "${selectedTable}"`);
+    if (confirm2 !== selectedTable) {
+      alert("Xác thực tên bảng không chính xác. Đã hủy bỏ thao tác xóa toàn bộ.");
+      return;
+    }
+    
+    setDeleting(true);
+    try {
+      await api.deleteAllTableData(selectedTable);
+      alert(`Đã xóa toàn bộ dữ liệu của bảng "${selectedTable}" thành công.`);
+      setPage(0);
+      // Refresh
+      const res = await api.getTableData(selectedTable, limit, 0);
+      setData(res.data || []);
+      setTotal(res.total || 0);
+      setSelectedIds(new Set());
+    } catch (err) {
+      setError(`Failed to delete all records for table: ${selectedTable}`);
+    }
+    setDeleting(false);
+  };
+
+  // Pagination input handlers
+  const handlePageInputChange = (e) => {
+    setPageInput(e.target.value);
+  };
+
+  const handlePageInputSubmit = () => {
+    let targetPage = parseInt(pageInput, 10);
+    const totalPages = Math.ceil(total / limit) || 1;
+    
+    if (isNaN(targetPage) || targetPage < 1) {
+      targetPage = 1;
+    } else if (targetPage > totalPages) {
+      targetPage = totalPages;
+    }
+    
+    setPage(targetPage - 1);
+    setPageInput(targetPage.toString());
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handlePageInputSubmit();
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-on-surface-variant animate-pulse">Loading database manager...</div>;
   }
 
   const hasIdColumn = columns.includes('id');
+  const totalPages = Math.ceil(total / limit) || 1;
 
   return (
     <div className="max-w-[1600px] mx-auto w-full">
@@ -145,7 +204,15 @@ export default function DatabaseManager() {
 
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => setPage(p => p)} // trigger re-fetch visually by doing nothing if not memoized, wait, actually let's just trigger a reload function
+              onClick={() => {
+                // Refresh table content
+                setDataLoading(true);
+                api.getTableData(selectedTable, limit, page * limit).then(res => {
+                  setData(res.data || []);
+                  setTotal(res.total || 0);
+                  setSelectedIds(new Set());
+                }).catch(() => setError('Failed to refresh table')).finally(() => setDataLoading(false));
+              }}
               className="p-2 rounded-lg bg-surface-variant text-on-surface-variant hover:bg-surface-container-high transition-colors"
               title="Refresh"
             >
@@ -163,6 +230,20 @@ export default function DatabaseManager() {
             >
               {deleting ? <RefreshCw size={18} className="animate-spin" /> : <Trash2 size={18} />}
               Delete Selected ({selectedIds.size})
+            </button>
+
+            <button
+              onClick={handleDeleteAll}
+              disabled={deleting || total === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all shadow-sm ${
+                total > 0
+                  ? 'bg-red-600 hover:bg-red-700 text-white hover:shadow-md'
+                  : 'bg-surface-variant text-on-surface-variant opacity-50 cursor-not-allowed'
+              }`}
+              title="Xóa toàn bộ bản ghi của bảng"
+            >
+              {deleting ? <RefreshCw size={18} className="animate-spin" /> : <Trash2 size={18} />}
+              Delete All
             </button>
           </div>
         </div>
@@ -226,7 +307,8 @@ export default function DatabaseManager() {
           <div>
             Showing {page * limit + 1} to {Math.min((page + 1) * limit, total)} of {total} entries
           </div>
-          <div className="flex gap-2">
+          
+          <div className="flex items-center gap-4">
             <button 
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0}
@@ -234,6 +316,22 @@ export default function DatabaseManager() {
             >
               Prev
             </button>
+
+            <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
+              <span>Trang</span>
+              <input
+                type="number"
+                min="1"
+                max={totalPages}
+                value={pageInput}
+                onChange={handlePageInputChange}
+                onBlur={handlePageInputSubmit}
+                onKeyDown={handleKeyDown}
+                className="w-14 px-2 py-1 text-center bg-surface border border-outline-variant/60 rounded-md focus:outline-none focus:border-primary text-on-surface font-semibold"
+              />
+              <span>/ {totalPages}</span>
+            </div>
+
             <button 
               onClick={() => setPage(p => p + 1)}
               disabled={(page + 1) * limit >= total}

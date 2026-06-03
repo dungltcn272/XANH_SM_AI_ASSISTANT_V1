@@ -235,6 +235,25 @@ Hệ thống được thiết kế để dễ dàng đưa lên Production thông
 5. Railway sẽ tự động detect Python (thông qua `requirements.txt`) và chạy lệnh `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. 
 6. Đối với frontend (`React/Vite`), bạn có thể deploy lên **Vercel**, **Netlify**, hoặc tạo một service tĩnh (Static Site) thứ 2 ngay trong Railway. Đừng quên thay đổi biến `API_BASE` ở `frontend/src/api.js` trỏ về domain backend Railway của bạn!
 
+### 🔑 Hướng Dẫn Cấu Hình Google OAuth & Client ID Khi Deploy
+
+Khi deploy ứng dụng lên môi trường Production (như Vercel, Netlify hoặc tên miền riêng), bạn cần cấu hình trên Google Cloud Console để tránh lỗi **invalid_client (Lỗi 401)**:
+
+1. **Cập nhật Authorized Origins trên Google Cloud Console:**
+   * Truy cập [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials).
+   * Mở xem chi tiết **Client ID Web Application** của bạn.
+   * Tại mục **Authorized JavaScript origins**, hãy bấm **+ Add URI** và điền đầy đủ:
+     * Địa chỉ chạy local: `http://localhost:5173`
+     * Địa chỉ chạy production của frontend: `https://ten-ung-dung-cua-ban.vercel.app` *(Lưu ý: Không viết dấu gạch chéo `/` ở cuối)*
+   * Tại mục **Authorized redirect URIs**, bấm **+ Add URI** và điền tương tự:
+     * `http://localhost:5173`
+     * `https://ten-ung-dung-cua-ban.vercel.app`
+   * Bấm **Save** ở chân trang. *(Thông thường thay đổi sẽ có hiệu lực sau 5-15 phút)*
+
+2. **Cập nhật Biến Môi Trường (Environment Variables) trên hosting:**
+   * **Tại Backend (Railway):** Thêm biến `GOOGLE_CLIENT_ID` trỏ về Client ID Google của bạn.
+   * **Tại Frontend (Vercel/Netlify/Railway):** Thêm biến `VITE_GOOGLE_CLIENT_ID` trỏ về cùng Client ID Google của bạn để Vite có thể nhúng và biên dịch nút đăng nhập lúc đóng gói.
+
 ---
 
 ## 🧪 6. Quy Trình Chạy Đánh Giá Chất Lượng RAG (Ragas Benchmark)

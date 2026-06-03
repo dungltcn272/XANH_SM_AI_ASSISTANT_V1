@@ -6,13 +6,42 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: #f8f9ff;
+    --on-background: #0b1c30;
+    --surface: #f8f9ff;
+    --on-surface: #0b1c30;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #eff4ff;
+    --surface-container: #e5eeff;
+    --surface-container-high: #dce9ff;
+    --surface-container-highest: #d3e4fe;
+    --outline-variant: #bacac1;
+    --on-surface-variant: #3c4a43;
+    --outline: #6c7a73;
+  }
+
+  .dark {
+    --background: #090e17;
+    --on-background: #f8f9ff;
+    --surface: #0e1622;
+    --on-surface: #f8f9ff;
+    --surface-container-lowest: #0b121e;
+    --surface-container-low: #0f1a2c;
+    --surface-container: #132239;
+    --surface-container-high: #1a2e4c;
+    --surface-container-highest: #233e66;
+    --outline-variant: #344e41;
+    --on-surface-variant: #a2b5ab;
+    --outline: #4e6156;
+  }
+
   body {
-    @apply antialiased text-on-surface bg-background;
+    @apply antialiased text-on-surface bg-background transition-colors duration-200;
     font-family: 'Inter', sans-serif;
   }
 }
 
-/* Custom Utilities that might be needed */
 .glass-panel {
-  @apply bg-white/70 backdrop-blur-md border border-white/80 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
+  @apply bg-white/70 dark:bg-white/5 backdrop-blur-md border border-white/80 dark:border-white/10 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] transition-colors duration-200;
 }

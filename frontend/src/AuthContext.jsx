@@ -22,8 +22,10 @@ export const AuthProvider = ({ children }) => {
         email: savedEmail,
         name: savedName
       });
+      setLoading(false);
+    } else {
+      loginAsGuest().finally(() => setLoading(false));
     }
-    setLoading(false);
   }, []);
 
   const loginWithGoogle = async (credential) => {
@@ -78,9 +80,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async () => {
     localStorage.clear();
+    setUser(null);
+    setLoading(true);
+    try {
+      await loginAsGuest();
+    } catch (e) {
+      console.error("Failed to automatically login as guest after logout:", e);
+    }
+    setLoading(false);
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { PlayCircle, Terminal as TerminalIcon } from 'lucide-react';
+import { PlayCircle, Terminal as TerminalIcon, Info } from 'lucide-react';
 import { api } from '../api';
 
 export default function AIEvalLab() {
@@ -92,13 +92,37 @@ export default function AIEvalLab() {
     setRunning(false);
   };
 
+  const METRIC_DESCS = {
+    "Recall@5": "Tỉ lệ tài liệu thực sự liên quan được tìm thấy trong Top 5 kết quả tìm kiếm. Thể hiện chất lượng tìm kiếm dữ liệu.",
+    "Recall@10": "Tỉ lệ tài liệu thực sự liên quan được tìm thấy trong Top 10 kết quả tìm kiếm. Đo lường độ phủ thông tin tối đa.",
+    "Mean Reciprocal Rank": "Đánh giá chất lượng xếp hạng của tài liệu đúng đầu tiên. Càng gần 1.0 nghĩa là tài liệu chính xác nhất ở vị trí đầu.",
+    "NDCG@5": "Normalized Discounted Cumulative Gain tại Top 5. Đo lường chất lượng xếp hạng dựa trên vị trí và độ liên quan của tài liệu.",
+    "Faithfulness": "Độ trung thực: Thể hiện câu trả lời của AI có hoàn toàn dựa vào ngữ cảnh được truy vấn hay không, nhằm loại bỏ ảo giác.",
+    "Answer Correctness": "Độ chính xác: So sánh sự tương đồng về nghĩa và thông tin giữa câu trả lời sinh ra so với đáp án chuẩn.",
+    "Answer Relevancy": "Độ phù hợp: Đo lường mức độ tập trung trực diện của câu trả lời đối với câu hỏi gốc, tránh trả lời lan man.",
+    "System Latency": "Độ trễ hệ thống: Thời gian xử lý trung bình cho mỗi truy vấn từ lúc nhận câu hỏi đến khi hoàn tất câu trả lời."
+  };
+
   const CircularProgress = ({ value, label, colorClass }) => {
     const dashArray = 364.4;
     const dashOffset = dashArray - (dashArray * value);
     
     return (
-      <div className="glass-panel p-6 rounded-2xl flex flex-col items-center">
-        <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4 h-8 text-center">{label}</p>
+      <div className="glass-panel p-6 rounded-2xl flex flex-col items-center relative group/tooltip">
+        <div className="flex items-center gap-1.5 mb-4 h-8 justify-center w-full">
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest text-center">{label}</p>
+          <div className="relative text-on-surface-variant/40 hover:text-primary transition-colors cursor-help">
+            <Info size={13} />
+            <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-3.5 w-64 p-3.5 backdrop-blur-md border border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 scale-95 pointer-events-none group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100 transition-all duration-200 ease-out normal-case tracking-normal" style={{ backgroundColor: '#0b121e' }}>
+              <p className="font-bold text-primary mb-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                {label}
+              </p>
+              <p className="text-white/80 leading-relaxed font-medium">{METRIC_DESCS[label] || ""}</p>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent" style={{ borderTopColor: '#0b121e' }}></div>
+            </div>
+          </div>
+        </div>
         <div className="relative w-28 h-28 flex items-center justify-center">
           <svg className="w-full h-full -rotate-90">
             <circle className="text-surface-container-high" cx="56" cy="56" fill="transparent" r="50" stroke="currentColor" strokeWidth="6"></circle>
@@ -158,8 +182,21 @@ export default function AIEvalLab() {
             <CircularProgress value={metrics.generation.correctness || 0} label="Answer Correctness" colorClass="text-teal-500" />
             <CircularProgress value={metrics.generation.relevancy || 0} label="Answer Relevancy" colorClass="text-cyan-500" />
             
-            <div className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center bg-orange-500/10 border border-orange-500/20">
-              <p className="text-xs font-bold text-orange-600 uppercase tracking-widest mb-4">System Latency</p>
+            <div className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center bg-orange-500/10 border border-orange-500/20 relative group/tooltip">
+              <div className="flex items-center gap-1.5 mb-4 justify-center w-full">
+                <p className="text-xs font-bold text-orange-600 uppercase tracking-widest">System Latency</p>
+                <div className="relative text-orange-600/55 hover:text-orange-500 transition-colors cursor-help">
+                  <Info size={13} />
+                  <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-3.5 w-64 p-3.5 backdrop-blur-md border border-white/10 text-white text-xs rounded-xl shadow-2xl opacity-0 scale-95 pointer-events-none group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100 transition-all duration-200 ease-out normal-case tracking-normal" style={{ backgroundColor: '#0b121e' }}>
+                    <p className="font-bold text-orange-400 mb-1 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                      System Latency
+                    </p>
+                    <p className="text-white/80 leading-relaxed font-medium">{METRIC_DESCS["System Latency"]}</p>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent" style={{ borderTopColor: '#0b121e' }}></div>
+                  </div>
+                </div>
+              </div>
               <span className="text-4xl font-black text-orange-500 mb-2">{metrics.system_latency.toFixed(2)}s</span>
               <p className="text-sm font-medium text-orange-600/70">Avg per query</p>
               <p className="text-xs text-orange-600/50 mt-2">Total cases: {metrics.total_cases}</p>

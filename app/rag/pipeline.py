@@ -58,32 +58,65 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
             final_answer = "Nội dung vi phạm chính sách an toàn của Xanh SM."
         elif event.startswith("data: ") and "[DONE]" not in event:
             # Extract raw token content (preserving exact spacing and newlines)
-            raw_event = event[6:]  # Strip "data: "
-            if raw_event.endswith("\n\n"):
-                raw_event = raw_event[:-2]
-            elif raw_event.endswith("\n"):
-                raw_event = raw_event[:-1]
+            # An event can contain multiple lines, each starting with "data: " due to newlines
+            lines = event.split("\n")
+            event_content_parts = []
+            for line in lines:
+                if line.startswith("data: "):
+                    line_data = line[6:]
+                    if line_data == "[DONE]":
+                        continue
+                    event_content_parts.append(line_data)
+                elif line.strip() == "":
+                    continue
+                else:
+                    event_content_parts.append(line)
             
-            # Try to parse as JSON to extract metrics
-            try:
-                data_obj = json.loads(raw_event)
-                if isinstance(data_obj, dict) and "metrics" in data_obj:
-                    if "rewritten_query" in data_obj["metrics"]:
-                        rewritten_query = data_obj["metrics"]["rewritten_query"]
-                    metrics.update(data_obj["metrics"])
-            except (json.JSONDecodeError, TypeError):
-                # Not JSON, accumulate directly
+            raw_event = "\n".join(event_content_parts)
+            
+            # Try to parse as JSON to extract metrics. We only consider it as JSON
+            # if it starts and ends with curly braces (indicating a JSON object for metadata).
+            # This prevents raw text tokens like pure numbers or boolean values (e.g. "270", "30", "true")
+            # from being incorrectly parsed as valid JSON and dropped from the final saved answer.
+            is_json_metadata = False
+            if raw_event.strip().startswith("{") and raw_event.strip().endswith("}"):
+                try:
+                    data_obj = json.loads(raw_event)
+                    if isinstance(data_obj, dict):
+                        is_json_metadata = True
+                        if "metrics" in data_obj:
+                            if "rewritten_query" in data_obj["metrics"]:
+                                rewritten_query = data_obj["metrics"]["rewritten_query"]
+                            metrics.update(data_obj["metrics"])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            
+            if not is_json_metadata:
                 final_answer += raw_event
         
         yield event
     
     # Open a fresh database session to save results safely
     from app.db.database import SessionLocal
+    from app.db.models import Conversation
     new_db = SessionLocal()
     try:
         new_memory_service = MemoryService(new_db)
         # Save user message to DB
         new_memory_service.save_message(conversation_id, "user", question)
+        
+        # Tự động tạo tiêu đề cuộc hội thoại nếu chưa có
+        conv = new_db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if conv and (not conv.title or conv.title.strip() == "" or conv.title == "New Conversation"):
+            words = question.strip().split()
+            title_words = words[:6]
+            title = " ".join(title_words)
+            # Viết hoa chữ cái đầu của mỗi từ cho đẹp
+            title = " ".join(w.capitalize() for w in title.split())
+            if len(words) > 6:
+                title += "..."
+            conv.title = title
+            new_db.commit()
         
         # Lưu câu trả lời vào DB
         if final_answer:

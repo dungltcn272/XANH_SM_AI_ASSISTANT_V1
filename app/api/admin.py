@@ -303,3 +303,16 @@ def delete_table_data(table_name: str, req: DeleteRecordsRequest, db: Session = 
     db.commit()
     
     return {"success": True, "deleted_count": result.rowcount}
+
+@router.post("/db/table/{table_name}/delete_all")
+def delete_all_table_data(table_name: str, db: Session = Depends(get_db)):
+    metadata = Base.metadata
+    if table_name not in metadata.tables:
+        raise HTTPException(status_code=404, detail="Table not found")
+        
+    table = metadata.tables[table_name]
+    stmt = table.delete()
+    result = db.execute(stmt)
+    db.commit()
+    
+    return {"success": True, "deleted_count": result.rowcount}

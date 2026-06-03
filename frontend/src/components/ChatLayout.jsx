@@ -5,11 +5,11 @@ import { useSearchParams } from 'react-router-dom';
 import { User, Loader2, Link2, PlusCircle, Mic, ArrowUp } from 'lucide-react';
 import { api } from '../api';
 
-const XanhSMIcon = ({ className = "" }) => (
+const XanhSMIcon = ({ className = "w-6 h-6" }) => (
   <img 
-    src="https://www.greensm.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fhome-service-taxi-icon.7ffb83a2.webp&w=256&q=75" 
+    src="/icon.svg" 
     alt="Xanh SM" 
-    className={`w-6 h-6 object-contain ${className}`}
+    className={`object-contain ${className}`}
   />
 );
 
@@ -23,7 +23,7 @@ export default function ChatLayout() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeConversationId = searchParams.get('c');
   const currentConvIdRef = useRef(activeConversationId);
-  const lastProcessedActiveConvIdRef = useRef(activeConversationId);
+  const lastProcessedActiveConvIdRef = useRef(undefined);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -169,6 +169,7 @@ export default function ChatLayout() {
       // Mark loading complete when stream finishes
       setLoading(false);
       setPipelineStep(null);
+      window.dispatchEvent(new Event('refresh-conversations'));
     } catch (error) {
       console.error('Chat stream error:', error);
       setMessages(prev => {
@@ -183,6 +184,7 @@ export default function ChatLayout() {
       });
       setLoading(false);
       setPipelineStep(null);
+      window.dispatchEvent(new Event('refresh-conversations'));
     }
   };
 
@@ -255,7 +257,7 @@ export default function ChatLayout() {
               <div className={`p-4 rounded-2xl text-base leading-relaxed ${
                 msg.role === 'user' 
                   ? 'bg-primary text-white rounded-br-sm shadow-md' 
-                  : 'bg-white border border-outline-variant text-on-surface rounded-bl-sm shadow-sm'
+                  : 'bg-surface-container-lowest border border-outline-variant text-on-surface rounded-bl-sm shadow-sm'
               }`}>
                 {msg.role === 'user' ? (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -331,7 +333,7 @@ export default function ChatLayout() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shrink-0 shadow-lg">
               <XanhSMIcon />
             </div>
-            <div className="p-4 rounded-2xl bg-white border border-outline-variant text-on-surface rounded-bl-sm shadow-sm flex items-center gap-3 max-w-[85%]">
+            <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant text-on-surface rounded-bl-sm shadow-sm flex items-center gap-3 max-w-[85%]">
               <Loader2 className="animate-spin text-primary" size={20} />
               <div className="flex flex-col gap-2">
                 <span className="text-on-surface-variant italic">
@@ -347,7 +349,7 @@ export default function ChatLayout() {
 
       {/* Floating Chat Input */}
       <div className="fixed bottom-8 left-0 md:left-72 right-0 px-4 md:px-0 flex justify-center z-50">
-        <div className="w-full max-w-3xl glass-panel p-2 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex items-end gap-2 group border-primary/10 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all bg-white/80">
+        <div className="w-full max-w-3xl glass-panel p-2 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex items-end gap-2 group border-primary/10 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all bg-white/80 dark:bg-transparent">
           <button className="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0">
             <PlusCircle size={24} />
           </button>
