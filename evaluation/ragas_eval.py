@@ -5,6 +5,13 @@ import json
 import math
 from typing import List, Dict, Any, Optional
 
+# Set TIKTOKEN_CACHE_DIR for offline mode
+if "TIKTOKEN_CACHE_DIR" not in os.environ:
+    os.environ["TIKTOKEN_CACHE_DIR"] = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
+        "tiktoken_cache"
+    )
+
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

@@ -640,6 +640,10 @@ class XanhSMRAGPipeline:
         metrics["intent"] = intent
         metrics["expanded_queries"] = expanded_queries
         metrics["total_tokens"] += nlu_usage.get("prompt_tokens", 0) + nlu_usage.get("completion_tokens", 0)
+        
+        # Calculate NLU/Rewrite cost immediately so it is recorded even if generating fails/is interrupted
+        nlu_cost = self._calculate_llm_cost(nlu_usage.get("prompt_tokens", 0), nlu_usage.get("completion_tokens", 0))
+        metrics["cost_usd"] += nlu_cost["cost_usd"]
 
         # 4. Handle Sensitive / Safety Block
         if intent == "sensitive":
@@ -733,7 +737,10 @@ class XanhSMRAGPipeline:
             est_p = len(" ".join([m["content"] for m in messages])) // 4
             est_c = len(final_answer) // 4
             metrics["total_tokens"] += est_p + est_c
-            metrics["cost_usd"] = (est_p * 0.15 + est_c * 0.60) / 1_000_000
+            
+            # Calculate generation cost and add to total cost (preserving NLU/Rewrite cost)
+            gen_cost = self._calculate_llm_cost(est_p, est_c)
+            metrics["cost_usd"] += gen_cost["cost_usd"]
                     
             citations = [{"source": d.metadata.get("source", "unknown"), "section": d.metadata.get("section", ""), "url": d.metadata.get("url", "") or d.metadata.get("source", "")} for d in top_docs[:5]]
             yield from yield_msg(f'data: {json.dumps({"sources": citations})}\n\n')
