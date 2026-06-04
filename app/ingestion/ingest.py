@@ -55,7 +55,7 @@ def setup_qdrant(client: QdrantClient, vector_size: int = 1536):
     
     # Tạo Payload Index để filter scroll/search theo metadata.url và metadata.chunk_index
     # Bắt buộc phải có index mới có thể dùng Filter trong scroll()
-    log_info("INGESTION", "Creating payload indexes for 'metadata.url' and 'metadata.chunk_index'...")
+    log_info("INGESTION", "Creating payload indexes for 'metadata.url', 'metadata.chunk_index', and 'metadata.parent_chunk_id'...")
     try:
         client.create_payload_index(
             collection_name=COLLECTION_NAME,
@@ -66,6 +66,11 @@ def setup_qdrant(client: QdrantClient, vector_size: int = 1536):
             collection_name=COLLECTION_NAME,
             field_name="metadata.chunk_index",
             field_schema=qdrant_models.PayloadSchemaType.INTEGER
+        )
+        client.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name="metadata.parent_chunk_id",
+            field_schema=qdrant_models.PayloadSchemaType.KEYWORD
         )
         log_info("INGESTION", "Payload indexes created successfully.")
     except Exception as e:
