@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { 
-  ArrowDown, Shield, Brain, Search, Zap, Layers, Cpu, Sparkles, MessageSquare, AlertTriangle, 
+import { Shield, Brain, Search, Zap, Layers, Cpu, Sparkles, MessageSquare, AlertTriangle, 
   PlayCircle, Play, ArrowRight, ArrowLeft, RotateCcw, X, Code, ExternalLink, Info, CheckCircle
 } from 'lucide-react';
 import { api } from '../api';
@@ -304,7 +303,7 @@ export default function PipelineManager() {
             </div>
           </div>
         );
-      case 'gateway':
+      case 'gateway': {
         const safe = debugData.gateway_checked && (!debugData.safety_res || debugData.safety_res.safe !== false);
         return (
           <div className="space-y-4">
@@ -325,6 +324,7 @@ export default function PipelineManager() {
             </div>
           </div>
         );
+      }
       case 'block_violation':
         return (
           <div className="space-y-4">
@@ -570,7 +570,7 @@ export default function PipelineManager() {
             </div>
           </div>
         );
-      case 'output_guardrail':
+      case 'output_guardrail': {
         const guardrailPassed = debugData.output_guardrail_passed !== false;
         return (
           <div className="space-y-4 font-sans">
@@ -591,6 +591,7 @@ export default function PipelineManager() {
             </div>
           </div>
         );
+      }
       case 'output':
         return (
           <div className="space-y-4 font-sans">

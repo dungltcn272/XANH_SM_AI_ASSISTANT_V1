@@ -6,6 +6,12 @@ import { User, Loader2, Link2, PlusCircle, Mic, ArrowUp } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
+const stripNode = (props) => {
+  const rest = { ...props };
+  delete rest.node;
+  return rest;
+};
+
 const XanhSMIcon = ({ className = "w-6 h-6" }) => (
   <img 
     src="/icon.svg" 
@@ -48,7 +54,9 @@ export default function ChatLayout() {
         }).catch(console.error);
       } else {
         // New conversation
-        setMessages([]);
+        setTimeout(() => {
+          setMessages([]);
+        }, 0);
       }
     }
   }, [activeConversationId]);
@@ -269,18 +277,33 @@ export default function ChatLayout() {
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        ol: ({node: _node, ...props}) => <ol className="list-decimal pl-5 my-2 ml-4" {...props} />,
-                        ul: ({node: _node, ...props}) => <ul className="list-disc pl-5 my-2 ml-4" {...props} />,
-                        li: ({node: _node, ...props}) => <li className="my-1" {...props} />,
-                        table: ({node: _node, ...props}) => (
+                        ol: (props) => <ol className="list-decimal pl-5 my-2 ml-4" {...stripNode(props)} />,
+                        ul: (props) => <ul className="list-disc pl-5 my-2 ml-4" {...stripNode(props)} />,
+                        li: (props) => <li className="my-1" {...stripNode(props)} />,
+                        table: (props) => (
                           <div className="overflow-x-auto my-4 w-full border border-primary/20 rounded-xl shadow-sm">
-                            <table className="w-full text-sm text-left m-0" {...props} />
+                            <table className="w-full text-sm text-left m-0" {...stripNode(props)} />
                           </div>
                         ),
-                        thead: ({node: _node, ...props}) => <thead className="text-xs uppercase bg-primary/10 text-primary" {...props} />,
-                        th: ({node: _node, ...props}) => <th className="px-6 py-4 font-bold border-b border-primary/10 m-0" {...props} />,
-                        td: ({node: _node, ...props}) => <td className="px-6 py-4 border-b border-surface-variant/50 m-0" {...props} />,
-                        tr: ({node: _node, ...props}) => <tr className="hover:bg-surface-container-high/30 transition-colors m-0" {...props} />
+                        thead: (props) => <thead className="text-xs uppercase bg-primary/10 text-primary" {...stripNode(props)} />,
+                        th: (props) => <th className="px-6 py-4 font-bold border-b border-primary/10 m-0" {...stripNode(props)} />,
+                        td: (props) => <td className="px-6 py-4 border-b border-surface-variant/50 m-0" {...stripNode(props)} />,
+                        tr: (props) => <tr className="hover:bg-surface-container-high/30 transition-colors m-0" {...stripNode(props)} />,
+                        img: (props) => (
+                          <div className="my-4 flex flex-col items-center">
+                            <img 
+                              className="max-h-[320px] object-contain rounded-2xl border border-primary/10 shadow-md hover:scale-[1.01] transition-transform cursor-zoom-in bg-black/20"
+                              alt={props.alt || "Hình ảnh từ Xanh SM"}
+                              onClick={() => window.open(props.src, '_blank')}
+                              {...stripNode(props)}
+                            />
+                            {props.alt && (
+                              <span className="text-xs text-on-surface-variant/60 italic mt-2 text-center">
+                                {props.alt}
+                              </span>
+                            )}
+                          </div>
+                        )
                       }}
                     >
                       {msg.content}
@@ -309,6 +332,47 @@ export default function ChatLayout() {
                         {src.source ? src.source.replace(/\.(md|html|txt)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Tài liệu Xanh SM'}
                       </a>
                     ))}
+                  </div>
+                );
+              })()}
+
+              {/* Image Gallery from Chunk Sources */}
+              {msg.sources && msg.sources.length > 0 && (() => {
+                const galleryImages = [];
+                const seenUrls = new Set();
+                for (const src of msg.sources) {
+                  if (src.images && Array.isArray(src.images)) {
+                    for (const img of src.images) {
+                      if (img.url && !seenUrls.has(img.url)) {
+                        seenUrls.add(img.url);
+                        galleryImages.push(img);
+                      }
+                    }
+                  }
+                }
+                if (galleryImages.length === 0) return null;
+                return (
+                  <div className="mt-4 flex flex-col gap-2">
+                    <span className="text-xs font-bold text-primary flex items-center gap-1">
+                      🖼️ Hình ảnh tham khảo:
+                    </span>
+                    <div className="flex gap-3 overflow-x-auto py-2 scrollbar-thin">
+                      {galleryImages.map((img, i) => (
+                        <div key={i} className="flex-shrink-0 group relative rounded-2xl overflow-hidden border border-outline-variant shadow-md bg-surface-container-low max-w-[280px]">
+                          <img 
+                            src={img.url} 
+                            alt={img.alt || "Ảnh tham khảo"} 
+                            className="h-[160px] w-auto object-contain object-center hover:scale-105 transition-transform duration-300 cursor-zoom-in p-1"
+                            onClick={() => window.open(img.url, '_blank')}
+                          />
+                          {img.alt && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              {img.alt}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}

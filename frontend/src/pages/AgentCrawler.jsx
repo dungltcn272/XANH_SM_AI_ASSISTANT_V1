@@ -143,7 +143,7 @@ export default function AgentCrawler() {
               if (data.error) {
                 setLogs(prev => [...prev, `[ERROR] ${data.error}`]);
               }
-            } catch (e) {
+            } catch {
               // String fallback
               if (dataStr.startsWith('[AGENT_STEP]')) {
                 const stepName = dataStr.replace('[AGENT_STEP]', '').trim();
@@ -199,7 +199,7 @@ export default function AgentCrawler() {
               if (data.error) {
                 setLogs(prev => [...prev, `[ERROR] ${data.error}`]);
               }
-            } catch (e) {
+            } catch {
               setLogs(prev => [...prev, dataStr]);
             }
           }

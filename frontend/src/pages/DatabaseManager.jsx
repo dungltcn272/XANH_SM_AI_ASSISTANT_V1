@@ -22,6 +22,11 @@ export default function DatabaseManager() {
   const [pageInput, setPageInput] = useState('1');
   const limit = 50;
 
+  const changePage = (targetPage) => {
+    setPage(targetPage);
+    setPageInput((targetPage + 1).toString());
+  };
+
   useEffect(() => {
     const fetchTables = async () => {
       try {
@@ -30,7 +35,7 @@ export default function DatabaseManager() {
         if (res && res.length > 0) {
           setSelectedTable(res[0]);
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load database tables.');
       }
       setLoading(false);
@@ -50,18 +55,13 @@ export default function DatabaseManager() {
         setColumns(res.columns || []);
         setTotal(res.total || 0);
         setSelectedIds(new Set());
-      } catch (err) {
+      } catch {
         setError(`Failed to load data for table: ${selectedTable}`);
       }
       setDataLoading(false);
     };
     fetchTableData();
   }, [selectedTable, page]);
-
-  // Synchronize pageInput with page state
-  useEffect(() => {
-    setPageInput((page + 1).toString());
-  }, [page]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === data.length) {
@@ -93,7 +93,7 @@ export default function DatabaseManager() {
       setData(res.data || []);
       setTotal(res.total || 0);
       setSelectedIds(new Set());
-    } catch (err) {
+    } catch {
       setError('Failed to delete records. Ensure table has an ID column.');
     }
     setDeleting(false);
@@ -114,13 +114,13 @@ export default function DatabaseManager() {
     try {
       await api.deleteAllTableData(selectedTable);
       alert(`Đã xóa toàn bộ dữ liệu của bảng "${selectedTable}" thành công.`);
-      setPage(0);
+      changePage(0);
       // Refresh
       const res = await api.getTableData(selectedTable, limit, 0);
       setData(res.data || []);
       setTotal(res.total || 0);
       setSelectedIds(new Set());
-    } catch (err) {
+    } catch {
       setError(`Failed to delete all records for table: ${selectedTable}`);
     }
     setDeleting(false);
@@ -141,8 +141,7 @@ export default function DatabaseManager() {
       targetPage = totalPages;
     }
     
-    setPage(targetPage - 1);
-    setPageInput(targetPage.toString());
+    changePage(targetPage - 1);
   };
 
   const handleKeyDown = (e) => {
@@ -188,7 +187,7 @@ export default function DatabaseManager() {
               value={selectedTable}
               onChange={(e) => {
                 setSelectedTable(e.target.value);
-                setPage(0);
+                changePage(0);
               }}
               className="bg-surface-variant border border-outline-variant/50 text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5"
             >
@@ -310,7 +309,7 @@ export default function DatabaseManager() {
           
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => setPage(p => Math.max(0, p - 1))}
+              onClick={() => changePage(Math.max(0, page - 1))}
               disabled={page === 0}
               className="px-3 py-1 bg-surface rounded-md border border-outline-variant/50 hover:bg-surface-variant disabled:opacity-50"
             >
@@ -333,7 +332,7 @@ export default function DatabaseManager() {
             </div>
 
             <button 
-              onClick={() => setPage(p => p + 1)}
+              onClick={() => changePage(page + 1)}
               disabled={(page + 1) * limit >= total}
               className="px-3 py-1 bg-surface rounded-md border border-outline-variant/50 hover:bg-surface-variant disabled:opacity-50"
             >

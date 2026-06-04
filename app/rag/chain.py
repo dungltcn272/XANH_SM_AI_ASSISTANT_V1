@@ -74,6 +74,25 @@ class XanhSMRAGPipeline:
             "cost_vnd": vnd_total
         }
 
+    def _build_citations(self, docs: List[Any]) -> List[Dict[str, Any]]:
+        import re
+        citations = []
+        for d in docs:
+            images_in_chunk = []
+            content = d.page_content or ""
+            img_matches = re.findall(r'!\[([^\]]*)\]\((https?://[^)]+)\)', content)
+            for alt, url in img_matches:
+                images_in_chunk.append({"alt": alt, "url": url})
+            
+            citations.append({
+                "source": d.metadata.get("source", "unknown"),
+                "section": d.metadata.get("section", ""),
+                "url": d.metadata.get("url", "") or d.metadata.get("source", ""),
+                "relevance_score": d.metadata.get("rerank_score", 0.0),
+                "images": images_in_chunk
+            })
+        return citations
+
     def _is_greeting_or_thanks(self, query: str) -> Dict[str, Any]:
         """
         Spell-tolerant and accent-insensitive detector for greetings, thanks, and short chit-chat.
@@ -273,13 +292,7 @@ class XanhSMRAGPipeline:
         prompt_tokens = 0
         completion_tokens = 0
 
-        for doc in top_docs:
-            citations.append({
-                "source": doc.metadata.get("source"),
-                "section": doc.metadata.get("section"),
-                "url": doc.metadata.get("url", ""),
-                "relevance_score": doc.metadata.get("rerank_score", 0.0)
-            })
+        citations = self._build_citations(top_docs)
 
         system_msg = SYSTEM_PROMPT.format(context=compressed_context)
         user_msg = USER_PROMPT_TEMPLATE.format(query=rewritten_query)
@@ -500,13 +513,7 @@ class XanhSMRAGPipeline:
         prompt_tokens = 0
         completion_tokens = 0
 
-        for doc in top_docs_expanded:
-            citations.append({
-                "source": doc.metadata.get("source"),
-                "section": doc.metadata.get("section"),
-                "url": doc.metadata.get("url", ""),
-                "relevance_score": doc.metadata.get("rerank_score", 0.0)
-            })
+        citations = self._build_citations(top_docs_expanded)
 
         system_msg = SYSTEM_PROMPT.format(context=compressed_context)
         user_msg = USER_PROMPT_TEMPLATE.format(query=rewritten_query)
@@ -742,7 +749,7 @@ class XanhSMRAGPipeline:
             gen_cost = self._calculate_llm_cost(est_p, est_c)
             metrics["cost_usd"] += gen_cost["cost_usd"]
                     
-            citations = [{"source": d.metadata.get("source", "unknown"), "section": d.metadata.get("section", ""), "url": d.metadata.get("url", "") or d.metadata.get("source", "")} for d in top_docs[:5]]
+            citations = self._build_citations(top_docs[:5])
             yield from yield_msg(f'data: {json.dumps({"sources": citations})}\n\n')
             
             if self.cache and final_answer:
