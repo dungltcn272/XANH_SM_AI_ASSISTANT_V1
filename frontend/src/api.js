@@ -55,8 +55,20 @@ export const api = {
     });
   },
 
+  runAgentCrawler: async () => {
+    return fetch(`${API_BASE}/admin/ingest/crawl/agent`, {
+      method: 'POST'
+    });
+  },
+
   runIngestion: async () => {
     return fetch(`${API_BASE}/admin/ingest/process`, {
+      method: 'POST'
+    });
+  },
+
+  runPlatformIngestion: async () => {
+    return fetch(`${API_BASE}/admin/ingest/process/platform`, {
       method: 'POST'
     });
   },

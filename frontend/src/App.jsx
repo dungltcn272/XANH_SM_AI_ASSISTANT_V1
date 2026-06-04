@@ -10,6 +10,7 @@ import PipelineManager from './pages/PipelineManager';
 import RAGHistory from './pages/RAGHistory';
 import IngestionManager from './pages/IngestionManager';
 import DatabaseManager from './pages/DatabaseManager';
+import AgentCrawler from './pages/AgentCrawler';
 import { Moon, Sun, Monitor, Shield, MessageSquare, LogOut, History, Plus, User, HelpCircle, X } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -376,6 +377,7 @@ function App() {
         <Route index element={<CommandCenter />} />
         <Route path="eval" element={<AIEvalLab />} />
         <Route path="pipeline" element={<PipelineManager />} />
+        <Route path="agent-crawler" element={<AgentCrawler />} />
         <Route path="history" element={<RAGHistory />} />
         <Route path="ingest" element={<IngestionManager />} />
         <Route path="db" element={<DatabaseManager />} />
