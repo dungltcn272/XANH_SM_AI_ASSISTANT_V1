@@ -286,8 +286,18 @@ def get_table_data(table_name: str, limit: int = 50, offset: int = 0, db: Sessio
     # Get total count
     total = db.query(func.count()).select_from(table).scalar()
     
-    # Get rows
-    rows = db.query(table).offset(offset).limit(limit).all()
+    # Get rows (ordered by date/timestamp descending if exists)
+    query = db.query(table)
+    order_col = None
+    for col_name in ["created_at", "timestamp", "generated_at"]:
+        if col_name in table.columns:
+            order_col = table.columns[col_name]
+            break
+            
+    if order_col is not None:
+        query = query.order_by(order_col.desc())
+        
+    rows = query.offset(offset).limit(limit).all()
     # Convert Row objects to dicts using ._mapping to handle named tuples in SQLAlchemy 2.0+
     data = [dict(row._mapping) for row in rows]
     
