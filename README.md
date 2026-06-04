@@ -136,7 +136,7 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 10 
 3. **NODE 3: NLU Gateway 3-in-1 (Xử lý ngôn ngữ tự nhiên tích hợp)**
    - **Công nghệ áp dụng**: OpenAI API `chat/completions` với mô hình `gpt-4o-mini`.
    - **Logic xử lý**: Tích hợp gộp 3 tác vụ tiền RAG vào duy nhất một lần gọi LLM bằng kỹ thuật Few-Shot Prompting và định dạng dữ liệu đầu ra có cấu trúc (Structured Outputs):
-     - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu) hay `small-talk` (chào hỏi, tán gẫu).
+     - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu), `small-talk` (chào hỏi, tán gẫu) hay `sensitive` (nhạy cảm/vi phạm chính sách).
      - *Query Rewrite (Viết lại câu hỏi)*: Khử tham chiếu, bổ sung ngữ cảnh từ lịch sử hội thoại gần nhất và chuẩn hóa câu hỏi Tiếng Việt ngắn gọn, tập trung vào keywords.
      - *Query Expansion (Mở rộng câu hỏi)*: Sinh thêm 1 câu hỏi đồng nghĩa hỗ trợ tìm kiếm đa chiều.
    - **Thông số kỹ thuật**: Nhiệt độ `temperature = 0.1` để đảm bảo độ chính xác tuyệt đối. Gộp 3 API calls giúp giảm độ trễ từ **~4.5s xuống còn ~1.2s - 1.5s**.
