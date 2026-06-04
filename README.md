@@ -93,6 +93,7 @@ graph TD
     
     D --> E{Ý định là gì?}
     E -- "tán gẫu (small-talk)" --> Stalk[💬 Trả lời nhanh]
+    E -- "nhạy cảm (sensitive)" --> Block
     E -- "tra cứu (rag)" --> F{Second Cache Lookup?}
     
     F -- "Cache Hit" --> Out
