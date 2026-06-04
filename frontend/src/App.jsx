@@ -245,11 +245,11 @@ function MainLayout({ children }) {
                       <h3 className="font-bold text-primary text-base">Dịch vụ Di chuyển</h3>
                     </div>
                     <ul className="text-sm space-y-2 text-on-surface-variant list-disc pl-4">
-                      <li><strong>Xanh SM Taxi:</strong> Giá cước xe điện VF e34, VF 5, VF 8.</li>
-                      <li><strong>Xanh SM Luxury:</strong> Dịch vụ taxi cao cấp bằng xe điện VF 9.</li>
-                      <li><strong>Xanh SM Limo:</strong> Dịch vụ xe đẳng cấp với tiêu chuẩn 7 nhãn quan hành trình.</li>
-                      <li><strong>Xanh SM Bike:</strong> Cước phí xe máy điện Feliz S, Evo200.</li>
-                      <li><strong>Xanh SM Mini:</strong> Dịch vụ xe điện cỡ nhỏ di chuyển nội đô linh hoạt.</li>
+                      <li><strong>Xanh SM Taxi:</strong> Giá cước xe điện (Green SM Car) theo từng tỉnh/thành phố.</li>
+                      <li><strong>Xanh SM Luxury (Premium):</strong> Dịch vụ taxi tiện nghi vượt trội (Green SM Premium).</li>
+                      <li><strong>Xanh SM Limo:</strong> Dịch vụ xe đẳng cấp cao cấp (Green SM Limo).</li>
+                      <li><strong>Xanh SM Bike:</strong> Cước phí xe máy điện (Green SM Bike) khởi hành và tiếp theo.</li>
+                      <li><strong>Xanh SM Mini:</strong> Dịch vụ xe điện cỡ nhỏ (Green SM Mini) nội đô.</li>
                       <li><strong>Xanh Sân Bay / Liên tỉnh:</strong> Di chuyển ngoại tỉnh và trọn gói sân bay.</li>
                       <li><strong>Green Tour:</strong> Thuê xe điện tự lái hoặc kèm tài xế theo gói.</li>
                     </ul>

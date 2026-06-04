@@ -835,7 +835,8 @@ class XanhSMRAGPipeline:
         return answer
 if __name__ == "__main__":
     pipeline = XanhSMRAGPipeline()
-    res = pipeline.run("Tôi muốn tính phí hủy chuyến xe VF 8 sau 3 phút")
+    res = pipeline.run("Giá cước taxi Xanh SM Car tại Hà Nội")
     print(f"\nAnswer:\n{res['answer']}")
     print(f"\nIntent:\n{res.get('intent')}")
     print(f"\nStrategy:\n{res.get('strategy_selected')}")
+

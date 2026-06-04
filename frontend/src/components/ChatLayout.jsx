@@ -53,11 +53,12 @@ export default function ChatLayout() {
     }
   }, [activeConversationId]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, directQuery = null) => {
     e?.preventDefault();
-    if (!input.trim() || loading) return;
+    const query = (typeof directQuery === 'string' ? directQuery : input).trim();
+    if (!query || loading) return;
 
-    const userQuery = input.trim();
+    const userQuery = query;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
     setLoading(true);
@@ -218,26 +219,26 @@ export default function ChatLayout() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-12 relative z-10">
-            <button onClick={() => {setInput("Cập nhật bảng giá di chuyển sân bay mới nhất"); handleSubmit();}} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
+            <button onClick={(e) => handleSubmit(e, "Giá cước taxi Xanh SM Car tại Hà Nội")} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
                 <span className="material-symbols-outlined font-bold">$</span>
               </div>
-              <h3 className="text-xl font-bold text-on-surface mb-2">Giá cước sân bay</h3>
-              <p className="text-sm text-on-surface-variant">Cập nhật bảng giá di chuyển sân bay mới nhất của Xanh SM.</p>
+              <h3 className="text-xl font-bold text-on-surface mb-2">Giá cước Taxi Xanh SM</h3>
+              <p className="text-sm text-on-surface-variant">Xem bảng giá cước dịch vụ di chuyển Xanh SM Car chi tiết tại Hà Nội.</p>
             </button>
-            <button onClick={() => {setInput("Tìm hiểu về điều khoản dịch vụ và ưu đãi thành viên"); handleSubmit();}} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
+            <button onClick={(e) => handleSubmit(e, "Quyền lợi bảo hiểm chuyến đi Green SM Care và phí đăng ký")} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
                 <span className="material-symbols-outlined font-bold">✓</span>
               </div>
-              <h3 className="text-xl font-bold text-on-surface mb-2">Chính sách Xanh SM</h3>
-              <p className="text-sm text-on-surface-variant">Tìm hiểu về điều khoản dịch vụ và ưu đãi thành viên.</p>
+              <h3 className="text-xl font-bold text-on-surface mb-2">Bảo hiểm Green SM Care</h3>
+              <p className="text-sm text-on-surface-variant">Tìm hiểu quyền lợi bảo hiểm hành khách tai nạn chuyến đi từ 1.000 VNĐ.</p>
             </button>
-            <button onClick={() => {setInput("Xe điện hoạt động thế nào?"); handleSubmit();}} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
+            <button onClick={(e) => handleSubmit(e, "Cách yêu cầu xuất hóa đơn đỏ VAT cho chuyến xe")} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
                 <span className="material-symbols-outlined font-bold">⚡</span>
               </div>
-              <h3 className="text-xl font-bold text-on-surface mb-2">Xe điện hoạt động thế nào?</h3>
-              <p className="text-sm text-on-surface-variant">Khám phá công nghệ xanh đằng sau đội xe VinFast.</p>
+              <h3 className="text-xl font-bold text-on-surface mb-2">Yêu cầu xuất hóa đơn VAT</h3>
+              <p className="text-sm text-on-surface-variant">Quy trình đăng ký xuất hóa đơn giá trị gia tăng sau chuyến đi.</p>
             </button>
           </div>
         </div>
