@@ -1,5 +1,7 @@
 # 🚗 Xanh SM Enterprise Production RAG System (Phase 5)
 
+[![Live Demo](https://img.shields.io/badge/Demo-Live-00A651?style=for-the-badge&logo=vercel&logoColor=white)](https://rag-xanh-sm-v1.vercel.app/)
+
 Hệ thống **Retrieval-Augmented Generation (RAG)** cấp doanh nghiệp (Production-Grade) được thiết kế và tối ưu hóa đặc biệt dành riêng cho **Xanh SM** nhằm hỗ trợ tra cứu tập trung và chính xác mọi thông tin chính sách cước phí, điều khoản dịch vụ, cơ chế tài chính cho khách hàng, đối tác tài xế, đối tác cửa hàng merchant và nhân viên CSKH.
 
 Hệ thống này triển khai kiến trúc **NLU-Gateway RAG (Phase 5)** tiên tiến nhất hiện nay với tốc độ xử lý siêu tốc:
