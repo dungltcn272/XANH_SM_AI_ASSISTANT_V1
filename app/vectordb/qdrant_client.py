@@ -19,6 +19,23 @@ class VectorDBClient:
             )
             cls._instance.dense_model = get_embedding_model()
             cls._instance.sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
+            
+            # Auto-healing: Ensure required payload indexes exist (especially metadata.parent_chunk_id)
+            try:
+                for field in ["metadata.url", "metadata.chunk_index", "metadata.parent_chunk_id"]:
+                    schema = qdrant_models.PayloadSchemaType.KEYWORD
+                    if field == "metadata.chunk_index":
+                        schema = qdrant_models.PayloadSchemaType.INTEGER
+                    try:
+                        cls._instance.client.create_payload_index(
+                            collection_name=COLLECTION_NAME,
+                            field_name=field,
+                            field_schema=schema
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         return cls._instance
 
     @property
