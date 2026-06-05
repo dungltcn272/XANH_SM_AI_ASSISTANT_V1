@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
@@ -5,11 +6,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // { token, type: 'user'|'guest', ...info }
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check localStorage on mount
+  const [user, setUser] = useState(() => {
     const savedToken = localStorage.getItem('access_token');
     const savedType = localStorage.getItem('auth_type');
     const savedUserId = localStorage.getItem('user_id');
@@ -17,18 +14,22 @@ export const AuthProvider = ({ children }) => {
     const savedName = localStorage.getItem('name');
 
     if (savedToken && savedType) {
-      setUser({
+      return {
         token: savedToken,
         type: savedType,
         id: savedUserId,
         email: savedEmail,
         name: savedName
-      });
-      setLoading(false);
-    } else {
-      loginAsGuest().finally(() => setLoading(false));
+      };
     }
-  }, []);
+    return null;
+  });
+
+  const [loading, setLoading] = useState(() => {
+    const savedToken = localStorage.getItem('access_token');
+    const savedType = localStorage.getItem('auth_type');
+    return !(savedToken && savedType);
+  });
 
   const loginWithGoogle = async (credential) => {
     try {
@@ -94,6 +95,16 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
+  useEffect(() => {
+    if (!user) {
+      const timer = setTimeout(() => {
+        loginAsGuest().finally(() => setLoading(false));
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginAsGuest, logout }}>
       {children}
@@ -102,3 +113,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+

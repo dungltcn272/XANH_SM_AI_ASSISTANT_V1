@@ -1,0 +1,12 @@
+[build]
+builder = "DOCKERFILE"
+
+watchPatterns = [
+  "app/**",
+  "requirements.txt",
+  "Dockerfile",
+  "railway.toml"
+]
+
+[deploy]
+restartPolicyType = "ON_FAILURE"

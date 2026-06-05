@@ -5,11 +5,24 @@ import { api } from '../api';
 export default function RAGHistory() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIntent, setSelectedIntent] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredLogs = logs.filter(log => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (log.original_query || '').toLowerCase().includes(q) ||
+      (log.rewritten_query || '').toLowerCase().includes(q) ||
+      (log.final_answer || '').toLowerCase().includes(q)
+    );
+  });
 
   useEffect(() => {
     const fetchLogs = async () => {
+      setLoading(true);
       try {
-        const data = await api.getAdminLogs();
+        const data = await api.getAdminLogs(selectedIntent || null);
         setLogs(data || []);
       } catch (err) {
         console.error(err);
@@ -17,7 +30,7 @@ export default function RAGHistory() {
       setLoading(false);
     };
     fetchLogs();
-  }, []);
+  }, [selectedIntent]);
 
   const handleManualEval = (logId) => {
     // In a real app, we would call an API to evaluate this specific request
@@ -41,19 +54,37 @@ export default function RAGHistory() {
             Giám sát toàn bộ lịch sử truy vấn của người dùng. Đánh giá chất lượng câu trả lời bằng hệ thống RAGAS.
           </p>
         </div>
-        <div className="relative w-64 hidden md:block">
-          <input 
-            type="text" 
-            placeholder="Tìm kiếm truy vấn..." 
-            className="w-full bg-white/60 border border-outline-variant/50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none pl-10 pr-4 py-2.5 rounded-full transition-all text-on-surface font-medium shadow-sm"
-          />
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50" size={18} />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto mt-4 sm:mt-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-on-surface-variant shrink-0">Intent:</span>
+            <select
+              value={selectedIntent}
+              onChange={(e) => setSelectedIntent(e.target.value)}
+              className="bg-white/60 border border-outline-variant/50 text-on-surface text-sm rounded-full pl-4 pr-10 py-2 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none shadow-sm cursor-pointer"
+            >
+              <option value="">Tất cả Intents</option>
+              <option value="rag">RAG</option>
+              <option value="small-talk">Small-talk</option>
+              <option value="sensitive">Sensitive</option>
+              <option value="faq">FAQ</option>
+            </select>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <input 
+              type="text" 
+              placeholder="Tìm kiếm truy vấn..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/60 border border-outline-variant/50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none pl-10 pr-4 py-2.5 rounded-full transition-all text-on-surface font-medium shadow-sm"
+            />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50" size={18} />
+          </div>
         </div>
       </div>
 
       {/* Grid List */}
       <div className="flex flex-col gap-4">
-        {logs.map((log) => (
+        {filteredLogs.map((log) => (
           <div key={log.id} className="glass-panel p-6 rounded-2xl flex flex-col gap-4 border border-outline-variant/30 hover:border-primary/30 transition-all group">
             
             <div className="flex justify-between items-start">
@@ -165,7 +196,7 @@ export default function RAGHistory() {
           </div>
         ))}
 
-        {logs.length === 0 && (
+        {filteredLogs.length === 0 && (
           <div className="text-center p-12 glass-panel rounded-2xl border border-outline-variant/30">
             <History size={48} className="mx-auto text-on-surface-variant/30 mb-4" />
             <h3 className="text-xl font-bold text-on-surface-variant">Chưa có dữ liệu lịch sử</h3>

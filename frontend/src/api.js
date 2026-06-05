@@ -25,8 +25,12 @@ export const api = {
     return res.json();
   },
 
-  getAdminLogs: async () => {
-    const res = await fetch(`${API_BASE}/admin/logs`);
+  getAdminLogs: async (intent = null) => {
+    let url = `${API_BASE}/admin/logs`;
+    if (intent) {
+      url += `?intent=${encodeURIComponent(intent)}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
@@ -85,8 +89,16 @@ export const api = {
     return res.json();
   },
 
-  getTableData: async (tableName, limit = 50, offset = 0) => {
-    const res = await fetch(`${API_BASE}/admin/db/table/${tableName}?limit=${limit}&offset=${offset}`);
+  getTableData: async (tableName, limit = 50, offset = 0, filters = {}) => {
+    let url = `${API_BASE}/admin/db/table/${tableName}?limit=${limit}&offset=${offset}`;
+    if (filters.sort_by) url += `&sort_by=${encodeURIComponent(filters.sort_by)}`;
+    if (filters.sort_order) url += `&sort_order=${encodeURIComponent(filters.sort_order)}`;
+    if (filters.start_date) url += `&start_date=${encodeURIComponent(filters.start_date)}`;
+    if (filters.end_date) url += `&end_date=${encodeURIComponent(filters.end_date)}`;
+    if (filters.level) url += `&level=${encodeURIComponent(filters.level)}`;
+    if (filters.error_type) url += `&error_type=${encodeURIComponent(filters.error_type)}`;
+    
+    const res = await fetch(url);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },

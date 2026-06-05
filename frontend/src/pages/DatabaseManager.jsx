@@ -17,6 +17,15 @@ export default function DatabaseManager() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [deleting, setDeleting] = useState(false);
 
+  // Sorting & Filtering States
+  const [sortBy, setSortBy] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [level, setLevel] = useState('');
+  const [errorType, setErrorType] = useState('');
+  const [metadata, setMetadata] = useState({});
+
   // Pagination
   const [page, setPage] = useState(0);
   const [pageInput, setPageInput] = useState('1');
@@ -50,10 +59,19 @@ export default function DatabaseManager() {
       setDataLoading(true);
       setError('');
       try {
-        const res = await api.getTableData(selectedTable, limit, page * limit);
+        const filters = {
+          sort_by: sortBy,
+          sort_order: sortOrder,
+          start_date: startDate,
+          end_date: endDate,
+          level: level,
+          error_type: errorType
+        };
+        const res = await api.getTableData(selectedTable, limit, page * limit, filters);
         setData(res.data || []);
         setColumns(res.columns || []);
         setTotal(res.total || 0);
+        setMetadata(res.metadata || {});
         setSelectedIds(new Set());
       } catch {
         setError(`Failed to load data for table: ${selectedTable}`);
@@ -61,7 +79,7 @@ export default function DatabaseManager() {
       setDataLoading(false);
     };
     fetchTableData();
-  }, [selectedTable, page]);
+  }, [selectedTable, page, sortBy, sortOrder, startDate, endDate, level, errorType]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === data.length) {
@@ -89,7 +107,15 @@ export default function DatabaseManager() {
     try {
       await api.deleteTableData(selectedTable, Array.from(selectedIds));
       // Refresh data
-      const res = await api.getTableData(selectedTable, limit, page * limit);
+      const filters = {
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        start_date: startDate,
+        end_date: endDate,
+        level: level,
+        error_type: errorType
+      };
+      const res = await api.getTableData(selectedTable, limit, page * limit, filters);
       setData(res.data || []);
       setTotal(res.total || 0);
       setSelectedIds(new Set());
@@ -116,7 +142,7 @@ export default function DatabaseManager() {
       alert(`Đã xóa toàn bộ dữ liệu của bảng "${selectedTable}" thành công.`);
       changePage(0);
       // Refresh
-      const res = await api.getTableData(selectedTable, limit, 0);
+      const res = await api.getTableData(selectedTable, limit, 0, {});
       setData(res.data || []);
       setTotal(res.total || 0);
       setSelectedIds(new Set());
@@ -187,9 +213,15 @@ export default function DatabaseManager() {
               value={selectedTable}
               onChange={(e) => {
                 setSelectedTable(e.target.value);
+                setSortBy('');
+                setSortOrder('desc');
+                setStartDate('');
+                setEndDate('');
+                setLevel('');
+                setErrorType('');
                 changePage(0);
               }}
-              className="bg-surface-variant border border-outline-variant/50 text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5"
+              className="bg-surface-variant border border-outline-variant/50 text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block py-2.5 pl-2.5 pr-10 cursor-pointer"
             >
               {tables.map(t => (
                 <option key={t} value={t}>{t}</option>
@@ -206,7 +238,15 @@ export default function DatabaseManager() {
               onClick={() => {
                 // Refresh table content
                 setDataLoading(true);
-                api.getTableData(selectedTable, limit, page * limit).then(res => {
+                const filters = {
+                  sort_by: sortBy,
+                  sort_order: sortOrder,
+                  start_date: startDate,
+                  end_date: endDate,
+                  level: level,
+                  error_type: errorType
+                };
+                api.getTableData(selectedTable, limit, page * limit, filters).then(res => {
                   setData(res.data || []);
                   setTotal(res.total || 0);
                   setSelectedIds(new Set());
@@ -245,6 +285,104 @@ export default function DatabaseManager() {
               Delete All
             </button>
           </div>
+        </div>
+
+        {/* Filter Panel (Dynamic based on selected table columns) */}
+        <div className="px-4 py-3 border-b border-outline-variant/20 bg-surface-container-lowest/50 flex flex-wrap gap-4 items-center">
+          {/* Sorting */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-on-surface-variant">Sắp xếp:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); changePage(0); }}
+              className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
+            >
+              <option value="">-- Mặc định --</option>
+              {columns.map(col => (
+                <option key={col} value={col}>{col}</option>
+              ))}
+            </select>
+            <select
+              value={sortOrder}
+              onChange={(e) => { setSortOrder(e.target.value); changePage(0); }}
+              className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
+            >
+              <option value="desc">Giảm dần (Mới nhất)</option>
+              <option value="asc">Tăng dần (Cũ nhất)</option>
+            </select>
+          </div>
+
+          {/* Date range filter (conditional) */}
+          {columns.some(c => ['created_at', 'timestamp', 'generated_at'].includes(c)) && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-on-surface-variant">Khoảng ngày:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); changePage(0); }}
+                className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg p-1.5 focus:ring-primary focus:border-primary text-center"
+              />
+              <span className="text-xs text-on-surface-variant">đến</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); changePage(0); }}
+                className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg p-1.5 focus:ring-primary focus:border-primary text-center"
+              />
+            </div>
+          )}
+
+          {/* Level filter (conditional for logs) */}
+          {columns.includes('level') && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-on-surface-variant">Level:</span>
+              <select
+                value={level}
+                onChange={(e) => { setLevel(e.target.value); changePage(0); }}
+                className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
+              >
+                <option value="">Tất cả</option>
+                {(metadata.levels || ['INFO', 'WARN', 'ERROR']).map(l => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Error Type filter (conditional for logs) */}
+          {columns.includes('error_type') && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-on-surface-variant">Loại lỗi:</span>
+              <select
+                value={errorType}
+                onChange={(e) => { setErrorType(e.target.value); changePage(0); }}
+                className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary max-w-xs cursor-pointer"
+              >
+                <option value="">Tất cả</option>
+                {(metadata.error_types || []).map(et => (
+                  <option key={et} value={et}>{et}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Reset Filters button */}
+          {(sortBy || startDate || endDate || level || errorType) && (
+            <button
+              onClick={() => {
+                setSortBy('');
+                setSortOrder('desc');
+                setStartDate('');
+                setEndDate('');
+                setLevel('');
+                setErrorType('');
+                changePage(0);
+              }}
+              className="text-xs font-bold text-primary hover:underline ml-auto"
+            >
+              Xóa bộ lọc
+            </button>
+          )}
         </div>
 
         {/* Data Table */}
