@@ -138,10 +138,20 @@ class AgentCrawler:
                     logger.error(f"Error classifying {page['url']}: {exc}")
                     skipped_count += 1
                     
+        # Generate news and vehicle overview documents dynamically
+        self.generate_news_overview()
+        self.generate_vehicle_overviews()
+        
         print_agent_step("Complete", f"Successfully saved {saved_count} documents, skipped {skipped_count} documents.")
         
     def discover_urls(self) -> list:
-        discovered = set()
+        discovered = {
+            "https://platform.greensm.com/VN-vi/news/all/page/1",
+            "https://platform-static-staging.car-trading.gsm-api.net/public/document/Chuong_trinh_mua_xe_oto_dien_vinfast_truc_tiep_qua_green_sm.pdf",
+            "https://platform-static-staging.car-trading.gsm-api.net/public/document/Chuong_trinh_thue_van_hanh_thuong_van_doanh_xe_o_to_dien_vinfast.pdf",
+            "https://platform-static.car-trading.gsm-api.net/public/document/Chuong_trinh_cho_thue_xe_o_to_dien_gsm_rental.pdf",
+            "https://platform-static.car-trading.gsm-api.net/public/document/Chinh_sach_ban_xe_may_dien_vinfast.pdf"
+        }
         base_url = "https://platform.greensm.com/VN-vi"
         
         # Helper helpers
@@ -501,18 +511,53 @@ class AgentCrawler:
             except Exception as e:
                 logger.error(f"Discovery error: {e}")
                 
-        return sorted(list(discovered))
-
+        # Exclude driver portal pages as requested (skip URLs containing '/driver-')
+        filtered_discovered = set()
+        for url in discovered:
+            url_lower = url.lower()
+            if any(term in url_lower for term in ["/driver-car", "/driver-bike", "/driver-platform", "/driver-center"]):
+                logger.info(f"Skipping/Excluding driver portal page: {url}")
+                continue
+            filtered_discovered.add(url)
+            
+        return sorted(list(filtered_discovered))
+ 
     def crawl_page(self, context, url: str) -> dict:
+        if url.lower().endswith(".pdf") or "/public/document/" in url.lower():
+            import requests
+            from io import BytesIO
+            import pypdf
+            try:
+                logger.info(f"Downloading and extracting PDF: {url}")
+                response = requests.get(url, timeout=30)
+                if response.status_code == 200:
+                    pdf_file = BytesIO(response.content)
+                    reader = pypdf.PdfReader(pdf_file)
+                    text_content = []
+                    for page_idx, pdf_page in enumerate(reader.pages):
+                        page_text = pdf_page.extract_text()
+                        if page_text:
+                            text_content.append(f"--- Page {page_idx + 1} ---\n{page_text}")
+                    full_text = "\n\n".join(text_content)
+                    
+                    parsed_url = urlparse(url)
+                    title = os.path.basename(parsed_url.path)
+                    if not title:
+                        title = "Policy Document"
+                    else:
+                        title = title.replace(".pdf", "").replace("_", " ")
+                        
+                    html = f"<html><body><h1>{title}</h1><div>{full_text}</div></body></html>"
+                    return {"url": url, "title": title, "html": html}
+                else:
+                    logger.error(f"Failed to download PDF {url}: Status code {response.status_code}")
+                    return None
+            except Exception as e:
+                logger.error(f"Failed to extract PDF {url}: {e}")
+                return None
+
         page = context.new_page()
         try:
-            if url.lower().endswith(".pdf"):
-                # Handle PDF files by returning a mock html representation with the link
-                title = os.path.basename(url)
-                html = f"<html><body>This is a PDF file: <a href='{url}'>{url}</a></body></html>"
-                page.close()
-                return {"url": url, "title": title, "html": html}
-                
             page.goto(url, wait_until="load", timeout=30000)
             page.wait_for_timeout(2000) # wait 2s for React state
             
@@ -649,6 +694,254 @@ keywords: {json.dumps(keywords, ensure_ascii=False)}
         filepath = self.output_dir / filename
         filepath.write_text(full_content, encoding="utf-8")
         logger.info(f"Saved: {filepath}")
+
+    def generate_news_overview(self):
+        print_agent_step("News Overview Generation", "Generating news_overview.md dynamically...")
+        news_list = []
+        for filename in os.listdir(self.output_dir):
+            if filename.startswith("news_") and filename.endswith(".md") and filename != "news_overview.md":
+                filepath = self.output_dir / filename
+                try:
+                    content = filepath.read_text(encoding="utf-8")
+                    meta = {}
+                    header_match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
+                    if header_match:
+                        header_text = header_match.group(1)
+                        for line in header_text.split("\n"):
+                            if ":" in line:
+                                k, v = line.split(":", 1)
+                                meta[k.strip()] = v.strip()
+                    
+                    title = meta.get("title")
+                    if title:
+                        title = title.strip("\"'")
+                    else:
+                        title = filename.replace("news_", "").replace(".md", "").replace("_", " ").capitalize()
+                        
+                    url = meta.get("url")
+                    if url:
+                        url = url.strip("\"'")
+                    else:
+                        url = f"https://platform.greensm.com/news/{filename.replace('.md','')}"
+                        
+                    crawl_date = meta.get("crawl_date")
+                    if crawl_date:
+                        crawl_date = crawl_date.strip("\"'")
+                        
+                    summary = meta.get("summary")
+                    if summary:
+                        summary = summary.strip("\"'")
+                    
+                    if not summary:
+                        lines = content.split("\n")
+                        start_idx = header_match.group(0).count("\n") if header_match else 0
+                        for line in lines[start_idx:]:
+                            line_clean = line.strip()
+                            if line_clean and not line_clean.startswith("#") and not line_clean.startswith("!") and not line_clean.startswith("---"):
+                                if len(line_clean) > 50:
+                                    summary = line_clean
+                                    break
+                                    
+                    if len(summary) > 200:
+                        summary = summary[:197] + "..."
+                        
+                    news_list.append({
+                        "title": title,
+                        "url": url,
+                        "date": crawl_date,
+                        "summary": summary
+                    })
+                except Exception as e:
+                    logger.error(f"Error parsing news file {filename}: {e}")
+                    
+        if news_list:
+            md_content = """---
+url: https://platform.greensm.com/VN-vi/news
+category: platform
+title: Tổng quan tin tức và sự kiện Green SM
+summary: Danh sách tổng hợp tin tức và sự kiện mới nhất từ Green SM.
+---
+
+# Tổng quan tin tức và sự kiện Green SM Platform
+
+Dưới đây là danh sách tổng hợp các tin tức, sự kiện và chương trình khuyến mãi mới nhất từ Green SM Platform:
+
+"""
+            for idx, item in enumerate(news_list, 1):
+                md_content += f"## {idx}. {item['title']}\n"
+                if item['date']:
+                    md_content += f"- **Ngày đăng/Cập nhật:** {item['date']}\n"
+                md_content += f"- **Tóm tắt:** {item['summary']}\n"
+                md_content += f"- **Xem chi tiết tại:** [{item['title']}]({item['url']})\n\n"
+                md_content += "---\n\n"
+                
+            filepath = self.output_dir / "news_overview.md"
+            filepath.write_text(md_content, encoding="utf-8")
+            logger.info(f"Generated and saved news overview: {filepath}")
+
+    def parse_vehicle_file(self, filename: str) -> dict:
+        filepath = self.output_dir / filename
+        content = filepath.read_text(encoding="utf-8")
+        
+        meta = {}
+        header_match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
+        if header_match:
+            header_text = header_match.group(1)
+            for line in header_text.split("\n"):
+                if ":" in line:
+                    k, v = line.split(":", 1)
+                    meta[k.strip()] = v.strip()
+                    
+        url = meta.get("url", "").strip("\"'")
+        title = meta.get("title", "").strip("\"'")
+        
+        # Determine order type (buy/rent)
+        order_type = "Mua xe" if "buy" in filename.lower() else "Thuê xe"
+        
+        # Get raw model name
+        if "model_viper" in filename.lower():
+            model_name = "Viper"
+        else:
+            parts = filename.replace("VN_vi_", "").split("_order_type_")
+            if parts:
+                model_name = parts[0].replace("_", " ").upper()
+            else:
+                model_name = "Phương tiện"
+                
+        # Clean model name
+        model_name = model_name.replace("VF6", "VF 6").replace("VF5", "VF 5").replace("EC VAN", "EC Van").replace("FELIZ", "Feliz II").replace("EVO GRAND", "Evo Grand").replace("EVO", "Evo")
+        model_name = model_name.title() if "Green" in model_name else model_name
+        
+        # Extract Price (under ## Giá hoặc ## Giá Bán hoặc ## Giá bán)
+        price_info = ""
+        price_match = re.search(r"## (Giá Bán|Giá bán|Giá)\s*\n(.*?)(?=\n##|$)", content, re.DOTALL | re.IGNORECASE)
+        if price_match:
+            price_info = price_match.group(2).strip()
+            
+        # Extract Specs
+        specs_info = ""
+        specs_match = re.search(r"## (Thông số kỹ thuật|Khả năng vận hành vượt trội)\s*\n(.*?)(?=\n##|$)", content, re.DOTALL | re.IGNORECASE)
+        if specs_match:
+            specs_info = specs_match.group(2).strip()
+            sub_match = re.search(r"### Thông số kỹ thuật\s*\n(.*?)$", specs_info, re.DOTALL | re.IGNORECASE)
+            if sub_match:
+                specs_info = sub_match.group(1).strip()
+                
+        # Clean specs (remove markdown images)
+        specs_info = re.sub(r"!\[.*?\]\(.*?\)", "", specs_info).strip()
+        
+        return {
+            "model_name": model_name,
+            "order_type": order_type,
+            "url": url,
+            "price_info": price_info,
+            "specs_info": specs_info
+        }
+
+    def generate_vehicle_overviews(self):
+        print_agent_step("Vehicle Overviews Generation", "Generating car_overview.md and bike_overview.md dynamically...")
+        
+        car_files = []
+        bike_files = []
+        
+        car_keywords = ["vf6", "vf5", "ec_van", "herio", "limo", "minio"]
+        bike_keywords = ["evo", "feliz", "viper"]
+        
+        for filename in os.listdir(self.output_dir):
+            if filename.startswith("VN_vi_") and filename.endswith(".md") and "order_type_" in filename:
+                name_lower = filename.lower()
+                if any(kw in name_lower for kw in car_keywords):
+                    car_files.append(filename)
+                elif any(kw in name_lower for kw in bike_keywords):
+                    bike_files.append(filename)
+                    
+        # Write Car Overview
+        car_list = []
+        for filename in car_files:
+            try:
+                car_list.append(self.parse_vehicle_file(filename))
+            except Exception as e:
+                logger.error(f"Error parsing car file {filename}: {e}")
+                
+        if car_list:
+            md_content = """---
+url: https://platform.greensm.com/VN-vi/car-overview
+category: platform
+title: Tổng quan các dòng xe ô tô điện Green SM Platform
+summary: Danh sách tổng hợp thông số kỹ thuật, giá bán và cơ chế thuê các dòng xe ô tô điện VinFast trên Green SM Platform.
+---
+
+# Tổng Quan Các Dòng Xe Ô Tô Điện Green SM Platform
+
+Dưới đây là danh sách tổng hợp chi tiết các dòng xe ô tô điện VinFast (Herio Green, Limo Green, Minio Green, VF 5, VF 6, EC Van) hỗ trợ mua hoặc thuê để vận doanh trên Green SM Platform:
+
+"""
+            from collections import defaultdict
+            grouped = defaultdict(list)
+            for item in car_list:
+                grouped[item["model_name"]].append(item)
+                
+            for idx, (model, options) in enumerate(sorted(grouped.items()), 1):
+                md_content += f"## {idx}. {model}\n\n"
+                for opt in options:
+                    md_content += f"### Hình thức: **{opt['order_type']}**\n"
+                    md_content += f"- **Xem chi tiết và Đăng ký tại:** [{model} ({opt['order_type']})]({opt['url']})\n"
+                    if opt["price_info"]:
+                        price_lines = "\n".join([f"  {l}" for l in opt["price_info"].split("\n")])
+                        md_content += f"- **Giá bán / Chi phí:**\n{price_lines}\n"
+                    if opt["specs_info"]:
+                        specs_lines = "\n".join([f"  {l}" for l in opt["specs_info"].split("\n")])
+                        md_content += f"- **Thông số kỹ thuật chính:**\n{specs_lines}\n"
+                    md_content += "\n"
+                md_content += "---\n\n"
+                
+            filepath = self.output_dir / "car_overview.md"
+            filepath.write_text(md_content, encoding="utf-8")
+            logger.info(f"Generated and saved car overview: {filepath}")
+
+        # Write Bike Overview
+        bike_list = []
+        for filename in bike_files:
+            try:
+                bike_list.append(self.parse_vehicle_file(filename))
+            except Exception as e:
+                logger.error(f"Error parsing bike file {filename}: {e}")
+                
+        if bike_list:
+            md_content = """---
+url: https://platform.greensm.com/VN-vi/bike-overview
+category: platform
+title: Tổng quan các dòng xe máy điện VinFast Green SM Platform
+summary: Danh sách tổng hợp thông số kỹ thuật, giá bán và cơ chế thuê các dòng xe máy điện VinFast trên Green SM Platform.
+---
+
+# Tổng Quan Các Dòng Xe Máy Điện VinFast Green SM Platform
+
+Dưới đây là danh sách tổng hợp chi tiết các dòng xe máy điện VinFast (Evo, Evo Grand, Feliz II, Viper) hỗ trợ mua hoặc thuê để vận doanh trên Green SM Platform:
+
+"""
+            from collections import defaultdict
+            grouped = defaultdict(list)
+            for item in bike_list:
+                grouped[item["model_name"]].append(item)
+                
+            for idx, (model, options) in enumerate(sorted(grouped.items()), 1):
+                md_content += f"## {idx}. {model}\n\n"
+                for opt in options:
+                    md_content += f"### Hình thức: **{opt['order_type']}**\n"
+                    md_content += f"- **Xem chi tiết và Đăng ký tại:** [{model} ({opt['order_type']})]({opt['url']})\n"
+                    if opt["price_info"]:
+                        price_lines = "\n".join([f"  {l}" for l in opt["price_info"].split("\n")])
+                        md_content += f"- **Giá bán / Chi phí:**\n{price_lines}\n"
+                    if opt["specs_info"]:
+                        specs_lines = "\n".join([f"  {l}" for l in opt["specs_info"].split("\n")])
+                        md_content += f"- **Thông số kỹ thuật chính:**\n{specs_lines}\n"
+                    md_content += "\n"
+                md_content += "---\n\n"
+                
+            filepath = self.output_dir / "bike_overview.md"
+            filepath.write_text(md_content, encoding="utf-8")
+            logger.info(f"Generated and saved bike overview: {filepath}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Green SM Platform AI Agentic Crawler")

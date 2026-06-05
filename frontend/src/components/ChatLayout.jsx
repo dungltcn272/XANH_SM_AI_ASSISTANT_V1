@@ -19,8 +19,6 @@ const XanhSMIcon = ({ className = "w-6 h-6" }) => (
     className={`object-contain ${className}`}
   />
 );
-
-
 export default function ChatLayout() {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -289,6 +287,7 @@ export default function ChatLayout() {
                         th: (props) => <th className="px-6 py-4 font-bold border-b border-primary/10 m-0" {...stripNode(props)} />,
                         td: (props) => <td className="px-6 py-4 border-b border-surface-variant/50 m-0" {...stripNode(props)} />,
                         tr: (props) => <tr className="hover:bg-surface-container-high/30 transition-colors m-0" {...stripNode(props)} />,
+
                         img: (props) => (
                           <div className="my-4 flex flex-col items-center">
                             <img 
@@ -336,46 +335,7 @@ export default function ChatLayout() {
                 );
               })()}
 
-              {/* Image Gallery from Chunk Sources */}
-              {msg.sources && msg.sources.length > 0 && (() => {
-                const galleryImages = [];
-                const seenUrls = new Set();
-                for (const src of msg.sources) {
-                  if (src.images && Array.isArray(src.images)) {
-                    for (const img of src.images) {
-                      if (img.url && !seenUrls.has(img.url)) {
-                        seenUrls.add(img.url);
-                        galleryImages.push(img);
-                      }
-                    }
-                  }
-                }
-                if (galleryImages.length === 0) return null;
-                return (
-                  <div className="mt-4 flex flex-col gap-2">
-                    <span className="text-xs font-bold text-primary flex items-center gap-1">
-                      🖼️ Hình ảnh tham khảo:
-                    </span>
-                    <div className="flex gap-3 overflow-x-auto py-2 scrollbar-thin">
-                      {galleryImages.map((img, i) => (
-                        <div key={i} className="flex-shrink-0 group relative rounded-2xl overflow-hidden border border-outline-variant shadow-md bg-surface-container-low max-w-[280px]">
-                          <img 
-                            src={img.url} 
-                            alt={img.alt || "Ảnh tham khảo"} 
-                            className="h-[160px] w-auto object-contain object-center hover:scale-105 transition-transform duration-300 cursor-zoom-in p-1"
-                            onClick={() => window.open(img.url, '_blank')}
-                          />
-                          {img.alt && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              {img.alt}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Image Gallery from Chunk Sources removed */}
               
               {/* Response Time / Latency - for assistant messages only */}
               {msg.role === 'assistant' && msg.latency_ms && (

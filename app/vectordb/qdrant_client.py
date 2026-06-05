@@ -13,9 +13,14 @@ class VectorDBClient:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(VectorDBClient, cls).__new__(cls)
+            qdrant_url = settings.QDRANT_URL or "http://localhost:6333"
+            # Bypass API key requirement when connecting to localhost/127.0.0.1
+            is_local = "localhost" in qdrant_url or "127.0.0.1" in qdrant_url
+            api_key = None if is_local else (settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None)
+            
             cls._instance.client = QdrantClient(
-                url=settings.QDRANT_URL,
-                api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None
+                url=qdrant_url,
+                api_key=api_key
             )
             cls._instance.dense_model = get_embedding_model()
             cls._instance.sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
