@@ -35,12 +35,21 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     avg_lat = db.query(func.avg(RagRequestLog.total_latency_ms)).scalar()
     avg_latency = float(avg_lat) if avg_lat else 0.0
 
+    # Calculate total cost of all LLM calls
+    total_cost_res = db.query(func.sum(RagRequestLog.cost_usd)).scalar()
+    total_cost = float(total_cost_res) if total_cost_res else 0.0
+
+    # Count system errors
+    total_errors = db.query(SystemLog).filter(SystemLog.level == "ERROR").count()
+
     return {
         "total_users": total_users,
         "total_requests": total_requests,
         "total_conversations": total_conversations,
         "total_blocked": total_blocked,
-        "avg_latency": avg_latency / 1000.0  # Convert ms to s for UI
+        "avg_latency": avg_latency / 1000.0,  # Convert ms to s for UI
+        "total_cost": total_cost,
+        "total_errors": total_errors
     }
 
 @router.get("/eval")
@@ -52,8 +61,11 @@ def get_eval_results():
         return {"error": "Evaluation report not found. Please run the benchmark first."}
 
 @router.get("/logs")
-def get_rag_logs(limit: int = 50, db: Session = Depends(get_db)):
-    logs = db.query(RagRequestLog).order_by(RagRequestLog.created_at.desc()).limit(limit).all()
+def get_rag_logs(intent: str = None, limit: int = 50, db: Session = Depends(get_db)):
+    query = db.query(RagRequestLog)
+    if intent:
+        query = query.filter(RagRequestLog.intent == intent)
+    logs = query.order_by(RagRequestLog.created_at.desc()).limit(limit).all()
     return logs
 
 @router.get("/system-logs")
@@ -383,35 +395,95 @@ def get_db_tables(db: Session = Depends(get_db)):
     return list(metadata.tables.keys())
 
 @router.get("/db/table/{table_name}")
-def get_table_data(table_name: str, limit: int = 50, offset: int = 0, db: Session = Depends(get_db)):
+def get_table_data(
+    table_name: str, 
+    limit: int = 50, 
+    offset: int = 0, 
+    sort_by: str = None,
+    sort_order: str = "desc",
+    start_date: str = None,
+    end_date: str = None,
+    level: str = None,
+    error_type: str = None,
+    db: Session = Depends(get_db)
+):
     metadata = Base.metadata
     if table_name not in metadata.tables:
         raise HTTPException(status_code=404, detail="Table not found")
         
     table = metadata.tables[table_name]
     
-    # Get total count
-    total = db.query(func.count()).select_from(table).scalar()
-    
-    # Get rows (ordered by date/timestamp descending if exists)
+    # Build query
     query = db.query(table)
-    order_col = None
+    
+    # Apply date filters if date column exists
+    date_col = None
     for col_name in ["created_at", "timestamp", "generated_at"]:
         if col_name in table.columns:
-            order_col = table.columns[col_name]
+            date_col = table.columns[col_name]
             break
             
-    if order_col is not None:
-        query = query.order_by(order_col.desc())
-        
+    if date_col is not None:
+        if start_date:
+            try:
+                from datetime import datetime
+                s_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                query = query.filter(date_col >= s_dt)
+            except Exception:
+                pass
+        if end_date:
+            try:
+                from datetime import datetime, time
+                e_dt = datetime.strptime(end_date, "%Y-%m-%d")
+                e_dt = datetime.combine(e_dt.date(), time(23, 59, 59, 999999))
+                query = query.filter(date_col <= e_dt)
+            except Exception:
+                pass
+
+    # Apply level/error_type exact filters if columns exist
+    if level and "level" in table.columns:
+        query = query.filter(table.columns["level"] == level)
+    if error_type and "error_type" in table.columns:
+        query = query.filter(table.columns["error_type"] == error_type)
+
+    # Get total count after filtering
+    total = db.query(func.count()).select_from(query.subquery()).scalar()
+    
+    # Sorting column selection
+    sort_col = None
+    if sort_by and sort_by in table.columns:
+        sort_col = table.columns[sort_by]
+    else:
+        # Fallback to date column if exists, otherwise first column
+        if date_col is not None:
+            sort_col = date_col
+        elif len(table.columns) > 0:
+            sort_col = list(table.columns.values())[0]
+            
+    if sort_col is not None:
+        if sort_order.lower() == "asc":
+            query = query.order_by(sort_col.asc())
+        else:
+            query = query.order_by(sort_col.desc())
+            
     rows = query.offset(offset).limit(limit).all()
-    # Convert Row objects to dicts using ._mapping to handle named tuples in SQLAlchemy 2.0+
+    # Convert Row objects to dicts
     data = [dict(row._mapping) for row in rows]
     
+    # Extract dynamic metadata for unique choices (like levels or error types)
+    extra_metadata = {}
+    if "level" in table.columns:
+        distinct_levels = db.query(table.columns["level"]).distinct().all()
+        extra_metadata["levels"] = [r[0] for r in distinct_levels if r[0]]
+    if "error_type" in table.columns:
+        distinct_error_types = db.query(table.columns["error_type"]).distinct().all()
+        extra_metadata["error_types"] = [r[0] for r in distinct_error_types if r[0]]
+        
     return {
         "total": total,
         "data": data,
-        "columns": [c.name for c in table.columns]
+        "columns": [c.name for c in table.columns],
+        "metadata": extra_metadata
     }
 
 class DeleteRecordsRequest(BaseModel):

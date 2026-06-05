@@ -11,7 +11,7 @@ import RAGHistory from './pages/RAGHistory';
 import IngestionManager from './pages/IngestionManager';
 import DatabaseManager from './pages/DatabaseManager';
 import AgentCrawler from './pages/AgentCrawler';
-import { Moon, Sun, Monitor, Shield, MessageSquare, LogOut, History, Plus, User, HelpCircle, X } from 'lucide-react';
+import { Moon, Sun, LogOut, History, Plus, User, HelpCircle, X, Menu } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 
 function ProtectedRoute({ children }) {
@@ -21,26 +21,103 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function SidebarContent({ user, conversations, activeConversationId, theme, toggleTheme, handleLogout, navigate, onClose }) {
+  return (
+    <>
+      <div 
+        className="flex flex-col gap-1.5 mb-8 items-start cursor-pointer hover:opacity-85 transition-opacity" 
+        onClick={() => {
+          navigate('/');
+          window.dispatchEvent(new Event('refresh-conversations'));
+          onClose?.();
+        }}
+      >
+        <img 
+          src="/logo.svg" 
+          alt="Xanh SM Logo" 
+          className="h-8 w-auto object-contain"
+        />
+        <div className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mt-1">
+          {user?.type === 'user' ? user.name : 'Guest Session'}
+        </div>
+      </div>
+
+      <div className="flex-grow overflow-y-auto pr-2 flex flex-col gap-2">
+        {user?.type === 'user' && (
+          <div className="mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-xs font-bold tracking-wider text-on-surface-variant/70 uppercase">LỊCH SỬ CHAT</span>
+              <button 
+                onClick={() => {
+                  navigate('/');
+                  window.dispatchEvent(new Event('refresh-conversations'));
+                  onClose?.();
+                }} 
+                className="text-primary hover:bg-primary/10 p-1 rounded-full transition-colors"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-1">
+              {conversations.length === 0 && (
+                <div className="text-sm text-on-surface-variant/70 italic p-2">Chưa có cuộc trò chuyện nào.</div>
+              )}
+              {conversations.map(conv => (
+                <button 
+                  key={conv.id} 
+                  className={`flex items-center gap-3 p-3 rounded-xl w-full text-left transition-all text-sm ${activeConversationId === conv.id ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary'}`} 
+                  onClick={() => {
+                    navigate(`/?c=${conv.id}`);
+                    onClose?.();
+                  }}
+                >
+                  <History size={16} className="shrink-0" />
+                  <span className="whitespace-nowrap overflow-hidden text-ellipsis">
+                    {conv.title || 'New Conversation'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-auto pt-4 border-t border-outline-variant/30 flex flex-col gap-2">
+        <button className="flex items-center gap-3 p-3 rounded-xl w-full text-left transition-all text-on-surface-variant hover:bg-surface-variant hover:text-primary font-medium" onClick={toggleTheme}>
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+        </button>
+        <button className="flex items-center gap-3 p-3 rounded-xl w-full text-left transition-all bg-error/10 text-error hover:bg-error hover:text-white font-medium shadow-sm" onClick={() => {
+          handleLogout();
+          onClose?.();
+        }}>
+          <LogOut size={18} />
+          Đăng xuất
+        </button>
+      </div>
+    </>
+  );
+}
+
 function MainLayout({ children }) {
   const { user, logout, loginWithGoogle } = useAuth();
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [conversations, setConversations] = useState([]);
   const [showTopicsDialog, setShowTopicsDialog] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const activeConversationId = searchParams.get('c');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    if (savedTheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     const fetchConvs = () => {
@@ -76,81 +153,46 @@ function MainLayout({ children }) {
     navigate('/');
   };
 
-  const isChat = location.pathname === '/';
   const isAdmin = location.pathname.startsWith('/admin');
 
   return (
     <div className="flex h-screen w-full bg-background font-sans text-on-surface">
       {/* Sidebar for Guest/User Chat */}
       {!isAdmin && (
-        <div className="w-72 bg-surface-container-lowest/60 backdrop-blur-xl border-r border-outline-variant/30 flex flex-col p-6 z-10 shadow-lg shrink-0 hidden md:flex">
-          <div 
-            className="flex flex-col gap-1.5 mb-8 items-start cursor-pointer hover:opacity-85 transition-opacity" 
-            onClick={() => {
-              navigate('/');
-              window.dispatchEvent(new Event('refresh-conversations'));
-            }}
-          >
-            <img 
-              src="/logo.svg" 
-              alt="Xanh SM Logo" 
-              className="h-8 w-auto object-contain"
+        <>
+          {/* Desktop Sidebar */}
+          <div className="w-72 bg-surface-container-lowest/60 backdrop-blur-xl border-r border-outline-variant/30 flex flex-col p-6 z-10 shadow-lg shrink-0 hidden md:flex">
+            <SidebarContent 
+              user={user}
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              theme={theme}
+              toggleTheme={toggleTheme}
+              handleLogout={handleLogout}
+              navigate={navigate}
             />
-            <div className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mt-1">
-              {user?.type === 'user' ? user.name : 'Guest Session'}
+          </div>
+
+          {/* Mobile Sidebar (Drawer) */}
+          <div className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ${isMobileSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setIsMobileSidebarOpen(false)} />
+            
+            {/* Drawer Content */}
+            <div className={`absolute top-0 bottom-0 left-0 w-72 bg-surface flex flex-col p-6 z-50 shadow-2xl transition-transform duration-300 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+              <SidebarContent 
+                user={user}
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                theme={theme}
+                toggleTheme={toggleTheme}
+                handleLogout={handleLogout}
+                navigate={navigate}
+                onClose={() => setIsMobileSidebarOpen(false)}
+              />
             </div>
           </div>
-
-          <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-2">
-
-            {/* Chat History Section (Only for logged-in Users) */}
-            {user?.type === 'user' && (
-              <div className="mt-8">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-xs font-bold tracking-wider text-on-surface-variant/70 uppercase">LỊCH SỬ CHAT</span>
-                  <button 
-                    onClick={() => {
-                      navigate('/');
-                      window.dispatchEvent(new Event('refresh-conversations'));
-                    }} 
-                    className="text-primary hover:bg-primary/10 p-1 rounded-full transition-colors"
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
-                <div className="flex flex-col gap-1">
-                  {conversations.length === 0 && (
-                    <div className="text-sm text-on-surface-variant/70 italic p-2">Chưa có cuộc trò chuyện nào.</div>
-                  )}
-                  {conversations.map(conv => (
-                    <button 
-                      key={conv.id} 
-                      className={`flex items-center gap-3 p-3 rounded-xl w-full text-left transition-all text-sm ${activeConversationId === conv.id ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary'}`} 
-                      onClick={() => navigate(`/?c=${conv.id}`)}
-                    >
-                      <History size={16} className="shrink-0" />
-                      <span className="whitespace-nowrap overflow-hidden text-ellipsis">
-                        {conv.title || 'New Conversation'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Bottom Actions */}
-          <div className="mt-auto pt-4 border-t border-outline-variant/30 flex flex-col gap-2">
-            <button className="flex items-center gap-3 p-3 rounded-xl w-full text-left transition-all text-on-surface-variant hover:bg-surface-variant hover:text-primary font-medium" onClick={toggleTheme}>
-              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-              {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-            </button>
-            <button className="flex items-center gap-3 p-3 rounded-xl w-full text-left transition-all bg-error/10 text-error hover:bg-error hover:text-white font-medium shadow-sm" onClick={handleLogout}>
-              <LogOut size={18} />
-              Đăng xuất
-            </button>
-          </div>
-        </div>
+        </>
       )}
 
       {/* Main Content */}
@@ -158,6 +200,14 @@ function MainLayout({ children }) {
         {!isAdmin && (
           <header className="h-16 flex items-center justify-between px-8 bg-surface-container-lowest/40 backdrop-blur-md border-b border-outline-variant/20 z-20 shrink-0 shadow-sm">
             <div className="flex items-center gap-2">
+              {/* Hamburger Menu on Mobile */}
+              <button 
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="p-1.5 rounded-full hover:bg-surface-variant text-on-surface-variant md:hidden flex items-center justify-center mr-1 border border-outline-variant/20 shadow-sm"
+                title="Mở lịch sử chat"
+              >
+                <Menu size={18} />
+              </button>
               <h3 className="font-bold text-lg text-primary md:block hidden">Trợ lý Ảo Xanh SM AI</h3>
               <h3 className="font-bold text-base text-primary md:hidden block">Xanh SM AI</h3>
               <button 

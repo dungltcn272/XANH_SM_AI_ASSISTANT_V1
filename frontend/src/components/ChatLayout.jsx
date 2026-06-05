@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, PlusCircle, Mic, ArrowUp } from 'lucide-react';
+import { User, Loader2, Link2, PlusCircle, Mic, ArrowUp, Car, Key, BatteryCharging, ChevronRight, Truck } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -208,43 +208,112 @@ export default function ChatLayout() {
   const showSpinner = loading && (!lastMsg || lastMsg.role !== 'assistant' || !lastMsg.content);
 
   return (
-    <div className="relative h-full flex flex-col items-center pt-8 pb-32 px-4 md:px-16 overflow-y-auto w-full">
+    <div className="relative flex-1 min-h-0 flex flex-col items-center pt-2 md:pt-8 pb-24 md:pb-32 px-4 md:px-16 overflow-y-auto w-full">
       
       {/* Empty State Hero */}
       {messages.length === 0 && (
-        <div className="w-full max-w-4xl text-center flex flex-col items-center gap-8 relative mt-12 mb-8">
+        <div className="w-full max-w-4xl text-center flex flex-col items-center gap-3 md:gap-8 relative mt-2 md:mt-12 mb-2 md:mb-8">
           <div className="relative z-10">
-            <div className="w-24 h-24 mb-6 rounded-3xl bg-gradient-to-tr from-primary/20 to-secondary/20 flex items-center justify-center glass shadow-xl mx-auto border-2 border-primary/20 animate-pulse">
-              <XanhSMIcon className="w-12 h-12" />
+            <div className="w-12 h-12 md:w-24 md:h-24 mb-2 md:mb-6 rounded-xl md:rounded-3xl bg-gradient-to-tr from-primary/20 to-secondary/20 flex items-center justify-center glass shadow-xl mx-auto border-2 border-primary/20 animate-pulse">
+              <XanhSMIcon className="w-6 h-6 md:w-12 md:h-12" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-on-surface max-w-3xl leading-tight">
-              Chào mừng bạn đến với <span className="text-primary font-extrabold">Xanh SM AI</span>.<br/>
+            <h1 className="text-xl md:text-4xl font-bold text-on-surface max-w-3xl leading-tight">
+              Chào mừng bạn đến với <span className="text-primary font-extrabold">Xanh SM AI</span>.<br className="hidden md:block" />
               Hôm nay bạn muốn khám phá điều gì?
             </h1>
-            <div className="mt-4 w-32 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent mx-auto rounded-full"></div>
+            <div className="mt-2 md:mt-4 w-32 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent mx-auto rounded-full"></div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-12 relative z-10">
-            <button onClick={(e) => handleSubmit(e, "Giá cước taxi Xanh SM Car tại Hà Nội")} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
-                <span className="material-symbols-outlined font-bold">$</span>
+          {/* Desktop Grid Layout (Large Screens) */}
+          <div className="hidden md:grid grid-cols-3 gap-6 w-full mt-12 relative z-10">
+            <button 
+              onClick={(e) => handleSubmit(e, "Giá cước các dịch vụ Xanh SM Taxi, Xanh SM Luxury và xe máy Xanh SM Bike mới nhất là bao nhiêu?")} 
+              className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-1 group flex flex-col items-start gap-0"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
+                <Car size={20} />
               </div>
-              <h3 className="text-xl font-bold text-on-surface mb-2">Giá cước Taxi Xanh SM</h3>
-              <p className="text-sm text-on-surface-variant">Xem bảng giá cước dịch vụ di chuyển Xanh SM Car chi tiết tại Hà Nội.</p>
+              <div>
+                <h3 className="text-xl font-bold text-on-surface mb-2">Giá cước Di chuyển</h3>
+                <p className="text-sm text-on-surface-variant">Tra cứu bảng giá cước chi tiết của các dịch vụ taxi điện và xe máy điện Xanh SM.</p>
+              </div>
             </button>
-            <button onClick={(e) => handleSubmit(e, "Quyền lợi bảo hiểm chuyến đi Green SM Care và phí đăng ký")} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
-                <span className="material-symbols-outlined font-bold">✓</span>
+
+            <button 
+              onClick={(e) => handleSubmit(e, "Quy định vận chuyển của xe bán tải điện VinFast EC Van và dịch vụ giao hàng Xanh Express như thế nào?")} 
+              className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-1 group flex flex-col items-start gap-0"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
+                <Truck size={20} />
               </div>
-              <h3 className="text-xl font-bold text-on-surface mb-2">Bảo hiểm Green SM Care</h3>
-              <p className="text-sm text-on-surface-variant">Tìm hiểu quyền lợi bảo hiểm hành khách tai nạn chuyến đi từ 1.000 VNĐ.</p>
+              <div>
+                <h3 className="text-xl font-bold text-on-surface mb-2">Giao hàng & Xe Van điện</h3>
+                <p className="text-sm text-on-surface-variant">Tìm hiểu dịch vụ giao hàng siêu tốc và xe Van chở hàng cồng kềnh tới 580kg.</p>
+              </div>
             </button>
-            <button onClick={(e) => handleSubmit(e, "Cách yêu cầu xuất hóa đơn đỏ VAT cho chuyến xe")} className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-2 group">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
-                <span className="material-symbols-outlined font-bold">⚡</span>
+
+            <button 
+              onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 đồng, thuê xe tự lái và ưu đãi sạc pin trạm V-GREEN cho xe VF 5, VF 6 là gì?")} 
+              className="glass-panel p-6 rounded-2xl text-left hover:border-primary/50 transition-all hover:-translate-y-1 group flex flex-col items-start gap-0"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
+                <BatteryCharging size={20} />
               </div>
-              <h3 className="text-xl font-bold text-on-surface mb-2">Yêu cầu xuất hóa đơn VAT</h3>
-              <p className="text-sm text-on-surface-variant">Quy trình đăng ký xuất hóa đơn giá trị gia tăng sau chuyến đi.</p>
+              <div>
+                <h3 className="text-xl font-bold text-on-surface mb-2">Chính sách VF 5 & VF 6</h3>
+                <p className="text-sm text-on-surface-variant">Khám phá ưu đãi sạc pin trạm V-GREEN, chương trình mua xe 0 đồng, thuê xe chạy dịch vụ.</p>
+              </div>
+            </button>
+          </div>
+
+          {/* Mobile Stack Layout (Sleek, Compact, No Space Wasted) */}
+          <div className="flex md:hidden flex-col gap-2.5 w-full mt-4 relative z-10 px-1">
+            <button 
+              onClick={(e) => handleSubmit(e, "Giá cước các dịch vụ Xanh SM Taxi, Xanh SM Luxury và xe máy Xanh SM Bike mới nhất là bao nhiêu?")} 
+              className="glass-panel py-3 px-4 rounded-xl flex items-center justify-between gap-3 text-left w-full border border-primary/10 hover:bg-primary/5 active:scale-[0.99] transition-all shadow-sm bg-white/70 dark:bg-transparent"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Car size={16} />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-on-surface truncate">Giá cước Di chuyển</h4>
+                  <p className="text-xs text-on-surface-variant/80 truncate">Bảng giá cước taxi Xanh SM & Xanh SM Bike...</p>
+                </div>
+              </div>
+              <ChevronRight size={14} className="text-on-surface-variant/40 shrink-0" />
+            </button>
+
+            <button 
+              onClick={(e) => handleSubmit(e, "Quy định vận chuyển của xe bán tải điện VinFast EC Van và dịch vụ giao hàng Xanh Express như thế nào?")} 
+              className="glass-panel py-3 px-4 rounded-xl flex items-center justify-between gap-3 text-left w-full border border-primary/10 hover:bg-primary/5 active:scale-[0.99] transition-all shadow-sm bg-white/70 dark:bg-transparent"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Truck size={16} />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-on-surface truncate">Giao hàng & Xe Van điện</h4>
+                  <p className="text-xs text-on-surface-variant/80 truncate">Dịch vụ Xanh Express & xe Van chở hàng...</p>
+                </div>
+              </div>
+              <ChevronRight size={14} className="text-on-surface-variant/40 shrink-0" />
+            </button>
+
+            <button 
+              onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 đồng, thuê xe tự lái và ưu đãi sạc pin trạm V-GREEN cho xe VF 5, VF 6 là gì?")} 
+              className="glass-panel py-3 px-4 rounded-xl flex items-center justify-between gap-3 text-left w-full border border-primary/10 hover:bg-primary/5 active:scale-[0.99] transition-all shadow-sm bg-white/70 dark:bg-transparent"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <BatteryCharging size={16} />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-on-surface truncate">Chính sách VF 5 & VF 6</h4>
+                  <p className="text-xs text-on-surface-variant/80 truncate">Mua xe 0đ, trạm sạc V-GREEN, thuê xe...</p>
+                </div>
+              </div>
+              <ChevronRight size={14} className="text-on-surface-variant/40 shrink-0" />
             </button>
           </div>
         </div>
@@ -287,6 +356,14 @@ export default function ChatLayout() {
                         th: (props) => <th className="px-6 py-4 font-bold border-b border-primary/10 m-0" {...stripNode(props)} />,
                         td: (props) => <td className="px-6 py-4 border-b border-surface-variant/50 m-0" {...stripNode(props)} />,
                         tr: (props) => <tr className="hover:bg-surface-container-high/30 transition-colors m-0" {...stripNode(props)} />,
+                        a: (props) => (
+                          <a 
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold italic underline transition-all"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            {...stripNode(props)}
+                          />
+                        ),
 
                         img: (props) => (
                           <div className="my-4 flex flex-col items-center">

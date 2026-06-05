@@ -26,20 +26,20 @@ def log_event(level: str, phase: str, message: str, error_type: Optional[str] = 
         except Exception:
             details_str = str(details)
             
-    # Print to standard output for cloud logs (Railway)
-    with LOCK:
-        log_line = f"[{timestamp}] [{level.upper()}] [{phase.upper()}] {message}"
-        if error_type:
-            log_line += f" (Error: {error_type})"
-        if details_str:
-            log_line += f" | Details: {details_str}"
-        
-        if level.upper() in ("ERROR", "WARN"):
-            sys.stderr.write(log_line + "\n")
-            sys.stderr.flush()
-        else:
-            sys.stdout.write(log_line + "\n")
-            sys.stdout.flush()
+    # Print to standard output for cloud logs (Railway) (Disabled per user request)
+    # with LOCK:
+    #     log_line = f"[{timestamp}] [{level.upper()}] [{phase.upper()}] {message}"
+    #     if error_type:
+    #         log_line += f" (Error: {error_type})"
+    #     if details_str:
+    #         log_line += f" | Details: {details_str}"
+    #     
+    #     if level.upper() in ("ERROR", "WARN"):
+    #         sys.stderr.write(log_line + "\n")
+    #         sys.stderr.flush()
+    #     else:
+    #         sys.stdout.write(log_line + "\n")
+    #         sys.stdout.flush()
 
     # Save to database (SystemLog table)
     try:

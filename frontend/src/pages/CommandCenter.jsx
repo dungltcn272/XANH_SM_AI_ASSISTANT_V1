@@ -1,40 +1,56 @@
 import { useState, useEffect } from 'react';
-import { Users, Zap, ShieldAlert, Timer, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Zap, ShieldAlert, Timer, ChevronRight, DollarSign, AlertOctagon } from 'lucide-react';
 import { api } from '../api';
 
 export default function CommandCenter() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     total_users: 0,
     total_requests: 0,
     total_blocked: 0,
-    avg_latency: 0
+    avg_latency: 0,
+    total_cost: 0,
+    total_errors: 0
   });
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIntent, setSelectedIntent] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchStats = async () => {
       try {
-        const [s, l] = await Promise.all([
-          api.getDbStats().catch(() => null),
-          api.getAdminLogs().catch(() => [])
-        ]);
+        const s = await api.getDbStats();
         if (s) {
           setStats({
             total_users: s.total_users || 0,
             total_requests: s.total_requests || 0,
             total_blocked: s.total_blocked || 0,
-            avg_latency: s.avg_latency || 0.8
+            avg_latency: s.avg_latency || 0.8,
+            total_cost: s.total_cost || 0,
+            total_errors: s.total_errors || 0
           });
         }
-        if (l) setLogs(l.slice(0, 5)); // Just recent 5
       } catch (err) {
         console.error(err);
       }
-      setLoading(false);
     };
-    fetchData();
+    fetchStats();
   }, []);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const l = await api.getAdminLogs(selectedIntent || null);
+        if (l) setLogs(l.slice(0, 5));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, [selectedIntent]);
 
   if (loading) {
     return <div className="p-8 text-on-surface-variant animate-pulse">Loading command center...</div>;
@@ -56,7 +72,7 @@ export default function CommandCenter() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6 mb-10">
         
         {/* Total Users */}
         <div className="glass-panel p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform">
@@ -66,7 +82,7 @@ export default function CommandCenter() {
             </div>
           </div>
           <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-1">Total Users</p>
-          <h3 className="text-4xl font-bold text-primary drop-shadow-sm">{stats.total_users.toLocaleString()}</h3>
+          <h3 className="text-3xl font-bold text-primary drop-shadow-sm">{stats.total_users.toLocaleString()}</h3>
         </div>
 
         {/* Requests */}
@@ -77,7 +93,20 @@ export default function CommandCenter() {
             </div>
           </div>
           <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-1">Requests</p>
-          <h3 className="text-4xl font-bold text-blue-500 drop-shadow-sm">{stats.total_requests.toLocaleString()}</h3>
+          <h3 className="text-3xl font-bold text-blue-500 drop-shadow-sm">{stats.total_requests.toLocaleString()}</h3>
+        </div>
+
+        {/* Total Cost */}
+        <div className="glass-panel p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-4 shadow-inner">
+              <DollarSign size={20} />
+            </div>
+          </div>
+          <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-1">Total Cost</p>
+          <h3 className="text-2xl xl:text-xl 2xl:text-3xl font-bold text-emerald-500 drop-shadow-sm truncate" title={`$${(stats.total_cost || 0).toFixed(6)}`}>
+            ${(stats.total_cost || 0).toFixed(6)}
+          </h3>
         </div>
 
         {/* Guardrail Blocks */}
@@ -88,7 +117,18 @@ export default function CommandCenter() {
             </div>
           </div>
           <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-1">Guardrail Blocks</p>
-          <h3 className="text-4xl font-bold text-red-500 drop-shadow-sm">{stats.total_blocked.toLocaleString()}</h3>
+          <h3 className="text-3xl font-bold text-red-500 drop-shadow-sm">{stats.total_blocked.toLocaleString()}</h3>
+        </div>
+
+        {/* System Errors */}
+        <div className="glass-panel p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-10 h-10 rounded-xl bg-red-800/10 flex items-center justify-center text-red-800 mb-4 shadow-inner">
+              <AlertOctagon size={20} />
+            </div>
+          </div>
+          <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-1">System Errors</p>
+          <h3 className="text-3xl font-bold text-red-800 drop-shadow-sm">{stats.total_errors.toLocaleString()}</h3>
         </div>
 
         {/* Avg Response Time */}
@@ -99,16 +139,36 @@ export default function CommandCenter() {
             </div>
           </div>
           <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-1">Avg Response</p>
-          <h3 className="text-4xl font-bold text-orange-500 drop-shadow-sm">{(stats.avg_latency || 0).toFixed(2)}s</h3>
+          <h3 className="text-3xl font-bold text-orange-500 drop-shadow-sm">{(stats.avg_latency || 0).toFixed(2)}s</h3>
         </div>
 
       </div>
 
       {/* Recent Activity Table */}
       <div className="glass-panel rounded-3xl overflow-hidden border border-outline-variant/30">
-        <div className="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-white/40">
+        <div className="p-6 border-b border-outline-variant/30 flex flex-wrap gap-4 justify-between items-center bg-white/40">
           <h3 className="text-xl font-bold text-on-surface">Recent Intelligence Queries</h3>
-          <button className="text-sm font-semibold text-primary hover:text-primary-focus flex items-center gap-1 transition-colors">
+          
+          {/* Intent Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-on-surface-variant">Intent:</span>
+            <select
+              value={selectedIntent}
+              onChange={(e) => setSelectedIntent(e.target.value)}
+              className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-1.5 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
+            >
+              <option value="">Tất cả Intents</option>
+              <option value="rag">RAG</option>
+              <option value="small-talk">Small-talk</option>
+              <option value="sensitive">Sensitive</option>
+              <option value="faq">FAQ</option>
+            </select>
+          </div>
+
+          <button 
+            onClick={() => navigate('/admin/history')}
+            className="text-sm font-semibold text-primary hover:text-primary-focus flex items-center gap-1 transition-colors"
+          >
             View all logs <ChevronRight size={16} />
           </button>
         </div>
