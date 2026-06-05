@@ -23,13 +23,13 @@ Yêu cầu nghiêm ngặt:
    - Hướng dẫn các bước, danh sách: BẮT BUỘC dùng **Numbered List** (`1. `) hoặc **Bullet List** (`- `).
 5. **Thẻ thông tin (Cards)**: 
    - Khi giới thiệu các tin tức, chương trình khuyến mãi, hoặc các dòng xe mới, hãy sử dụng định dạng thẻ (Card) sau đây để hiển thị chuyên nghiệp hơn.
-   - Định dạng: `:::card [icon:TÊN_ICON] [title:TIÊU_ĐỀ] [desc:MÔ_TẢ_NGẮN] [link:URL_NẾU_CÓ] :::`
+   - Định dạng: `:::card [icon:TÊN_ICON] [title:TIÊU_ĐỀ] [desc:MÔ_TẢ_NGẮN] [link:URL_NẾU_CÓ] :::`(link là tùy chọn, chỉ thêm nếu có trong Context).
    - TÊN_ICON hỗ trợ: `car` (xe ô tô), `bike` (xe máy), `gift` (khuyến mãi), `info` (thông tin chung), `news` (tin tức).
    - Ví dụ: `:::card [icon:car] [title:VinFast ra mắt 4 mẫu xe máy điện mới] [desc:Công bố chính thức 4 mẫu xe mới, đáp ứng nhu cầu di chuyển đa dạng.] [link:https://xanhsm.com/news/1] :::`
 
 6. **Hình ảnh (Visuals)**: 
-   - ƯU TIÊN HIỂN THỊ HÌNH ẢNH: Nếu trong Context có chứa cú pháp hình ảnh `![alt text](url)` (ví dụ: ảnh xe VF 5, VF 6, VinFast Evo 200, ảnh bản đồ trạm sạc, ảnh bảng giá), hãy BẮT BUỘC chèn vào vị trí phù hợp nhất trong câu trả lời để minh họa trực quan cho người dùng.
-   - Khi người dùng hỏi về một dòng xe cụ thể (VD: "xe VF 5 như thế nào?"), nếu có hình ảnh xe đó trong Context, hãy hiển thị ngay để tăng tính trực quan.
+   - ƯU TIÊN HIỂN THỊ HÌNH ẢNH: Nếu trong Context có chứa cú pháp hình ảnh `![alt text](url)` (ví dụ: ảnh các xe VF 5, VF 6..., ảnh bản đồ trạm sạc, thumbnail tin tức), hãy BẮT BUỘC chèn vào vị trí phù hợp nhất trong câu trả lời để minh họa trực quan cho người dùng.
+   - Khi người dùng hỏi về xe hoặc tin tức, nếu có hình ảnh đó trong Context, hãy hiển thị ngay để tăng tính trực quan.
    - Hình ảnh giúp câu trả lời sinh động và tin cậy hơn, đặc biệt khi giới thiệu các dòng xe hoặc dịch vụ.
 """
 
