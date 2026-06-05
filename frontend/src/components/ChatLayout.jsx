@@ -280,7 +280,7 @@ export default function ChatLayout() {
                     <div className={`p-4 rounded-2xl text-base leading-relaxed transition-all duration-300 ${
                       msg.role === 'user' 
                         ? 'bg-gradient-to-br from-[#00c897] to-[#009e79] text-white rounded-br-sm shadow-[0_4px_16px_rgba(0,200,151,0.15)] dark:shadow-[0_4px_16px_rgba(0,200,151,0.05)] border border-[#00c897]/20 hover:scale-[1.005]' 
-                        : 'bg-white/85 dark:bg-[#0c1618]/85 backdrop-blur-md border border-outline-variant/20 dark:border-[#182a2d] text-on-surface rounded-bl-sm shadow-[0_4px_20px_rgba(0,0,0,0.02)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.12)] hover:scale-[1.005]'
+                        : 'bg-white/40 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 text-on-surface rounded-bl-sm shadow-[0_4px_20px_rgba(0,0,0,0.02)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.12)] hover:scale-[1.005]'
                     }`}>
                       {msg.role === 'user' ? (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -413,7 +413,7 @@ export default function ChatLayout() {
             {/* Card 1 */}
             <button 
               onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")} 
-              className="glass-panel p-3 rounded-2xl text-left border border-outline-variant/20 dark:border-[#182a2d] hover:border-[#00c897]/40 dark:hover:border-[#00c897]/40 hover:bg-[#00c897]/5 dark:hover:bg-[#00c897]/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full bg-white/70 dark:bg-[#0c1618]/70 shadow-sm"
+              className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-[#00c897]/40 dark:hover:border-[#00c897]/40 hover:bg-[#00c897]/5 dark:hover:bg-[#00c897]/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-[#00c897]/10 flex items-center justify-center text-[#00c897] group-hover:bg-[#00c897] group-hover:text-white transition-colors shrink-0">
                 <Car size={16} />
@@ -428,7 +428,7 @@ export default function ChatLayout() {
             {/* Card 2 */}
             <button 
               onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")} 
-              className="glass-panel p-3 rounded-2xl text-left border border-outline-variant/20 dark:border-[#182a2d] hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:bg-blue-500/5 dark:hover:bg-blue-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full bg-white/70 dark:bg-[#0c1618]/70 shadow-sm"
+              className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:bg-blue-500/5 dark:hover:bg-blue-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
                 <Key size={16} />
@@ -443,7 +443,7 @@ export default function ChatLayout() {
             {/* Card 3 */}
             <button 
               onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")} 
-              className="glass-panel p-3 rounded-2xl text-left border border-outline-variant/20 dark:border-[#182a2d] hover:border-amber-500/40 dark:hover:border-amber-500/40 hover:bg-amber-500/5 dark:hover:bg-amber-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full bg-white/70 dark:bg-[#0c1618]/70 shadow-sm"
+              className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-amber-500/40 dark:hover:border-amber-500/40 hover:bg-amber-500/5 dark:hover:bg-amber-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
                 <Tag size={16} />
@@ -458,7 +458,7 @@ export default function ChatLayout() {
             {/* Card 4 */}
             <button 
               onClick={(e) => handleSubmit(e, "Cập nhật các tin tức và sự kiện mới nhất từ Xanh SM")} 
-              className="glass-panel p-3 rounded-2xl text-left border border-outline-variant/20 dark:border-[#182a2d] hover:border-purple-500/40 dark:hover:border-purple-500/40 hover:bg-purple-500/5 dark:hover:bg-purple-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full bg-white/70 dark:bg-[#0c1618]/70 shadow-sm"
+              className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-purple-500/40 dark:hover:border-purple-500/40 hover:bg-purple-500/5 dark:hover:bg-purple-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors shrink-0">
                 <Newspaper size={16} />
@@ -472,7 +472,7 @@ export default function ChatLayout() {
           </div>
         )}
 
-        <div className="w-full max-w-5xl glass-panel p-3 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex flex-col gap-2 group border-outline-variant/20 dark:border-[#182a2d] focus-within:border-[#00c897]/50 focus-within:ring-2 focus-within:ring-[#00c897]/10 transition-all bg-white/95 dark:bg-[#0c1618]/95 backdrop-blur-md pointer-events-auto">
+        <div className="w-full max-w-5xl glass-panel p-3 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex flex-col gap-2 group border-white/20 dark:border-white/10 focus-within:border-[#00c897]/50 focus-within:ring-2 focus-within:ring-[#00c897]/10 transition-all bg-white/80 dark:bg-[#0c1618]/80 backdrop-blur-xl pointer-events-auto">
           <textarea 
             value={input}
             onChange={(e) => setInput(e.target.value)}

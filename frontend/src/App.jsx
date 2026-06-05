@@ -312,7 +312,7 @@ function MainLayout({ children }) {
       {/* Main Content */}
       <div className={`flex-1 flex flex-col relative overflow-hidden ${isAdmin ? 'w-full' : ''}`}>
         {!isAdmin && (
-          <header className="mx-4 md:mx-8 mt-4 mb-2 py-2.5 px-4 md:px-6 flex items-center justify-between bg-[#e5eff0]/70 dark:bg-[#0c1618]/80 backdrop-blur-md rounded-3xl border border-outline-variant/20 dark:border-[#182a2d] z-20 shrink-0 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.2)] transition-all duration-200">
+          <header className="mx-4 md:mx-8 mt-4 mb-2 py-2.5 px-4 md:px-6 flex items-center justify-between bg-white/88 dark:bg-[#081217]/88 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-cyan-500/10 z-20 shrink-0 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] transition-all duration-200">
             <div className="flex items-center gap-3">
               {/* Hamburger Menu on Mobile */}
               <button 
@@ -335,7 +335,7 @@ function MainLayout({ children }) {
               )}
 
               {/* Status Badge - Floating & Stacked Layout */}
-              <div className="flex items-center gap-3 select-none py-1.5 px-3.5 rounded-2xl bg-white/40 dark:bg-white/10 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-sm transition-all hover:bg-white/50 dark:hover:bg-white/20">
+              <div className="flex items-center gap-3 select-none ml-2">
                 {/* Green Dot Indicator */}
                 <div className="w-2.5 h-2.5 rounded-full bg-[#00c897] shadow-[0_0_8px_#00c897] animate-pulse shrink-0" />
                 
@@ -348,7 +348,7 @@ function MainLayout({ children }) {
                       <path d="m9 11 2 2 4-4"/>
                     </svg>
                   </div>
-                  <span className="text-[10px] text-on-surface-variant/40 font-medium mt-0.5">Dữ liệu cập nhật 05/06/2026</span>
+                  <span className="text-[10px] text-on-surface-variant/30 font-medium mt-0.5 italic">Dữ liệu cập nhật 05/06/2026</span>
                 </div>
               </div>
             </div>
@@ -379,8 +379,8 @@ function MainLayout({ children }) {
                   {showUserMenu && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                      <div className="absolute right-0 mt-2 w-48 bg-white/80 dark:bg-[#0c1618]/80 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150 text-on-surface">
-                        <div className="px-4 py-2.5 border-b border-white/10 dark:border-white/5">
+                      <div className="absolute right-0 mt-2 w-48 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150 text-on-surface">
+                        <div className="px-4 py-2.5 border-b border-outline-variant/20">
                           <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Tài khoản</p>
                           <p className="text-xs font-bold truncate mt-0.5">{user.email}</p>
                         </div>
@@ -389,7 +389,7 @@ function MainLayout({ children }) {
                             setShowTopicsDialog(true);
                             setShowUserMenu(false);
                           }}
-                          className="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-white/20 dark:hover:bg-white/10 flex items-center gap-2 transition-colors"
+                          className="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-surface-variant flex items-center gap-2 transition-colors"
                         >
                           <HelpCircle size={14} /> Danh mục hỗ trợ
                         </button>
@@ -398,7 +398,7 @@ function MainLayout({ children }) {
                             handleLogout();
                             setShowUserMenu(false);
                           }}
-                          className="w-full text-left px-4 py-2.5 text-xs font-bold text-error hover:bg-error/10 flex items-center gap-2 transition-colors border-t border-white/10 dark:border-white/5"
+                          className="w-full text-left px-4 py-2.5 text-xs font-bold text-error hover:bg-error/10 flex items-center gap-2 transition-colors border-t border-outline-variant/10"
                         >
                           <LogOut size={14} /> Đăng xuất
                         </button>
@@ -432,9 +432,9 @@ function MainLayout({ children }) {
         {/* Topics Dialog Modal */}
         {showTopicsDialog && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white/80 dark:bg-[#0c1618]/80 backdrop-blur-2xl border border-white/20 dark:border-white/10 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col text-on-surface transition-all duration-200">
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col text-on-surface transition-all duration-200">
               {/* Header */}
-              <div className="p-6 border-b border-white/10 dark:border-white/5 flex items-center justify-between bg-white/10 dark:bg-white/5 shrink-0">
+              <div className="p-6 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
                     <HelpCircle size={24} />
@@ -446,7 +446,7 @@ function MainLayout({ children }) {
                 </div>
                 <button 
                   onClick={() => setShowTopicsDialog(false)}
-                  className="p-2 rounded-full hover:bg-white/20 dark:hover:bg-white/10 text-on-surface-variant hover:text-on-surface transition-all"
+                  className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant hover:text-on-surface transition-all"
                 >
                   <X size={20} />
                 </button>
