@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import 'regenerator-runtime/runtime';
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, Plus, Mic, Send, Car, Key, Tag, Newspaper } from 'lucide-react';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, ChevronDown } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -12,13 +14,53 @@ const stripNode = (props) => {
   return rest;
 };
 
-const XanhSMIcon = ({ className = "w-6 h-6" }) => (
-  <img 
-    src="/icon.svg" 
-    alt="Xanh SM" 
-    className={`object-contain ${className}`}
-  />
-);
+const MessageCard = ({ icon, title, desc, link, index }) => {
+  const IconComponent = useMemo(() => {
+    switch (icon) {
+      case 'car': return Car;
+      case 'bike': return Car; // Bike icon would be better if available
+      case 'gift': return Gift;
+      case 'news': return Newspaper;
+      case 'info': return Info;
+      default: return Info;
+    }
+  }, [icon]);
+
+  const CardWrapper = link ? 'a' : 'div';
+  const wrapperProps = link ? {
+    href: link,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    className: "flex items-center gap-4 p-4 my-2 bg-white/50 dark:bg-white/5 border border-outline-variant/20 rounded-2xl hover:bg-[#00c897]/5 transition-all group cursor-pointer"
+  } : {
+    className: "flex items-center gap-4 p-4 my-2 bg-white/50 dark:bg-white/5 border border-outline-variant/20 rounded-2xl transition-all"
+  };
+
+  return (
+    <CardWrapper {...wrapperProps}>
+      <div className={`w-12 h-12 rounded-xl bg-[#00c897]/10 flex items-center justify-center text-[#00c897] shrink-0 ${link ? 'group-hover:bg-[#00c897] group-hover:text-white' : ''} transition-all`}>
+        <IconComponent size={24} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="w-5 h-5 rounded-full bg-[#00c897] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+            {index}
+          </span>
+          <h4 className="font-bold text-sm text-on-surface truncate">{title}</h4>
+        </div>
+        <p className="text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed">
+          {desc}
+        </p>
+      </div>
+      {link && (
+        <div className="text-[#00c897] opacity-0 group-hover:opacity-100 transition-opacity">
+          <Plus size={16} className="rotate-45" />
+        </div>
+      )}
+    </CardWrapper>
+  );
+};
+
 export default function ChatLayout() {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -32,15 +74,101 @@ export default function ChatLayout() {
   const lastProcessedActiveConvIdRef = useRef(undefined);
   const messagesEndRef = useRef(null);
 
-  const scrollToBottom = () => {
-    if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition
+  } = useSpeechRecognition();
+
+  const [recordingTime, setRecordingTime] = useState(0);
+  const timerRef = useRef(null);
+
+  const [isEditingVoiceText, setIsEditingVoiceText] = useState(false);
+  const [voiceLanguage, setVoiceLanguage] = useState('vi-VN');
+
+  useEffect(() => {
+    if (listening && !isEditingVoiceText) {
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [listening, isEditingVoiceText]);
+
+  const formatRecordingTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   useEffect(() => {
+    if (transcript && !isEditingVoiceText) {
+      setInput(transcript);
+    }
+  }, [transcript, isEditingVoiceText]);
+
+  const handleVoiceInput = () => {
+    if (listening) {
+      SpeechRecognition.stopListening();
+    } else {
+      resetTranscript();
+      setIsEditingVoiceText(false);
+      SpeechRecognition.startListening({ language: voiceLanguage, continuous: true });
+    }
+  };
+
+  const toggleEditingVoiceText = () => {
+    if (!isEditingVoiceText) {
+      SpeechRecognition.stopListening();
+      setIsEditingVoiceText(true);
+    } else {
+      setIsEditingVoiceText(false);
+      SpeechRecognition.startListening({ language: voiceLanguage, continuous: true });
+    }
+  };
+
+  const cancelVoiceInput = () => {
+    SpeechRecognition.stopListening();
+    setTimeout(() => {
+      resetTranscript();
+      setInput('');
+    }, 100);
+  };
+
+  const stopAndSendVoice = () => {
+    // Stop recording first
+    SpeechRecognition.stopListening();
+    
+    // We use a slightly longer delay to ensure the final transcript is captured and synced to 'input' state
+    setTimeout(() => {
+      // Use the transcript directly from the hook to avoid any state delay issues
+      const finalContent = transcript.trim();
+      if (finalContent) {
+        // Trigger handle submit with the voice content
+        handleSubmit(null, finalContent);
+      }
+      resetTranscript();
+    }, 300);
+  };
+
+  const scrollToBottom = useCallback(() => {
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages.length]);
+
+  useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     if (activeConversationId !== lastProcessedActiveConvIdRef.current) {
@@ -49,7 +177,11 @@ export default function ChatLayout() {
       if (activeConversationId) {
         // Load history
         api.getConversationMessages(activeConversationId).then(msgs => {
-          const formatted = msgs.map(m => ({ role: m.role, content: m.content }));
+          const formatted = msgs.map(m => ({ 
+            role: m.role, 
+            content: m.content,
+            created_at: m.created_at
+          }));
           setMessages(formatted);
         }).catch(console.error);
       } else {
@@ -68,14 +200,15 @@ export default function ChatLayout() {
 
     const userQuery = query;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
+    const now = new Date().toISOString();
+    setMessages(prev => [...prev, { role: 'user', content: userQuery, created_at: now }]);
     setLoading(true);
 
     try {
       const response = await api.chatStream(userQuery, currentConvIdRef.current);
       if (!response.ok) throw new Error('API Error');
       
-      setMessages(prev => [...prev, { role: 'assistant', content: '', latency_ms: null, metrics: null }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: '', latency_ms: null, metrics: null, created_at: new Date().toISOString() }]);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -189,7 +322,7 @@ export default function ChatLayout() {
         if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content === '') {
           lastMsg.content = 'Xin lỗi, hệ thống AI đang bận hoặc mất kết nối tới cơ sở dữ liệu. Vui lòng thử lại sau ít phút.';
         } else if (!lastMsg || lastMsg.role === 'user') {
-          newMsgs.push({ role: 'assistant', content: 'Xin lỗi, hệ thống AI đang bận hoặc mất kết nối tới cơ sở dữ liệu. Vui lòng thử lại sau ít phút.', latency_ms: null });
+          newMsgs.push({ role: 'assistant', content: 'Xin lỗi, hệ thống AI đang bận hoặc mất kết nối tới cơ sở dữ liệu. Vui lòng thử lại sau ít phút.', latency_ms: null, created_at: new Date().toISOString() });
         }
         return newMsgs;
       });
@@ -204,6 +337,113 @@ export default function ChatLayout() {
       e.preventDefault();
       handleSubmit();
     }
+  };
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const renderContent = (content) => {
+    // Robust regex to handle optional colons, variable whitespace, and optional link
+    const cardRegex = /:::card\s+\[icon:?\s*(.*?)\]\s+\[title:?\s*(.*?)\]\s+\[desc:?\s*(.*?)\](?:\s+\[link:?\s*(.*?)\])?\s+:::/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    let cardIndex = 1;
+
+    while ((match = cardRegex.exec(content)) !== null) {
+      // Add text before card
+      if (match.index > lastIndex) {
+        parts.push(content.substring(lastIndex, match.index));
+      }
+      // Add card component
+      parts.push(
+        <MessageCard 
+          key={`card-${cardIndex}`}
+          icon={match[1]?.trim()}
+          title={match[2]?.trim()}
+          desc={match[3]?.trim()}
+          link={match[4]?.trim()}
+          index={cardIndex++}
+        />
+      );
+      lastIndex = cardRegex.lastIndex;
+    }
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex));
+    }
+
+    if (parts.length === 0) return (
+      <ReactMarkdown 
+        remarkPlugins={[remarkGfm]}
+        components={markdownComponents}
+      >
+        {content}
+      </ReactMarkdown>
+    );
+
+    return (
+      <div className="flex flex-col">
+        {parts.map((part, i) => (
+          typeof part === 'string' ? (
+            <ReactMarkdown 
+              key={i}
+              remarkPlugins={[remarkGfm]}
+              components={markdownComponents}
+            >
+              {part}
+            </ReactMarkdown>
+          ) : part
+        ))}
+      </div>
+    );
+  };
+
+  const markdownComponents = {
+    ol: (props) => <ol className="list-decimal pl-5 my-2 ml-4" {...stripNode(props)} />,
+    ul: (props) => <ul className="list-disc pl-5 my-2 ml-4" {...stripNode(props)} />,
+    li: (props) => <li className="my-1" {...stripNode(props)} />,
+    table: (props) => (
+      <div className="overflow-x-auto my-4 w-full border border-primary/20 rounded-xl shadow-sm">
+        <table className="w-full text-sm text-left m-0" {...stripNode(props)} />
+      </div>
+    ),
+    thead: (props) => <thead className="text-xs uppercase bg-primary/10 text-primary" {...stripNode(props)} />,
+    th: (props) => <th className="px-6 py-4 font-bold border-b border-primary/10 m-0" {...stripNode(props)} />,
+    td: (props) => <td className="px-6 py-4 border-b border-surface-variant/50 m-0" {...stripNode(props)} />,
+    tr: (props) => <tr className="hover:bg-surface-container-high/30 transition-colors m-0" {...stripNode(props)} />,
+    a: (props) => (
+      <a 
+        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold italic underline transition-all"
+        target="_blank"
+        rel="noopener noreferrer"
+        {...stripNode(props)}
+      />
+    ),
+    img: (props) => (
+      <div className="my-4 flex flex-col items-center">
+        <img 
+          className="max-h-[320px] object-contain rounded-2xl border border-primary/10 shadow-md hover:scale-[1.01] transition-transform cursor-zoom-in bg-black/20"
+          alt={props.alt || "Hình ảnh từ Xanh SM"}
+          onClick={() => window.open(props.src, '_blank')}
+          {...stripNode(props)}
+        />
+        {props.alt && (
+          <span className="text-xs text-on-surface-variant/60 italic mt-2 text-center">
+            {props.alt}
+          </span>
+        )}
+      </div>
+    )
   };
 
   const lastMsg = messages[messages.length - 1];
@@ -265,120 +505,113 @@ export default function ChatLayout() {
 
         {/* Messages List */}
         {messages.length > 0 && (
-          <div className="w-full max-w-5xl flex flex-col gap-4">
+          <div className="w-full max-w-5xl flex flex-col gap-8">
             {messages.map((msg, idx) => {
               if (msg.role === 'assistant' && !msg.content && loading) return null;
               return (
-                <div key={idx} className={`flex gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-start`}>
-                  {msg.role !== 'user' && (
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shrink-0 shadow-lg">
-                      <XanhSMIcon />
-                    </div>
-                  )}
-                  
-                  <div className={`max-w-[85%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
-                    <div className={`p-4 rounded-2xl text-base leading-relaxed transition-all duration-300 ${
-                      msg.role === 'user' 
-                        ? 'bg-gradient-to-br from-[#00c897] to-[#009e79] text-white rounded-br-sm shadow-[0_4px_16px_rgba(0,200,151,0.15)] dark:shadow-[0_4px_16px_rgba(0,200,151,0.05)] border border-[#00c897]/20 hover:scale-[1.005]' 
-                        : 'bg-white/40 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 text-on-surface rounded-bl-sm shadow-[0_4px_20px_rgba(0,0,0,0.02)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.12)] hover:scale-[1.005]'
-                    }`}>
-                      {msg.role === 'user' ? (
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                      ) : (
-                        <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              ol: (props) => <ol className="list-decimal pl-5 my-2 ml-4" {...stripNode(props)} />,
-                              ul: (props) => <ul className="list-disc pl-5 my-2 ml-4" {...stripNode(props)} />,
-                              li: (props) => <li className="my-1" {...stripNode(props)} />,
-                              table: (props) => (
-                                <div className="overflow-x-auto my-4 w-full border border-primary/20 rounded-xl shadow-sm">
-                                  <table className="w-full text-sm text-left m-0" {...stripNode(props)} />
-                                </div>
-                              ),
-                              thead: (props) => <thead className="text-xs uppercase bg-primary/10 text-primary" {...stripNode(props)} />,
-                              th: (props) => <th className="px-6 py-4 font-bold border-b border-primary/10 m-0" {...stripNode(props)} />,
-                              td: (props) => <td className="px-6 py-4 border-b border-surface-variant/50 m-0" {...stripNode(props)} />,
-                              tr: (props) => <tr className="hover:bg-surface-container-high/30 transition-colors m-0" {...stripNode(props)} />,
-                              a: (props) => (
-                                <a 
-                                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold italic underline transition-all"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  {...stripNode(props)}
-                                />
-                              ),
-                              img: (props) => (
-                                <div className="my-4 flex flex-col items-center">
-                                  <img 
-                                    className="max-h-[320px] object-contain rounded-2xl border border-primary/10 shadow-md hover:scale-[1.01] transition-transform cursor-zoom-in bg-black/20"
-                                    alt={props.alt || "Hình ảnh từ Xanh SM"}
-                                    onClick={() => window.open(props.src, '_blank')}
-                                    {...stripNode(props)}
-                                  />
-                                  {props.alt && (
-                                    <span className="text-xs text-on-surface-variant/60 italic mt-2 text-center">
-                                      {props.alt}
-                                    </span>
-                                  )}
-                                </div>
-                              )
-                            }}
-                          >
-                            {msg.content}
-                          </ReactMarkdown>
+                <div key={idx} className={`flex flex-col w-full ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  {/* Header info */}
+                  <div className={`flex items-center gap-2 mb-2 px-1 text-[11px] font-bold text-on-surface-variant/50 select-none ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                    {msg.role === 'user' ? (
+                      <>
+                        <span>Bạn</span>
+                        <span>•</span>
+                        <span>{formatTime(msg.created_at)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[#00c897]">Xanh SM AI</span>
+                        <div className="px-1.5 py-0.5 rounded-md border border-[#00c897]/30 text-[#00c897] scale-75 origin-left flex items-center justify-center font-black">AI</div>
+                        <span>•</span>
+                        <span>{formatTime(msg.created_at)}</span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className={`flex gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-start`}>
+                    {msg.role !== 'user' && (
+                      <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 flex items-center justify-center text-white shrink-0 shadow-md border border-[#00c897]/20 relative overflow-hidden group">
+                        <img src="/Bot.png" alt="Xanh SM AI" className="w-7 h-7 object-contain group-hover:scale-110 transition-transform" />
+                      </div>
+                    )}
+                    
+                    <div className={`max-w-[85%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
+                      <div className={`p-4 md:p-5 rounded-3xl text-sm md:text-base leading-relaxed transition-all duration-300 flex flex-col gap-4 ${
+                        msg.role === 'user' 
+                          ? 'bg-gradient-to-br from-[#00c897] to-[#009e79] text-white rounded-tr-none shadow-[0_4px_16px_rgba(0,200,151,0.15)] dark:shadow-[0_4px_16px_rgba(0,200,151,0.05)] border border-[#00c897]/20' 
+                          : 'bg-white/88 dark:bg-white/5 backdrop-blur-md border border-white/40 dark:border-white/10 text-on-surface rounded-tl-none shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.2)]'
+                      }`}>
+                        {msg.role === 'user' ? (
+                          <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
+                        ) : (
+                          <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
+                            {renderContent(msg.content)}
+                          </div>
+                        )}
+
+                        {/* Citations / Sources */}
+                        {msg.sources && msg.sources.length > 0 && (() => {
+                          const uniqueSources = [];
+                          const seenSources = new Set();
+                          for (const src of msg.sources) {
+                            const normalizedSource = (src.source || '').toLowerCase().trim();
+                            if (normalizedSource && !seenSources.has(normalizedSource)) {
+                              seenSources.add(normalizedSource);
+                              uniqueSources.push(src);
+                            }
+                          }
+                          return (
+                            <div className="flex gap-2 flex-wrap mt-1">
+                              {uniqueSources.slice(0, 3).map((src, i) => (
+                                <a key={i} href={src.url || '#'} target="_blank" rel="noopener noreferrer" 
+                                   className="flex items-center gap-1 text-[10px] font-bold bg-surface-container-high/50 text-primary px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary hover:text-white transition-all max-w-[240px]">
+                                  <Link2 size={10} className="shrink-0" />
+                                  <span className="truncate">
+                                    {src.source ? src.source.replace(/\.(md|html|txt)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Tài liệu Xanh SM'}
+                                  </span>
+                                </a>
+                              ))}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Assistant Footer */}
+                        {msg.role === 'assistant' && (
+                          <div className="mt-2 pt-3 border-t border-outline-variant/10 flex items-center justify-between text-[10px] font-bold text-on-surface-variant/40">
+                            <div className="flex items-center gap-1.5">
+                              <span className="scale-110">📅</span>
+                              <span>Cập nhật {formatDate(msg.created_at)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span>Nguồn: Xanh SM Official</span>
+                              <ShieldCheck size={12} className="text-[#00c897]" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {msg.role === 'user' && (
+                        <div className="flex justify-end mt-1.5 px-1">
+                          <CheckCheck size={14} className="text-[#00c897]" />
                         </div>
                       )}
                     </div>
 
-                    {/* Citations / Sources */}
-                    {msg.sources && msg.sources.length > 0 && (() => {
-                      const uniqueSources = [];
-                      const seenSources = new Set();
-                      for (const src of msg.sources) {
-                        const normalizedSource = (src.source || '').toLowerCase().trim();
-                        if (normalizedSource && !seenSources.has(normalizedSource)) {
-                          seenSources.add(normalizedSource);
-                          uniqueSources.push(src);
-                        }
-                      }
-                      return (
-                        <div className="flex gap-2 flex-wrap mt-2">
-                          {uniqueSources.slice(0, 3).map((src, i) => (
-                            <a key={i} href={src.url || '#'} target="_blank" rel="noopener noreferrer" 
-                               className="flex items-center gap-1 text-xs font-medium bg-surface-container-high text-primary px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary hover:text-white transition-colors">
-                              <Link2 size={12} />
-                              {src.source ? src.source.replace(/\.(md|html|txt)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Tài liệu Xanh SM'}
-                            </a>
-                          ))}
+                    {msg.role === 'user' && (
+                      user?.type === 'user' ? (
+                        <div 
+                          className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-black shadow-md uppercase border border-primary/20 shrink-0 order-2 overflow-hidden"
+                          title={user.email}
+                        >
+                          {user.name ? user.name[0] : <User size={18} />}
                         </div>
-                      );
-                    })()}
-                    
-                    {/* Response Time / Latency */}
-                    {msg.role === 'assistant' && msg.latency_ms && (
-                      <div className="text-xs text-on-surface-variant italic mt-2 flex items-center gap-1">
-                        <span>⏱️</span>
-                        <span>Phản hồi: {msg.latency_ms.toFixed(0)}ms</span>
-                      </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary shrink-0 shadow-sm order-2 border border-primary/10">
+                          <User size={20} />
+                        </div>
+                      )
                     )}
                   </div>
-
-                  {msg.role === 'user' && (
-                    user?.type === 'user' ? (
-                      <div 
-                        className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-bold shadow-md uppercase border border-primary/20 shrink-0 order-2"
-                        title={user.email}
-                      >
-                        {user.name ? user.name[0] : <User size={18} />}
-                      </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0 shadow-sm order-2 border border-primary/10">
-                        <User size={20} />
-                      </div>
-                    )
-                  )}
                 </div>
               );
             })}
@@ -387,14 +620,14 @@ export default function ChatLayout() {
 
         {showSpinner && (
           <div className="w-full max-w-5xl flex gap-3 mt-2 justify-start">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shrink-0 shadow-lg">
-              <XanhSMIcon />
+            <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 flex items-center justify-center text-white shrink-0 shadow-md border border-[#00c897]/20 relative overflow-hidden">
+               <img src="/Bot.png" alt="Xanh SM AI" className="w-7 h-7 object-contain animate-bounce" />
             </div>
-            <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant text-on-surface rounded-bl-sm shadow-sm flex items-center gap-3 max-w-[85%]">
-              <Loader2 className="animate-spin text-primary" size={20} />
+            <div className="p-4 rounded-3xl bg-white/88 dark:bg-white/5 backdrop-blur-md border border-white/40 dark:border-white/10 text-on-surface rounded-tl-none shadow-sm flex items-center gap-3 max-w-[85%]">
+              <Loader2 className="animate-spin text-[#00c897]" size={20} />
               <div className="flex flex-col gap-2">
-                <span className="text-on-surface-variant italic">
-                  {pipelineStep ? pipelineStep : 'Đang phân tích...'}
+                <span className="text-on-surface-variant/60 italic text-sm font-medium">
+                  {pipelineStep ? pipelineStep : 'Đang phân tích dữ liệu...'}
                 </span>
               </div>
             </div>
@@ -420,7 +653,7 @@ export default function ChatLayout() {
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
                 <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Giá cước dịch vụ</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed">Xem bảng giá chi tiết cho từng loại dịch vụ</p>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Xem bảng giá chi tiết cho từng loại dịch vụ</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-[#00c897] mt-0.5 block select-none">Khám phá &rarr;</span>
             </button>
@@ -435,7 +668,7 @@ export default function ChatLayout() {
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
                 <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Thuê xe chạy dịch vụ</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed">Thông tin chi tiết về chính sách thuê xe điện VinFast</p>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Thông tin chi tiết về chính sách thuê xe điện VinFast</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-blue-500 mt-0.5 block select-none">Tìm hiểu &rarr;</span>
             </button>
@@ -450,7 +683,7 @@ export default function ChatLayout() {
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
                 <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Ưu đãi & khuyến mãi</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed">Các chương trình ưu đãi mới nhất hiện nay</p>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Các chương trình ưu đãi mới nhất hiện nay</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-amber-500 mt-0.5 block select-none">Xem ngay &rarr;</span>
             </button>
@@ -465,79 +698,190 @@ export default function ChatLayout() {
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
                 <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Tin tức Xanh SM</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed">Cập nhật tin tức, sự kiện và thông báo mới nhất</p>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Cập nhật tin tức, sự kiện và thông báo mới nhất</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-purple-500 mt-0.5 block select-none">Đọc ngay &rarr;</span>
             </button>
           </div>
         )}
 
-        <div className="w-full max-w-5xl glass-panel p-3 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex flex-col gap-2 group border-white/20 dark:border-white/10 focus-within:border-[#00c897]/50 focus-within:ring-2 focus-within:ring-[#00c897]/10 transition-all bg-white/80 dark:bg-[#0c1618]/80 backdrop-blur-xl pointer-events-auto">
-          <textarea 
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/60 font-medium px-2 py-1 resize-none max-h-32 min-h-[48px] outline-none text-sm" 
-            placeholder="Hỏi Xanh SM bất cứ điều gì..." 
-            rows={1}
-          />
-          
-          <div className="flex items-center justify-between border-t border-outline-variant/10 pt-2 shrink-0">
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-              <button className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10 transition-colors shrink-0">
-                <Plus size={16} />
-              </button>
-              
-              {/* Horizontally scrollable suggestion pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 select-none">
+        {(listening || isEditingVoiceText) ? (
+          /* Advanced Voice UI Overlay - Compact & Elegant */
+          <div className="w-full max-w-4xl mx-auto glass-panel p-4 md:p-6 rounded-[28px] md:rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] flex flex-col gap-3 md:gap-4 border-white/60 bg-white/95 dark:bg-[#0c1618]/95 backdrop-blur-3xl animate-in fade-in slide-in-from-bottom-4 duration-500 pointer-events-auto">
+            
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-6 text-center md:text-left">
+              {/* Status & Timer Section - More Compact */}
+              <div className="flex flex-row md:flex-col items-center gap-3 md:gap-2 shrink-0">
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-[#00c897]/5 flex items-center justify-center text-[#00c897] relative border border-[#00c897]/10">
+                  {listening && !isEditingVoiceText && (
+                    <div className="absolute inset-0 rounded-full bg-[#00c897]/10 animate-ping"></div>
+                  )}
+                  <Mic className="w-6 h-6 md:w-8 md:h-8" strokeWidth={2.5} />
+                </div>
+                <div className="flex flex-col items-start md:items-center">
+                  <span className="text-[9px] md:text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">Đang nghe...</span>
+                  <span className="text-base md:text-lg font-black text-on-surface font-mono">{formatRecordingTime(recordingTime)}</span>
+                </div>
+              </div>
+
+              {/* Transcription Display Section */}
+              <div className="flex-1 flex flex-col gap-2 md:gap-3 w-full">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-[#00c897] text-[10px] md:text-xs font-bold">
+                  <Sparkles size={14} fill="currentColor" className="animate-pulse" />
+                  <span>Đang chuyển giọng nói thành văn bản...</span>
+                </div>
+                
+                <div className="min-h-[50px] md:min-h-[60px] w-full">
+                  {isEditingVoiceText ? (
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      className="w-full bg-transparent border-none focus:ring-0 text-lg md:text-2xl font-bold text-on-surface p-0 resize-none outline-none placeholder:opacity-20 text-center md:text-left"
+                      autoFocus
+                      rows={2}
+                    />
+                  ) : (
+                    <p className="text-lg md:text-2xl font-bold text-on-surface leading-snug break-words text-center md:text-left">
+                      {input || <span className="opacity-20 italic font-medium text-lg">Hãy nói điều gì đó...</span>}
+                      {listening && <span className="inline-block w-0.5 h-5 md:w-0.5 md:h-6 bg-[#00c897] ml-1 animate-pulse align-middle"></span>}
+                    </p>
+                  )}
+                </div>
+
+                {/* Animated Waveform - Lower height, more bars */}
+                <div className="flex items-center gap-0.5 h-5 md:h-7 overflow-hidden w-full opacity-40">
+                  {[...Array(window.innerWidth < 768 ? 40 : 80)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-[3px] bg-[#00c897] rounded-full transition-all duration-150"
+                      style={{ 
+                        height: listening ? `${20 + Math.random() * 80}%` : '3px',
+                        animation: listening ? `waveform 0.5s ease-in-out infinite alternate ${i * 0.008}s` : 'none'
+                      }}
+                    ></div>
+                  ))}
+                  <style dangerouslySetInnerHTML={{ __html: `
+                    @keyframes waveform {
+                      from { height: 20%; }
+                      to { height: 100%; }
+                    }
+                  `}} />
+                </div>
+              </div>
+            </div>
+
+            {/* Actions Footer - More Compact */}
+            <div className="flex items-center justify-center md:justify-end pt-3 md:pt-4 border-t border-on-surface/5">
+              <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                 <button 
-                  onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
-                  className="px-2.5 py-1 rounded-full bg-surface-variant dark:bg-white/10 hover:bg-[#00c897]/10 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-outline-variant/10 dark:border-white/15 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  onClick={toggleEditingVoiceText}
+                  className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 rounded-xl font-bold text-[11px] md:text-xs transition-all active:scale-95 ${
+                    isEditingVoiceText 
+                      ? 'bg-[#00c897]/10 text-[#00c897] border border-[#00c897]/20' 
+                      : 'text-on-surface-variant hover:bg-surface-variant/50 border border-transparent'
+                  }`}
                 >
-                  <span>🚗</span> Giá cước
+                  <PencilLine size={14} /> {isEditingVoiceText ? "Xong" : "Chỉnh sửa"}
                 </button>
                 <button 
-                  onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
-                  className="px-2.5 py-1 rounded-full bg-surface-variant dark:bg-white/10 hover:bg-[#00c897]/10 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-outline-variant/10 dark:border-white/15 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  onClick={cancelVoiceInput}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-5 py-2 rounded-xl border border-red-500/10 text-red-500 font-bold text-[11px] md:text-xs hover:bg-red-500/5 transition-all active:scale-95"
                 >
-                  <span>⚡</span> Ưu đãi
+                  <X size={14} strokeWidth={3} /> Hủy
                 </button>
                 <button 
-                  onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")}
-                  className="px-2.5 py-1 rounded-full bg-surface-variant dark:bg-white/10 hover:bg-[#00c897]/10 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-outline-variant/10 dark:border-white/15 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  onClick={stopAndSendVoice}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 md:px-7 py-2 rounded-xl bg-[#00c897] text-white font-black text-[11px] md:text-xs hover:brightness-105 shadow-lg shadow-[#00c897]/10 transition-all active:scale-95"
                 >
-                  <span>🔑</span> Thuê xe
-                </button>
-                <button 
-                  onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 đồng, thuê xe tự lái và ưu đãi sạc pin trạm V-GREEN cho xe VF 5, VF 6")}
-                  className="px-2.5 py-1 rounded-full bg-surface-variant dark:bg-white/10 hover:bg-[#00c897]/10 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-outline-variant/10 dark:border-white/15 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
-                >
-                  <span>⚡</span> Xe điện
+                  <Send size={14} fill="white" /> Gửi
                 </button>
               </div>
             </div>
+          </div>
+        ) : (
+          /* Standard Input Box */
+          <div className="w-full max-w-5xl glass-panel p-3 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex flex-col gap-2 group border-white/20 dark:border-white/10 focus-within:border-[#00c897]/50 focus-within:ring-2 focus-within:ring-[#00c897]/10 transition-all bg-white/80 dark:bg-[#0c1618]/80 backdrop-blur-xl pointer-events-auto">
+            <textarea 
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/60 font-bold px-2 py-1 resize-none max-h-32 min-h-[48px] outline-none text-sm" 
+              placeholder="Hỏi Xanh SM bất cứ điều gì..." 
+              rows={1}
+            />
             
-            <div className="flex items-center gap-1 shrink-0">
-              <button className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10 transition-colors">
-                <Mic size={16} />
-              </button>
-              <button 
-                onClick={handleSubmit}
-                disabled={!input.trim() || loading}
-                className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
-                  input.trim() && !loading 
-                    ? 'bg-[#00c897] text-white hover:brightness-110 active:scale-95' 
-                    : 'bg-surface-variant dark:bg-white/10 text-on-surface-variant/40 dark:text-white/30 cursor-not-allowed'
-                }`}
-              >
-                <Send size={16} />
-              </button>
+            <div className="flex items-center justify-between border-t border-outline-variant/10 pt-2 shrink-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <button 
+                  onClick={() => alert("Tính năng này đang được phát triển...")}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10 transition-colors shrink-0"
+                  title="Tính năng bổ sung"
+                >
+                  <Plus size={16} />
+                </button>
+
+                {/* Horizontally scrollable suggestion pills */}
+
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 select-none">
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <span>🚗</span> Giá cước
+                  </button>
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <span>⚡</span> Ưu đãi
+                  </button>
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <span>🔑</span> Thuê xe
+                  </button>
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 đồng, thuê xe tự lái và ưu đãi sạc pin trạm V-GREEN cho xe VF 5, VF 6")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <span>⚡</span> Xe điện
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-1.5 shrink-0">
+                {browserSupportsSpeechRecognition && (
+                  <button
+                    onClick={handleVoiceInput}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                      listening 
+                        ? 'bg-red-500 text-white shadow-lg animate-pulse' 
+                        : 'text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10'
+                    }`}
+                    title={listening ? "Dừng ghi âm" : "Nhập liệu bằng giọng nói"}
+                  >
+                    {listening ? <MicOff size={16} /> : <Mic size={16} />}
+                  </button>
+                )}
+                <button 
+                  onClick={handleSubmit}
+                  disabled={!input.trim() || loading}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
+                    input.trim() && !loading 
+                      ? 'bg-[#00c897] text-white hover:brightness-110 active:scale-95' 
+                      : 'bg-surface-variant dark:bg-white/10 text-on-surface-variant/40 dark:text-white/30 cursor-not-allowed'
+                  }`}
+                >
+                  <Send size={16} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
-        <span className="text-[10px] text-on-surface-variant/60 flex items-center gap-1 select-none">
-          <span>🔒</span> Thông tin của bạn được bảo mật và chỉ sử dụng để hỗ trợ.
+        <span className="text-[10px] text-on-surface-variant/60 flex items-center gap-1 select-none font-bold">
+          <ShieldCheck size={12} /> Thông tin của bạn được bảo mật và chỉ sử dụng để hỗ trợ.
         </span>
       </div>
     </div>

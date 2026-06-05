@@ -11,18 +11,24 @@ class XanhSMGateway:
     """
     
     def __init__(self):
-        # Banned Vietnamese sensitive/rude keywords (Guardrails)
-        self.banned_keywords = [
+        # Tier 1: Strictly banned (Toxic, Vulgar, Illegal) - Block immediately
+        self.strictly_banned = [
             "đụ", "đéo", "lồn", "buồi", "cặc", "chịch", "địt", "đm", "vcl", "vkl",
             "chó đẻ", "mẹ kiếp", "đầu khấc", "ăn cứt", "ngu lồn", "đồ chó", "đồ ngu",
-            "phản động", "biểu tình", "bạo loạn", "lật đổ chính quyền", "cướp chính quyền",
-            "mai linh", "vinasun", "grab", "gojek", "be group", "be car", "bebike",
-            "đối thủ bẩn", "cạnh tranh bẩn", "dìm hàng Xanh SM", "lừa đảo khách hàng"
+            "phản động", "biểu tình", "bạo loạn", "lật đổ chính quyền", "cướp chính quyền"
         ]
         
-        # Compile safety regex pattern
-        pattern_str = "|".join([rf"\b{re.escape(word)}\b" for word in self.banned_keywords])
-        self.safety_pattern = re.compile(pattern_str, re.IGNORECASE)
+        # Tier 2: Competitors - Only block if combined with negative/aggressive keywords
+        self.competitors = ["grab", "gojek", "be group", "be car", "bebike", "mai linh", "vinasun"]
+        self.negative_context = [
+            "tệ", "đắt", "lừa đảo", "kém", "bẩn", "dìm hàng", "đối thủ", "hơn", "thua", 
+            "so với", "so sánh", "chửi", "ngu", "yếu", "nát"
+        ]
+        
+        # Compile patterns
+        self.strict_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.strictly_banned]), re.IGNORECASE)
+        self.competitor_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.competitors]), re.IGNORECASE)
+        self.negative_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.negative_context]), re.IGNORECASE)
 
     def normalize_input(self, text: str) -> str:
         """
@@ -31,74 +37,49 @@ class XanhSMGateway:
         """
         if not text:
             return ""
-        # Normalize Unicode to NFC (canonical decomposition followed by canonical composition)
+        # Normalize Unicode to NFC
         normalized = unicodedata.normalize("NFC", text)
         # Strip excessive spaces
         cleaned = re.sub(r"\s+", " ", normalized).strip()
         return cleaned
 
-    def language_detect(self, text: str) -> str:
-        """
-        Lightweight language detector.
-        Returns 'vi' for Vietnamese, 'en' for English.
-        """
-        if not text:
-            return "vi"
-        
-        text_lower = text.lower()
-        # Common English stop words
-        english_words = {"the", "a", "an", "is", "are", "was", "were", "what", "how", "why", "where", "who", "which", "booking", "refund", "driver", "policy"}
-        # Common Vietnamese unique characters or words
-        vietnamese_indicators = {"đ", "á", "à", "ả", "ã", "ạ", "ấ", "ầ", "ẩ", "ẫ", "ậ", "ớ", "ờ", "ở", "ỡ", "ợ", "ứ", "ừ", "ử", "ữ", "ự", "ê", "ô", "ơ", "ư", "hỏi", "chào", "tài", "xế", "hủy", "phí", "xe"}
-        
-        words = set(re.findall(r"\b\w+\b", text_lower))
-        
-        # Count overlaps
-        en_count = len(words.intersection(english_words))
-        vi_count = 0
-        for word in words:
-            if any(char in vietnamese_indicators for char in word):
-                vi_count += 1
-            if word in {"chao", "toi", "xe", "huy", "phi", "tai", "xe", "anh", "chi", "ban"}:
-                vi_count += 1
-                
-        if en_count > vi_count:
-            return "en"
-        return "vi"
-
     def safety_precheck(self, text: str) -> Dict[str, Any]:
         """
-        Performs robust rule-based safety precheck.
-        Blocks vulgar words, political issues, and competitor direct comparison attacks.
+        Performs contextual safety precheck.
+        1. Strictly blocks vulgar/illegal content.
+        2. Blocks competitor mentions ONLY if they appear in a negative or comparative context.
         """
         if not text:
             return {"safe": True, "reason": "Empty query"}
             
         text_normalized = self.normalize_input(text)
         
-        # Check against regex pattern
-        match = self.safety_pattern.search(text_normalized)
-        if match:
-            matched_word = match.group(0)
+        # 1. Check Strict Banned List
+        strict_match = self.strict_pattern.search(text_normalized)
+        if strict_match:
             return {
                 "safe": False,
-                "reason": f"Phát hiện nội dung nhạy cảm hoặc vi phạm chính sách cộng đồng (từ khóa: '{matched_word}')."
+                "reason": f"Phát hiện nội dung không phù hợp (từ khóa: '{strict_match.group(0)}')."
             }
             
-        # Specific spam check (excessive characters or repeats)
+        # 2. Check Competitors with Context
+        comp_match = self.competitor_pattern.search(text_normalized)
+        if comp_match:
+            neg_match = self.negative_pattern.search(text_normalized)
+            if neg_match:
+                return {
+                    "safe": False,
+                    "reason": f"Hệ thống không hỗ trợ các nội dung so sánh hoặc tiêu cực về đối thủ ('{comp_match.group(0)}')."
+                }
+            # If competitor mentioned but no negative context, we let it pass.
+            # The LLM will handle it gracefully according to system instructions.
+
+        # 3. Spam protection
         if len(text_normalized) > 1000:
-            return {
-                "safe": False,
-                "reason": "Độ dài câu hỏi vượt quá giới hạn cho phép (Spam guard)."
-            }
+            return {"safe": False, "reason": "Câu hỏi quá dài."}
             
-        # check repetition of a single character
-        char_repeats = re.findall(r"(.)\1{9,}", text_normalized)
-        if char_repeats:
-            return {
-                "safe": False,
-                "reason": "Phát hiện ký tự lặp lại quá nhiều lần (Spam guard)."
-            }
+        if re.findall(r"(.)\1{9,}", text_normalized):
+            return {"safe": False, "reason": "Phát hiện ký tự lặp lại bất thường."}
 
         return {"safe": True, "reason": "Safe"}
 

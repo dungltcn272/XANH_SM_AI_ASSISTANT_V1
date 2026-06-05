@@ -713,7 +713,7 @@ class XanhSMRAGPipeline:
             compressed_context = self._compress_context(top_docs)
             metrics["compressed_context_len"] = len(compressed_context)
 
-            yield from yield_msg('data: {"step": "Đang khởi tạo LLM & Tổng hợp câu trả lời..."}\n\n')
+            yield from yield_msg('data: {"step": "Đang tổng hợp câu trả lời..."}\n\n')
             t_gen_start = time.time()
             messages = [{"role": "system", "content": SYSTEM_PROMPT.format(context=compressed_context)}]
             if chat_history and len(chat_history) > 0:

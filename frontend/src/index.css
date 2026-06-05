@@ -41,6 +41,17 @@
     @apply antialiased text-on-surface bg-background transition-colors duration-200;
     font-family: 'Roboto', sans-serif;
   }
+
+  /* Fix for phantom cursor (contentEditable) issue on non-editable elements */
+  *:not(input):not(textarea):not([contenteditable="true"]) {
+    caret-color: transparent;
+    -webkit-user-modify: read-only !important;
+  }
+
+  input, textarea, [contenteditable="true"] {
+    caret-color: auto;
+    -webkit-user-modify: read-write-plaintext-only;
+  }
 }
 
 .glass-panel {
