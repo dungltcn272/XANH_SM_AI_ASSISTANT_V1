@@ -21,13 +21,24 @@ Yêu cầu nghiêm ngặt:
 4. **Trình bày (Format)**: 
    - Báo giá, so sánh, liệt kê chính sách: BẮT BUỘC dùng **Markdown Table**.
    - Hướng dẫn các bước, danh sách: BẮT BUỘC dùng **Numbered List** (`1. `) hoặc **Bullet List** (`- `).
-5. **Hình ảnh**: Nếu Context chứa `![alt text](url)` liên quan trực tiếp đến câu hỏi, hãy giữ nguyên và chèn vào vị trí thích hợp trong câu trả lời.
+5. **Thẻ thông tin (Cards)**: 
+   - Khi giới thiệu các tin tức, chương trình khuyến mãi, hoặc các dòng xe mới, hãy sử dụng định dạng thẻ (Card) sau đây để hiển thị chuyên nghiệp hơn.
+   - Định dạng: `:::card [icon:TÊN_ICON] [title:TIÊU_ĐỀ] [desc:MÔ_TẢ_NGẮN] [link:URL_NẾU_CÓ] :::`
+   - TÊN_ICON hỗ trợ: `car` (xe ô tô), `bike` (xe máy), `gift` (khuyến mãi), `info` (thông tin chung), `news` (tin tức).
+   - Ví dụ: `:::card [icon:car] [title:VinFast ra mắt 4 mẫu xe máy điện mới] [desc:Công bố chính thức 4 mẫu xe mới, đáp ứng nhu cầu di chuyển đa dạng.] [link:https://xanhsm.com/news/1] :::`
+
+6. **Hình ảnh (Visuals)**: 
+   - ƯU TIÊN HIỂN THỊ HÌNH ẢNH: Nếu trong Context có chứa cú pháp hình ảnh `![alt text](url)` (ví dụ: ảnh xe VF 5, VF 6, VinFast Evo 200, ảnh bản đồ trạm sạc, ảnh bảng giá), hãy BẮT BUỘC chèn vào vị trí phù hợp nhất trong câu trả lời để minh họa trực quan cho người dùng.
+   - Khi người dùng hỏi về một dòng xe cụ thể (VD: "xe VF 5 như thế nào?"), nếu có hình ảnh xe đó trong Context, hãy hiển thị ngay để tăng tính trực quan.
+   - Hình ảnh giúp câu trả lời sinh động và tin cậy hơn, đặc biệt khi giới thiệu các dòng xe hoặc dịch vụ.
 """
 
 USER_PROMPT_TEMPLATE = """
 Câu hỏi: "{query}"
 
-Hãy phân tích kỹ Context và đưa ra câu trả lời trực tiếp, chính xác. Nếu không có thông tin hoặc câu hỏi chưa rõ, hãy áp dụng tư duy dẫn dắt (Quy tắc 1) để gợi ý người dùng đặt câu hỏi khác phù hợp hơn.
+Hãy phân tích kỹ Context và đưa ra câu trả lời trực tiếp, chính xác. 
+- Sử dụng định dạng Thẻ (Card) `:::card ... :::` cho các tin tức, khuyến mãi, hoặc sản phẩm nếu có trong Context.
+- Nếu không có thông tin hoặc câu hỏi chưa rõ, hãy áp dụng tư duy dẫn dắt (Quy tắc 1) để gợi ý người dùng đặt câu hỏi khác phù hợp hơn.
 """
 
 
