@@ -287,12 +287,12 @@ function MainLayout({ children }) {
           </div>
 
           {/* Mobile Sidebar (Drawer) */}
-          <div className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ${isMobileSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+          <div className={`fixed inset-0 z-[100] md:hidden transition-all duration-300 ${isMobileSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setIsMobileSidebarOpen(false)} />
             
             {/* Drawer Content */}
-            <div className={`absolute top-0 bottom-0 left-0 w-72 bg-surface flex flex-col p-6 z-50 shadow-2xl transition-transform duration-300 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className={`absolute top-0 bottom-0 left-0 w-72 bg-surface flex flex-col p-6 z-[101] shadow-2xl transition-transform duration-300 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
               <SidebarContent 
                 user={user}
                 conversations={conversations}
@@ -378,8 +378,8 @@ function MainLayout({ children }) {
                   
                   {showUserMenu && (
                     <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                      <div className="absolute right-0 mt-2 w-48 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150 text-on-surface">
+                      <div className="fixed inset-0 z-[105]" onClick={() => setShowUserMenu(false)} />
+                      <div className="absolute right-0 mt-2 w-48 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xl py-1 z-[110] animate-in fade-in slide-in-from-top-1 duration-150 text-on-surface">
                         <div className="px-4 py-2.5 border-b border-outline-variant/20">
                           <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Tài khoản</p>
                           <p className="text-xs font-bold truncate mt-0.5">{user.email}</p>
@@ -431,7 +431,7 @@ function MainLayout({ children }) {
 
         {/* Topics Dialog Modal */}
         {showTopicsDialog && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
             <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col text-on-surface transition-all duration-200">
               {/* Header */}
               <div className="p-6 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low shrink-0">
