@@ -27,4 +27,5 @@ google-auth-httplib2
 pydantic-settings
 fastembed
 cohere
+pypdf
 playwright
