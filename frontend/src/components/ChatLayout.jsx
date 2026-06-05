@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import 'regenerator-runtime/runtime';
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, Plus, Mic, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info } from 'lucide-react';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, ChevronDown } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -71,6 +73,92 @@ export default function ChatLayout() {
   const currentConvIdRef = useRef(activeConversationId);
   const lastProcessedActiveConvIdRef = useRef(undefined);
   const messagesEndRef = useRef(null);
+
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition
+  } = useSpeechRecognition();
+
+  const [recordingTime, setRecordingTime] = useState(0);
+  const timerRef = useRef(null);
+
+  const [isEditingVoiceText, setIsEditingVoiceText] = useState(false);
+  const [voiceLanguage, setVoiceLanguage] = useState('vi-VN');
+
+  useEffect(() => {
+    if (listening && !isEditingVoiceText) {
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [listening, isEditingVoiceText]);
+
+  const formatRecordingTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    if (transcript && !isEditingVoiceText) {
+      setInput(transcript);
+    }
+  }, [transcript, isEditingVoiceText]);
+
+  const handleVoiceInput = () => {
+    if (listening) {
+      SpeechRecognition.stopListening();
+    } else {
+      resetTranscript();
+      setIsEditingVoiceText(false);
+      SpeechRecognition.startListening({ language: voiceLanguage, continuous: true });
+    }
+  };
+
+  const toggleEditingVoiceText = () => {
+    if (!isEditingVoiceText) {
+      SpeechRecognition.stopListening();
+      setIsEditingVoiceText(true);
+    } else {
+      setIsEditingVoiceText(false);
+      SpeechRecognition.startListening({ language: voiceLanguage, continuous: true });
+    }
+  };
+
+  const cancelVoiceInput = () => {
+    SpeechRecognition.stopListening();
+    setTimeout(() => {
+      resetTranscript();
+      setInput('');
+    }, 100);
+  };
+
+  const stopAndSendVoice = () => {
+    // Stop recording first
+    SpeechRecognition.stopListening();
+    
+    // We use a slightly longer delay to ensure the final transcript is captured and synced to 'input' state
+    setTimeout(() => {
+      // Use the transcript directly from the hook to avoid any state delay issues
+      const finalContent = transcript.trim();
+      if (finalContent) {
+        // Trigger handle submit with the voice content
+        handleSubmit(null, finalContent);
+      }
+      resetTranscript();
+    }, 300);
+  };
 
   const scrollToBottom = useCallback(() => {
     if (messages.length > 0) {
@@ -617,69 +705,180 @@ export default function ChatLayout() {
           </div>
         )}
 
-        <div className="w-full max-w-5xl glass-panel p-3 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex flex-col gap-2 group border-white/20 dark:border-white/10 focus-within:border-[#00c897]/50 focus-within:ring-2 focus-within:ring-[#00c897]/10 transition-all bg-white/80 dark:bg-[#0c1618]/80 backdrop-blur-xl pointer-events-auto">
-          <textarea 
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/60 font-bold px-2 py-1 resize-none max-h-32 min-h-[48px] outline-none text-sm" 
-            placeholder="Hỏi Xanh SM bất cứ điều gì..." 
-            rows={1}
-          />
-          
-          <div className="flex items-center justify-between border-t border-outline-variant/10 pt-2 shrink-0">
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-              <button className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10 transition-colors shrink-0">
-                <Plus size={16} />
-              </button>
-              
-              {/* Horizontally scrollable suggestion pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 select-none">
+        {(listening || isEditingVoiceText) ? (
+          /* Advanced Voice UI Overlay - Compact & Elegant */
+          <div className="w-full max-w-4xl mx-auto glass-panel p-4 md:p-6 rounded-[28px] md:rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] flex flex-col gap-3 md:gap-4 border-white/60 bg-white/95 dark:bg-[#0c1618]/95 backdrop-blur-3xl animate-in fade-in slide-in-from-bottom-4 duration-500 pointer-events-auto">
+            
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-6 text-center md:text-left">
+              {/* Status & Timer Section - More Compact */}
+              <div className="flex flex-row md:flex-col items-center gap-3 md:gap-2 shrink-0">
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-[#00c897]/5 flex items-center justify-center text-[#00c897] relative border border-[#00c897]/10">
+                  {listening && !isEditingVoiceText && (
+                    <div className="absolute inset-0 rounded-full bg-[#00c897]/10 animate-ping"></div>
+                  )}
+                  <Mic className="w-6 h-6 md:w-8 md:h-8" strokeWidth={2.5} />
+                </div>
+                <div className="flex flex-col items-start md:items-center">
+                  <span className="text-[9px] md:text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">Đang nghe...</span>
+                  <span className="text-base md:text-lg font-black text-on-surface font-mono">{formatRecordingTime(recordingTime)}</span>
+                </div>
+              </div>
+
+              {/* Transcription Display Section */}
+              <div className="flex-1 flex flex-col gap-2 md:gap-3 w-full">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-[#00c897] text-[10px] md:text-xs font-bold">
+                  <Sparkles size={14} fill="currentColor" className="animate-pulse" />
+                  <span>Đang chuyển giọng nói thành văn bản...</span>
+                </div>
+                
+                <div className="min-h-[50px] md:min-h-[60px] w-full">
+                  {isEditingVoiceText ? (
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      className="w-full bg-transparent border-none focus:ring-0 text-lg md:text-2xl font-bold text-on-surface p-0 resize-none outline-none placeholder:opacity-20 text-center md:text-left"
+                      autoFocus
+                      rows={2}
+                    />
+                  ) : (
+                    <p className="text-lg md:text-2xl font-bold text-on-surface leading-snug break-words text-center md:text-left">
+                      {input || <span className="opacity-20 italic font-medium text-lg">Hãy nói điều gì đó...</span>}
+                      {listening && <span className="inline-block w-0.5 h-5 md:w-0.5 md:h-6 bg-[#00c897] ml-1 animate-pulse align-middle"></span>}
+                    </p>
+                  )}
+                </div>
+
+                {/* Animated Waveform - Lower height, more bars */}
+                <div className="flex items-center gap-0.5 h-5 md:h-7 overflow-hidden w-full opacity-40">
+                  {[...Array(window.innerWidth < 768 ? 40 : 80)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-[3px] bg-[#00c897] rounded-full transition-all duration-150"
+                      style={{ 
+                        height: listening ? `${20 + Math.random() * 80}%` : '3px',
+                        animation: listening ? `waveform 0.5s ease-in-out infinite alternate ${i * 0.008}s` : 'none'
+                      }}
+                    ></div>
+                  ))}
+                  <style dangerouslySetInnerHTML={{ __html: `
+                    @keyframes waveform {
+                      from { height: 20%; }
+                      to { height: 100%; }
+                    }
+                  `}} />
+                </div>
+              </div>
+            </div>
+
+            {/* Actions Footer - More Compact */}
+            <div className="flex items-center justify-center md:justify-end pt-3 md:pt-4 border-t border-on-surface/5">
+              <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                 <button 
-                  onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
-                  className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  onClick={toggleEditingVoiceText}
+                  className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 rounded-xl font-bold text-[11px] md:text-xs transition-all active:scale-95 ${
+                    isEditingVoiceText 
+                      ? 'bg-[#00c897]/10 text-[#00c897] border border-[#00c897]/20' 
+                      : 'text-on-surface-variant hover:bg-surface-variant/50 border border-transparent'
+                  }`}
                 >
-                  <span>🚗</span> Giá cước
+                  <PencilLine size={14} /> {isEditingVoiceText ? "Xong" : "Chỉnh sửa"}
                 </button>
                 <button 
-                  onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
-                  className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  onClick={cancelVoiceInput}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-5 py-2 rounded-xl border border-red-500/10 text-red-500 font-bold text-[11px] md:text-xs hover:bg-red-500/5 transition-all active:scale-95"
                 >
-                  <span>⚡</span> Ưu đãi
+                  <X size={14} strokeWidth={3} /> Hủy
                 </button>
                 <button 
-                  onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")}
-                  className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  onClick={stopAndSendVoice}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 md:px-7 py-2 rounded-xl bg-[#00c897] text-white font-black text-[11px] md:text-xs hover:brightness-105 shadow-lg shadow-[#00c897]/10 transition-all active:scale-95"
                 >
-                  <span>🔑</span> Thuê xe
-                </button>
-                <button 
-                  onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 đồng, thuê xe tự lái và ưu đãi sạc pin trạm V-GREEN cho xe VF 5, VF 6")}
-                  className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
-                >
-                  <span>⚡</span> Xe điện
+                  <Send size={14} fill="white" /> Gửi
                 </button>
               </div>
             </div>
+          </div>
+        ) : (
+          /* Standard Input Box */
+          <div className="w-full max-w-5xl glass-panel p-3 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex flex-col gap-2 group border-white/20 dark:border-white/10 focus-within:border-[#00c897]/50 focus-within:ring-2 focus-within:ring-[#00c897]/10 transition-all bg-white/80 dark:bg-[#0c1618]/80 backdrop-blur-xl pointer-events-auto">
+            <textarea 
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/60 font-bold px-2 py-1 resize-none max-h-32 min-h-[48px] outline-none text-sm" 
+              placeholder="Hỏi Xanh SM bất cứ điều gì..." 
+              rows={1}
+            />
             
-            <div className="flex items-center gap-1 shrink-0">
-              <button className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10 transition-colors">
-                <Mic size={16} />
-              </button>
-              <button 
-                onClick={handleSubmit}
-                disabled={!input.trim() || loading}
-                className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
-                  input.trim() && !loading 
-                    ? 'bg-[#00c897] text-white hover:brightness-110 active:scale-95' 
-                    : 'bg-surface-variant dark:bg-white/10 text-on-surface-variant/40 dark:text-white/30 cursor-not-allowed'
-                }`}
-              >
-                <Send size={16} />
-              </button>
+            <div className="flex items-center justify-between border-t border-outline-variant/10 pt-2 shrink-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <button 
+                  onClick={() => alert("Tính năng này đang được phát triển...")}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10 transition-colors shrink-0"
+                  title="Tính năng bổ sung"
+                >
+                  <Plus size={16} />
+                </button>
+
+                {/* Horizontally scrollable suggestion pills */}
+
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 select-none">
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <span>🚗</span> Giá cước
+                  </button>
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <span>⚡</span> Ưu đãi
+                  </button>
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <span>🔑</span> Thuê xe
+                  </button>
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 đồng, thuê xe tự lái và ưu đãi sạc pin trạm V-GREEN cho xe VF 5, VF 6")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <span>⚡</span> Xe điện
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-1.5 shrink-0">
+                {browserSupportsSpeechRecognition && (
+                  <button
+                    onClick={handleVoiceInput}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                      listening 
+                        ? 'bg-red-500 text-white shadow-lg animate-pulse' 
+                        : 'text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10'
+                    }`}
+                    title={listening ? "Dừng ghi âm" : "Nhập liệu bằng giọng nói"}
+                  >
+                    {listening ? <MicOff size={16} /> : <Mic size={16} />}
+                  </button>
+                )}
+                <button 
+                  onClick={handleSubmit}
+                  disabled={!input.trim() || loading}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
+                    input.trim() && !loading 
+                      ? 'bg-[#00c897] text-white hover:brightness-110 active:scale-95' 
+                      : 'bg-surface-variant dark:bg-white/10 text-on-surface-variant/40 dark:text-white/30 cursor-not-allowed'
+                  }`}
+                >
+                  <Send size={16} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
         <span className="text-[10px] text-on-surface-variant/60 flex items-center gap-1 select-none font-bold">
           <ShieldCheck size={12} /> Thông tin của bạn được bảo mật và chỉ sử dụng để hỗ trợ.

@@ -18,6 +18,8 @@
     "react-dom": "^19.2.6",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.16.0",
+    "react-speech-recognition": "^4.0.1",
+    "regenerator-runtime": "^0.14.1",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
