@@ -58,8 +58,8 @@ with engine.connect() as conn:
 
 app = FastAPI(
     title="GreenSM Production RAG",
-    description="Xanh SM Enterprise Production RAG System (Phase 5)",
-    version="5.0.0"
+    description="Xanh SM Enterprise Production RAG System (Phase 4)",
+    version="4.0.0"
 )
 
 app.add_middleware(

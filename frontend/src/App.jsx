@@ -10,6 +10,7 @@ import PipelineManager from './pages/PipelineManager';
 import RAGHistory from './pages/RAGHistory';
 import IngestionManager from './pages/IngestionManager';
 import DatabaseManager from './pages/DatabaseManager';
+import AgentCrawler from './pages/AgentCrawler';
 import { Moon, Sun, Monitor, Shield, MessageSquare, LogOut, History, Plus, User, HelpCircle, X } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -321,6 +322,21 @@ function MainLayout({ children }) {
                     </ul>
                   </div>
 
+                  {/* Green SM Platform Column */}
+                  <div className="glass-panel p-5 rounded-2xl border border-outline-variant/20 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🌐</span>
+                      <h3 className="font-bold text-primary text-base">Green SM Platform</h3>
+                    </div>
+                    <ul className="text-sm space-y-2 text-on-surface-variant list-disc pl-4">
+                      <li><strong>Mua & Thuê xe điện:</strong> Chính sách mua xe VinFast trực tiếp qua Green SM và thuê vận hành các dòng xe Minio Green, VF 5 Plus, Herio Green, Limo Green.</li>
+                      <li><strong>Chương trình ưu đãi sạc pin:</strong> Quyền lợi miễn phí/ưu đãi sạc pin tại trạm sạc V-GREEN cho xe vận doanh.</li>
+                      <li><strong>Hỗ trợ tài chính:</strong> Chương trình "Mua xe 0 đồng" vay tới 100%, hỗ trợ lãi suất cố định 7%/năm, và ưu đãi thành viên VinClub.</li>
+                      <li><strong>Chuyển đổi xe xăng sang xe điện:</strong> Hỗ trợ giảm thêm 3% MSRP khi chuyển đổi từ xe xăng sang xe điện chạy dịch vụ.</li>
+                      <li><strong>Chính sách & Pháp lý:</strong> Điều khoản sử dụng chung, chính sách bảo mật dữ liệu và hợp đồng dịch vụ.</li>
+                    </ul>
+                  </div>
+
                 </div>
                 
                 {/* Policies & Help Section */}
@@ -376,6 +392,7 @@ function App() {
         <Route index element={<CommandCenter />} />
         <Route path="eval" element={<AIEvalLab />} />
         <Route path="pipeline" element={<PipelineManager />} />
+        <Route path="agent-crawler" element={<AgentCrawler />} />
         <Route path="history" element={<RAGHistory />} />
         <Route path="ingest" element={<IngestionManager />} />
         <Route path="db" element={<DatabaseManager />} />

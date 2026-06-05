@@ -76,17 +76,34 @@ def setup_qdrant(client: QdrantClient, vector_size: int = 1536):
     except Exception as e:
         log_warn("INGESTION", f"Could not create payload indexes: {e}")
 
-def ingest_data(data_dir: str):
+def ingest_data(data_dir: str, category_filter: str = None):
     db = SessionLocal()
     qdrant = vectordb.qdrant
     embedder = get_embedding_model()
     sparse_model = vectordb.sparse_embedder
     
-    setup_qdrant(qdrant)
+    if not category_filter:
+        setup_qdrant(qdrant)
+    else:
+        log_info("INGESTION", f"Deleting existing vectors for category: '{category_filter}' in Qdrant...")
+        try:
+            qdrant.delete(
+                collection_name=COLLECTION_NAME,
+                points_selector=qdrant_models.Filter(
+                    must=[
+                        qdrant_models.FieldCondition(
+                            key="metadata.category",
+                            match=qdrant_models.MatchValue(value=category_filter)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            log_warn("INGESTION", f"Could not delete vectors for category '{category_filter}': {e}")
     
     splitter = HeadingAwareSplitter(chunk_size=400, chunk_overlap=50)
     log_info("INGESTION", "Bắt đầu duyệt và chunk file...")
-    chunks: List[Document] = splitter.split_directory(data_dir)
+    chunks: List[Document] = splitter.split_directory(data_dir, category_filter=category_filter)
     
     if not chunks:
         log_warn("INGESTION", "Không có chunks nào được tạo ra.")
@@ -169,5 +186,10 @@ def ingest_data(data_dir: str):
     log_info("INGESTION", "Quá trình Ingestion hoàn tất!")
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Green SM Data Ingestion Pipeline")
+    parser.add_argument("--category", type=str, default=None, help="Only ingest files in this category folder")
+    args = parser.parse_args()
+    
     DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
-    ingest_data(DATA_DIR)
+    ingest_data(DATA_DIR, category_filter=args.category)

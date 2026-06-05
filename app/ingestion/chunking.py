@@ -245,7 +245,7 @@ class HeadingAwareSplitter:
                 
         return final_docs
 
-    def split_directory(self, data_dir: str) -> List[Document]:
+    def split_directory(self, data_dir: str, category_filter: str = None) -> List[Document]:
         """
         Walks the structured folders and splits all markdown and PDF files.
         Duyệt động thay vì hardcode tên thư mục.
@@ -260,11 +260,14 @@ class HeadingAwareSplitter:
         categories = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
         
         for category in categories:
-            cat_path = os.path.join(data_dir, category)
             # Bỏ qua thư mục raw
             if category.lower() == "raw":
                 continue
                 
+            if category_filter and category.lower() != category_filter.lower():
+                continue
+                
+            cat_path = os.path.join(data_dir, category)
             for root, _, files in os.walk(cat_path):
                 for file in files:
                     if file.lower().endswith((".md", ".pdf")):

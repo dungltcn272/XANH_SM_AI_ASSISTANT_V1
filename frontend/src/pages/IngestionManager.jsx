@@ -49,7 +49,7 @@ export default function IngestionManager() {
               if (data.error) {
                 setLogs(prev => [...prev, `[ERROR] ${data.error}`]);
               }
-            } catch (e) {
+            } catch {
               setLogs(prev => [...prev, dataStr]);
             }
           }
@@ -98,7 +98,7 @@ export default function IngestionManager() {
               if (data.error) {
                 setLogs(prev => [...prev, `[ERROR] ${data.error}`]);
               }
-            } catch (e) {
+            } catch {
               setLogs(prev => [...prev, dataStr]);
             }
           }

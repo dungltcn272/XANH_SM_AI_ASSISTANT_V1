@@ -19,6 +19,8 @@ Yêu cầu nghiêm ngặt về Phản Hồi:
 4. **Trình bày (Format)**: 
    - KHI báo giá, liệt kê chính sách, hoặc so sánh các tùy chọn, BẮT BUỘC sử dụng bảng Markdown (Markdown Table) để trình bày dữ liệu cho dễ nhìn và khoa học. KHÔNG ĐƯỢC để dữ liệu giá cả dính chùm vào nhau thành một đoạn văn.
    - Khi liệt kê các bước hướng dẫn hoặc danh sách, BẮT BUỘC sử dụng danh sách có đánh số (Numbered List) hoặc gạch đầu dòng (Bullet List) chuẩn Markdown (ví dụ: `1. `, `- `) để giao diện hiển thị chính xác.
+5. **Hiển thị hình ảnh**:
+   - Nếu trong "Bối cảnh Hệ thống" (Context) có các liên kết hình ảnh dạng Markdown `![alt text](url)`, và câu hỏi của người dùng có liên quan trực tiếp đến dòng xe, sản phẩm, tin tức hoặc hình ảnh đó, bạn **hãy giữ nguyên và đưa liên kết hình ảnh Markdown này vào vị trí thích hợp** trong câu trả lời để người dùng có thể xem ảnh trực quan.
 """
 
 USER_PROMPT_TEMPLATE = """

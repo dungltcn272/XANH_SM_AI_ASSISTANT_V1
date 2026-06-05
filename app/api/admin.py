@@ -213,6 +213,113 @@ async def run_crawler():
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
+@router.post("/ingest/crawl/agent")
+async def run_agent_crawler():
+    """
+    Chạy AI Agentic Crawler cho Green SM Platform. Trả về stream SSE báo cáo tiến độ.
+    """
+    async def event_generator():
+        yield 'data: {"step": "Bắt đầu khởi động AI Agentic Crawler..."}\n\n'
+        try:
+            import subprocess
+            import sys
+            import os
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
+            
+            process = subprocess.Popen(
+                [sys.executable, "-W", "ignore", "-u", "crawler/agent_crawler.py", "--max-urls", "45"], 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT,
+                env=env
+            )
+            
+            loop = asyncio.get_event_loop()
+            def read_line():
+                return process.stdout.readline()
+            
+            while True:
+                line = await loop.run_in_executor(None, read_line)
+                if not line:
+                    break
+                line_str = line.decode('utf-8', errors='replace').strip()
+                if line_str:
+                    if "[AGENT_STEP]" in line_str:
+                        step_part = line_str.split("[AGENT_STEP]")[-1].strip()
+                        yield f'data: {{"step": "[AGENT_STEP] {step_part}"}}\n\n'
+                    else:
+                        data_json = json.dumps({"step": line_str}, ensure_ascii=False)
+                        yield f"data: {data_json}\n\n"
+                    await asyncio.sleep(0.01)
+                    
+            process.wait()
+            if process.returncode == 0:
+                yield 'data: {"step": "[AGENT_STEP] Complete"}\n\n'
+                yield 'data: {"step": "AI Agentic Crawler hoàn tất!"}\n\n'
+            else:
+                yield 'data: {"error": "Lỗi trong quá trình chạy AI Agentic Crawler."}\n\n'
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            err_msg = json.dumps({"error": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False)
+            yield f"data: {err_msg}\n\n"
+            
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/ingest/process/platform")
+async def run_platform_ingestion():
+    """
+    Chạy nạp dữ liệu (Chunking & Embedding) chỉ cho thư mục data/platform/. Trả về stream SSE báo cáo tiến độ.
+    """
+    async def event_generator():
+        yield 'data: {"step": "Bắt đầu nạp dữ liệu Platform..."}\n\n'
+        try:
+            import subprocess
+            import sys
+            import os
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
+            
+            process = subprocess.Popen(
+                [sys.executable, "-W", "ignore", "-u", "app/ingestion/ingest.py", "--category", "platform"], 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT,
+                env=env
+            )
+            
+            loop = asyncio.get_event_loop()
+            def read_line():
+                return process.stdout.readline()
+            
+            while True:
+                line = await loop.run_in_executor(None, read_line)
+                if not line:
+                    break
+                line_str = line.decode('utf-8', errors='replace').strip()
+                if line_str:
+                    data_json = json.dumps({"step": line_str}, ensure_ascii=False)
+                    yield f"data: {data_json}\n\n"
+                    await asyncio.sleep(0.01)
+                    
+            process.wait()
+            if process.returncode == 0:
+                yield 'data: {"step": "Nạp dữ liệu Platform hoàn tất!"}\n\n'
+            else:
+                yield 'data: {"error": "Lỗi trong quá trình nạp dữ liệu Platform."}\n\n'
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            err_msg = json.dumps({"error": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False)
+            yield f"data: {err_msg}\n\n"
+            
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 @router.post("/ingest/process")
 async def run_ingestion():
     """
