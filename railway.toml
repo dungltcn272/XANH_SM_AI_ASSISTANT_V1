@@ -7,5 +7,5 @@ watchPatterns = [
 ]
 
 [deploy]
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "bash -c 'playwright install chromium && uvicorn app.main:app --host 0.0.0.0 --port $PORT'"
 restartPolicyType = "ON_FAILURE"
