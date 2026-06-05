@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,41 +8,92 @@
 
 @layer base {
   :root {
-    --background: #f8f9ff;
+    --background: #f2f7f8;
     --on-background: #0b1c30;
-    --surface: #f8f9ff;
+    --surface: #f2f7f8;
     --on-surface: #0b1c30;
     --surface-container-lowest: #ffffff;
-    --surface-container-low: #eff4ff;
-    --surface-container: #e5eeff;
-    --surface-container-high: #dce9ff;
-    --surface-container-highest: #d3e4fe;
+    --surface-container-low: #eff2ec;
+    --surface-container: #e7ece3;
+    --surface-container-high: #dfe6da;
+    --surface-container-highest: #d7e1d1;
     --outline-variant: #bacac1;
     --on-surface-variant: #3c4a43;
     --outline: #6c7a73;
   }
 
   .dark {
-    --background: #090e17;
+    --background: #091118;
     --on-background: #f8f9ff;
-    --surface: #0e1622;
+    --surface: #091118;
     --on-surface: #f8f9ff;
-    --surface-container-lowest: #0b121e;
-    --surface-container-low: #0f1a2c;
-    --surface-container: #132239;
-    --surface-container-high: #1a2e4c;
-    --surface-container-highest: #233e66;
-    --outline-variant: #344e41;
+    --surface-container-lowest: #0b1015;
+    --surface-container-low: #111c20;
+    --surface-container: #162427;
+    --surface-container-high: #1c2e32;
+    --surface-container-highest: #243a3e;
+    --outline-variant: #2a3d35;
     --on-surface-variant: #a2b5ab;
     --outline: #4e6156;
   }
 
   body {
     @apply antialiased text-on-surface bg-background transition-colors duration-200;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Roboto', sans-serif;
   }
 }
 
 .glass-panel {
   @apply bg-white/70 dark:bg-white/5 backdrop-blur-md border border-white/80 dark:border-white/10 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] transition-colors duration-200;
 }
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Premium Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 200, 151, 0.12);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 200, 151, 0.35);
+}
+
+/* Firefox scrollbar support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 200, 151, 0.12) transparent;
+}
+
+/* Glassy Bubble Style for background decoration */
+.glassy-bubble {
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.25), 0 4px 10px rgba(0, 0, 0, 0.02);
+}
+
+.dark .glassy-bubble {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.15), 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
