@@ -107,56 +107,105 @@ class MarkdownConverter:
     
     def _extract_next_tables(self, data) -> str:
         md = ""
-        def find_all_price_tables(d, path_name="Bảng giá"):
-            tables = []
+        def find_tables_and_columns(d, name="Bảng giá"):
+            found = []
             if isinstance(d, dict):
-                for k, v in d.items():
-                    if isinstance(v, (dict, list)):
-                        tables.extend(find_all_price_tables(v, k))
-            elif isinstance(d, list):
-                if len(d) > 0 and isinstance(d[0], dict) and "city" in d[0] and "items" in d[0]:
-                    tables.append((path_name, d))
+                if "rows" in d and isinstance(d["rows"], list):
+                    found.append((name, d))
                 else:
-                    for item in d:
-                        if isinstance(item, (dict, list)):
-                            tables.extend(find_all_price_tables(item, path_name))
-            return tables
+                    for k, v in d.items():
+                        if isinstance(v, (dict, list)):
+                            found.extend(find_tables_and_columns(v, k))
+            elif isinstance(d, list):
+                for item in d:
+                    if isinstance(item, (dict, list)):
+                        found.extend(find_tables_and_columns(item, name))
+            return found
 
-        tables_found = find_all_price_tables(data)
+        tables = find_tables_and_columns(data)
         
-        # Group by path_name and avoid exact duplicates if any
-        grouped = {}
-        for name, table in tables_found:
-            # Format name nicely
-            display_name = name.replace("_", " ").title()
-            if display_name not in grouped:
-                grouped[display_name] = []
-            grouped[display_name].append(table)
+        # Deduplicate tables by looking at their content
+        seen_tables = []
+        
+        for name, table_obj in tables:
+            rows = table_obj.get("rows", [])
+            if not rows: continue
             
-        for group_name, table_lists in grouped.items():
-            md += f"### {group_name}\n\n"
-            # Since a group might have multiple identical lists (e.g., from different parts of state), 
-            # we just take the first one or merge them. Usually taking the first one for the same name is enough,
-            # but they might have different cities. Let's merge by city.
-            cities_merged = {}
-            for table_list in table_lists:
-                for item in table_list:
-                    c = item.get("city", "Khác")
-                    if c not in cities_merged:
-                        cities_merged[c] = item.get("items", [])
-                        
-            for city, items in cities_merged.items():
-                if items and isinstance(items, list):
+            # Quick hash of row count and first row keys to avoid duplicates
+            table_id = (len(rows), str(rows[0])[:100])
+            if table_id in seen_tables: continue
+            seen_tables.append(table_id)
+
+            display_name = name.replace("_", " ").title()
+            md += f"### {display_name}\n\n"
+            
+            columns_str = table_obj.get("columns", "")
+            headers = []
+            if columns_str:
+                headers = [c.strip() for c in columns_str.split("|")]
+            
+            # Check if rows are grouped by city
+            city_grouped = False
+            for row_item in rows:
+                if isinstance(row_item, dict) and "city" in row_item and "items" in row_item:
+                    city_grouped = True
+                    city = row_item.get("city", "Khác")
                     md += f"#### Tỉnh/Thành phố: {city}\n\n"
-                    md += "| Loại phí | Mức giá |\n"
-                    md += "|----------|---------|\n"
-                    for item in items:
-                        v1 = str(item.get("value1", "")).replace('\n', ' ') if item.get("value1") else ""
-                        v2 = str(item.get("value2", "")).replace('\n', ' ') if item.get("value2") else ""
-                        if v1 and v1.strip() != "None" and v1.strip() != "":
-                            md += f"| {v1} | {v2} |\n"
-                    md += "\n"
+                    items = row_item.get("items", [])
+                    md += self._format_table_from_items(items, headers)
+            
+            # If not city-grouped, format as one table
+            if not city_grouped:
+                md += self._format_table_from_items(rows, headers)
         return md
+
+    def _format_table_from_items(self, items, headers=None) -> str:
+        if not items: return ""
+        
+        # Find all value keys
+        all_val_keys = set()
+        for item in items:
+            if isinstance(item, dict):
+                for k in item.keys():
+                    if k.startswith("value"):
+                        all_val_keys.add(k)
+        
+        if not all_val_keys: return ""
+        
+        # Sort keys: value1, value2... value_1, value_2...
+        def key_sorter(k):
+            digits = re.findall(r'\d+', k)
+            num = int(digits[0]) if digits else 0
+            is_underscore = "_" in k
+            return (is_underscore, num)
+            
+        sorted_keys = sorted(list(all_val_keys), key=key_sorter)
+        num_cols = len(sorted_keys)
+        
+        # Use provided headers or generate defaults
+        if headers and len(headers) > 0:
+            if len(headers) >= num_cols:
+                actual_headers = headers[:num_cols]
+            else:
+                actual_headers = headers + [f"Giá trị {i}" for i in range(len(headers)+1, num_cols+1)]
+        else:
+            actual_headers = ["Hạng mục"] + [f"Giá trị {i}" for i in range(2, num_cols + 1)]
+            
+        markdown = "| " + " | ".join(actual_headers) + " |\n"
+        markdown += "|" + "|".join(["---"] * len(actual_headers)) + "|\n"
+        
+        for item in items:
+            if not isinstance(item, dict): continue
+            vals = []
+            for k in sorted_keys:
+                v = item.get(k, "")
+                if v is None: v = ""
+                vals.append(str(v).replace('\n', ' ').strip())
+            
+            if any(v for v in vals):
+                markdown += "| " + " | ".join(vals) + " |\n"
+        
+        return markdown + "\n"
         
     def _extract_next_faq(self, data, url: str) -> str:
         md = ""
