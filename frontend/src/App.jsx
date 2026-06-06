@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { api } from './api';
 import ChatLayout from './components/ChatLayout';
 import AdminLayout from './components/AdminLayout';
+import NotificationDropdown from './components/NotificationDropdown';
 import CommandCenter from './pages/CommandCenter';
 import AIEvalLab from './pages/AIEvalLab';
 import PipelineManager from './pages/PipelineManager';
@@ -213,6 +214,7 @@ function MainLayout({ children }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -357,10 +359,20 @@ function MainLayout({ children }) {
             <div className="flex items-center gap-3">
               {/* Notification Bell */}
               {user?.type === 'user' && (
-                <button className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant relative flex items-center justify-center border border-white/20 dark:border-white/10 shadow-xs bg-white/40 dark:bg-white/10 backdrop-blur-md transition-all">
-                  <Bell size={16} />
-                  <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] font-extrabold text-white flex items-center justify-center border border-surface scale-90">2</span>
-                </button>
+                <div className="">
+                  <button 
+                    id="notification-bell-button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowNotifications(prev => !prev);
+                    }}
+                    className={`p-2 rounded-full hover:bg-surface-variant text-on-surface-variant relative flex items-center justify-center border border-white/20 dark:border-white/10 shadow-xs bg-white/40 dark:bg-white/10 backdrop-blur-md transition-all ${showNotifications ? 'bg-surface-variant text-[#00c897]' : ''}`}
+                  >
+                    <Bell size={16} />
+                    <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] font-extrabold text-white flex items-center justify-center border border-surface scale-90">2</span>
+                  </button>
+                </div>
               )}
 
               {user?.type === 'user' ? (
@@ -585,11 +597,16 @@ function MainLayout({ children }) {
             </div>
           </div>
         )}
+
+        {/* Notification Dropdown moved to app root level for z-index safety */}
+        <NotificationDropdown 
+          isOpen={showNotifications} 
+          onClose={() => setShowNotifications(false)} 
+        />
       </div>
     </div>
   );
 }
-
 function App() {
   return (
     <Routes>
