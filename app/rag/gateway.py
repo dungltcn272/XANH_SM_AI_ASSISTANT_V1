@@ -136,17 +136,17 @@ class XanhSMGateway:
         if is_greet:
             return {
                 "type": "greeting",
-                "answer": "Xin chào! Tôi là Trợ lý AI CSKH của Xanh SM. Tôi có thể hỗ trợ gì cho quý khách về chính sách, hủy chuyến, phí dịch vụ hoặc quy định hôm nay?"
+                "answer": "Dạ xin chào! Em là Trợ lý AI CSKH của Xanh SM. Rất vui được gặp anh/chị. Hôm nay em có thể hỗ trợ gì cho mình về các thông tin dịch vụ, chính sách hay quy định của Xanh SM không ạ?"
             }
         if is_thank:
             return {
                 "type": "thanks",
-                "answer": "Dạ, rất vui được hỗ trợ quý khách! Nếu còn thắc mắc nào khác, xin cứ tiếp tục hỏi nhé."
+                "answer": "Dạ, rất vui được hỗ trợ anh/chị! Nếu mình còn bất kỳ thắc mắc nào khác, xin cứ tiếp tục nhắn em nhé. Chúc anh/chị một ngày tốt lành!"
             }
         if is_farewell:
             return {
                 "type": "farewell",
-                "answer": "Cảm ơn quý khách đã sử dụng dịch vụ Xanh SM. Chúc quý khách một ngày tốt lành!"
+                "answer": "Dạ, cảm ơn anh/chị đã quan tâm và sử dụng dịch vụ của Xanh SM. Hẹn gặp lại anh/chị trong những chuyến đi xanh sắp tới. Chúc mình một ngày tuyệt vời ạ!"
             }
 
         return {"type": "none", "answer": ""}

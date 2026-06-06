@@ -235,7 +235,10 @@ class XanhSMRAGPipeline:
         # 5. Handle Small Talk
         if intent == "small-talk":
             intercept = self._is_greeting_or_thanks(rewritten_query)
-            answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho quý khách về các quy định dịch vụ Xanh SM hôm nay?"
+            if intercept["type"] != "none":
+                answer = intercept["answer"]
+            else:
+                answer = nlu_res.get("suggested_answer") or "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
             return {
                 "query": query,
                 "rewritten_query": rewritten_query,
@@ -442,7 +445,7 @@ class XanhSMRAGPipeline:
         # 4. Handle Small Talk
         if intent == "small-talk":
             intercept = self._is_greeting_or_thanks(rewritten_query)
-            answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho quý khách về các quy định dịch vụ Xanh SM hôm nay?"
+            answer = intercept["answer"] if intercept["type"] != "none" else "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
             return {
                 "query": query,
                 "normalized_query": normalized_query,
@@ -668,7 +671,11 @@ class XanhSMRAGPipeline:
         # 5. Handle Small Talk
         if intent == "small-talk":
             intercept = self._is_greeting_or_thanks(rewritten_query)
-            answer = intercept["answer"] if intercept["type"] != "none" else "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?"
+            if intercept["type"] != "none":
+                answer = intercept["answer"]
+            else:
+                answer = nlu_res.get("suggested_answer") or "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
+            
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
             import re
             for token in re.split(r'(\s+)', answer):

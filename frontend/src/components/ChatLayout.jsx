@@ -4,7 +4,7 @@ import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognitio
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, ChevronDown } from 'lucide-react';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -85,11 +85,11 @@ export default function ChatLayout() {
   const timerRef = useRef(null);
 
   const [isEditingVoiceText, setIsEditingVoiceText] = useState(false);
-  const [voiceLanguage, setVoiceLanguage] = useState('vi-VN');
+  const [voiceLanguage] = useState('vi-VN');
 
   useEffect(() => {
     if (listening && !isEditingVoiceText) {
-      setRecordingTime(0);
+      setTimeout(() => setRecordingTime(0), 0);
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
@@ -112,7 +112,7 @@ export default function ChatLayout() {
 
   useEffect(() => {
     if (transcript && !isEditingVoiceText) {
-      setInput(transcript);
+      setTimeout(() => setInput(transcript), 0);
     }
   }, [transcript, isEditingVoiceText]);
 
@@ -214,6 +214,8 @@ export default function ChatLayout() {
       const decoder = new TextDecoder();
       let currentReply = '';
       let buffer = '';
+      let sourcesObj = null;
+      let metricsObj = null;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -231,8 +233,6 @@ export default function ChatLayout() {
           let textDataParts = [];
           let isStep = false;
           let isMetrics = false;
-          let sourcesObj = null;
-          let metricsObj = null;
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
@@ -343,12 +343,6 @@ export default function ChatLayout() {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const renderContent = (content) => {
@@ -520,7 +514,7 @@ export default function ChatLayout() {
                       </>
                     ) : (
                       <>
-                        <span className="text-[#00c897]">Xanh SM AI</span>
+                        <span className="text-[#00c897]">Xanh SM</span>
                         <div className="px-1.5 py-0.5 rounded-md border border-[#00c897]/30 text-[#00c897] scale-75 origin-left flex items-center justify-center font-black">AI</div>
                         <span>•</span>
                         <span>{formatTime(msg.created_at)}</span>
@@ -579,8 +573,8 @@ export default function ChatLayout() {
                         {msg.role === 'assistant' && (
                           <div className="mt-2 pt-3 border-t border-outline-variant/10 flex items-center justify-between text-[10px] font-bold text-on-surface-variant/40">
                             <div className="flex items-center gap-1.5">
-                              <span className="scale-110">📅</span>
-                              <span>Cập nhật {formatDate(msg.created_at)}</span>
+                              <span className="scale-110">⏱️</span>
+                              <span>Tổng thời gian: {msg.latency_ms ? `${Math.round(msg.latency_ms)}ms` : 'N/A'}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span>Nguồn: Xanh SM Official</span>
@@ -755,7 +749,7 @@ export default function ChatLayout() {
                       key={i} 
                       className="w-[3px] bg-[#00c897] rounded-full transition-all duration-150"
                       style={{ 
-                        height: listening ? `${20 + Math.random() * 80}%` : '3px',
+                        height: listening ? `${20 + (i % 10) * 8}%` : '3px',
                         animation: listening ? `waveform 0.5s ease-in-out infinite alternate ${i * 0.008}s` : 'none'
                       }}
                     ></div>

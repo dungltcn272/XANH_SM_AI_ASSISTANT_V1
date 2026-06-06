@@ -67,6 +67,8 @@ class XanhSMClassifier:
                     response_format={"type": "json_object"}
                 )
                 res_content = response.choices[0].message.content.strip()
+                # Cleanup potential markdown blocks
+                res_content = re.sub(r"```json|```", "", res_content).strip()
                 result = json.loads(res_content)
                 
                 # Normalize output to ensure schema matches
@@ -75,6 +77,7 @@ class XanhSMClassifier:
                     intent = "rag"
                     
                 rewritten_query = result.get("rewritten_query", query)
+                suggested_answer = result.get("suggested_answer")
                 expanded = result.get("expanded_queries", [])
                 if not isinstance(expanded, list):
                     expanded = [rewritten_query]
@@ -87,6 +90,7 @@ class XanhSMClassifier:
                     "rewritten_query": rewritten_query,
                     "intent": intent,
                     "expanded_queries": expanded,
+                    "suggested_answer": suggested_answer,
                     "usage": {
                         "prompt_tokens": response.usage.prompt_tokens,
                         "completion_tokens": response.usage.completion_tokens
