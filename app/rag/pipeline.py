@@ -55,7 +55,7 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
     for event in guardrail.sanitize_stream(pipeline.stream_run(query=question, chat_history=chat_history)):
         if "Nội dung vi phạm" in event:
             is_blocked = True
-            final_answer = "Nội dung vi phạm chính sách an toàn của Xanh SM."
+            final_answer = "Dạ, em xin lỗi nhưng nội dung này có thể vi phạm chính sách an toàn của Xanh SM. Em có thể hỗ trợ anh/chị các vấn đề khác liên quan đến dịch vụ taxi điện được không ạ?"
         elif event.startswith("data: ") and "[DONE]" not in event:
             # Extract raw token content (preserving exact spacing and newlines)
             # An event can contain multiple lines, each starting with "data: " due to newlines
