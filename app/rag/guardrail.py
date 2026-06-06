@@ -84,7 +84,7 @@ class OutputGuardrail:
                     
                     # Run safety validation on the cumulative text buffer
                     if not self.check_safe(buffer):
-                        yield 'data: {"error": "Nội dung vi phạm chính sách an toàn của Xanh SM."}\n\n'
+                        yield 'data: {"error": "Dạ, em xin lỗi nhưng nội dung này có thể vi phạm chính sách an toàn của Xanh SM. Em có thể hỗ trợ anh/chị các vấn đề khác liên quan đến dịch vụ taxi điện được không ạ?"}\n\n'
                         yield "data: [DONE]\n\n"
                         return
             yield chunk

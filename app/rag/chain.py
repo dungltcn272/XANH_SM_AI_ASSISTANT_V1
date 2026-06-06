@@ -415,7 +415,7 @@ class XanhSMRAGPipeline:
 
         # 3. Handle Sensitive / Safety Block from NLU
         if intent == "sensitive":
-            refusal_msg = nlu_res.get("suggested_answer") or "Xin lỗi, tôi không thể thực hiện yêu cầu này. Tôi là trợ lý ảo của Xanh SM và không được phép chia sẻ thông tin bảo mật, tài liệu hệ thống hoặc các hướng dẫn lập trình."
+            refusal_msg = nlu_res.get("suggested_answer") or "Dạ, em rất tiếc nhưng em không thể thực hiện yêu cầu này vì lý do bảo mật hệ thống. Tuy nhiên, em luôn sẵn sàng hỗ trợ anh/chị các thông tin về dịch vụ, giá cước hoặc chính sách của Xanh SM ạ!"
             return {
                 "query": query,
                 "normalized_query": normalized_query,
@@ -657,7 +657,7 @@ class XanhSMRAGPipeline:
 
         # 4. Handle Sensitive / Safety Block
         if intent == "sensitive":
-            refusal_msg = nlu_res.get("suggested_answer") or "Xin lỗi, tôi không thể thực hiện yêu cầu này. Tôi là trợ lý ảo của Xanh SM và không được phép chia sẻ thông tin bảo mật, tài liệu hệ thống hoặc các hướng dẫn lập trình."
+            refusal_msg = nlu_res.get("suggested_answer") or "Dạ, em rất tiếc nhưng em không thể thực hiện yêu cầu này vì lý do bảo mật hệ thống. Tuy nhiên, em luôn sẵn sàng hỗ trợ anh/chị các thông tin về dịch vụ, giá cước hoặc chính sách của Xanh SM ạ!"
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
             import re
             for token in re.split(r'(\s+)', refusal_msg):
