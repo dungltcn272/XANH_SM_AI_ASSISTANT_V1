@@ -1,4 +1,5 @@
 import hashlib
+import re
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
@@ -35,6 +36,7 @@ def extract_pdf_markdown(url: str) -> dict:
             import pymupdf4llm
 
             raw_md = pymupdf4llm.to_markdown(str(tmp_path))
+            raw_md = re.sub(r"<br\s*/?>", "\n", raw_md, flags=re.IGNORECASE)
         except Exception:
             import fitz
 

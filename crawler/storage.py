@@ -26,18 +26,38 @@ class Storage:
     
     def url_to_filename(self, url: str) -> str:
         """Chuyển URL thành tên file"""
-        # Lấy path từ URL
-        # https://www.greensm.com/vn-vi/terms-policies/privacy-notice
-        # → terms_policies_privacy_notice
+        from urllib.parse import urlparse
+        import urllib.parse
         
-        path = url.split("vn-vi/", 1)[-1]  # Lấy phần sau /vn-vi/
-        path = path.rstrip("/")
-        path = path.replace("/", "_")      # / → _
-        path = path.replace("-", "_")      # - → _
-        path = re.sub(r'[^\w_]', '', path)  # Loại bỏ ký tự đặc biệt
-        path = re.sub(r'_+', '_', path)     # _ liên tiếp → _
+        # Parse URL
+        parsed = urlparse(url)
+        path = urllib.parse.unquote(parsed.path)
         
-        return path or "index"
+        # If it's a PDF, we use the filename without extension
+        if path.lower().endswith('.pdf'):
+            filename = path.split('/')[-1][:-4]
+        # For standard vn-vi paths
+        elif "/vn-vi/" in path.lower():
+            filename = path.lower().split("/vn-vi/", 1)[-1]
+        # For platform paths
+        else:
+            filename = path.strip('/')
+            if not filename:
+                filename = "index"
+            # Include query params for vehicle pages to differentiate them
+            if parsed.query:
+                query_str = urllib.parse.unquote(parsed.query)
+                filename += "_" + query_str
+                
+        filename = filename.replace("/", "_")
+        filename = filename.replace("-", "_")
+        filename = filename.replace("?", "_")
+        filename = filename.replace("=", "_")
+        filename = filename.replace("&", "_")
+        filename = re.sub(r'[^\w_]', '', filename)
+        filename = re.sub(r'_+', '_', filename)
+        
+        return filename.strip('_') or "index"
     
     def save_markdown(self, 
                      url: str,

@@ -94,7 +94,12 @@ def infer_seed(url: str, category: str, title: str = "", priority: int = 100) ->
         source_profile = "main_site"
 
     document_type = infer_document_type(cleaned_url, category, source_type)
-    output_dir = f"data/{category}"
+    
+    if source_type == "pdf":
+        output_dir = "data/pdf"
+    else:
+        output_dir = f"data/{category}"
+        
     crawl_strategy = "pdf_extract" if source_type == "pdf" else source_profile
 
     return CrawlSourceSeed(

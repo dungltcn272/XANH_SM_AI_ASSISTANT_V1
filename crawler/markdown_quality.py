@@ -42,6 +42,9 @@ class MarkdownQualityResult:
 def clean_markdown_content(content: str) -> str:
     text = (content or "").replace("\x00", "")
     text = re.sub(r"\r\n?", "\n", text)
+    
+    # Remove <br> tags often found in PDF or HTML conversions
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
 
     for pattern, repl in GLUED_FIXES:
         text = re.sub(pattern, repl, text)

@@ -181,6 +181,7 @@ class GreenSMCrawler:
             title = page_data.get("title") or getattr(source, "title", "") or page_data["url"]
             markdown_content = page_data.get("markdown", "")
             document_type = "policy_pdf"
+            category = "pdf"  # Force output to the pdf directory
         else:
             cleaned = self.cleaner.clean(
                 page_data.get("html", ""),

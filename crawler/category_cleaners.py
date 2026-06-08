@@ -82,7 +82,7 @@ class DeterministicCleaner:
         article = self._select_main_content(soup, selectors=["article", "main", "[class*='detail']", "[class*='content']"])
         markdown = self._markdownify(article)
 
-        next_text = self._extract_next_text(next_data)
+        next_text = self._extract_next_text(next_data, url)
         if len(next_text) > len(markdown) * 1.25:
             markdown = next_text
 
@@ -147,7 +147,7 @@ class DeterministicCleaner:
         content = self._select_main_content(soup, selectors=["main", "article", "[class*='page']", "[class*='content']"])
         markdown = self._markdownify(content)
 
-        dynamic_md = self._extract_next_text(next_data)
+        dynamic_md = self._extract_next_text(next_data, url)
         if len(dynamic_md) > len(markdown) * 1.2:
             markdown = dynamic_md
 
@@ -179,7 +179,7 @@ class DeterministicCleaner:
         page_title = self._best_title(soup, title, url) or "Green SM Platform"
         content = self._select_main_content(soup, selectors=["main", "body"])
         markdown = self._markdownify(content)
-        dynamic_md = self._extract_next_text(next_data)
+        dynamic_md = self._extract_next_text(next_data, url)
         if len(dynamic_md) > len(markdown):
             markdown = dynamic_md
 
@@ -223,7 +223,7 @@ class DeterministicCleaner:
         page_title = self._best_title(soup, title, url)
         content = self._select_main_content(soup, selectors=["main", "article", "body"])
         markdown = self._markdownify(content)
-        dynamic_md = self._extract_next_text(next_data)
+        dynamic_md = self._extract_next_text(next_data, url)
         if len(dynamic_md) > len(markdown) * 1.15:
             markdown = dynamic_md
 
@@ -544,32 +544,68 @@ class DeterministicCleaner:
         return None
 
 
-    def _extract_next_text(self, data: Any) -> str:
+    def _extract_next_text(self, data: Any, url: str = "") -> str:
         if not data:
             return ""
         lines: list[str] = []
         key_blacklist = {"newestposts", "relatedposts", "sidebar", "footer", "header", "menu", "nav"}
 
+        # Define all known vehicle keys in the messages dict
+        all_vehicles = {"EVO", "EVOGRAND", "FELIZ2025", "FELIZ_II", "HerioGreen", "LimoGreen", "NerioGreen", "VEROX", "minio", "van", "vf3", "vf5", "vf6"}
+        
+        # Determine the current vehicle key from the URL
+        current_vehicle = None
+        lower_url = url.lower()
+        if "vf6" in lower_url: current_vehicle = "vf6"
+        elif "vf5" in lower_url: current_vehicle = "vf5"
+        elif "vf3" in lower_url: current_vehicle = "vf3"
+        elif "ec_van" in lower_url: current_vehicle = "van"
+        elif "herio" in lower_url: current_vehicle = "HerioGreen"
+        elif "minio" in lower_url: current_vehicle = "minio"
+        elif "limo" in lower_url: current_vehicle = "LimoGreen"
+        elif "feliz2" in lower_url: current_vehicle = "FELIZ_II"
+        elif "feliz" in lower_url: current_vehicle = "FELIZ2025"
+        elif "evo_grand" in lower_url: current_vehicle = "EVOGRAND"
+        elif "evo" in lower_url: current_vehicle = "EVO"
+
         def visit(node: Any, key: str = "") -> None:
             if isinstance(node, dict):
                 if key.lower() in key_blacklist:
                     return
+                
+                # If we are in the 'messages' dict, filter out other vehicles
+                if key == "messages" and current_vehicle:
+                    filtered_node = {}
+                    for k, v in node.items():
+                        if k in all_vehicles:
+                            if k == current_vehicle:
+                                filtered_node[k] = v
+                        else:
+                            filtered_node[k] = v
+                    node = filtered_node
+
                 if "rows" in node and isinstance(node["rows"], list):
                     table = self._table_from_rows(node)
                     if table:
                         lines.append(table)
                 for child_key, value in node.items():
-                    if child_key.lower() in {"html", "description", "content", "title", "name", "label", "value", "summary"}:
-                        self._append_text(lines, value)
+                    if isinstance(value, str):
+                        if "__PAGE__" in value or "initial-scale" in value or value.startswith("width=") or value.startswith("viewport-fit="):
+                            continue
+                        if child_key.lower() in {"html", "description", "content", "title", "name", "label", "value", "summary"}:
+                            self._append_text(lines, value)
                     elif isinstance(value, (dict, list)):
                         visit(value, child_key)
             elif isinstance(node, list):
                 for item in node:
                     visit(item, key)
             elif isinstance(node, str):
+                if "__PAGE__" in node or "initial-scale" in node or node.startswith("width=") or node.startswith("viewport-fit="):
+                    return
                 self._append_text(lines, node)
 
         visit(data)
+        
         deduped = []
         seen = set()
         for line in lines:
