@@ -53,14 +53,18 @@ export const api = {
     return res.json();
   },
 
-  runCrawler: async () => {
-    return fetch(`${API_BASE}/admin/ingest/crawl`, {
+  runCrawler: async (maxUrls = 0) => {
+    const params = new URLSearchParams();
+    params.set('max_urls', String(Math.max(0, Number(maxUrls) || 0)));
+    return fetch(`${API_BASE}/admin/ingest/crawl?${params.toString()}`, {
       method: 'POST'
     });
   },
 
-  runAgentCrawler: async () => {
-    return fetch(`${API_BASE}/admin/ingest/crawl/agent`, {
+  runAgentCrawler: async (maxUrls = 0) => {
+    const params = new URLSearchParams();
+    params.set('max_urls', String(Math.max(0, Number(maxUrls) || 0)));
+    return fetch(`${API_BASE}/admin/ingest/crawl/agent?${params.toString()}`, {
       method: 'POST'
     });
   },

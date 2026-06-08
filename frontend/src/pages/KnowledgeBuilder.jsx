@@ -72,6 +72,8 @@ export default function KnowledgeBuilder() {
   const [logs, setLogs] = useState([]);
   const [busy, setBusy] = useState('');
   const [confirmText, setConfirmText] = useState('');
+  const [crawlLimit, setCrawlLimit] = useState(2);
+  const [crawlUnlimited, setCrawlUnlimited] = useState(false);
   const terminalRef = useRef(null);
 
   const loadSources = useCallback(async (nextFilters = {}) => {
@@ -239,6 +241,8 @@ export default function KnowledgeBuilder() {
     await loadSources(filters);
   };
 
+  const selectedCrawlLimit = crawlUnlimited ? 0 : Math.max(1, Number(crawlLimit) || 1);
+
   return (
     <div className="flex flex-col h-full overflow-y-auto p-4 md:p-8 gap-6">
       <header>
@@ -363,11 +367,28 @@ export default function KnowledgeBuilder() {
         <div className="glass-panel border border-outline-variant/30 rounded-2xl p-5 space-y-4">
           <h2 className="text-lg font-bold text-on-surface">Crawl & Clean</h2>
           <p className="text-xs text-on-surface-variant">Crawler chỉ sinh Markdown/PDF Markdown trong data/. Không clear và không ingest.</p>
-          <button onClick={() => runStreamAction('crawl-main', 'Crawl Main Site -> Markdown', api.runCrawler)} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
+          <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+            <label className="text-xs text-on-surface-variant">
+              Giới hạn URL
+              <input
+                type="number"
+                min="1"
+                value={crawlLimit}
+                disabled={crawlUnlimited}
+                onChange={(e) => setCrawlLimit(e.target.value)}
+                className="mt-1 w-full px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm text-on-surface disabled:opacity-50"
+              />
+            </label>
+            <label className="inline-flex items-center gap-2 text-xs text-on-surface-variant mt-5">
+              <input type="checkbox" checked={crawlUnlimited} onChange={(e) => setCrawlUnlimited(e.target.checked)} />
+              UNLIMIT
+            </label>
+          </div>
+          <button onClick={() => runStreamAction('crawl-main', `Crawl Main Site -> Markdown (${crawlUnlimited ? 'UNLIMIT' : `${selectedCrawlLimit} URL`})`, () => api.runCrawler(selectedCrawlLimit))} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
             {busy === 'crawl-main' ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
             Crawl Main Site
           </button>
-          <button onClick={() => runStreamAction('crawl-platform', 'Crawl Vehicle/PDF -> Markdown', api.runAgentCrawler)} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-cyan-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
+          <button onClick={() => runStreamAction('crawl-platform', `Crawl Vehicle/PDF -> Markdown (${crawlUnlimited ? 'UNLIMIT' : `${selectedCrawlLimit} URL`})`, () => api.runAgentCrawler(selectedCrawlLimit))} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-cyan-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
             {busy === 'crawl-platform' ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
             Crawl Vehicle/PDF
           </button>
@@ -387,9 +408,9 @@ export default function KnowledgeBuilder() {
           </button>
         </div>
 
-        <div className="bg-[#05090f] rounded-2xl border border-outline-variant/30 overflow-hidden min-h-[260px] flex flex-col">
+        <div className="bg-[#05090f] rounded-2xl border border-outline-variant/30 overflow-hidden h-[320px] min-h-0 flex flex-col">
           <div className="px-4 py-3 bg-white/5 border-b border-white/10 text-xs font-mono text-white/50">knowledge_builder.log</div>
-          <div ref={terminalRef} className="p-4 overflow-y-auto font-mono text-xs flex-1 text-green-300">
+          <div ref={terminalRef} className="p-4 overflow-y-auto font-mono text-xs flex-1 min-h-0 text-green-300">
             {logs.length === 0 ? <div className="text-white/25 italic">Logs sẽ hiện ở đây...</div> : logs.map((log, idx) => (
               <pre key={idx} className={`whitespace-pre-wrap mb-2 ${log.includes('[ERROR]') ? 'text-red-400' : log.includes('[SYSTEM]') ? 'text-blue-400' : 'text-green-300'}`}>{log}</pre>
             ))}

@@ -427,7 +427,7 @@ async def evaluate_rag():
 
 
 @router.post("/ingest/crawl")
-async def run_crawler():
+async def run_crawler(max_urls: int = 0):
     """
     Chạy Script Cào Dữ Liệu. Trả về stream SSE báo cáo tiến độ.
     """
@@ -443,8 +443,9 @@ async def run_crawler():
             env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
             env["TQDM_DISABLE"] = "1"
             
+            cmd = [sys.executable, "-W", "ignore", "-u", "crawler/run_crawler.py", "--max-urls", str(max(0, max_urls))]
             process = subprocess.Popen(
-                [sys.executable, "-W", "ignore", "-u", "crawler/run_crawler.py"], 
+                cmd,
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.STDOUT,
                 env=env
@@ -482,7 +483,7 @@ async def run_crawler():
 
 
 @router.post("/ingest/crawl/agent")
-async def run_agent_crawler():
+async def run_agent_crawler(max_urls: int = 0):
     """
     Chạy deterministic crawler cho Green SM Platform/PDF. Trả về stream SSE báo cáo tiến độ.
     """
@@ -495,8 +496,14 @@ async def run_agent_crawler():
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
             
+            cmd = [
+                sys.executable, "-W", "ignore", "-u",
+                "crawler/agent_crawler.py",
+                "--sources", "platform,platform_pdf",
+                "--max-urls", str(max(0, max_urls)),
+            ]
             process = subprocess.Popen(
-                [sys.executable, "-W", "ignore", "-u", "crawler/agent_crawler.py", "--sources", "platform,platform_pdf", "--max-urls", "0"], 
+                cmd,
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.STDOUT,
                 env=env

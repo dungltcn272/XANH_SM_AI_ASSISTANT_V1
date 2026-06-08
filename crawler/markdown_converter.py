@@ -6,6 +6,7 @@ Cải thiện xử lý text dính vào nhau, xóa header/footer tốt hơn
 from bs4 import BeautifulSoup, NavigableString
 import logging
 import re
+from urllib.parse import urljoin
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,12 +66,28 @@ class MarkdownConverter:
                 if elem.parent and elem.parent.parent:
                     elem.parent.parent.decompose()
                     
-        # Xóa block "Danh mục khác"
-        for tag in soup.find_all(string=lambda t: t and 'Danh mục khác' in t):
-            if hasattr(tag, 'parent'):
-                parent = tag.parent
-                if parent and parent.parent and parent.parent.parent:
-                    parent.parent.parent.decompose()
+        # Xóa các block rác phổ biến trong trang tin tức/chi tiết
+        junk_strings = [
+            'Danh mục khác', 'Bài viết gần đây', 'Tin tức liên quan', 
+            'Xem thêm', 'Có thể bạn quan tâm', 'Chủ đề hot',
+            'Bài viết mới nhất', 'Tin tức mới nhất'
+        ]
+        for js in junk_strings:
+            for tag in soup.find_all(string=lambda t: t and js in t):
+                if hasattr(tag, 'parent') and tag.parent:
+                    curr = getattr(tag, 'parent', None)
+                    to_decompose = curr
+                    depth = 0
+                    while curr and getattr(curr, 'name', None) not in {"main", "article", "body", "html"} and depth < 4:
+                        if getattr(curr, 'name', None) in {"section", "aside", "div"}:
+                            to_decompose = curr
+                        curr = getattr(curr, 'parent', None)
+                        depth += 1
+                    if to_decompose and getattr(to_decompose, 'name', None) not in {"body", "html"}:
+                        try:
+                            to_decompose.decompose()
+                        except Exception:
+                            pass
             
         # Xóa các ảnh rác/banner thừa dựa trên alt text
         for img in soup.find_all('img'):
@@ -88,6 +105,8 @@ class MarkdownConverter:
             content = soup.find("body") or soup
         
         # Chuyển sang Markdown dùng markdownify (fix lỗi nối chữ)
+        self._absolutize_urls(content, url)
+
         import markdownify
         markdown = markdownify.markdownify(str(content), heading_style="ATX", strip=['a'])
         
@@ -104,6 +123,41 @@ class MarkdownConverter:
         markdown = re.sub(r'\n\n\n+', '\n\n', markdown)
         
         return markdown.strip()
+
+    def _absolutize_urls(self, soup: BeautifulSoup, base_url: str) -> None:
+        if not base_url:
+            return
+
+        for link in soup.find_all(["a", "link"]):
+            href = link.get("href")
+            if href:
+                link["href"] = urljoin(base_url, href.strip())
+
+        for img in soup.find_all("img"):
+            src = img.get("src") or img.get("data-src")
+            if src:
+                img["src"] = urljoin(base_url, src.strip())
+            srcset = img.get("srcset")
+            if srcset:
+                img["srcset"] = self._absolutize_srcset(srcset, base_url)
+
+        for source in soup.find_all("source"):
+            src = source.get("src")
+            if src:
+                source["src"] = urljoin(base_url, src.strip())
+            srcset = source.get("srcset")
+            if srcset:
+                source["srcset"] = self._absolutize_srcset(srcset, base_url)
+
+    def _absolutize_srcset(self, srcset: str, base_url: str) -> str:
+        parts = []
+        for item in srcset.split(","):
+            bits = item.strip().split()
+            if not bits:
+                continue
+            bits[0] = urljoin(base_url, bits[0])
+            parts.append(" ".join(bits))
+        return ", ".join(parts)
     
     def _extract_next_tables(self, data) -> str:
         md = ""
@@ -139,10 +193,12 @@ class MarkdownConverter:
             display_name = name.replace("_", " ").title()
             md += f"### {display_name}\n\n"
             
-            columns_str = table_obj.get("columns", "")
+            columns_value = table_obj.get("columns", "")
             headers = []
-            if columns_str:
-                headers = [c.strip() for c in columns_str.split("|")]
+            if isinstance(columns_value, str) and columns_value:
+                headers = [c.strip() for c in columns_value.split("|")]
+            elif isinstance(columns_value, list):
+                headers = [str(c).strip() for c in columns_value if str(c).strip()]
             
             # Check if rows are grouped by city
             city_grouped = False
@@ -227,17 +283,36 @@ class MarkdownConverter:
 
         faqs_found = find_faq(data, [])
         
-        # Extract general items for terms-policies pages
+        # Extract items for terms-policies pages
         if "terms-policies" in url:
             try:
-                general_items = data.get("props", {}).get("pageProps", {}).get("generalTerms", {}).get("generalItems", [])
-                for item in general_items:
-                    title = item.get("title")
-                    desc = item.get("description")
+                term_keys = ["generalTerms", "privacyNotice", "serviceData", "protectionPolicy", "regulationsData"]
+                page_props = data.get("props", {}).get("pageProps", {})
+                
+                items = []
+                for tk in term_keys:
+                    if tk in page_props and isinstance(page_props[tk], dict):
+                        # Find the list of items (usually ends in 'Items')
+                        for k, v in page_props[tk].items():
+                            if k.endswith("Items") and isinstance(v, list):
+                                items = v
+                                break
+                        if items: break
+                
+                if not items:
+                    # Fallback for some structures where items might be at top level of pageProps
+                    for k, v in page_props.items():
+                        if k.endswith("Items") and isinstance(v, list):
+                            items = v
+                            break
+
+                for item in items:
+                    title = item.get("title") or item.get("label")
+                    desc = item.get("description") or item.get("value")
                     if title and desc:
                         faqs_found.append((title, desc))
             except Exception as e:
-                logger.error(f"Error parsing generalItems: {e}")
+                logger.error(f"Error parsing term items: {e}")
         
         # Also extract from i18nStore (for insurance / green care pages)
         valid_prefix = None
@@ -286,12 +361,14 @@ class MarkdownConverter:
                 md += f"### {label}\n{clean_value}\n\n"
                 
         return md
+
+    def _convert_element_with_newlines(self, elem) -> str:
         """Chuyển element thành Markdown với newlines giữa các block elements"""
         if isinstance(elem, NavigableString):
             text = str(elem).strip()
             if text:
                 # Thêm space giữa các từ dính vào nhau (tiếng Việt)
-                text = re.sub(r'([a-zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ0-9])([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ])', r'\1 \2', text)
+                text = re.sub(r'([a-zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ0-9])([A-ZÀÁẢÃẠĂẰẮẨẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ])', r'\1 \2', text)
                 return text
             return ""
         
@@ -398,7 +475,7 @@ class MarkdownConverter:
                     text = str(child).strip()
                     if text:
                         # Apply text joining fix
-                        text = re.sub(r'([a-zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ0-9])([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ])', r'\1 \2', text)
+                        text = re.sub(r'([a-zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ0-9])([A-ZÀÁẢÃẠĂẰẮẨẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ])', r'\1 \2', text)
                         markdown += text
                 elif hasattr(child, 'name') and child.name in self.block_tags:
                     # Add newline before block element
@@ -419,7 +496,7 @@ class MarkdownConverter:
         # Clean multiple spaces
         text = re.sub(r'\s+', ' ', text)
         # Apply text joining fix
-        text = re.sub(r'([a-zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềế ểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ0-9])([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ])', r'\1 \2', text)
+        text = re.sub(r'([a-zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ0-9])([A-ZÀÁẢÃẠĂẰẮẨẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ])', r'\1 \2', text)
         return text.strip()
     
     def _convert_ul(self, elem) -> str:

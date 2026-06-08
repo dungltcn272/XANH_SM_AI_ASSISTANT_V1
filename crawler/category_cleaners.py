@@ -16,7 +16,7 @@ except ImportError:
 JUNK_CLASS_RE = re.compile(
     r"(header|footer|nav|menu|sidebar|breadcrumb|social|share|pagination|"
     r"modal|popup|floating|hotline|zalo|contact|form|button|register|"
-    r"download|app|related|recent)",
+    r"download|app|related|recent|suggested|comment|author|tag|category)",
     re.IGNORECASE,
 )
 
@@ -73,7 +73,7 @@ class DeterministicCleaner:
         soup = BeautifulSoup(html, "html.parser")
         next_data = self._load_next_data(soup)
         self._remove_junk(soup)
-        self._absolutize_images(soup, url)
+        self._absolutize_urls(soup, url)
 
         page_title = self._best_title(soup, title, url)
         category = self._meta_content(soup, "article:section") or self._find_news_category(soup)
@@ -141,7 +141,7 @@ class DeterministicCleaner:
         soup = BeautifulSoup(html, "html.parser")
         next_data = self._load_next_data(soup)
         self._remove_junk(soup)
-        self._absolutize_images(soup, url)
+        self._absolutize_urls(soup, url)
 
         page_title = self._best_title(soup, title, url)
         content = self._select_main_content(soup, selectors=["main", "article", "[class*='page']", "[class*='content']"])
@@ -174,7 +174,7 @@ class DeterministicCleaner:
         soup = BeautifulSoup(html, "html.parser")
         next_data = self._load_next_data(soup)
         self._remove_junk(soup)
-        self._absolutize_images(soup, url)
+        self._absolutize_urls(soup, url)
 
         page_title = self._best_title(soup, title, url) or "Green SM Platform"
         content = self._select_main_content(soup, selectors=["main", "body"])
@@ -218,7 +218,7 @@ class DeterministicCleaner:
         soup = BeautifulSoup(html, "html.parser")
         next_data = self._load_next_data(soup)
         self._remove_junk(soup)
-        self._absolutize_images(soup, url)
+        self._absolutize_urls(soup, url)
 
         page_title = self._best_title(soup, title, url)
         content = self._select_main_content(soup, selectors=["main", "article", "body"])
@@ -264,17 +264,38 @@ class DeterministicCleaner:
                 elem.decompose()
 
         for elem in list(soup.find_all(True)):
-            classes = " ".join(elem.get("class", []))
+            if not isinstance(elem, Tag) or elem.attrs is None:
+                continue
+            classes_value = elem.get("class") or []
+            if isinstance(classes_value, str):
+                classes_value = [classes_value]
+            classes = " ".join(classes_value)
             elem_id = elem.get("id", "")
             role = elem.get("role", "")
             text_key = " ".join([classes, elem_id, role])
             if text_key and JUNK_CLASS_RE.search(text_key):
                 elem.decompose()
 
-        for text in soup.find_all(string=lambda t: t and re.search(r"(Hotline|Zalo chat|Dang ky tu van|Tai ung dung)", t, re.I)):
-            parent = text.parent
-            if parent and parent.name not in {"main", "article", "body"}:
-                parent.decompose()
+        for text in soup.find_all(string=lambda t: t and re.search(r"(Hotline|Zalo chat|Dang ky tu van|Tai ung dung|Bài viết gần đây|Tin tức liên quan|Xem thêm|Có thể bạn quan tâm)", t, re.I)):
+            parent = getattr(text, 'parent', None)
+            if parent:
+                # Find the highest container that is still "junk"
+                # usually a section or a div that wraps the header and its list
+                curr = parent
+                to_decompose = parent
+                depth = 0
+                while curr and getattr(curr, 'name', None) not in {"main", "article", "body", "html"} and depth < 4:
+                    # If we find a section or a div with many siblings, maybe it's the right container
+                    if getattr(curr, 'name', None) in {"section", "aside", "div"}:
+                        to_decompose = curr
+                    curr = getattr(curr, 'parent', None)
+                    depth += 1
+                
+                if to_decompose and getattr(to_decompose, 'name', None) not in {"body", "html"}:
+                    try:
+                        to_decompose.decompose()
+                    except Exception:
+                        pass
 
     def _select_main_content(self, soup: BeautifulSoup, selectors: list[str] | None = None) -> Tag:
         selectors = selectors or ["article", "main", "[role='main']", "body"]
@@ -457,28 +478,82 @@ class DeterministicCleaner:
         heading = container.find(["h1", "h2", "h3", "h4"])
         return heading.get_text(" ", strip=True) if heading else container.get_text(" ", strip=True)[:120]
 
-    def _absolutize_images(self, soup: BeautifulSoup, base_url: str) -> None:
+    def _absolutize_urls(self, soup: BeautifulSoup, base_url: str) -> None:
+        for link in soup.find_all(["a", "link"]):
+            href = link.get("href")
+            if href:
+                link["href"] = urljoin(base_url, href.strip())
+
         for img in soup.find_all("img"):
             src = img.get("src") or img.get("data-src")
             if src:
-                img["src"] = urljoin(base_url, src)
+                img["src"] = urljoin(base_url, src.strip())
+            srcset = img.get("srcset")
+            if srcset:
+                img["srcset"] = self._absolutize_srcset(srcset, base_url)
+
+        for source in soup.find_all("source"):
+            src = source.get("src")
+            if src:
+                source["src"] = urljoin(base_url, src.strip())
+            srcset = source.get("srcset")
+            if srcset:
+                source["srcset"] = self._absolutize_srcset(srcset, base_url)
+
+    def _absolutize_srcset(self, srcset: str, base_url: str) -> str:
+        parts = []
+        for item in srcset.split(","):
+            bits = item.strip().split()
+            if not bits:
+                continue
+            bits[0] = urljoin(base_url, bits[0])
+            parts.append(" ".join(bits))
+        return ", ".join(parts)
 
     def _load_next_data(self, soup: BeautifulSoup) -> Any:
         script = soup.find("script", id="__NEXT_DATA__")
-        if not script or not script.string:
-            return None
-        try:
-            return json.loads(script.string)
-        except json.JSONDecodeError:
-            return None
+        if script and script.string:
+            try:
+                return json.loads(script.string)
+            except json.JSONDecodeError:
+                pass
+
+        # Fallback to Next.js App Router RSC payload
+        html = str(soup)
+        pushes = re.findall(r'self\.__next_f\.push\(\[\d+,\s*"(.*?)"\]\)', html, flags=re.DOTALL)
+        if pushes:
+            full_payload = ""
+            for p in pushes:
+                try:
+                    full_payload += json.loads(f'"{p}"')
+                except Exception:
+                    pass
+            parsed_data = []
+            for line in full_payload.split('\n'):
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    data_str = parts[1]
+                    if data_str.startswith('[') or data_str.startswith('{'):
+                        try:
+                            parsed_data.append(json.loads(data_str))
+                        except json.JSONDecodeError:
+                            pass
+            if parsed_data:
+                return parsed_data
+
+        return None
+
 
     def _extract_next_text(self, data: Any) -> str:
         if not data:
             return ""
         lines: list[str] = []
+        key_blacklist = {"newestposts", "relatedposts", "sidebar", "footer", "header", "menu", "nav"}
 
         def visit(node: Any, key: str = "") -> None:
             if isinstance(node, dict):
+                if key.lower() in key_blacklist:
+                    return
                 if "rows" in node and isinstance(node["rows"], list):
                     table = self._table_from_rows(node)
                     if table:
@@ -528,14 +603,36 @@ class DeterministicCleaner:
                 parts.append(self._table_from_rows({"rows": group.get("items", [])}))
             return "\n\n".join(part for part in parts if part)
 
-        keys = []
+        # Filter and sort keys
+        all_keys = []
         for row in rows:
             if isinstance(row, dict):
                 for key in row:
-                    if key not in keys and not isinstance(row.get(key), (dict, list)):
-                        keys.append(key)
+                    if key not in all_keys and not isinstance(row.get(key), (dict, list)):
+                        all_keys.append(key)
+        
+        # Keep only value* keys or known content keys, exclude junk
+        junk_keys = {"id", "_id", "slug", "date", "modified", "seo", "excerpt", "author", "commentCount", "categories"}
+        keys = [k for k in all_keys if k.startswith("value") or (k.lower() in {"label", "title", "name", "content", "description"} and k not in junk_keys)]
+        
+        if not keys:
+            # If no value keys, just use non-junk keys
+            keys = [k for k in all_keys if k not in junk_keys]
+            
         if not keys:
             return ""
+
+        # Sort keys: title/label/name first, then value1, value2...
+        def key_sorter(k):
+            if k.lower() in {"title", "label", "name"}:
+                return (0, 0)
+            if k.startswith("value"):
+                digits = re.findall(r"\d+", k)
+                return (1, int(digits[0]) if digits else 0)
+            return (2, k)
+            
+        keys.sort(key=key_sorter)
+
         header = "| " + " | ".join(keys) + " |"
         sep = "|" + "|".join(["---"] * len(keys)) + "|"
         body = []

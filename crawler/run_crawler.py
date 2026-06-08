@@ -82,7 +82,7 @@ class GreenSMCrawler:
                 documents.append(doc)
                 logger.debug("Prepared %s: %s", doc["category"], doc["title"][:80])
             except Exception as exc:
-                logger.error("Error processing %s: %s", page_data.get("url"), exc)
+                logger.exception("Error processing %s: %s", page_data.get("url"), exc)
                 manifest.add_error(
                     page_data.get("url", ""),
                     str(exc),
