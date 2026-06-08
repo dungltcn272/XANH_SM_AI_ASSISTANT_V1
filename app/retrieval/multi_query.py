@@ -4,6 +4,7 @@ from typing import List
 from openai import OpenAI
 from app.core.config import settings as config
 from app.core.logger import log_warn
+from app.rag.domain_vocabulary import enrich_queries, understand_query
 
 class XanhSMQueryExpansion:
     """
@@ -37,7 +38,7 @@ class XanhSMQueryExpansion:
                 for syn in synonyms:
                     if syn not in expanded:
                         expanded.append(syn)
-        return expanded
+        return enrich_queries(query, expanded)
 
     def expand_query_llm(self, query: str) -> List[str]:
         """
@@ -81,5 +82,8 @@ class XanhSMQueryExpansion:
             return self.expand_query_rule_based(query)
 
     def get_queries(self, query: str) -> List[str]:
-        queries = self.expand_query_llm(query)
+        queries = enrich_queries(query, self.expand_query_llm(query))
         return list(dict.fromkeys(queries))
+
+    def get_understanding(self, query: str):
+        return understand_query(query)

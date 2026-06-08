@@ -1,7 +1,6 @@
 """
 Phase 3: Content Crawling
-- Dùng requests + BeautifulSoup cho HTML tĩnh
-- Hoặc Playwright cho JavaScript rendering
+- Dùng requests + BeautifulSoup cho HTML tĩnh từ URL registry
 """
 
 import requests
@@ -17,35 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 class PageCrawler:
-    def __init__(self, use_playwright: bool = False):
-        self.use_playwright = use_playwright
+    def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         })
-        self.playwright = None
-        self.browser = None
-
-    def init_playwright(self):
-        """Khởi tạo Playwright nếu cần"""
-        if not self.use_playwright:
-            return
-        
-        try:
-            from playwright.sync_api import sync_playwright
-            self.playwright = sync_playwright()
-            self.browser = self.playwright.start()
-            logger.info("✅ Playwright initialized")
-        except ImportError:
-            logger.warning("⚠️ Playwright not installed, falling back to requests")
-            self.use_playwright = False
-
-    def close_playwright(self):
-        """Đóng Playwright"""
-        if self.browser:
-            self.browser.close()
-        if self.playwright:
-            self.playwright.stop()
 
     def crawl_with_requests(self, url: str) -> Optional[Dict]:
         """Crawl bằng requests (nhanh, nhưng không render JS)"""
@@ -77,45 +52,10 @@ class PageCrawler:
             logger.error(f"❌ Requests crawl failed for {url}: {e}")
             return None
 
-    def crawl_with_playwright(self, url: str) -> Optional[Dict]:
-        """Crawl bằng Playwright (chậm, nhưng render JS)"""
-        try:
-            if not self.browser:
-                self.init_playwright()
-            
-            page = self.browser.new_page()
-            page.goto(url, timeout=30000)
-            page.wait_for_load_state("networkidle")
-            
-            # Lấy title
-            title = page.title()
-            
-            # Lấy HTML đã render
-            html = page.content()
-            
-            page.close()
-            
-            return {
-                "url": url,
-                "title": title,
-                "html": html,
-                "status": 200,
-                "crawl_method": "playwright",
-                "crawl_timestamp": datetime.now().isoformat()
-            }
-        
-        except Exception as e:
-            logger.error(f"❌ Playwright crawl failed for {url}: {e}")
-            return None
-
     def crawl(self, url: str) -> Optional[Dict]:
         """Crawl URL"""
         logger.info(f"🔗 Crawling: {url}")
-        
-        if self.use_playwright:
-            return self.crawl_with_playwright(url)
-        else:
-            return self.crawl_with_requests(url)
+        return self.crawl_with_requests(url)
 
     def crawl_batch(self, urls: list, output_dir: str = "data/raw") -> Dict[str, list]:
         """Crawl nhiều URL"""
@@ -156,7 +96,7 @@ class PageCrawler:
 
 
 if __name__ == "__main__":
-    crawler = PageCrawler(use_playwright=False)
+    crawler = PageCrawler()
     
     # Test
     result = crawler.crawl("https://www.greensm.com/vn-vi")

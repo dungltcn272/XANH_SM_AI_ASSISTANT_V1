@@ -67,11 +67,15 @@ RAG_XANH_SM/
 │       ├── database.py       # Khởi tạo kết nối SQLAlchemy Engine và Session Local
 │       └── models.py         # Định nghĩa các bảng dữ liệu (Users, Conversations, Logs, Chunks...)
 │
-├── crawler/                  # Module cào dữ liệu từ trang chủ Xanh SM
-│   ├── crawler.py            # Page Crawler thu thập HTML/PDF
-│   ├── discovery.py          # URL Discovery tự động phát hiện liên kết
-│   ├── run_crawler.py        # Điều phối Orchestration cào dữ liệu
-│   └── storage.py            # Lưu trữ tài liệu thô
+├── crawler/                  # Module crawl theo URL registry đã duyệt
+│   ├── registry.py           # Bootstrap/đọc crawl_sources từ DB và urls.json
+│   ├── sources.py            # Khai báo source profile main_site/platform/platform_pdf
+│   ├── crawler.py            # Page Crawler thu thập HTML bằng requests
+│   ├── run_crawler.py        # Deterministic crawler main_site/platform/platform_pdf -> Markdown
+│   ├── agent_crawler.py      # Compatibility wrapper, no LLM/Agent API calls
+│   ├── category_cleaners.py  # Rule-based cleaners for service/news/platform pages
+│   ├── pdf_utils.py          # Extract PDF bằng pymupdf4llm/PyMuPDF
+│   └── storage.py            # Lưu trữ tài liệu Markdown
 │
 ├── data/                     # Thư mục chứa tài liệu Markdown thô (Crawler tạo ra)
 │
@@ -103,13 +107,14 @@ graph TD
     C -- "Cache Hit (~5ms)" --> Out([💻 Trả kết quả ngay])
     C -- "Cache Miss" --> D[🧠 NLU Gateway 3-in-1]
     
-    D --> E{Ý định là gì?}
+    D --> DV[🧭 Domain Vocabulary & Query Expansion]
+    DV --> E{Ý định là gì?}
     E -- "tán gẫu (small-talk)" --> Stalk[💬 Trả lời nhanh]
     E -- "nhạy cảm (sensitive)" --> Block
     E -- "tra cứu (rag)" --> F{Second Cache Lookup?}
     
     F -- "Cache Hit" --> Out
-    F -- "Cache Miss" --> G[🔍 Hybrid Search: Dense + Sparse]
+    F -- "Cache Miss" --> G[🔍 Hybrid Search: Dense + Sparse + SQL Fallback]
     
     G --> H[🎯 Cohere Reranker]
     H --> I{Adaptive Parent-Child Expansion}
@@ -143,23 +148,24 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 10 
    - **Logic xử lý**: Thực hiện đối sánh chuỗi chính xác (Exact Match) giữa câu hỏi thô của người dùng với cơ sở dữ liệu `SemanticCache`.
    - **Thông số kỹ thuật**: Độ trễ **~5-10ms**. Nếu xảy ra Cache Hit (đã có câu trả lời hợp lệ và còn hiệu lực TTL), hệ thống trả kết quả ngay lập tức về client, bỏ qua toàn bộ các bước RAG sau đó.
 
-3. **NODE 3: NLU Gateway 3-in-1 (Xử lý ngôn ngữ tự nhiên tích hợp)**
+3. **NODE 3: NLU Gateway 3-in-1 + Domain Vocabulary (Xử lý ngôn ngữ tự nhiên tích hợp)**
    - **Công nghệ áp dụng**: OpenAI API `chat/completions` với mô hình `gpt-4o-mini`.
    - **Logic xử lý**: Tích hợp gộp 3 tác vụ tiền RAG vào duy nhất một lần gọi LLM bằng kỹ thuật Few-Shot Prompting và định dạng dữ liệu đầu ra có cấu trúc (Structured Outputs):
      - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu), `small-talk` (chào hỏi, tán gẫu) hay `sensitive` (nhạy cảm/vi phạm chính sách).
      - *Query Rewrite (Viết lại câu hỏi)*: Khử tham chiếu, bổ sung ngữ cảnh từ lịch sử hội thoại gần nhất và chuẩn hóa câu hỏi Tiếng Việt ngắn gọn, tập trung vào keywords.
-     - *Query Expansion (Mở rộng câu hỏi)*: Sinh thêm 1 câu hỏi đồng nghĩa hỗ trợ tìm kiếm đa chiều.
-   - **Thông số kỹ thuật**: Nhiệt độ `temperature = 0.1` để đảm bảo độ chính xác tuyệt đối. Gộp 3 API calls giúp giảm độ trễ từ **~4.5s xuống còn ~1.2s - 1.5s**.
+     - *Query Expansion (Mở rộng câu hỏi)*: Sinh thêm câu hỏi đồng nghĩa hỗ trợ tìm kiếm đa chiều.
+     - *Domain Vocabulary (Từ điển miền Xanh SM)*: Chuẩn hóa alias/sai chính tả và intent nghiệp vụ, ví dụ `green exress` -> `Green Express`, `đền hàng` -> `bảo hiểm/bồi thường/bồi hoàn`, `ăn chia` -> `doanh thu/chiết khấu/vận doanh`.
+   - **Thông số kỹ thuật**: Nhiệt độ `temperature = 0.1` để đảm bảo độ chính xác tuyệt đối. Gộp 3 API calls giúp giảm độ trễ từ **~4.5s xuống còn ~1.2s - 1.5s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
 
 4. **NODE 4: Second Cache Lookup (Kiểm tra Cache lần 2)**
    - **Công nghệ áp dụng**: PostgreSQL / SQLite SQL Query.
    - **Logic xử lý**: Thực hiện đối sánh Cache lần 2 dựa trên câu hỏi đã được chuẩn hóa ở Node 3. Điều này giúp nâng cao đáng kể tỷ lệ trúng cache trong trường hợp câu hỏi thô của người dùng dài dòng hoặc viết sai chính tả nhưng có cùng bản chất ngữ nghĩa với câu hỏi đã lưu.
    - **Thông số kỹ thuật**: Độ trễ **~5-10ms**.
 
-5. **NODE 5: Hybrid Search (Tìm kiếm hỗn hợp Dense + Sparse)**
-   - **Công nghệ áp dụng**: Qdrant Vector Database (`qdrant-client`) kết hợp Dense Vectors (mô hình `text-embedding-3-small` của OpenAI, 1536 chiều) và Sparse Vectors (mô hình BM25 của thư viện FastEmbed).
-   - **Logic xử lý**: Chuyển đổi câu hỏi chuẩn hóa và câu hỏi đồng nghĩa thành Dense Embeddings và Sparse Vectors. Tiến hành truy vấn song song trên Qdrant và sử dụng thuật toán **RRF (Reciprocal Rank Fusion)** tích hợp sẵn trong Qdrant để tổng hợp kết quả xếp hạng tối ưu nhất.
-   - **Thông số kỹ thuật**: Kích thước Dense Vector `dimensions = 1536`. Lấy ra **Top 25 tài liệu thô** (`limit = 25`) có điểm tương quan cao nhất.
+5. **NODE 5: Hybrid Search (Dense + Sparse + SQL Keyword Fallback + Metadata Boost)**
+   - **Công nghệ áp dụng**: Qdrant Vector Database (`qdrant-client`) kết hợp Dense Vectors (mô hình `text-embedding-3-small` của OpenAI, 1536 chiều), Sparse Vectors (BM25/FastEmbed), và SQL fallback trên bảng `document_chunks`.
+   - **Logic xử lý**: Chuyển đổi câu hỏi chuẩn hóa và expanded queries thành Dense/Sparse vectors. Qdrant dùng **RRF (Reciprocal Rank Fusion)** để hợp nhất kết quả, sau đó SQL fallback bắt các cụm literal quan trọng bị miss bởi vector search. Domain metadata hints sẽ boost tài liệu theo `category`, `document_type`, `service` và ưu tiên `data/overview/service_catalog.md` cho câu hỏi tổng quát.
+   - **Thông số kỹ thuật**: Kích thước Dense Vector `dimensions = 1536`. Lấy ra **Top 25 tài liệu thô** (`limit = 25`) trước khi rerank.
 
 6. **NODE 6: Cohere Reranker (Tái xếp hạng ngữ nghĩa chuyên sâu)**
    - **Công nghệ áp dụng**: API Cohere Rerank (thư viện client `cohere`) với mô hình `rerank-multilingual-v3.0`.
@@ -187,6 +193,26 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 10 
 10. **NODE 10: Double Cache Saving (Lưu Cache kép)**
     - **Công nghệ áp dụng**: PostgreSQL / SQLite Cache Storage.
     - **Logic xử lý**: Sau khi câu trả lời vượt qua kiểm duyệt đầu ra, hệ thống lưu câu trả lời hợp lệ vào `SemanticCache` cho cả hai khóa: câu hỏi thô ban đầu (Node 2) và câu hỏi đã chuẩn hóa (Node 4) nhằm tối đa hóa cơ hội Cache Hit cho các lượt truy vấn tương lai.
+
+---
+
+## 🧱 2.1 Ghi Chú Thay Đổi Kiến Trúc Knowledge Builder
+
+Các thay đổi mới nhất của pipeline dữ liệu:
+
+- **URL Registry thay cho auto-discovery**: crawler production không tự mò URL bằng Playwright/Chromium. Admin quản lý danh sách crawl trong bảng `crawl_sources`; `crawler/urls.json` chỉ còn là seed/bootstrap khi DB rỗng.
+- **Knowledge Builder**: tab admin mới gom CRUD URL, `Crawl Main Site -> Markdown`, `Crawl Platform/PDF -> Markdown`, `Clear ALL Knowledge`, và `Ingest ALL From data/`.
+- **Pure-code crawler**: crawler production không gọi LLM/Agent. `news`, `vehicle` và nhóm `pdf` được tách cleaner/parser riêng; trang dịch vụ main-site vẫn dùng parser cũ đang ổn.
+- **Clear/Ingest tách rời**: `Clear ALL Knowledge` chỉ xóa Postgres `document_chunks` và reset Qdrant. `Ingest ALL From data/` chỉ nạp snapshot trong `data/`, không clear ngầm.
+- **PDF parser-first**: PDF platform đi qua `crawler/pdf_utils.py` với `pymupdf4llm`/PyMuPDF, log `bytes`, `page_count`, `raw_md_len`, `clean_md_len`, `table_count`; không còn dùng `pypdf` làm đường chính.
+- **Markdown Quality Gate**: crawler và ingestion kiểm tra frontmatter, heading rỗng, CTA/form rác, text dính, và bảng Markdown trước khi đưa vào knowledge.
+- **Overview Catalogs**: hệ thống sinh deterministic `data/overview/service_catalog.md`, `pricing_catalog.md`, `platform_vehicle_catalog.md`, `policy_catalog.md`, `news_catalog.md` để trả lời câu hỏi tổng quát.
+- **Domain Vocabulary**: RAG có lớp vocabulary rule-based để map từ đời thường/sai chính tả sang thuật ngữ tài liệu, ví dụ `đền hàng` -> `bồi thường/bảo hiểm`, `ăn chia` -> `doanh thu/chiết khấu`, `green exress` -> `Green Express`.
+
+Giải thích node mới trong Mermaid:
+
+- `Domain Vocabulary & Query Expansion`: node rule-based chạy sau NLU để bổ sung canonical query, expanded queries và metadata hints. Node này giảm lỗi "không có thông tin" khi từ khóa người dùng không trùng nguyên văn tài liệu nhưng tương đương về nghĩa.
+- `Hybrid Search: Dense + Sparse + SQL Fallback`: node truy xuất hợp nhất semantic vector, BM25 sparse vector và SQL keyword fallback. Metadata boost ưu tiên đúng category/document type, đặc biệt `overview` với câu hỏi tổng quát.
 
 ---
 

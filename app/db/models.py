@@ -86,6 +86,26 @@ class DocumentChunk(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+class CrawlSource(Base):
+    __tablename__ = "crawl_sources"
+    id = Column(String, primary_key=True, default=lambda: generate_id("crawlsrc"))
+    url = Column(Text, nullable=False)
+    title = Column(String, nullable=True)
+    source_profile = Column(String, index=True, default="main_site")
+    source_type = Column(String, index=True, default="web")
+    category = Column(String, index=True, default="user")
+    document_type = Column(String, index=True, default="service")
+    output_dir = Column(String, default="data/user")
+    crawl_strategy = Column(String, default="default")
+    enabled = Column(Boolean, default=True, index=True)
+    priority = Column(Integer, default=100)
+    notes = Column(Text, nullable=True)
+    last_crawled_at = Column(DateTime(timezone=True), nullable=True)
+    last_status = Column(String, nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
 class SystemLog(Base):
     __tablename__ = "system_logs"
     id = Column(String, primary_key=True, default=lambda: generate_id("log"))

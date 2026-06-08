@@ -1,7 +1,11 @@
 from typing import List, Dict, Any
+from sqlalchemy import case, or_
 from langchain_core.documents import Document
+from app.db.database import SessionLocal
+from app.db.models import DocumentChunk
 from app.vectordb.qdrant_client import vectordb
 from app.retrieval.multi_query import XanhSMQueryExpansion
+from app.rag.domain_vocabulary import understand_query
 from app.core.logger import log_info, log_warn, log_error
 
 class XanhSMHybridSearch:
@@ -13,6 +17,118 @@ class XanhSMHybridSearch:
     def __init__(self):
         self.db = vectordb
         self.expander = XanhSMQueryExpansion()
+
+    def _is_overview_query(self, query: str) -> bool:
+        q = (query or "").lower()
+        return any(term in q for term in [
+            "green sm gồm",
+            "xanh sm gồm",
+            "danh mục",
+            "cung cấp những dịch vụ",
+            "các dịch vụ",
+            "tổng quan",
+            "bao gồm những gì",
+        ])
+
+    def _keyword_search_document_chunks(self, queries: List[str], limit: int = 10) -> List[Document]:
+        """
+        Adds exact keyword recall from SQL document_chunks. Qdrant remains the
+        primary retriever; this catches literal phrases, codes, hotline numbers,
+        and text snippets that should be prioritized in content-like fields.
+        """
+        db = SessionLocal()
+        docs_map = {}
+
+        try:
+            for q in queries:
+                clean_q = (q or "").strip()
+                if not clean_q:
+                    continue
+
+                pattern = f"%{clean_q}%"
+                content_match = DocumentChunk.content.ilike(pattern)
+                section_match = DocumentChunk.section.ilike(pattern)
+                source_match = DocumentChunk.source.ilike(pattern)
+                keyword_score = (
+                    case((content_match, 100), else_=0)
+                    + case((section_match, 40), else_=0)
+                    + case((source_match, 30), else_=0)
+                )
+
+                rows = (
+                    db.query(DocumentChunk, keyword_score.label("keyword_score"))
+                    .filter(or_(content_match, section_match, source_match))
+                    .order_by(keyword_score.desc(), DocumentChunk.created_at.desc())
+                    .limit(limit)
+                    .all()
+                )
+
+                for chunk, score in rows:
+                    if chunk.id in docs_map:
+                        continue
+
+                    docs_map[chunk.id] = Document(
+                        page_content=chunk.content,
+                        metadata={
+                            "chunk_id": chunk.id,
+                            "source": chunk.source,
+                            "url": chunk.source,
+                            "section": chunk.section or "Introduction",
+                            "score": float(score or 0) / 100,
+                            "keyword_score": int(score or 0),
+                            "retrieval_source": "sql_keyword",
+                        }
+                    )
+
+            docs = list(docs_map.values())
+            if docs:
+                log_info("RETRIEVAL", f"SQL keyword search added {len(docs)} candidate documents.")
+            return docs[:limit]
+        except Exception as e:
+            log_warn("RETRIEVAL", f"SQL keyword search skipped: {e}")
+            return []
+        finally:
+            db.close()
+
+    def _apply_domain_boosts(self, docs: List[Document], query: str) -> List[Document]:
+        understanding = understand_query(query)
+        is_overview = self._is_overview_query(query)
+        if not docs and not is_overview:
+            return docs
+        if not is_overview and not (understanding.category_hints or understanding.document_type_hints or understanding.services):
+            return docs
+
+        category_hints = {item.lower() for item in understanding.category_hints if item}
+        doc_type_hints = {item.lower() for item in understanding.document_type_hints if item}
+        services = {item.lower() for item in understanding.services if item}
+
+        for doc in docs:
+            meta = doc.metadata or {}
+            boost = 0.0
+            haystack = " ".join([
+                str(meta.get("category", "")),
+                str(meta.get("document_type", "")),
+                str(meta.get("source", "")),
+                str(meta.get("url", "")),
+                str(meta.get("section", "")),
+                doc.page_content[:500],
+            ]).lower()
+
+            if any(hint in haystack for hint in category_hints):
+                boost += 0.15
+            if any(hint in haystack for hint in doc_type_hints):
+                boost += 0.12
+            if any(service in haystack for service in services):
+                boost += 0.2
+            if is_overview and ("overview" in haystack or "service_catalog" in haystack):
+                boost += 0.35
+
+            if boost:
+                meta["domain_boost"] = round(boost, 3)
+                meta["score"] = float(meta.get("score", 0.0) or 0.0) + boost
+                doc.metadata = meta
+
+        return sorted(docs, key=lambda d: d.metadata.get("score", 0.0), reverse=True)
 
     def expand_context(self, base_docs: List[Document]) -> List[Document]:
         """
@@ -151,6 +267,15 @@ class XanhSMHybridSearch:
         """
         if expanded_queries is None:
             expanded_queries = self.expander.get_queries(query)
+        if query not in expanded_queries:
+            expanded_queries = [query] + expanded_queries
+        if self._is_overview_query(query):
+            expanded_queries.extend([
+                "Tổng quan danh mục dịch vụ và tài liệu Green SM",
+                "service_catalog overview Green SM",
+                "Green SM gồm những danh mục dịch vụ nào",
+            ])
+            expanded_queries = list(dict.fromkeys(expanded_queries))
         log_info("RETRIEVAL", f"Expanded queries for search: {expanded_queries}")
         
         # Dùng set để deduplicate theo chunk_id
@@ -163,8 +288,14 @@ class XanhSMHybridSearch:
                 doc_id = doc.metadata.get("chunk_id", doc.page_content[:50])
                 if doc_id not in all_docs_map:
                     all_docs_map[doc_id] = doc
+
+        keyword_docs = self._keyword_search_document_chunks(expanded_queries, limit=min(10, limit))
+        for doc in keyword_docs:
+            doc_id = doc.metadata.get("chunk_id", doc.page_content[:50])
+            if doc_id not in all_docs_map:
+                all_docs_map[doc_id] = doc
                     
-        unique_docs = list(all_docs_map.values())
+        unique_docs = self._apply_domain_boosts(list(all_docs_map.values()), " ".join(expanded_queries))
         
         log_info("RETRIEVAL", f"Native Qdrant Hybrid Search returned {len(unique_docs)} unique documents.")
         

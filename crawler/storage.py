@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict
 import re
+from markdown_quality import validate_markdown
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -59,8 +60,9 @@ title: {title}
 
 """
         
-        # Combine frontmatter + content
-        full_content = frontmatter + content
+        # Combine frontmatter + content and run quality gate
+        quality = validate_markdown(frontmatter + content)
+        full_content = quality.content
         
         # Tên file
         filename = self.url_to_filename(url) + ".md"
@@ -75,7 +77,7 @@ title: {title}
         filepath.write_text(full_content, encoding="utf-8")
         logger.info(f"✅ Saved: {filepath}")
         
-        return filepath
+        return filepath, quality.warnings
     
     def save_batch(self, documents: list) -> Dict:
         """Lưu nhiều document"""
@@ -87,7 +89,7 @@ title: {title}
         
         for doc in documents:
             try:
-                filepath = self.save_markdown(
+                filepath, warnings = self.save_markdown(
                     url=doc["url"],
                     title=doc.get("title", ""),
                     content=doc["content"],
@@ -95,7 +97,16 @@ title: {title}
                     crawl_date=doc.get("crawl_date")
                 )
                 
-                results["saved"].append(str(filepath))
+                results["saved"].append({
+                    "path": str(filepath),
+                    "url": doc["url"],
+                    "category": doc["category"],
+                    "content": filepath.read_text(encoding="utf-8"),
+                    "warnings": warnings,
+                    "source_profile": doc.get("source_profile", "main_site"),
+                    "source_type": doc.get("source_type", "web"),
+                    "document_type": doc.get("document_type", "service"),
+                })
                 
                 category = doc["category"]
                 if category not in results["by_category"]:
@@ -126,5 +137,5 @@ if __name__ == "__main__":
         "category": "policy"
     }
     
-    filepath = storage.save_markdown(**test_doc)
+    filepath, _ = storage.save_markdown(**test_doc)
     print(f"Saved to: {filepath}")

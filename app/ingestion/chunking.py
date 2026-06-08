@@ -188,6 +188,17 @@ class HeadingAwareSplitter:
             try:
                 with open(filepath, "r", encoding="utf-8") as f:
                     raw_content = f.read()
+                try:
+                    from crawler.markdown_quality import validate_markdown
+                    quality = validate_markdown(raw_content)
+                    if quality.warnings:
+                        log_warn("INGESTION", f"Markdown quality warnings for {filename}: {quality.warnings}")
+                    if not quality.passed:
+                        log_warn("INGESTION", f"Skipping {filename}: failed critical markdown quality gate.")
+                        return []
+                    raw_content = quality.content
+                except Exception as e:
+                    log_warn("INGESTION", f"Markdown quality gate skipped for {filename}: {e}")
                 frontmatter_meta, body = self.parse_frontmatter(raw_content)
             except Exception as e:
                 log_error("INGESTION", f"Failed to read Markdown {filename}: {e}")
