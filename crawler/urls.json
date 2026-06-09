@@ -40,7 +40,7 @@
     "https://www.greensm.com/vn-vi/terms-policies/consumer-protection-policy",
     "https://www.greensm.com/vn-vi/terms-policies/regulations"
   ],
-  "vehicle": [
+  "vehicle-car": [
     "https://platform.greensm.com/VN-vi/vf6?order-type=buy",
     "https://platform.greensm.com/VN-vi/ec_van?order-type=buy",
     "https://platform.greensm.com/VN-vi/herio_green?order-type=buy",
@@ -50,14 +50,15 @@
     "https://platform.greensm.com/VN-vi/minio_green?order-type=rent",
     "https://platform.greensm.com/VN-vi/herio_green?order-type=rent",
     "https://platform.greensm.com/VN-vi/limo_green?order-type=rent",
-    "https://platform.greensm.com/VN-vi/vf5?order-type=rent",
+    "https://platform.greensm.com/VN-vi/vf5?order-type=rent"
+  ],
+  "vehicle-bike": [
     "https://platform.greensm.com/VN-vi/feliz2?order-type=buy",
     "https://platform.greensm.com/VN-vi/evo?order-type=buy",
     "https://platform.greensm.com/VN-vi/feliz?order-type=buy",
     "https://platform.greensm.com/VN-vi/evo_grand?order-type=buy",
     "https://platform.greensm.com/VN-vi/evo?order-type=rent",
     "https://platform.greensm.com/VN-vi/feliz2?order-type=rent"
-
   ],
   "pdf": [
     "https://platform-static-staging.car-trading.gsm-api.net/public/document/Chuong_trinh_mua_xe_oto_dien_vinfast_truc_tiep_qua_green_sm.pdf",

@@ -64,7 +64,7 @@ def infer_document_type(path: Path, body: str, category: str) -> str:
         return "pricing"
     if "news" in lower or "/news/" in lower:
         return "news"
-    if category in {"vehicle", "platform"}:
+    if category in {"vehicle", "vehicle-car", "vehicle-bike", "platform"}:
         return "vehicle"
     return "service"
 
@@ -97,7 +97,7 @@ def write_catalog(path: Path, title: str, rows: list[dict], description: str):
 
 
 def generate_service_catalog(data_root: Path, docs: list[dict]) -> Path:
-    service_categories = {"user", "merchant", "driver", "green-care", "helps", "term-policies", "vehicle", "platform"}
+    service_categories = {"user", "merchant", "driver", "green-care", "helps", "term-policies", "vehicle", "vehicle-car", "vehicle-bike", "platform"}
     rows = [d for d in docs if d["category"] in service_categories]
     return write_catalog(
         data_root / OVERVIEW_DIR / "service_catalog.md",
@@ -115,7 +115,7 @@ def generate_pricing_catalog(data_root: Path, docs: list[dict]) -> Path:
 def generate_platform_vehicle_catalog(data_root: Path, docs: list[dict]) -> Path:
     rows = [
         d for d in docs
-        if d["category"] in {"vehicle", "platform"}
+        if d["category"] in {"vehicle", "vehicle-car", "vehicle-bike", "platform"}
         and d["document_type"] in {"platform_overview", "vehicle", "pricing", "policy_pdf", "policy_page", "policy"}
     ]
     return write_catalog(data_root / OVERVIEW_DIR / "platform_vehicle_catalog.md", "Tổng quan Green SM Platform", rows, "Tổng hợp trang xe, chính sách và PDF liên quan Green SM Platform.")

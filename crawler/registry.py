@@ -45,6 +45,8 @@ def infer_document_type(url: str, category: str, source_type: str) -> str:
     path = re.sub(r"/+$", "", lower.split("?", 1)[0])
     if source_type == "pdf":
         return "policy_pdf"
+    if category in {"vehicle", "vehicle-car", "vehicle-bike"}:
+        return "vehicle"
     if "/news/all/page/" in lower or path.endswith("/news"):
         return "news_list"
     if "/news/" in lower:

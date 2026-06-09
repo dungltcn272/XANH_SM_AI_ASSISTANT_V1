@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -75,12 +76,19 @@ class GreenSMCrawler:
         documents = []
         manifest = CrawlManifest("deterministic_crawl", sources=self.source_profiles)
 
+        build_started = time.perf_counter()
         for page_data in crawl_success:
             source = source_meta.get(page_data["url"])
             try:
+                doc_started = time.perf_counter()
                 doc = self._build_document(page_data, source)
                 documents.append(doc)
-                logger.debug("Prepared %s: %s", doc["category"], doc["title"][:80])
+                logger.info(
+                    "Prepared %s: %s (%.1fs)",
+                    doc["category"],
+                    doc["title"][:80],
+                    time.perf_counter() - doc_started,
+                )
             except Exception as exc:
                 logger.exception("Error processing %s: %s", page_data.get("url"), exc)
                 manifest.add_error(
@@ -89,10 +97,14 @@ class GreenSMCrawler:
                     source_profile=getattr(source, "source_profile", ""),
                     category=getattr(source, "category", ""),
                 )
+        logger.info("Prepared %s documents in %.1fs", len(documents), time.perf_counter() - build_started)
 
         logger.info("Saving %s documents...", len(documents))
+        save_started = time.perf_counter()
         results = self.storage.save_batch(documents)
+        logger.info("Saved document batch in %.1fs", time.perf_counter() - save_started)
 
+        manifest_started = time.perf_counter()
         for item in results["saved"]:
             manifest.add_document(
                 url=item["url"],
@@ -116,7 +128,10 @@ class GreenSMCrawler:
             )
 
         manifest_path = manifest.save(root_dir=self.root_dir / "data")
+        logger.info("Manifest generated in %.1fs", time.perf_counter() - manifest_started)
+        overview_started = time.perf_counter()
         overview_paths = generate_overview_catalogs(self.root_dir / "data")
+        logger.info("Overview catalogs generated in %.1fs", time.perf_counter() - overview_started)
         self._save_metadata({
             "urls_from_registry": len(sources),
             "pages_crawled": len(crawl_success),

@@ -74,6 +74,12 @@ class DeterministicCleaner:
 
     def __init__(self):
         self.default_converter = MarkdownConverter()
+        self._http = requests.Session()
+        self._http.headers.update({"User-Agent": "Mozilla/5.0"})
+        self._vehicle_products_cache: list[dict] | None = None
+        self._vehicle_price_configs_cache: list[dict] | None = None
+        self._vehicle_js_text_cache: dict[str, str] = {}
+        self._script_text_cache: dict[str, str] = {}
 
     def clean(
         self,
@@ -94,7 +100,7 @@ class DeterministicCleaner:
             if document_type == "platform_overview":
                 return self.clean_platform_overview(html, title, url)
             if document_type == "vehicle" or self._looks_like_vehicle_url(url):
-                return self.clean_vehicle_page(html, title, url)
+                return self.clean_vehicle_page(html, title, url, category=category)
             return self.clean_platform_page(html, title, url, document_type=document_type)
 
         markdown = self.default_converter.html_to_markdown(html, title, url)
@@ -250,10 +256,11 @@ class DeterministicCleaner:
             document_type="platform_overview",
         )
 
-    def clean_vehicle_page(self, html: str, title: str, url: str) -> CleanedDocument:
+    def clean_vehicle_page(self, html: str, title: str, url: str, category: str = "") -> CleanedDocument:
         soup = BeautifulSoup(html, "html.parser")
         next_data = self._load_next_data(soup)
-        rich = self._extract_vehicle_rich_data(html, url, next_data)
+        vehicle_kind = self._vehicle_kind_from_category(category)
+        rich = self._extract_vehicle_rich_data(html, url, next_data, vehicle_kind=vehicle_kind)
         self._remove_junk(soup)
         self._absolutize_urls(soup, url)
 
@@ -280,6 +287,8 @@ class DeterministicCleaner:
         ]
         if price:
             parts.append(f"- Giá hiển thị: {price}")
+        if vehicle_kind:
+            parts.append(f"- Nhom xe: {vehicle_kind}")
         if rich.get("versions"):
             parts.append(f"- Phiên bản: {', '.join(rich['versions'])}")
         if images:
@@ -478,7 +487,7 @@ class DeterministicCleaner:
             deduped.append(card)
         return deduped[:30]
 
-    def _extract_vehicle_rich_data(self, html: str, url: str, next_data: Any = None) -> dict:
+    def _extract_vehicle_rich_data(self, html: str, url: str, next_data: Any = None, vehicle_kind: str = "") -> dict:
         slug = self._vehicle_slug(url)
         data: dict[str, Any] = {
             "title": "",
@@ -494,20 +503,22 @@ class DeterministicCleaner:
         product = self._fetch_vehicle_product(slug)
         if product:
             data["title"] = product.get("name") or ""
-            data["versions"] = [
-                str(version.get("name") or version.get("code") or "").strip()
-                for version in product.get("versions", [])
-                if isinstance(version, dict) and (version.get("name") or version.get("code"))
-            ]
+            data["versions"] = self._product_versions(product)
             data["images"].extend(self._product_images(product))
-            data["price"] = self._fetch_vehicle_price(product, url)
+            data["price"] = self._fetch_vehicle_price(product, url, vehicle_kind=vehicle_kind)
 
         js_text = self._fetch_vehicle_js_text(html, url, slug)
         if js_text:
             data["images"].extend(self._extract_vehicle_asset_images(js_text, slug))
-            data["specs"].extend(self._extract_vehicle_js_specs(js_text))
+            if self._is_bike_vehicle(slug, vehicle_kind):
+                data["specs"].extend(self._extract_motorbike_js_specs(js_text, slug, next_data))
+            else:
+                data["specs"].extend(self._extract_vehicle_js_specs(js_text))
         if next_data:
-            data["specs"].extend(self._extract_vehicle_message_specs(next_data, slug))
+            if self._is_bike_vehicle(slug, vehicle_kind):
+                data["specs"].extend(self._extract_motorbike_message_specs(next_data, slug))
+            else:
+                data["specs"].extend(self._extract_vehicle_message_specs(next_data, slug))
 
         data["images"] = self._dedupe_lines(data["images"])[:40]
         data["specs"] = self._dedupe_specs(data["specs"])
@@ -539,11 +550,8 @@ class DeterministicCleaner:
         return path.replace("-", "_")
 
     def _fetch_vehicle_product(self, slug: str) -> dict:
-        try:
-            resp = requests.get(VEHICLE_PRODUCT_API, timeout=15)
-            resp.raise_for_status()
-            items = resp.json().get("items") or []
-        except Exception:
+        items = self._fetch_vehicle_products()
+        if not items:
             return {}
 
         target = self._normalize_vehicle_key(slug)
@@ -562,6 +570,18 @@ class DeterministicCleaner:
             if target and target in self._normalize_vehicle_key(text):
                 return item
         return {}
+
+    def _fetch_vehicle_products(self) -> list[dict]:
+        if self._vehicle_products_cache is not None:
+            return self._vehicle_products_cache
+        try:
+            resp = self._http.get(VEHICLE_PRODUCT_API, timeout=15)
+            resp.raise_for_status()
+            items = resp.json().get("items") or []
+            self._vehicle_products_cache = [item for item in items if isinstance(item, dict)]
+        except Exception:
+            self._vehicle_products_cache = []
+        return self._vehicle_products_cache
 
     def _normalize_vehicle_key(self, value: str) -> str:
         return re.sub(r"[^a-z0-9]", "", value.lower())
@@ -586,16 +606,35 @@ class DeterministicCleaner:
                     images.append(f"{color_type} - {color_name}: {url}")
         return images
 
-    def _fetch_vehicle_price(self, product: dict, url: str) -> str:
+    def _product_versions(self, product: dict) -> list[str]:
+        versions = product.get("versions")
+        if not versions:
+            return []
+        if isinstance(versions, dict):
+            versions = versions.values()
+        elif isinstance(versions, str):
+            versions = [versions]
+        elif not isinstance(versions, list):
+            return []
+
+        names = []
+        for version in versions:
+            if isinstance(version, dict):
+                name = version.get("name") or version.get("code")
+            else:
+                name = version
+            name = str(name or "").strip()
+            if name:
+                names.append(name)
+        return self._dedupe_lines(names)
+
+    def _fetch_vehicle_price(self, product: dict, url: str, vehicle_kind: str = "") -> str:
         model = str(product.get("code") or "").strip()
         if not model:
             return ""
         order_type = "rent" if "order-type=rent" in url.lower() or "order_type=rent" in url.lower() else "buy"
-        try:
-            resp = requests.get(VEHICLE_PRICE_CONFIG_API, timeout=15)
-            resp.raise_for_status()
-            items = resp.json().get("items") or []
-        except Exception:
+        items = self._fetch_vehicle_price_configs()
+        if not items:
             return ""
 
         rows = []
@@ -614,12 +653,38 @@ class DeterministicCleaner:
             if not amount:
                 continue
             version = str(item.get("Version") or "").strip()
-            label = version.title() if version else "Gia"
+            label = self._vehicle_price_label(item, version, vehicle_kind, order_type)
             rows.append((label, int(amount)))
         if not rows:
             return ""
         rows.sort(key=lambda row: row[0].lower())
         return "; ".join(f"{label}: {self._format_vnd(amount)}" for label, amount in rows)
+
+    def _vehicle_price_label(self, item: dict, version: str, vehicle_kind: str, order_type: str) -> str:
+        if vehicle_kind == "bike":
+            if item.get("BatteryIncluded") is True:
+                label = "Kem pin"
+            elif item.get("BatteryIncluded") is False:
+                label = "Khong kem pin"
+            else:
+                label = "Gia"
+            if order_type == "rent":
+                unit = str(item.get("RentalUnit") or "").strip()
+                label = f"{label} - gia thue" + (f"/{unit}" if unit else "")
+            return label
+        return version.title() if version else "Gia"
+
+    def _fetch_vehicle_price_configs(self) -> list[dict]:
+        if self._vehicle_price_configs_cache is not None:
+            return self._vehicle_price_configs_cache
+        try:
+            resp = self._http.get(VEHICLE_PRICE_CONFIG_API, timeout=15)
+            resp.raise_for_status()
+            items = resp.json().get("items") or []
+            self._vehicle_price_configs_cache = [item for item in items if isinstance(item, dict)]
+        except Exception:
+            self._vehicle_price_configs_cache = []
+        return self._vehicle_price_configs_cache
 
     def _format_vnd(self, amount: int) -> str:
         return f"{amount:,}".replace(",", ".") + " VND"
@@ -653,24 +718,30 @@ class DeterministicCleaner:
         return VEHICLE_STATIC_BASE + path
 
     def _fetch_vehicle_js_text(self, html: str, url: str, slug: str) -> str:
+        if slug in self._vehicle_js_text_cache:
+            return self._vehicle_js_text_cache[slug]
         script_urls = re.findall(r'<script[^>]+src=["\']([^"\']+\.js(?:\?[^"\']*)?)["\']', html)
         chunks: list[str] = []
-        session = requests.Session()
-        session.headers.update({"User-Agent": "Mozilla/5.0"})
         aliases = self._vehicle_asset_aliases(slug)
         for script_url in script_urls[:80]:
             absolute = urljoin(url, script_url)
             try:
-                resp = session.get(absolute, timeout=15)
-                if not resp.ok:
-                    continue
-                text = resp.text
+                if absolute in self._script_text_cache:
+                    text = self._script_text_cache[absolute]
+                else:
+                    resp = self._http.get(absolute, timeout=15)
+                    if not resp.ok:
+                        continue
+                    text = resp.text
+                    self._script_text_cache[absolute] = text
             except Exception:
                 continue
             lower = text.lower()
             if any(alias in lower or f"/product/{alias}" in lower for alias in aliases):
                 chunks.append(text)
-        return "\n".join(chunks)
+        js_text = "\n".join(chunks)
+        self._vehicle_js_text_cache[slug] = js_text
+        return js_text
 
     def _extract_vehicle_asset_images(self, js_text: str, slug: str) -> list[str]:
         slug_patterns = set(self._vehicle_asset_aliases(slug))
@@ -700,6 +771,98 @@ class DeterministicCleaner:
         }
         values = aliases.get(slug, [slug, slug.replace("_", "-"), slug.replace("_", "")])
         return list(dict.fromkeys(value.lower() for value in values if value))
+
+    def _is_motorbike_slug(self, slug: str) -> bool:
+        return slug in {"evo", "feliz2", "feliz", "evo_grand", "vero-x", "viper"}
+
+    def _vehicle_kind_from_category(self, category: str) -> str:
+        normalized = (category or "").strip().lower().replace("_", "-")
+        if normalized == "vehicle-bike":
+            return "bike"
+        if normalized == "vehicle-car":
+            return "car"
+        return ""
+
+    def _is_bike_vehicle(self, slug: str, vehicle_kind: str = "") -> bool:
+        if vehicle_kind:
+            return vehicle_kind == "bike"
+        return self._is_motorbike_slug(slug)
+
+    def _extract_motorbike_message_specs(self, data: Any, slug: str) -> list[dict]:
+        messages = self._find_vehicle_messages(data, slug)
+        spec = messages.get("spec") if isinstance(messages, dict) else None
+        if not isinstance(spec, dict):
+            return []
+
+        rows: list[dict] = []
+        titles = spec.get("title")
+        values = spec.get("value")
+        if isinstance(titles, list) and isinstance(values, list):
+            for label, value in zip(titles, values):
+                self._append_motorbike_spec(rows, label, value)
+            return rows
+
+        indexes = sorted({
+            int(match.group(1))
+            for key in spec
+            if (match := re.fullmatch(r"label(\d+)", str(key)))
+        })
+        for index in indexes:
+            self._append_motorbike_spec(rows, spec.get(f"label{index}"), spec.get(f"value{index}"))
+        return rows
+
+    def _extract_motorbike_js_specs(self, js_text: str, slug: str, next_data: Any = None) -> list[dict]:
+        rows: list[dict] = []
+        label_map = self._motorbike_spec_label_map(next_data, slug)
+        model_key = self._vehicle_message_key(slug)
+        model_pattern = re.escape(model_key)
+
+        for match in re.finditer(r"data:\[(.*?)\]\s*,[^{}]*(?:model:[^,})]*" + model_pattern + r"|priceDescription)", js_text, re.S):
+            self._extract_motorbike_js_specs_from_array(match.group(1), rows, label_map)
+        if not rows:
+            for match in re.finditer(r"data:\[(.*?)\]", js_text, re.S):
+                array_text = match.group(1)
+                if "spec." in array_text or "label:" in array_text:
+                    self._extract_motorbike_js_specs_from_array(array_text, rows, label_map)
+        return rows
+
+    def _extract_motorbike_js_specs_from_array(self, array_text: str, rows: list[dict], label_map: dict[str, str]) -> None:
+        pattern = re.compile(
+            r"label:(?:\w+\(\"spec\.([^\"]+)\"\)|\"((?:\\.|[^\"])*)\"),value:\"((?:\\.|[^\"])*)\"",
+            re.S,
+        )
+        for key, raw_label, raw_value in pattern.findall(array_text):
+            label = label_map.get(key) if key else self._decode_js_string(raw_label)
+            value = self._decode_js_string(raw_value)
+            self._append_motorbike_spec(rows, label, value)
+
+    def _motorbike_spec_label_map(self, data: Any, slug: str) -> dict[str, str]:
+        messages = self._find_vehicle_messages(data, slug)
+        spec = messages.get("spec") if isinstance(messages, dict) else None
+        if not isinstance(spec, dict):
+            return {}
+        return {
+            str(key): str(value).strip()
+            for key, value in spec.items()
+            if isinstance(value, str) and value.strip()
+        }
+
+    def _append_motorbike_spec(self, rows: list[dict], label: Any, value: Any) -> None:
+        label = str(label or "").strip()
+        value = str(value or "").strip()
+        if not label or not value or label == "$undefined" or value == "$undefined":
+            return
+        rows.append({
+            "label": label,
+            "version": "Chung",
+            "value": re.sub(r"\s+", " ", value),
+        })
+
+    def _decode_js_string(self, value: str) -> str:
+        try:
+            return json.loads(f'"{value}"')
+        except Exception:
+            return value.replace(r"\/", "/").replace(r"\"", '"').replace(r"\n", "\n")
 
     def _extract_vehicle_js_specs(self, js_text: str) -> list[dict]:
         specs = []
@@ -748,6 +911,8 @@ class DeterministicCleaner:
                     visit_product_info(child, key)
 
         collect_vehicle_messages(data)
+        if vehicle_key and not message_dicts:
+            return []
         if not message_dicts:
             visit_product_info(data)
         for info in message_dicts:
@@ -762,6 +927,27 @@ class DeterministicCleaner:
                         "value": value.strip(),
                     })
         return specs
+
+    def _find_vehicle_messages(self, data: Any, slug: str) -> dict:
+        vehicle_key = self._vehicle_message_key(slug)
+
+        def visit(node: Any, key: str = "") -> dict:
+            if isinstance(node, dict):
+                if key == "messages" and isinstance(node.get(vehicle_key), dict):
+                    return node[vehicle_key]
+                for child_key, child in node.items():
+                    if isinstance(child, (dict, list)):
+                        result = visit(child, child_key)
+                        if result:
+                            return result
+            elif isinstance(node, list):
+                for child in node:
+                    result = visit(child, key)
+                    if result:
+                        return result
+            return {}
+
+        return visit(data)
 
     def _vehicle_message_key(self, slug: str) -> str:
         return {

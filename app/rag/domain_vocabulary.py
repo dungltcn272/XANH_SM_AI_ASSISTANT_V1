@@ -63,7 +63,7 @@ SERVICE_ALIASES: tuple[ServiceAlias, ...] = (
     ServiceAlias("Green Care", ("green care", "bao hiem", "bao hiem xanh", "bao hiem chuyen di"), "green-care", "policy"),
     ServiceAlias("Driver", ("tai xe", "driver", "doi tac tai xe", "chay xe", "lai xe"), "driver", "driver"),
     ServiceAlias("Merchant", ("merchant", "doi tac cua hang", "nha hang", "quan an", "cua hang"), "merchant", "merchant"),
-    ServiceAlias("Green SM Platform", ("green sm platform", "platform", "gsm platform", "mua xe platform", "thue xe platform"), "vehicle", "vehicle"),
+    ServiceAlias("Green SM Platform", ("green sm platform", "platform", "gsm platform", "mua xe platform", "thue xe platform"), "vehicle-car", "vehicle"),
 )
 
 
@@ -71,7 +71,7 @@ INTENT_ALIASES: tuple[IntentAlias, ...] = (
     IntentAlias(
         "pricing_fee",
         ("phi", "phu phi", "cuoc", "gia cuoc", "bang gia", "bao nhieu tien", "mat bao nhieu", "tinh tien", "don gia"),
-        ("user", "vehicle", "platform"),
+        ("user", "vehicle", "vehicle-car", "vehicle-bike", "platform"),
         ("pricing", "service", "policy"),
         ("giá cước", "phụ phí", "bảng giá", "đơn giá"),
     ),
@@ -92,28 +92,28 @@ INTENT_ALIASES: tuple[IntentAlias, ...] = (
     IntentAlias(
         "registration_onboarding",
         ("dang ky", "tham gia", "lam tai xe", "chay xe", "doi tac", "ho so", "giay to", "thu tuc", "ung tuyen"),
-        ("driver", "merchant", "vehicle", "platform"),
+        ("driver", "merchant", "vehicle", "vehicle-car", "vehicle-bike", "platform"),
         ("driver", "merchant", "guide", "policy"),
         ("đăng ký", "hồ sơ", "thủ tục", "đối tác", "ứng tuyển"),
     ),
     IntentAlias(
         "revenue_bonus_commission",
         ("thuong", "doanh thu", "an chia", "chiet khau", "hoa hong", "van doanh", "thu nhap", "luong"),
-        ("driver", "merchant", "vehicle", "platform"),
+        ("driver", "merchant", "vehicle", "vehicle-car", "vehicle-bike", "platform"),
         ("pricing", "policy", "driver"),
         ("thưởng", "doanh thu", "ăn chia", "chiết khấu", "vận doanh"),
     ),
     IntentAlias(
         "operating_policy",
         ("quy dinh", "quy che", "dieu khoan", "chinh sach", "che tai", "phat", "vi pham", "tam ngung", "khoa tai khoan"),
-        ("term-policies", "driver", "vehicle", "platform"),
+        ("term-policies", "driver", "vehicle", "vehicle-car", "vehicle-bike", "platform"),
         ("policy", "policy_pdf"),
         ("quy định", "quy chế", "điều khoản", "chế tài", "vi phạm"),
     ),
     IntentAlias(
         "document_requirement",
         ("can gi", "yeu cau gi", "giay to", "ho so", "dieu kien", "cccd", "bang lai", "dang kiem"),
-        ("driver", "merchant", "vehicle", "platform"),
+        ("driver", "merchant", "vehicle", "vehicle-car", "vehicle-bike", "platform"),
         ("guide", "policy", "driver"),
         ("hồ sơ", "giấy tờ", "điều kiện", "yêu cầu"),
     ),

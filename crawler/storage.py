@@ -44,10 +44,11 @@ class Storage:
             filename = path.strip('/')
             if not filename:
                 filename = "index"
-            # Include query params for vehicle pages to differentiate them
-            if parsed.query:
-                query_str = urllib.parse.unquote(parsed.query)
-                filename += "_" + query_str
+        # Include query params for platform vehicle pages to differentiate
+        # buy/rent pages that share the same path.
+        if parsed.netloc.lower() == "platform.greensm.com" and parsed.query:
+            query_str = urllib.parse.unquote(parsed.query)
+            filename += "_" + query_str
                 
         filename = filename.replace("/", "_")
         filename = filename.replace("-", "_")
