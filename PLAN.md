@@ -86,6 +86,77 @@ Metadata OCR nên lưu kèm chunk:
   - điều kiện mua/thuê xe,
   - bảo hiểm/bồi thường.
 
+### 5. Retrieval-first metadata strategy cho Qdrant/PostgreSQL
+
+Mục tiêu: metadata không chỉ để mô tả tài liệu, mà phải đóng vai trò `retrieval control plane` để filter, boost, expand context và trace citation.
+
+Nguyên tắc:
+
+- Chỉ thêm/index field có tác dụng trực tiếp cho retrieval.
+- Qdrant payload lưu metadata đầy đủ hơn PostgreSQL.
+- PostgreSQL `document_chunks` cần đủ metadata tối thiểu để SQL keyword fallback không mất ngữ cảnh.
+- HTML table full chunk và row-index chunk phải cùng tồn tại:
+  - `html_table_full`: giữ nguyên `<table>` với `rowspan`/`colspan`.
+  - `table_row_index`: chunk nhỏ theo 1-3 dòng bảng để rank tốt hơn khi hỏi chi tiết.
+  - `text`: nội dung văn bản thường.
+
+Metadata nên có trên mỗi chunk:
+
+```json
+{
+  "url": "...",
+  "source": "Chinh_sach_ban_xe_may_dien_vinfast.md",
+  "title": "...",
+  "category": "pdf",
+  "document_type": "policy_pdf",
+  "source_type": "pdf",
+  "section": "...",
+  "parent_chunk_id": "...",
+  "chunk_id": "...",
+  "chunk_index": 12,
+  "chunk_type": "text | html_table_full | table_row_index",
+  "table_id": "table_001",
+  "table_title": "2.1 Chinh sach ban hang cua VinFast",
+  "row_start": 3,
+  "row_end": 5,
+  "derived_from": "chunk_id_of_full_table",
+  "page_range": "1-3"
+}
+```
+
+Qdrant payload indexes nên có:
+
+```text
+metadata.url
+metadata.parent_chunk_id
+metadata.chunk_index
+metadata.chunk_type
+metadata.category
+metadata.document_type
+metadata.source_type
+metadata.table_id
+metadata.derived_from
+```
+
+Không nhất thiết index các field như `title`, `section`, `table_title` nếu chỉ dùng để hiển thị/boost text. Vẫn nên lưu trong payload.
+
+Retrieval policy:
+
+- Search trên tất cả chunks.
+- Nếu hit `table_row_index`, dùng `derived_from` hoặc `table_id` để kéo thêm full HTML table.
+- Nếu hit `html_table_full`, giữ làm context đầy đủ, nhưng không phụ thuộc duy nhất vào vector của chunk lớn.
+- Boost nhẹ:
+  - `table_row_index` cho câu hỏi chi tiết về giá, chính sách, dòng xe, điều kiện.
+  - `html_table_full` cho câu hỏi "liệt kê", "so sánh", "bảng", "tất cả".
+  - `text` cho câu hỏi điều kiện/diễn giải.
+- Parent-child expansion vẫn dựa vào `parent_chunk_id` và sắp xếp bằng `chunk_index`.
+
+Rủi ro cần xử lý:
+
+- Nếu PostgreSQL chỉ lưu `source`, `section`, `content`, SQL keyword fallback sẽ mất `chunk_type`, `table_id`, `parent_chunk_id`.
+- `chunk_id` hiện hash theo `filename_section_idx`, có thể đổi nếu chunk order thay đổi.
+- Row-index chunk cần có `derived_from` để trace về full table và citation đúng.
+
 ## Rủi ro còn lại
 
 - DB `crawl_sources` có thể còn metadata cũ nếu chưa bấm `Sync urls.json`.

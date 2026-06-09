@@ -1,10 +1,12 @@
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import markdownify
+import requests
 from bs4 import BeautifulSoup, Tag
 
 try:
@@ -19,6 +21,40 @@ JUNK_CLASS_RE = re.compile(
     r"download|app|related|recent|suggested|comment|author|tag|category)",
     re.IGNORECASE,
 )
+
+VEHICLE_STATIC_BASE = "https://platform-static.car-trading.gsm-api.net/public"
+VEHICLE_PRODUCT_API = "https://admin.car-trading.gsm-api.net/public/api/v1/masterdata/products?filters[country_code]=VN&sort=-created_at"
+VEHICLE_PRICE_CONFIG_API = "https://admin.car-trading.gsm-api.net/public/api/v1/masterdata/price-configs?sort=price"
+
+VEHICLE_SPEC_LABELS = {
+    "productInfo.dimensions": "Dài x Rộng x Cao (mm)",
+    "productInfo.dimensionsValue": "Dài x Rộng x Cao (mm)",
+    "productInfo.wheelbase": "Chiều dài cơ sở (mm)",
+    "productInfo.wheelbaseValue": "Chiều dài cơ sở (mm)",
+    "productInfo.range": "Quãng đường chạy một lần sạc đầy (km) - NEDC",
+    "productInfo.rangeFullCharge": "Quãng đường chạy một lần sạc đầy (km) - NEDC",
+    "productInfo.rangeFullChargeValue": "Quãng đường chạy một lần sạc đầy (km) - NEDC",
+    "productInfo.maxPower": "Công suất tối đa (kW)",
+    "productInfo.maxPowerValue": "Công suất tối đa (kW)",
+    "productInfo.maxTorque": "Mô men xoắn cực đại (Nm)",
+    "productInfo.maxTorqueValue": "Mô men xoắn cực đại (Nm)",
+    "productInfo.drivetrain": "Hệ dẫn động",
+    "productInfo.drivetrainValue": "Hệ dẫn động",
+    "productInfo.fastChargeTime": "Thời gian nạp pin nhanh nhất",
+    "productInfo.fastChargingTime": "Thời gian nạp pin nhanh nhất",
+    "productInfo.fastChargingTimeValue": "Thời gian nạp pin nhanh nhất",
+    "productInfo.batteryCapacity": "Dung lượng pin (kWh) - khả dụng",
+    "productInfo.dcFastChargingPower": "Công suất sạc nhanh DC",
+    "productInfo.dcFastChargingPowerValue": "Công suất sạc nhanh DC",
+    "productInfo.luggageVolume": "Thể tích khoang chứa hàng",
+    "productInfo.luggageVolumeValue": "Thể tích khoang chứa hàng",
+    "productInfo.brakeSystem": "Hệ thống phanh",
+    "productInfo.brakeSystemValue": "Hệ thống phanh",
+    "productInfoAdvanced.maxTorque": "Mô men xoắn cực đại (Nm)",
+    "productInfoAdvanced.wheel_type": "Kích thước la-zăng",
+    "productInfoAdvanced.fastChargeTime": "Thời gian nạp pin nhanh nhất",
+    "productInfoAdvanced.batteryCapacity": "Dung lượng pin (kWh) - khả dụng",
+}
 
 
 @dataclass
@@ -217,39 +253,55 @@ class DeterministicCleaner:
     def clean_vehicle_page(self, html: str, title: str, url: str) -> CleanedDocument:
         soup = BeautifulSoup(html, "html.parser")
         next_data = self._load_next_data(soup)
+        rich = self._extract_vehicle_rich_data(html, url, next_data)
         self._remove_junk(soup)
         self._absolutize_urls(soup, url)
 
-        page_title = self._best_title(soup, title, url)
+        page_title = rich.get("title") or self._best_title(soup, title, url)
         content = self._select_main_content(soup, selectors=["main", "article", "body"])
         markdown = self._markdownify(content)
         dynamic_md = self._extract_next_text(next_data, url)
         if len(dynamic_md) > len(markdown) * 1.15:
             markdown = dynamic_md
+        markdown = self._filter_vehicle_detail_markdown(markdown, page_title)
 
         flat_text = re.sub(r"\s+", " ", content.get_text(" ", strip=True))
-        price = self._extract_price(flat_text)
-        specs = self._extract_vehicle_specs(flat_text)
-        images = self._extract_images(content, url, limit=12)
+        price = rich.get("price") or self._extract_price(flat_text)
+        specs = rich.get("specs") or self._extract_vehicle_specs(flat_text)
+        images = rich.get("images") or self._extract_images(content, url, limit=12)
+        highlights = rich.get("highlights") or []
 
         parts = [
             f"# {page_title}",
             "",
-            "## Thong tin xe",
+            "## Thông tin xe",
             f"- URL: {url}",
-            "- Loai tai lieu: vehicle",
+            "- Loại tài liệu: vehicle",
         ]
         if price:
-            parts.append(f"- Gia hien thi: {price}")
+            parts.append(f"- Giá hiển thị: {price}")
+        if rich.get("versions"):
+            parts.append(f"- Phiên bản: {', '.join(rich['versions'])}")
         if images:
-            parts.extend(["", "## Hinh anh chinh"])
+            parts.extend(["", "## Hình ảnh xe và màu sắc"])
             for image in images:
                 parts.append(f"- {image}")
         if specs:
-            parts.extend(["", "## Thong so / dac diem trich xuat"])
-            for key, value in specs:
-                parts.append(f"- {key}: {value}")
-        parts.extend(["", "## Noi dung chi tiet", "", markdown])
+            parts.extend(["", "## Thông số kỹ thuật"])
+            if isinstance(specs[0], dict):
+                parts.extend([
+                    "| Thông số | Phiên bản | Giá trị |",
+                    "|---|---|---|",
+                ])
+                for spec in specs:
+                    parts.append(f"| {spec['label']} | {spec.get('version') or 'Chung'} | {spec['value']} |")
+            else:
+                for key, value in specs:
+                    parts.append(f"- {key}: {value}")
+        if highlights:
+            parts.extend(["", "## Nội dung nổi bật"])
+            parts.extend(f"- {item}" for item in highlights)
+        parts.extend(["", "## Nội dung chi tiết", "", markdown])
 
         return CleanedDocument(
             markdown=self._clean_markdown("\n".join(parts)),
@@ -425,6 +477,396 @@ class DeterministicCleaner:
             seen.add(marker)
             deduped.append(card)
         return deduped[:30]
+
+    def _extract_vehicle_rich_data(self, html: str, url: str, next_data: Any = None) -> dict:
+        slug = self._vehicle_slug(url)
+        data: dict[str, Any] = {
+            "title": "",
+            "price": "",
+            "versions": [],
+            "images": [],
+            "specs": [],
+            "highlights": [],
+        }
+        if not slug:
+            return data
+
+        product = self._fetch_vehicle_product(slug)
+        if product:
+            data["title"] = product.get("name") or ""
+            data["versions"] = [
+                str(version.get("name") or version.get("code") or "").strip()
+                for version in product.get("versions", [])
+                if isinstance(version, dict) and (version.get("name") or version.get("code"))
+            ]
+            data["images"].extend(self._product_images(product))
+            data["price"] = self._fetch_vehicle_price(product, url)
+
+        js_text = self._fetch_vehicle_js_text(html, url, slug)
+        if js_text:
+            data["images"].extend(self._extract_vehicle_asset_images(js_text, slug))
+            data["specs"].extend(self._extract_vehicle_js_specs(js_text))
+        if next_data:
+            data["specs"].extend(self._extract_vehicle_message_specs(next_data, slug))
+
+        data["images"] = self._dedupe_lines(data["images"])[:40]
+        data["specs"] = self._dedupe_specs(data["specs"])
+        data["highlights"] = self._extract_vehicle_highlights(html, slug)
+        return data
+
+    def _vehicle_slug(self, url: str) -> str:
+        lower = url.lower()
+        path = urlparse(lower).path.rstrip("/").split("/")[-1]
+        aliases = {
+            "ec-van": "ec_van",
+            "ec_van": "ec_van",
+            "herio_green": "herio_green",
+            "minio_green": "minio_green",
+            "limo_green": "limo_green",
+            "vf6": "vf6",
+            "vf5": "vf5",
+            "vf3": "vf3",
+            "evo_grand": "evo_grand",
+            "feliz2": "feliz2",
+            "feliz": "feliz",
+            "vero-x": "vero-x",
+            "viper": "viper",
+            "evo": "evo",
+        }
+        for key, slug in aliases.items():
+            if key in lower:
+                return slug
+        return path.replace("-", "_")
+
+    def _fetch_vehicle_product(self, slug: str) -> dict:
+        try:
+            resp = requests.get(VEHICLE_PRODUCT_API, timeout=15)
+            resp.raise_for_status()
+            items = resp.json().get("items") or []
+        except Exception:
+            return {}
+
+        target = self._normalize_vehicle_key(slug)
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            candidates = [
+                item.get("slug"),
+                item.get("code"),
+                item.get("name"),
+            ]
+            if any(self._normalize_vehicle_key(str(candidate or "")) == target for candidate in candidates):
+                return item
+        for item in items:
+            text = " ".join(str(item.get(key) or "") for key in ("slug", "code", "name"))
+            if target and target in self._normalize_vehicle_key(text):
+                return item
+        return {}
+
+    def _normalize_vehicle_key(self, value: str) -> str:
+        return re.sub(r"[^a-z0-9]", "", value.lower())
+
+    def _product_images(self, product: dict) -> list[str]:
+        images: list[str] = []
+        for label, key in [
+            ("thumbnail", "thumbnail"),
+            ("cover", "cover_image"),
+            ("background", "background_image"),
+        ]:
+            for url in self._split_asset_values(product.get(key)):
+                images.append(f"{label}: {url}")
+
+        for color in product.get("colors") or []:
+            if not isinstance(color, dict):
+                continue
+            color_name = color.get("name") or color.get("code") or "Mau xe"
+            color_type = color.get("type") or "color"
+            for key in ["images", "cover_images"]:
+                for url in self._split_asset_values(color.get(key)):
+                    images.append(f"{color_type} - {color_name}: {url}")
+        return images
+
+    def _fetch_vehicle_price(self, product: dict, url: str) -> str:
+        model = str(product.get("code") or "").strip()
+        if not model:
+            return ""
+        order_type = "rent" if "order-type=rent" in url.lower() or "order_type=rent" in url.lower() else "buy"
+        try:
+            resp = requests.get(VEHICLE_PRICE_CONFIG_API, timeout=15)
+            resp.raise_for_status()
+            items = resp.json().get("items") or []
+        except Exception:
+            return ""
+
+        rows = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("Model") or "").lower() != model.lower():
+                continue
+            if str(item.get("Country") or "").upper() != "VN":
+                continue
+            if str(item.get("Type") or "").lower() != order_type:
+                continue
+            if item.get("Color"):
+                continue
+            amount = item.get("RentalPrice") if order_type == "rent" else item.get("Price")
+            if not amount:
+                continue
+            version = str(item.get("Version") or "").strip()
+            label = version.title() if version else "Gia"
+            rows.append((label, int(amount)))
+        if not rows:
+            return ""
+        rows.sort(key=lambda row: row[0].lower())
+        return "; ".join(f"{label}: {self._format_vnd(amount)}" for label, amount in rows)
+
+    def _format_vnd(self, amount: int) -> str:
+        return f"{amount:,}".replace(",", ".") + " VND"
+
+    def _split_asset_values(self, value: Any) -> list[str]:
+        if not value:
+            return []
+        raw_items: list[str] = []
+        if isinstance(value, list):
+            for item in value:
+                raw_items.extend(str(item).split(","))
+        else:
+            raw_items.extend(str(value).split(","))
+
+        urls = []
+        for item in raw_items:
+            item = item.strip().strip('"').strip("'")
+            if not item:
+                continue
+            urls.append(self._vehicle_asset_url(item))
+        return urls
+
+    def _vehicle_asset_url(self, path: str) -> str:
+        if path.startswith("url("):
+            match = re.search(r"url\((.*?)\)", path)
+            path = match.group(1).strip("'\" ") if match else path
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        if not path.startswith("/"):
+            path = "/" + path
+        return VEHICLE_STATIC_BASE + path
+
+    def _fetch_vehicle_js_text(self, html: str, url: str, slug: str) -> str:
+        script_urls = re.findall(r'<script[^>]+src=["\']([^"\']+\.js(?:\?[^"\']*)?)["\']', html)
+        chunks: list[str] = []
+        session = requests.Session()
+        session.headers.update({"User-Agent": "Mozilla/5.0"})
+        aliases = self._vehicle_asset_aliases(slug)
+        for script_url in script_urls[:80]:
+            absolute = urljoin(url, script_url)
+            try:
+                resp = session.get(absolute, timeout=15)
+                if not resp.ok:
+                    continue
+                text = resp.text
+            except Exception:
+                continue
+            lower = text.lower()
+            if any(alias in lower or f"/product/{alias}" in lower for alias in aliases):
+                chunks.append(text)
+        return "\n".join(chunks)
+
+    def _extract_vehicle_asset_images(self, js_text: str, slug: str) -> list[str]:
+        slug_patterns = set(self._vehicle_asset_aliases(slug))
+        images = []
+        for slug_pattern in slug_patterns:
+            pattern = rf'["\'](/product/{re.escape(slug_pattern)}[^"\']+\.(?:png|jpe?g|webp))(?:\?[^"\']*)?["\']'
+            for match in re.finditer(pattern, js_text, re.I):
+                path = match.group(1)
+                label = "asset"
+                if "/header-banner/" in path:
+                    label = "hero"
+                elif "/sec" in path:
+                    label = "section"
+                elif "/order/" in path:
+                    label = "color"
+                images.append(f"{label}: {self._vehicle_asset_url(path)}")
+        return images
+
+    def _vehicle_asset_aliases(self, slug: str) -> list[str]:
+        aliases = {
+            "herio_green": ["herio_green", "heriogreen", "herio"],
+            "minio_green": ["minio_green", "miniogreen", "minio"],
+            "limo_green": ["limo_green", "limogreen", "limo"],
+            "ec_van": ["ec_van", "ecvan", "van"],
+            "evo_grand": ["evo_grand", "evogrand"],
+            "vero-x": ["vero-x", "verox"],
+        }
+        values = aliases.get(slug, [slug, slug.replace("_", "-"), slug.replace("_", "")])
+        return list(dict.fromkeys(value.lower() for value in values if value))
+
+    def _extract_vehicle_js_specs(self, js_text: str) -> list[dict]:
+        specs = []
+        patterns = [
+            r'(?:title|label):\w+\("([^"]+)"\),value:\w+\("([^"]+)","([^"]*)"\)',
+            r'(?:title|label):\w+\("([^"]+)"\),value:\w+\("([^"]+)",\{defaultValue:"([^"]*)"\}\)',
+        ]
+        for pattern in patterns:
+            for label_key, value_key, value in re.findall(pattern, js_text):
+                label = VEHICLE_SPEC_LABELS.get(label_key)
+                if not label or not value:
+                    continue
+                specs.append({
+                    "label": label,
+                    "version": self._spec_version(value_key),
+                    "value": value.strip(),
+                })
+        return specs
+
+    def _extract_vehicle_message_specs(self, data: Any, slug: str) -> list[dict]:
+        specs = []
+        message_dicts: list[dict] = []
+        vehicle_key = self._vehicle_message_key(slug)
+
+        def collect_vehicle_messages(node: Any, key: str = "") -> None:
+            if isinstance(node, dict):
+                if key == "messages" and vehicle_key and isinstance(node.get(vehicle_key), dict):
+                    visit_product_info(node[vehicle_key])
+                    return
+                for child_key, child in node.items():
+                    if isinstance(child, (dict, list)):
+                        collect_vehicle_messages(child, child_key)
+            elif isinstance(node, list):
+                for child in node:
+                    collect_vehicle_messages(child, key)
+
+        def visit_product_info(node: Any, key: str = "") -> None:
+            if isinstance(node, dict):
+                if key == "productInfo":
+                    message_dicts.append(node)
+                for child_key, child in node.items():
+                    if isinstance(child, (dict, list)):
+                        visit_product_info(child, child_key)
+            elif isinstance(node, list):
+                for child in node:
+                    visit_product_info(child, key)
+
+        collect_vehicle_messages(data)
+        if not message_dicts:
+            visit_product_info(data)
+        for info in message_dicts:
+            for key, value in info.items():
+                label = VEHICLE_SPEC_LABELS.get(f"productInfo.{key}")
+                if not label or not isinstance(value, str):
+                    continue
+                if key.endswith("Value") or re.search(r"\d", value):
+                    specs.append({
+                        "label": label,
+                        "version": "Chung",
+                        "value": value.strip(),
+                    })
+        return specs
+
+    def _vehicle_message_key(self, slug: str) -> str:
+        return {
+            "ec_van": "van",
+            "herio_green": "HerioGreen",
+            "minio_green": "minio",
+            "limo_green": "LimoGreen",
+            "evo_grand": "EVOGRAND",
+            "feliz2": "FELIZ_II",
+            "feliz": "FELIZ2025",
+            "vero-x": "VEROX",
+            "vf6": "vf6",
+            "vf5": "vf5",
+            "vf3": "vf3",
+            "evo": "EVO",
+            "viper": "Viper",
+        }.get(slug, slug)
+
+    def _spec_version(self, value_key: str) -> str:
+        key = value_key.lower()
+        if key.endswith("_eco") or "_eco_" in key:
+            return "Eco"
+        if key.endswith("_plus") or "_plus_" in key:
+            return "Plus"
+        return "Chung"
+
+    def _dedupe_lines(self, lines: list[str]) -> list[str]:
+        deduped = []
+        seen = set()
+        for line in lines:
+            marker = re.sub(r"\?.*$", "", line.strip())
+            if not marker or marker in seen:
+                continue
+            seen.add(marker)
+            deduped.append(line.strip())
+        return deduped
+
+    def _dedupe_specs(self, specs: list[dict]) -> list[dict]:
+        deduped = []
+        seen = set()
+        for spec in specs:
+            marker = (spec.get("label"), spec.get("version"), spec.get("value"))
+            if marker in seen:
+                continue
+            seen.add(marker)
+            deduped.append(spec)
+        return deduped
+
+    def _extract_vehicle_highlights(self, html: str, slug: str) -> list[str]:
+        soup = BeautifulSoup(html, "html.parser")
+        next_text = self._extract_next_text(self._load_next_data(soup), slug)
+        highlights = []
+        for block in re.split(r"\n{2,}", next_text):
+            text = re.sub(r"\s+", " ", block).strip()
+            if not self._is_vehicle_content_block(text, slug):
+                continue
+            highlights.append(text)
+        return self._dedupe_lines(highlights)[:8]
+
+    def _filter_vehicle_detail_markdown(self, markdown: str, title: str) -> str:
+        blocks = []
+        slug = self._normalize_vehicle_key(title)
+        for block in re.split(r"\n{2,}", markdown):
+            text = re.sub(r"\s+", " ", block).strip()
+            if self._is_vehicle_content_block(text, slug):
+                blocks.append(text)
+        return "\n\n".join(self._dedupe_lines(blocks))
+
+    def _is_vehicle_content_block(self, text: str, slug: str) -> bool:
+        if len(text) < 35 or len(text) > 420:
+            return False
+        folded = self._fold_text(text)
+        normalized_slug = self._normalize_vehicle_key(slug)
+        if text.startswith("http") or "platform-static.car-trading" in text:
+            return False
+        junk_terms = [
+            "du toan", "dang ky", "coc mua", "tai ngay", "hotline", "footer",
+            "chinh sach", "tin tuc", "uu dai hap dan", "so huu xe", "ra mat",
+            "xem them", "thu nhap", "doanh so", "tai xe xanh", "xanh platform",
+            "doi tac dong hanh", "mien phi sac", "dat coc", "tai chinh linh hoat",
+            "mua xe may dien",
+        ]
+        if any(term in folded for term in junk_terms):
+            return False
+        vehicle_terms = [
+            normalized_slug,
+            normalized_slug.replace("green", ""),
+            "thiet ke",
+            "noi that",
+            "van hanh",
+            "dong co",
+            "kich thuoc",
+            "mau sac",
+            "thong so ky thuat",
+            "quang duong",
+            "cong suat",
+        ]
+        vehicle_terms = [term for term in vehicle_terms if len(term) >= 3]
+        return any(term in folded or term in self._normalize_vehicle_key(text) for term in vehicle_terms)
+
+    def _fold_text(self, value: str) -> str:
+        value = value.replace("đ", "d").replace("Đ", "D")
+        value = unicodedata.normalize("NFKD", value)
+        value = "".join(ch for ch in value if not unicodedata.combining(ch))
+        return re.sub(r"\s+", " ", value.lower()).strip()
 
     def _extract_images(self, node: Tag, base_url: str, limit: int = 8) -> list[str]:
         images = []

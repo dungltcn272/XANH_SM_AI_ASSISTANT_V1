@@ -1,6 +1,7 @@
 import os
 import re
 import hashlib
+from html import unescape
 from typing import List, Dict, Any
 from langchain_core.documents import Document
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
@@ -70,6 +71,50 @@ class HeadingAwareSplitter:
     def is_html_table(self, content: str) -> bool:
         """Checks if the block contains a complete HTML table."""
         return bool(re.search(r"<table\b.*?</table>", content, flags=re.IGNORECASE | re.DOTALL))
+
+    def html_table_to_row_chunks(self, content: str, max_rows: int = 3) -> List[str]:
+        """Builds compact retrieval chunks from HTML table rows.
+
+        The full HTML table is still indexed separately. These row chunks make
+        specific cell values easier to retrieve by dense ranking.
+        """
+        try:
+            from bs4 import BeautifulSoup
+        except Exception:
+            return []
+
+        soup = BeautifulSoup(content, "html.parser")
+        table = soup.find("table")
+        if not table:
+            return []
+
+        headers = [
+            unescape(cell.get_text(" ", strip=True))
+            for cell in table.find_all("th")
+        ]
+        rows = []
+        for tr in table.find_all("tr"):
+            cells = [unescape(cell.get_text(" ", strip=True)) for cell in tr.find_all("td")]
+            if cells:
+                rows.append(cells)
+
+        if not rows:
+            return []
+
+        chunks = []
+        for start in range(0, len(rows), max_rows):
+            group = rows[start:start + max_rows]
+            lines = ["TABLE_ROW_INDEX", "Bảng dữ liệu - các dòng liên quan:"]
+            if headers:
+                lines.append("Cột: " + " | ".join(headers))
+            for row in group:
+                if headers and len(headers) == len(row):
+                    values = [f"{header}: {value}" for header, value in zip(headers, row) if value]
+                    lines.append("- " + "; ".join(values))
+                else:
+                    lines.append("- " + " | ".join(value for value in row if value))
+            chunks.append("\n".join(lines))
+        return chunks
 
     def split_text_with_table_awareness(self, text: str) -> List[str]:
         """
@@ -155,6 +200,7 @@ class HeadingAwareSplitter:
                 # Keep HTML tables intact so colspan/rowspan structure survives ingestion.
                 if self.is_html_table(block_content):
                     chunks.append(block_content)
+                    chunks.extend(self.html_table_to_row_chunks(block_content))
                 # For markdown tables under 1500 characters, keep them intact
                 elif block_len < 1500:
                     chunks.append(block_content)

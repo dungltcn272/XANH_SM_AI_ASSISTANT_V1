@@ -27,8 +27,11 @@ class PageCrawler:
         try:
             resp = self.session.get(url, timeout=15)
             resp.raise_for_status()
+            resp.encoding = resp.encoding or "utf-8"
+            if resp.encoding.lower() in {"iso-8859-1", "latin-1"}:
+                resp.encoding = "utf-8"
             
-            soup = BeautifulSoup(resp.content, "html.parser")
+            soup = BeautifulSoup(resp.text, "html.parser")
             
             # Lấy title
             title = soup.find("title")

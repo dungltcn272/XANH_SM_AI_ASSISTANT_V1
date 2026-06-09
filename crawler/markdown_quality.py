@@ -51,6 +51,8 @@ def clean_markdown_content(content: str) -> str:
 
     for pattern, repl in GLUED_FIXES:
         text = re.sub(pattern, repl, text)
+    text = re.sub(r"\bk\s+W\b", "kW", text)
+    text = re.sub(r"\bk\s+Wh\b", "kWh", text)
 
     cleaned_lines = []
     junk_patterns = [re.compile(p, re.IGNORECASE) for p in CTA_PATTERNS + FORM_PATTERNS]
