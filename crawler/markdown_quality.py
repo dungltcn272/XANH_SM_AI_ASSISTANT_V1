@@ -43,8 +43,11 @@ def clean_markdown_content(content: str) -> str:
     text = (content or "").replace("\x00", "")
     text = re.sub(r"\r\n?", "\n", text)
     
-    # Remove <br> tags often found in PDF or HTML conversions
-    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    # Replace <br> tags with space to avoid breaking table cells and sentences
+    text = re.sub(r"<br\s*/?>", " ", text, flags=re.IGNORECASE)
+    
+    # Join split currency values (e.g., "27.900.000 \n VNĐ")
+    text = re.sub(r"(\d+)\s*\n\s*(VNĐ|đồng|đ|USD)", r"\1 \2", text, flags=re.IGNORECASE)
 
     for pattern, repl in GLUED_FIXES:
         text = re.sub(pattern, repl, text)
