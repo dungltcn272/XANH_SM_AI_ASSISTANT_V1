@@ -67,6 +67,10 @@ class HeadingAwareSplitter:
                 return True
         return False
 
+    def is_html_table(self, content: str) -> bool:
+        """Checks if the block contains a complete HTML table."""
+        return bool(re.search(r"<table\b.*?</table>", content, flags=re.IGNORECASE | re.DOTALL))
+
     def split_text_with_table_awareness(self, text: str) -> List[str]:
         """
         Parses text into blocks (text and tables) and packages them into chunks.
@@ -76,8 +80,30 @@ class HeadingAwareSplitter:
         blocks = []
         current_block = []
         in_table = False
+        in_html_table = False
         
         for line in lines:
+            starts_html_table = re.search(r"<table\b", line, flags=re.IGNORECASE) is not None
+            ends_html_table = re.search(r"</table>", line, flags=re.IGNORECASE) is not None
+            if starts_html_table and not in_html_table:
+                if current_block:
+                    blocks.append({"type": "text", "content": "\n".join(current_block)})
+                    current_block = []
+                in_html_table = True
+                current_block.append(line)
+                if ends_html_table:
+                    blocks.append({"type": "table", "content": "\n".join(current_block)})
+                    current_block = []
+                    in_html_table = False
+                continue
+            if in_html_table:
+                current_block.append(line)
+                if ends_html_table:
+                    blocks.append({"type": "table", "content": "\n".join(current_block)})
+                    current_block = []
+                    in_html_table = False
+                continue
+
             is_table_line = "|" in line
             if is_table_line:
                 if not in_table:
@@ -103,7 +129,7 @@ class HeadingAwareSplitter:
         # Refine blocks: convert false table blocks back to text
         refined_blocks = []
         for b in blocks:
-            if b["type"] == "table" and not self.is_valid_markdown_table(b["content"]):
+            if b["type"] == "table" and not self.is_valid_markdown_table(b["content"]) and not self.is_html_table(b["content"]):
                 refined_blocks.append({"type": "text", "content": b["content"]})
             else:
                 refined_blocks.append(b)
@@ -126,8 +152,11 @@ class HeadingAwareSplitter:
                     current_chunk = []
                     current_len = 0
                 
-                # For tables under 1500 characters, keep them intact
-                if block_len < 1500:
+                # Keep HTML tables intact so colspan/rowspan structure survives ingestion.
+                if self.is_html_table(block_content):
+                    chunks.append(block_content)
+                # For markdown tables under 1500 characters, keep them intact
+                elif block_len < 1500:
                     chunks.append(block_content)
                 else:
                     # Giant table fallback: split row by row, carrying table headers

@@ -1,4 +1,5 @@
 import hashlib
+import html
 import re
 import tempfile
 from pathlib import Path
@@ -38,6 +39,71 @@ def _split_table_row(line: str) -> list[str]:
 
 def _join_table_row(cells: list[str]) -> str:
     return "|" + "|".join(cells) + "|"
+
+
+def _strip_markdown_cell(cell: str) -> str:
+    text = cell.strip()
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+    text = re.sub(r"_(.*?)_", r"\1", text)
+    return text.strip()
+
+
+def _html_cell(tag: str, text: str, colspan: int = 1, rowspan: int = 1) -> str:
+    attrs = []
+    if colspan > 1:
+        attrs.append(f' colspan="{colspan}"')
+    if rowspan > 1:
+        attrs.append(f' rowspan="{rowspan}"')
+    escaped = html.escape(_strip_markdown_cell(text), quote=False)
+    return f"    <{tag}{''.join(attrs)}>{escaped}</{tag}>"
+
+
+def _render_html_table(header_line: str, rows: list[str]) -> str:
+    header = _split_table_row(header_line)
+    body = [_split_table_row(row) for row in rows]
+    col_count = max([len(header), *(len(row) for row in body)] or [0])
+    header = header + [""] * (col_count - len(header))
+    body = [row + [""] * (col_count - len(row)) for row in body]
+
+    first_col_rowspans: dict[int, int] = {}
+    first_col_skip: set[int] = set()
+    anchor = None
+    for row_index, row in enumerate(body):
+        if row and row[0].strip():
+            anchor = row_index
+            first_col_rowspans.setdefault(row_index, 1)
+        elif anchor is not None:
+            first_col_rowspans[anchor] += 1
+            first_col_skip.add(row_index)
+
+    lines = ["<table>", "  <thead>", "  <tr>"]
+    for cell in header:
+        lines.append(_html_cell("th", cell))
+    lines.extend(["  </tr>", "  </thead>", "  <tbody>"])
+
+    for row_index, row in enumerate(body):
+        lines.append("  <tr>")
+        col_index = 0
+        while col_index < col_count:
+            if col_index == 0 and row_index in first_col_skip:
+                col_index += 1
+                continue
+            cell = row[col_index]
+            colspan = 1
+            while (
+                col_index + colspan < col_count
+                and cell.strip()
+                and row[col_index + colspan].strip() == cell.strip()
+                and not (col_index == 0 and row_index in first_col_rowspans)
+            ):
+                colspan += 1
+            rowspan = first_col_rowspans.get(row_index, 1) if col_index == 0 else 1
+            lines.append(_html_cell("td", cell, colspan=colspan, rowspan=rowspan))
+            col_index += colspan
+        lines.append("  </tr>")
+
+    lines.extend(["  </tbody>", "</table>"])
+    return "\n".join(lines)
 
 
 def _cell_text(cell: str) -> str:
@@ -278,9 +344,7 @@ def _normalize_markdown_tables(markdown: str, table_layouts: list[dict] | None =
             next_index += 1
             merged += 1
 
-        output.extend(table_header)
-        output.extend(table_separator)
-        output.extend(_expand_empty_merged_cells(table_rows))
+        output.append(_render_html_table(table_header[0], _expand_empty_merged_cells(table_rows)))
         if notes:
             output.append("")
             output.extend(notes)
@@ -403,7 +467,7 @@ def extract_pdf_markdown(url: str) -> dict:
                 "page_count": page_count,
                 "raw_md_len": len(raw_md),
                 "clean_md_len": len(markdown),
-                "table_count": markdown.count("\n|"),
+                "table_count": markdown.count("<table>") + markdown.count("\n|"),
                 "detected_table_count": detected_table_count,
                 "repaired_table_count": repaired_table_count,
                 "merged_table_count": merged_table_count,
