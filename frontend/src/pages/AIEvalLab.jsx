@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { PlayCircle, Terminal as TerminalIcon, Info } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { PlayCircle, Terminal as TerminalIcon, Info, Search, X } from 'lucide-react';
 import { api } from '../api';
 
 export default function AIEvalLab() {
@@ -9,9 +9,17 @@ export default function AIEvalLab() {
     retrieval: { recall_5: 0, recall_10: 0, mrr: 0, ndcg_5: 0 },
     generation: { faithfulness: 0, correctness: 0, relevancy: 0 },
     system_latency: 0,
-    total_cases: 0
+    total_cases: 0,
+    golden_total_cases: 0,
+    pending_cases: 0
   });
   const [dataset, setDataset] = useState([]);
+  const [filters, setFilters] = useState({
+    search: '',
+    level: 'all',
+    category: 'all',
+    status: 'all'
+  });
   const terminalRef = useRef(null);
 
   useEffect(() => {
@@ -28,7 +36,9 @@ export default function AIEvalLab() {
            retrieval: data.metrics.retrieval || { recall_5: 0, recall_10: 0, mrr: 0, ndcg_5: 0 },
            generation: data.metrics.generation || { faithfulness: 0, correctness: 0, relevancy: 0 },
            system_latency: data.metrics.average_latency_sec || 0,
-           total_cases: data.metrics.total_cases || 0
+           total_cases: data.metrics.total_cases || 0,
+           golden_total_cases: data.metrics.golden_total_cases || data.metrics.total_cases || 0,
+           pending_cases: data.metrics.pending_cases || 0
          });
        }
        if (data && data.details) {
@@ -69,7 +79,9 @@ export default function AIEvalLab() {
                      retrieval: d.metrics.retrieval || { recall_5: 0, recall_10: 0, mrr: 0, ndcg_5: 0 },
                      generation: d.metrics.generation || { faithfulness: 0, correctness: 0, relevancy: 0 },
                      system_latency: d.metrics.average_latency_sec || 0,
-                     total_cases: d.metrics.total_cases || 0
+                     total_cases: d.metrics.total_cases || 0,
+                     golden_total_cases: d.metrics.golden_total_cases || d.metrics.total_cases || 0,
+                     pending_cases: d.metrics.pending_cases || 0
                    });
                  }
                  if (d && d.details) {
@@ -80,7 +92,7 @@ export default function AIEvalLab() {
             }
             try {
               const obj = JSON.parse(data);
-              setLogs(prev => [...prev, `[INFO] ${obj.message || JSON.stringify(obj)}`]);
+              setLogs(prev => [...prev, `[INFO] ${obj.step || obj.message || obj.error || JSON.stringify(obj)}`]);
             } catch {
               setLogs(prev => [...prev, `> ${data}`]);
             }
@@ -103,6 +115,37 @@ export default function AIEvalLab() {
     "Answer Relevancy": "Độ phù hợp: Đo lường mức độ tập trung trực diện của câu trả lời đối với câu hỏi gốc, tránh trả lời lan man.",
     "System Latency": "Độ trễ hệ thống: Thời gian xử lý trung bình cho mỗi truy vấn từ lúc nhận câu hỏi đến khi hoàn tất câu trả lời."
   };
+
+  const hardCases = dataset.filter(row => row.level === 'hard').length;
+  const pdfCases = dataset.filter(row => (row.expected_sources || []).some(source => source.startsWith('Chinh_sach') || source.startsWith('Chuong_trinh'))).length;
+  const levelOptions = useMemo(() => [...new Set(dataset.map(row => row.level).filter(Boolean))].sort(), [dataset]);
+  const categoryOptions = useMemo(() => [...new Set(dataset.map(row => row.category).filter(Boolean))].sort(), [dataset]);
+  const statusOptions = useMemo(() => [...new Set(dataset.map(row => row.status || (row.answer ? 'completed' : 'pending')).filter(Boolean))].sort(), [dataset]);
+  const filteredDataset = useMemo(() => {
+    const needle = filters.search.trim().toLowerCase();
+    return dataset.filter(row => {
+      const rowStatus = row.status || (row.answer ? 'completed' : 'pending');
+      const matchesSearch = !needle || [
+        row.id,
+        row.query,
+        row.answer,
+        row.category,
+        row.level,
+        ...(row.expected_keywords || []),
+        ...(row.expected_sources || [])
+      ].filter(Boolean).join(' ').toLowerCase().includes(needle);
+      return (
+        matchesSearch &&
+        (filters.level === 'all' || row.level === filters.level) &&
+        (filters.category === 'all' || row.category === filters.category) &&
+        (filters.status === 'all' || rowStatus === filters.status)
+      );
+    });
+  }, [dataset, filters]);
+  const slowCases = dataset
+    .filter(row => row.latency_seconds)
+    .sort((a, b) => (b.latency_seconds || 0) - (a.latency_seconds || 0))
+    .slice(0, 3);
 
   const CircularProgress = ({ value, label, colorClass }) => {
     const dashArray = 364.4;
@@ -205,6 +248,53 @@ export default function AIEvalLab() {
           </section>
       </div>
 
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+        <div className="glass-panel p-6 rounded-2xl border border-outline-variant/40">
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Scoring Mode</p>
+          <h3 className="text-xl font-bold text-on-surface mb-3">LLM-as-Judge + heuristic</h3>
+          <p className="text-sm leading-relaxed text-on-surface-variant">
+            Generation metrics được chấm bởi OpenAI gpt-4o-mini khi có API key. Retrieval metrics dùng keyword/source heuristic, riêng Recall@5 có thể được judge ghi đè bằng context_recall.
+          </p>
+        </div>
+        <div className="glass-panel p-6 rounded-2xl border border-outline-variant/40">
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Dataset Stress</p>
+          <h3 className="text-xl font-bold text-on-surface mb-3">{metrics.golden_total_cases || metrics.total_cases || dataset.length || 0} cases</h3>
+          <p className="text-sm leading-relaxed text-on-surface-variant">
+            Report hiện có {hardCases} case khó và {pdfCases} case yêu cầu đọc tài liệu PDF/chính sách. {metrics.pending_cases > 0 ? `${metrics.pending_cases} case mới sẽ có kết quả sau lần chạy benchmark tiếp theo.` : 'Report hiện đã khớp số case golden.'}
+          </p>
+        </div>
+        <div className="glass-panel p-6 rounded-2xl border border-orange-500/20 bg-orange-500/5">
+          <p className="text-xs font-bold text-orange-600 uppercase tracking-widest mb-2">Latency Notes</p>
+          <h3 className="text-xl font-bold text-orange-500 mb-3">{metrics.system_latency.toFixed(2)}s avg</h3>
+          <p className="text-sm leading-relaxed text-orange-700/80">
+            Benchmark latency gồm pipeline trả lời và một lượt LLM judge sau đó. Các case chậm thường do NLU LLM, rerank, context dài và generation dài.
+          </p>
+        </div>
+      </section>
+
+      {slowCases.length > 0 && (
+        <section className="glass-panel p-6 rounded-2xl mb-12 border border-outline-variant/40">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h2 className="text-2xl font-bold text-on-surface">Slowest Cases</h2>
+            <span className="text-xs font-bold text-orange-500 uppercase tracking-widest">Latency audit</span>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {slowCases.map(row => (
+              <div key={row.id || row.query} className="rounded-xl border border-outline-variant/40 p-4 bg-surface-container/40">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <span className="text-xs font-bold text-primary uppercase">{row.level || 'case'}</span>
+                  <span className="font-mono text-sm font-bold text-orange-500">{row.latency_seconds}s</span>
+                </div>
+                <p className="text-sm font-semibold text-on-surface line-clamp-2 mb-2">{row.query}</p>
+                <p className="text-xs text-on-surface-variant">
+                  Chunks: {row.num_chunks_before_expansion || 0} · Context: {row.compressed_context_len || 0} chars
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {/* Terminal View */}
         <section className="w-full">
@@ -246,23 +336,87 @@ export default function AIEvalLab() {
 
         {/* Dataset View */}
         <section className="w-full">
-          <h2 className="text-2xl font-bold mb-6 text-on-surface">Golden Dataset & Results</h2>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-on-surface">Golden Dataset & Results</h2>
+              <p className="text-xs text-on-surface-variant mt-1">
+                Showing {filteredDataset.length}/{dataset.length} cases
+              </p>
+            </div>
+            <button
+              onClick={() => setFilters({ search: '', level: 'all', category: 'all', status: 'all' })}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-semibold text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors"
+            >
+              <X size={16} />
+              Clear filters
+            </button>
+          </div>
+
+          <div className="glass-panel rounded-2xl border border-outline-variant p-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <label className="relative md:col-span-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60" />
+                <input
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                  placeholder="Search ID, query, answer..."
+                  className="w-full h-11 pl-10 pr-3 rounded-xl bg-surface-container border border-outline-variant text-sm outline-none focus:border-primary"
+                />
+              </label>
+              <select
+                value={filters.level}
+                onChange={(e) => setFilters(prev => ({ ...prev, level: e.target.value }))}
+                className="h-11 rounded-xl bg-surface-container border border-outline-variant px-3 text-sm font-semibold outline-none focus:border-primary"
+              >
+                <option value="all">All levels</option>
+                {levelOptions.map(level => <option key={level} value={level}>{level}</option>)}
+              </select>
+              <select
+                value={filters.category}
+                onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
+                className="h-11 rounded-xl bg-surface-container border border-outline-variant px-3 text-sm font-semibold outline-none focus:border-primary"
+              >
+                <option value="all">All categories</option>
+                {categoryOptions.map(category => <option key={category} value={category}>{category}</option>)}
+              </select>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="h-11 rounded-xl bg-surface-container border border-outline-variant px-3 text-sm font-semibold outline-none focus:border-primary"
+              >
+                <option value="all">All statuses</option>
+                {statusOptions.map(status => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </div>
+          </div>
           <div className="glass-panel rounded-2xl overflow-hidden border border-outline-variant h-[650px] flex flex-col">
             <div className="overflow-y-auto flex-1 p-0">
               <table className="w-full text-left text-sm">
                 <thead className="bg-surface-variant text-on-surface-variant sticky top-0 backdrop-blur-md bg-opacity-90">
                   <tr>
+                    <th className="px-6 py-4 font-bold">Case</th>
                     <th className="px-6 py-4 font-bold">Query</th>
                     <th className="px-6 py-4 font-bold">Expected Keywords</th>
                     <th className="px-6 py-4 font-bold">AI Answer</th>
+                    <th className="px-6 py-4 font-bold">Scores</th>
                     <th className="px-6 py-4 font-bold">Latency</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
-                  {dataset.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-surface-variant/20 transition-colors">
-                      <td className="px-6 py-4 align-top font-medium w-1/4">{row.query}</td>
-                      <td className="px-6 py-4 align-top w-1/4">
+                  {filteredDataset.map((row, idx) => {
+                    const rowStatus = row.status || (row.answer ? 'completed' : 'pending');
+                    return (
+                    <tr key={row.id || idx} className="hover:bg-surface-variant/20 transition-colors">
+                      <td className="px-6 py-4 align-top min-w-[190px]">
+                        <p className="font-mono text-xs font-bold text-on-surface">{row.id || '-'}</p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          <span className="px-2 py-1 rounded-md bg-secondary/10 text-secondary text-[11px] font-bold uppercase">{row.level || 'n/a'}</span>
+                          <span className="px-2 py-1 rounded-md bg-primary/10 text-primary text-[11px] font-bold">{row.category || 'general'}</span>
+                          <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${rowStatus === 'completed' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-orange-500/10 text-orange-600'}`}>{rowStatus}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 align-top font-medium min-w-[260px]">{row.query}</td>
+                      <td className="px-6 py-4 align-top min-w-[220px]">
                         <div className="flex flex-wrap gap-1">
                           {(row.expected_keywords || []).map((kw, i) => (
                             <span key={i} className="px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-semibold whitespace-nowrap">
@@ -276,15 +430,22 @@ export default function AIEvalLab() {
                           {row.answer || "N/A"}
                         </p>
                       </td>
+                      <td className="px-6 py-4 align-top font-mono text-xs min-w-[140px]">
+                        <div className="space-y-1 text-on-surface-variant">
+                          <p>Faith: {(row.generation?.faithfulness ?? 0).toFixed(2)}</p>
+                          <p>Correct: {(row.generation?.correctness ?? 0).toFixed(2)}</p>
+                          <p>R@5: {(row.retrieval?.recall_5 ?? 0).toFixed(2)}</p>
+                        </div>
+                      </td>
                       <td className="px-6 py-4 align-top font-mono text-xs text-orange-500 whitespace-nowrap">
                         {row.latency_seconds ? `${row.latency_seconds}s` : '-'}
                       </td>
                     </tr>
-                  ))}
-                  {dataset.length === 0 && (
+                  )})}
+                  {filteredDataset.length === 0 && (
                     <tr>
-                      <td colSpan="4" className="px-6 py-12 text-center text-on-surface-variant italic">
-                        No dataset results available. Run evaluation first.
+                      <td colSpan="6" className="px-6 py-12 text-center text-on-surface-variant italic">
+                        No cases match the current filters.
                       </td>
                     </tr>
                   )}

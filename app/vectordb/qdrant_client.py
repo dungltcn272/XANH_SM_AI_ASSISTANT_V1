@@ -27,9 +27,22 @@ class VectorDBClient:
             
             # Auto-healing: Ensure required payload indexes exist (especially metadata.parent_chunk_id)
             try:
-                for field in ["metadata.url", "metadata.chunk_index", "metadata.parent_chunk_id"]:
+                for field in [
+                    "metadata.url",
+                    "metadata.chunk_id",
+                    "metadata.chunk_index",
+                    "metadata.parent_chunk_id",
+                    "metadata.chunk_type",
+                    "metadata.category",
+                    "metadata.document_type",
+                    "metadata.source_type",
+                    "metadata.table_id",
+                    "metadata.derived_from",
+                    "metadata.row_start",
+                    "metadata.row_end",
+                ]:
                     schema = qdrant_models.PayloadSchemaType.KEYWORD
-                    if field == "metadata.chunk_index":
+                    if field in {"metadata.chunk_index", "metadata.row_start", "metadata.row_end"}:
                         schema = qdrant_models.PayloadSchemaType.INTEGER
                     try:
                         cls._instance.client.create_payload_index(

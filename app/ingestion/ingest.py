@@ -60,23 +60,31 @@ def setup_qdrant(client: QdrantClient, vector_size: int = 1536, recreate: bool =
     
     # Tạo Payload Index để filter scroll/search theo metadata.url và metadata.chunk_index
     # Bắt buộc phải có index mới có thể dùng Filter trong scroll()
-    log_info("INGESTION", "Creating payload indexes for 'metadata.url', 'metadata.chunk_index', and 'metadata.parent_chunk_id'...")
+    log_info("INGESTION", "Creating payload indexes for retrieval metadata...")
     try:
-        client.create_payload_index(
-            collection_name=COLLECTION_NAME,
-            field_name="metadata.url",
-            field_schema=qdrant_models.PayloadSchemaType.KEYWORD
-        )
-        client.create_payload_index(
-            collection_name=COLLECTION_NAME,
-            field_name="metadata.chunk_index",
-            field_schema=qdrant_models.PayloadSchemaType.INTEGER
-        )
-        client.create_payload_index(
-            collection_name=COLLECTION_NAME,
-            field_name="metadata.parent_chunk_id",
-            field_schema=qdrant_models.PayloadSchemaType.KEYWORD
-        )
+        payload_indexes = {
+            "metadata.url": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.chunk_id": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.parent_chunk_id": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.chunk_index": qdrant_models.PayloadSchemaType.INTEGER,
+            "metadata.chunk_type": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.category": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.document_type": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.source_type": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.table_id": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.derived_from": qdrant_models.PayloadSchemaType.KEYWORD,
+            "metadata.row_start": qdrant_models.PayloadSchemaType.INTEGER,
+            "metadata.row_end": qdrant_models.PayloadSchemaType.INTEGER,
+        }
+        for field_name, schema in payload_indexes.items():
+            try:
+                client.create_payload_index(
+                    collection_name=COLLECTION_NAME,
+                    field_name=field_name,
+                    field_schema=schema,
+                )
+            except Exception:
+                pass
         log_info("INGESTION", "Payload indexes created successfully.")
     except Exception as e:
         log_warn("INGESTION", f"Could not create payload indexes: {e}")

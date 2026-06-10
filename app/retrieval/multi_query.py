@@ -4,7 +4,6 @@ from typing import List
 from openai import OpenAI
 from app.core.config import settings as config
 from app.core.logger import log_warn
-from app.rag.domain_vocabulary import enrich_queries, understand_query
 
 class XanhSMQueryExpansion:
     """
@@ -38,7 +37,7 @@ class XanhSMQueryExpansion:
                 for syn in synonyms:
                     if syn not in expanded:
                         expanded.append(syn)
-        return enrich_queries(query, expanded)
+        return expanded
 
     def expand_query_llm(self, query: str) -> List[str]:
         """
@@ -51,7 +50,7 @@ class XanhSMQueryExpansion:
             return self.expand_query_rule_based(query)
             
         try:
-            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
+            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
             prompt = (
                 f"Ban la chuyen gia hieu y dinh nguoi dung (Query Understanding). "
                 f"Hay sinh ra 1 cau hoi dong nghia hoac co muc dich tim kiem tuong tu cau hoi duoi duoi bang tieng Viet.\n"
@@ -63,6 +62,7 @@ class XanhSMQueryExpansion:
                 model=config.LLM_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
+                max_tokens=120,
                 response_format={"type": "json_object"}
             )
             
@@ -82,8 +82,8 @@ class XanhSMQueryExpansion:
             return self.expand_query_rule_based(query)
 
     def get_queries(self, query: str) -> List[str]:
-        queries = enrich_queries(query, self.expand_query_llm(query))
+        queries = self.expand_query_llm(query)
         return list(dict.fromkeys(queries))
 
     def get_understanding(self, query: str):
-        return understand_query(query)
+        return None

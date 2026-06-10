@@ -59,8 +59,16 @@ class Settings(BaseSettings):
     # LLM & Embedding
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
+    LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "900"))
     EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "openai")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+
+    # Retrieval tuning
+    RETRIEVAL_CANDIDATE_LIMIT: int = int(os.getenv("RETRIEVAL_CANDIDATE_LIMIT", "25"))
+    RERANK_TOP_N: int = int(os.getenv("RERANK_TOP_N", "8"))
+    CONTEXT_EXPANSION_THRESHOLD: float = float(os.getenv("CONTEXT_EXPANSION_THRESHOLD", "0.65"))
+    MAX_CHUNKS_PER_SECTION: int = int(os.getenv("MAX_CHUNKS_PER_SECTION", "10"))
     
     # Reranker
     RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "cohere")

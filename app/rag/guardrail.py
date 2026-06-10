@@ -58,11 +58,8 @@ class OutputGuardrail:
         if self.banned_pattern.search(text):
             return False
             
-        # 2. Check for prompt injection attempts
-        if self.injection_pattern.search(text):
-            return False
-            
-        # 3. Check for system prompt leakage
+        # 2. Check for system prompt leakage. Prompt-injection attempts are
+        # handled at the input gateway so valid domain answers are not blocked.
         if self.leakage_pattern.search(text):
             return False
             

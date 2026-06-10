@@ -29,6 +29,20 @@ class XanhSMGateway:
         self.strict_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.strictly_banned]), re.IGNORECASE)
         self.competitor_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.competitors]), re.IGNORECASE)
         self.negative_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.negative_context]), re.IGNORECASE)
+        self.injection_pattern = re.compile(
+            r"("
+            r"ignore\s+(all\s+)?previous\s+instructions|"
+            r"developer\s+mode|"
+            r"system\s+prompt|"
+            r"api\s*key|"
+            r"reveal\s+(instructions|prompt|secrets)|"
+            r"bo qua\s+(moi\s+)?(huong dan|quy tac|chi thi)|"
+            r"in ra\s+(toan bo\s+)?(system prompt|api key|cau hinh|chi thi)|"
+            r"tiet lo\s+(system prompt|api key|cau hinh|huong dan)|"
+            r"cau hinh\s+noi bo"
+            r")",
+            re.IGNORECASE,
+        )
 
     def normalize_input(self, text: str) -> str:
         """
@@ -43,6 +57,10 @@ class XanhSMGateway:
         cleaned = re.sub(r"\s+", " ", normalized).strip()
         return cleaned
 
+    def _strip_accents(self, text: str) -> str:
+        nfkd_form = unicodedata.normalize("NFKD", text)
+        return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
     def safety_precheck(self, text: str) -> Dict[str, Any]:
         """
         Performs contextual safety precheck.
@@ -53,6 +71,23 @@ class XanhSMGateway:
             return {"safe": True, "reason": "Empty query"}
             
         text_normalized = self.normalize_input(text)
+        text_no_accent = self._strip_accents(text_normalized).lower()
+
+        injection_match = self.injection_pattern.search(text_no_accent)
+        if injection_match:
+            return {
+                "safe": False,
+                "reason": "Yêu cầu có dấu hiệu prompt injection hoặc đòi tiết lộ thông tin nội bộ."
+            }
+
+        if (
+            ("boi nho" in text_no_accent or "noi xau" in text_no_accent or "vu khong" in text_no_accent)
+            and ("khong co bang chung" in text_no_accent or "khong can bang chung" in text_no_accent or "lua dao" in text_no_accent)
+        ):
+            return {
+                "safe": False,
+                "reason": "Yêu cầu có dấu hiệu tạo nội dung bôi nhọ hoặc cáo buộc không có căn cứ."
+            }
         
         # 1. Check Strict Banned List
         strict_match = self.strict_pattern.search(text_normalized)

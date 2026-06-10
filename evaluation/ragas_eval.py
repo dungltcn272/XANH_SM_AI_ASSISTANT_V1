@@ -46,6 +46,18 @@ class XanhSMEvaluation:
                     break
         return found / len(expected_kws)
 
+    def count_sources_in_docs(self, docs, expected_sources):
+        if not expected_sources:
+            return 1.0
+        haystack = " ".join(
+            [
+                f"{doc.get('source', '')} {doc.get('section', '')} {doc.get('content', '')[:500]}"
+                for doc in docs
+            ]
+        ).lower()
+        found = sum(1 for source in expected_sources if source.lower() in haystack)
+        return found / len(expected_sources)
+
     def evaluate_item(self, case: Dict[str, Any]) -> Dict[str, Any]:
         query = case["query"]
         expected = case.get("expected_keywords", [])
@@ -60,6 +72,7 @@ class XanhSMEvaluation:
         # Retrieval Metrics
         recall_5 = self.count_keywords_in_docs(top_docs[:5], expected)
         recall_10 = self.count_keywords_in_docs(top_docs[:10], expected)
+        source_recall_5 = self.count_sources_in_docs(top_docs[:5], case.get("expected_sources", []))
         
         first_rel_rank = -1
         for i, doc in enumerate(top_docs):
@@ -123,6 +136,9 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         print(f"   -> R@5: {recall_5:.2f} | MRR: {mrr:.2f} | Faithfulness: {faithfulness:.2f} | Correctness: {correctness:.2f}")
         
         return {
+            "id": case.get("id", query[:60]),
+            "level": case.get("level", "unspecified"),
+            "category": case.get("category", "general"),
             "query": query,
             "latency_seconds": round(latency, 3),
             "num_chunks_before_expansion": num_chunks_before_expansion,
@@ -130,6 +146,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
             "retrieval": {
                 "recall_5": recall_5,
                 "recall_10": recall_10,
+                "source_recall_5": source_recall_5,
                 "mrr": mrr,
                 "ndcg_5": ndcg_5
             },
@@ -147,7 +164,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         print("\n[*] Starting Automated Quality Evaluation Suite (RAGAS)...")
         results = []
         
-        avg = {"recall_5": 0, "recall_10": 0, "mrr": 0, "ndcg_5": 0, "faithfulness": 0, "correctness": 0, "relevancy": 0, "latency": 0, "num_chunks": 0, "context_len": 0}
+        avg = {"recall_5": 0, "recall_10": 0, "source_recall_5": 0, "mrr": 0, "ndcg_5": 0, "faithfulness": 0, "correctness": 0, "relevancy": 0, "latency": 0, "num_chunks": 0, "context_len": 0}
         
         for idx, case in enumerate(self.test_cases):
             try:
@@ -160,7 +177,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 res = self.evaluate_item(case)
                 results.append(res)
                 
-                for k in ["recall_5", "recall_10", "mrr", "ndcg_5"]:
+                for k in ["recall_5", "recall_10", "source_recall_5", "mrr", "ndcg_5"]:
                     avg[k] += res["retrieval"][k]
                 for k in ["faithfulness", "correctness", "relevancy"]:
                     avg[k] += res["generation"][k]
@@ -176,9 +193,11 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
             "average_latency_sec": round(avg["latency"] / count, 3),
             "average_num_chunks_before_expansion": round(avg["num_chunks"] / count, 2),
             "average_context_len": round(avg["context_len"] / count, 1),
-            "retrieval": {k: round(v / count, 3) for k, v in avg.items() if k in ["recall_5", "recall_10", "mrr", "ndcg_5"]},
+            "retrieval": {k: round(v / count, 3) for k, v in avg.items() if k in ["recall_5", "recall_10", "source_recall_5", "mrr", "ndcg_5"]},
             "generation": {k: round(v / count, 3) for k, v in avg.items() if k in ["faithfulness", "correctness", "relevancy"]},
-            "total_cases": len(results)
+            "total_cases": len(results),
+            "by_level": self.summarize_bucket(results, "level"),
+            "by_category": self.summarize_bucket(results, "category"),
         }
         
         report = {
@@ -191,6 +210,24 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
             
         print("[INFO] Evaluation results successfully saved to evaluation_report.json.")
         return report
+
+    def summarize_bucket(self, results: List[Dict[str, Any]], key: str) -> Dict[str, Any]:
+        buckets: Dict[str, List[Dict[str, Any]]] = {}
+        for item in results:
+            buckets.setdefault(item.get(key, "unspecified"), []).append(item)
+
+        summary = {}
+        for name, items in sorted(buckets.items()):
+            n = len(items)
+            summary[name] = {
+                "cases": n,
+                "avg_latency_sec": round(sum(i["latency_seconds"] for i in items) / n, 3),
+                "avg_recall_5": round(sum(i["retrieval"]["recall_5"] for i in items) / n, 3),
+                "avg_source_recall_5": round(sum(i["retrieval"]["source_recall_5"] for i in items) / n, 3),
+                "avg_correctness": round(sum(i["generation"]["correctness"] for i in items) / n, 3),
+                "avg_faithfulness": round(sum(i["generation"]["faithfulness"] for i in items) / n, 3),
+            }
+        return summary
 
 if __name__ == "__main__":
     evaluator = XanhSMEvaluation()

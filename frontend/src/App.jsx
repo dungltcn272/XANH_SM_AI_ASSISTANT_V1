@@ -9,7 +9,6 @@ import CommandCenter from './pages/CommandCenter';
 import AIEvalLab from './pages/AIEvalLab';
 import PipelineManager from './pages/PipelineManager';
 import RAGHistory from './pages/RAGHistory';
-import IngestionManager from './pages/IngestionManager';
 import DatabaseManager from './pages/DatabaseManager';
 import AgentCrawler from './pages/AgentCrawler';
 import KnowledgeBuilder from './pages/KnowledgeBuilder';
@@ -630,7 +629,6 @@ function App() {
         <Route path="knowledge-builder" element={<KnowledgeBuilder />} />
         <Route path="agent-crawler" element={<AgentCrawler />} />
         <Route path="history" element={<RAGHistory />} />
-        <Route path="ingest" element={<IngestionManager />} />
         <Route path="db" element={<DatabaseManager />} />
       </Route>
       

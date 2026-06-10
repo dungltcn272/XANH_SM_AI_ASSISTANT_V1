@@ -164,9 +164,47 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 def get_eval_results():
     try:
         with open("evaluation_report.json", "r", encoding="utf-8") as f:
-            return json.load(f)
+            report = json.load(f)
     except FileNotFoundError:
-        return {"error": "Evaluation report not found. Please run the benchmark first."}
+        report = {"error": "Evaluation report not found. Please run the benchmark first."}
+
+    try:
+        with open("evaluation/golden_dataset.json", "r", encoding="utf-8") as f:
+            golden_cases = json.load(f)
+            golden_total_cases = len(golden_cases)
+    except Exception:
+        golden_cases = []
+        golden_total_cases = report.get("metrics", {}).get("total_cases", 0)
+
+    report.setdefault("metrics", {})
+    report["metrics"]["golden_total_cases"] = golden_total_cases
+    report["metrics"]["pending_cases"] = max(0, golden_total_cases - report["metrics"].get("total_cases", 0))
+
+    if golden_cases:
+        result_by_id = {
+            item.get("id"): item
+            for item in report.get("details", [])
+            if item.get("id")
+        }
+        merged_details = []
+        for case in golden_cases:
+            result = result_by_id.get(case.get("id"))
+            if result:
+                merged_details.append({**case, **result, "status": "completed"})
+            else:
+                merged_details.append({
+                    **case,
+                    "status": "pending",
+                    "answer": "",
+                    "latency_seconds": None,
+                    "retrieval": {},
+                    "generation": {},
+                    "matched_keywords": [],
+                    "num_chunks_before_expansion": 0,
+                    "compressed_context_len": 0,
+                })
+        report["details"] = merged_details
+    return report
 
 @router.get("/logs")
 def get_rag_logs(intent: str = None, limit: int = 50, db: Session = Depends(get_db)):

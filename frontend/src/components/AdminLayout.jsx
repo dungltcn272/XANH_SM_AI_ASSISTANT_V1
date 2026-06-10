@@ -13,7 +13,6 @@ export default function AdminLayout() {
     { path: '/admin/pipeline', label: 'Pipeline Manager', icon: <Network size={20} /> },
     { path: '/admin/knowledge-builder', label: 'Knowledge Builder', icon: <Hammer size={20} /> },
     { path: '/admin/history', label: 'RAG History', icon: <History size={20} /> },
-    { path: '/admin/ingest', label: 'Crawl & Ingest', icon: <Database size={20} /> },
     { path: '/admin/db', label: 'Raw Database', icon: <Database size={20} /> }
   ];
 

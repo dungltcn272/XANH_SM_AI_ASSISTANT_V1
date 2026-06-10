@@ -119,7 +119,7 @@ def infer_seed(url: str, category: str, title: str = "", priority: int = 100) ->
 
 def load_seed_file(path: Path | None = None) -> list[CrawlSourceSeed]:
     seed_path = path or Path(__file__).parent / "urls.json"
-    data = json.loads(seed_path.read_text(encoding="utf-8"))
+    data = json.loads(seed_path.read_text(encoding="utf-8-sig"))
     seeds: list[CrawlSourceSeed] = []
     for category, urls in data.items():
         for idx, url in enumerate(urls):

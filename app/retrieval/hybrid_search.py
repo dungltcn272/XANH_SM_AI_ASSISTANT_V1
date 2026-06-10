@@ -5,7 +5,7 @@ from app.db.database import SessionLocal
 from app.db.models import DocumentChunk
 from app.vectordb.qdrant_client import vectordb
 from app.retrieval.multi_query import XanhSMQueryExpansion
-from app.rag.domain_vocabulary import understand_query
+from app.core.config import settings as config
 from app.core.logger import log_info, log_warn, log_error
 
 class XanhSMHybridSearch:
@@ -91,43 +91,6 @@ class XanhSMHybridSearch:
             db.close()
 
     def _apply_domain_boosts(self, docs: List[Document], query: str) -> List[Document]:
-        understanding = understand_query(query)
-        is_overview = self._is_overview_query(query)
-        if not docs and not is_overview:
-            return docs
-        if not is_overview and not (understanding.category_hints or understanding.document_type_hints or understanding.services):
-            return docs
-
-        category_hints = {item.lower() for item in understanding.category_hints if item}
-        doc_type_hints = {item.lower() for item in understanding.document_type_hints if item}
-        services = {item.lower() for item in understanding.services if item}
-
-        for doc in docs:
-            meta = doc.metadata or {}
-            boost = 0.0
-            haystack = " ".join([
-                str(meta.get("category", "")),
-                str(meta.get("document_type", "")),
-                str(meta.get("source", "")),
-                str(meta.get("url", "")),
-                str(meta.get("section", "")),
-                doc.page_content[:500],
-            ]).lower()
-
-            if any(hint in haystack for hint in category_hints):
-                boost += 0.15
-            if any(hint in haystack for hint in doc_type_hints):
-                boost += 0.12
-            if any(service in haystack for service in services):
-                boost += 0.2
-            if is_overview and ("overview" in haystack or "service_catalog" in haystack):
-                boost += 0.35
-
-            if boost:
-                meta["domain_boost"] = round(boost, 3)
-                meta["score"] = float(meta.get("score", 0.0) or 0.0) + boost
-                doc.metadata = meta
-
         return sorted(docs, key=lambda d: d.metadata.get("score", 0.0), reverse=True)
 
     def expand_context(self, base_docs: List[Document]) -> List[Document]:
@@ -143,17 +106,25 @@ class XanhSMHybridSearch:
         from qdrant_client.http import models as qdrant_models
         from app.vectordb.qdrant_client import COLLECTION_NAME
 
-        EXPANSION_THRESHOLD = 0.7
-        MAX_CHUNKS_PER_SECTION = 10
+        EXPANSION_THRESHOLD = config.CONTEXT_EXPANSION_THRESHOLD
+        MAX_CHUNKS_PER_SECTION = config.MAX_CHUNKS_PER_SECTION
 
         # Phân loại tài liệu
         docs_to_expand = []
         docs_to_keep = []
+        table_row_docs = []
 
         for doc in base_docs:
-            parent_id = doc.metadata.get("parent_chunk_id")
+            meta = doc.metadata or {}
+            chunk_type = meta.get("chunk_type")
+            derived_from = meta.get("derived_from")
+            parent_id = meta.get("parent_chunk_id")
             score = doc.metadata.get("rerank_score", 0.0)
-            
+
+            if chunk_type == "table_row_index" and derived_from:
+                table_row_docs.append(doc)
+                continue
+
             if parent_id and score >= EXPANSION_THRESHOLD:
                 docs_to_expand.append(doc)
             else:
@@ -161,6 +132,68 @@ class XanhSMHybridSearch:
 
         expanded_docs = []
         covered_chunk_ids = set()
+
+        # Mở rộng các hit bảng dạng row-index về lại full HTML table gốc
+        for doc in table_row_docs:
+            meta = doc.metadata or {}
+            derived_from = meta.get("derived_from")
+            if not derived_from:
+                docs_to_keep.append(doc)
+                continue
+
+            try:
+                log_info("RETRIEVAL", f"Table row hit: scrolling full table for derived_from={derived_from}")
+                q_filter = qdrant_models.Filter(
+                    must=[
+                        qdrant_models.FieldCondition(
+                            key="metadata.chunk_id",
+                            match=qdrant_models.MatchValue(value=derived_from)
+                        )
+                    ]
+                )
+                results = self.db.qdrant.scroll(
+                    collection_name=COLLECTION_NAME,
+                    scroll_filter=q_filter,
+                    limit=1,
+                    with_payload=True,
+                    with_vectors=False
+                )[0]
+            except Exception as e:
+                log_error("RETRIEVAL", f"Failed to expand table row chunk {derived_from}: {e}")
+                docs_to_keep.append(doc)
+                continue
+
+            if not results:
+                docs_to_keep.append(doc)
+                continue
+
+            payload = results[0].payload or {}
+            payload_meta = payload.get("metadata", {})
+            full_content = payload.get("page_content", "").strip()
+            full_chunk_id = payload_meta.get("chunk_id", derived_from)
+            if full_chunk_id:
+                covered_chunk_ids.add(full_chunk_id)
+
+            if not full_content:
+                docs_to_keep.append(doc)
+                continue
+
+            expanded_meta = payload_meta.copy()
+            expanded_meta["retrieval_source"] = "table_full_expansion"
+            expanded_meta["expanded_from"] = meta.get("chunk_id")
+            expanded_meta["expanded_from_chunk_type"] = "table_row_index"
+            if doc.metadata.get("rerank_score") is not None:
+                expanded_meta["rerank_score"] = doc.metadata.get("rerank_score")
+
+            row_chunk_id = meta.get("chunk_id")
+            if row_chunk_id:
+                covered_chunk_ids.add(row_chunk_id)
+
+            expanded_docs.append(Document(
+                page_content=full_content,
+                metadata=expanded_meta
+            ))
+            log_info("RETRIEVAL", f"Expanded table row hit to full table chunk {full_chunk_id}")
 
         # Nhóm docs_to_expand theo parent_chunk_id
         parent_groups = {}

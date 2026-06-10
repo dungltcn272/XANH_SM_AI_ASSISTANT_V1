@@ -4,7 +4,6 @@ from typing import Dict, Any, List, Tuple, Optional
 from openai import OpenAI
 from app.core.config import settings as config
 from app.rag.prompt import UNIFIED_NLU_PROMPT
-from app.rag.domain_vocabulary import canonical_rewrite_hint, enrich_queries, understand_query
 from app.core.logger import log_warn
 
 class XanhSMClassifier:
@@ -56,7 +55,7 @@ class XanhSMClassifier:
                         role_tag = "User" if turn.get("role") == "user" else "Assistant"
                         history_str += f"{role_tag}: {turn.get('content')}\n"
 
-                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
+                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
                 user_prompt = f"Lịch sử hội thoại:\n{history_str}\nCâu hỏi mới nhất: '{query}'\nJSON kết quả:"
                 response = client.chat.completions.create(
                     model=config.LLM_MODEL,
@@ -65,6 +64,7 @@ class XanhSMClassifier:
                         {"role": "user", "content": user_prompt}
                     ],
                     temperature=0.0,
+                    max_tokens=220,
                     response_format={"type": "json_object"}
                 )
                 res_content = response.choices[0].message.content.strip()
@@ -86,22 +86,10 @@ class XanhSMClassifier:
                 # Ensure the rewritten query is in the expansion list
                 if rewritten_query not in expanded:
                     expanded = [rewritten_query] + expanded
-                canonical_hint = canonical_rewrite_hint(rewritten_query)
-                if canonical_hint != rewritten_query:
-                    expanded = [rewritten_query, canonical_hint] + expanded
-                expanded = enrich_queries(rewritten_query, expanded)
-                domain = understand_query(" ".join([query, rewritten_query]))
-                    
                 return {
                     "rewritten_query": rewritten_query,
                     "intent": intent,
                     "expanded_queries": expanded,
-                    "domain_hints": {
-                        "services": domain.services,
-                        "intents": domain.intents,
-                        "category_hints": domain.category_hints,
-                        "document_type_hints": domain.document_type_hints,
-                    },
                     "suggested_answer": suggested_answer,
                     "usage": {
                         "prompt_tokens": response.usage.prompt_tokens,
@@ -119,24 +107,17 @@ class XanhSMClassifier:
             intent = "small-talk"
             
         # 2. Query rewrite fallback (just return original query since we have no LLM)
-        rewritten_query = canonical_rewrite_hint(query)
+        rewritten_query = query
         
         # 3. Expansion fallback (use rule-based expansion or return list of rewritten)
         from app.retrieval.multi_query import XanhSMQueryExpansion
         expander = XanhSMQueryExpansion()
-        expanded = enrich_queries(query, expander.expand_query_rule_based(rewritten_query))
-        domain = understand_query(query)
+        expanded = expander.expand_query_rule_based(rewritten_query)
         
         return {
             "rewritten_query": rewritten_query,
             "intent": intent,
             "expanded_queries": expanded,
-            "domain_hints": {
-                "services": domain.services,
-                "intents": domain.intents,
-                "category_hints": domain.category_hints,
-                "document_type_hints": domain.document_type_hints,
-            },
             "usage": {"prompt_tokens": 0, "completion_tokens": 0}
         }
 

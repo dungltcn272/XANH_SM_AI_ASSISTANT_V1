@@ -72,7 +72,7 @@ class HeadingAwareSplitter:
         """Checks if the block contains a complete HTML table."""
         return bool(re.search(r"<table\b.*?</table>", content, flags=re.IGNORECASE | re.DOTALL))
 
-    def html_table_to_row_chunks(self, content: str, max_rows: int = 3) -> List[str]:
+    def html_table_to_row_chunks(self, content: str, max_rows: int = 3) -> List[Dict[str, Any]]:
         """Builds compact retrieval chunks from HTML table rows.
 
         The full HTML table is still indexed separately. These row chunks make
@@ -113,10 +113,15 @@ class HeadingAwareSplitter:
                     lines.append("- " + "; ".join(values))
                 else:
                     lines.append("- " + " | ".join(value for value in row if value))
-            chunks.append("\n".join(lines))
+            chunks.append({
+                "type": "table_row_index",
+                "content": "\n".join(lines),
+                "row_start": start + 1,
+                "row_end": start + len(group),
+            })
         return chunks
 
-    def split_text_with_table_awareness(self, text: str) -> List[str]:
+    def split_text_with_table_awareness(self, text: str) -> List[Dict[str, Any]]:
         """
         Parses text into blocks (text and tables) and packages them into chunks.
         Markdown tables under 1500 characters are kept completely intact.
@@ -193,17 +198,17 @@ class HeadingAwareSplitter:
             if block["type"] == "table":
                 # Flush current text chunk if it has contents
                 if current_chunk:
-                    chunks.append("\n\n".join(current_chunk))
+                    chunks.append({"type": "text", "content": "\n\n".join(current_chunk)})
                     current_chunk = []
                     current_len = 0
                 
                 # Keep HTML tables intact so colspan/rowspan structure survives ingestion.
                 if self.is_html_table(block_content):
-                    chunks.append(block_content)
+                    chunks.append({"type": "html_table_full", "content": block_content})
                     chunks.extend(self.html_table_to_row_chunks(block_content))
                 # For markdown tables under 1500 characters, keep them intact
                 elif block_len < 1500:
-                    chunks.append(block_content)
+                    chunks.append({"type": "text", "content": block_content})
                 else:
                     # Giant table fallback: split row by row, carrying table headers
                     table_lines = block_content.split("\n")
@@ -214,23 +219,23 @@ class HeadingAwareSplitter:
                         
                         for line in table_lines[2:]:
                             if sub_len + len(line) > self.chunk_size:
-                                chunks.append(header + "\n" + "\n".join(sub_table))
+                                chunks.append({"type": "text", "content": header + "\n" + "\n".join(sub_table)})
                                 sub_table = [line]
                                 sub_len = len(header) + len(line)
                             else:
                                 sub_table.append(line)
                                 sub_len += len(line) + 1
                         if sub_table:
-                            chunks.append(header + "\n" + "\n".join(sub_table))
+                            chunks.append({"type": "text", "content": header + "\n" + "\n".join(sub_table)})
                     else:
-                        chunks.append(block_content)
+                        chunks.append({"type": "text", "content": block_content})
             else:
                 # Use standard recursive character splitter for text blocks
                 sub_chunks = self.recursive_splitter.split_text(block_content)
                 for sub_chunk in sub_chunks:
                     sub_chunk_len = len(sub_chunk)
                     if current_chunk and current_len + sub_chunk_len > self.chunk_size:
-                        chunks.append("\n\n".join(current_chunk))
+                        chunks.append({"type": "text", "content": "\n\n".join(current_chunk)})
                         current_chunk = [sub_chunk]
                         current_len = sub_chunk_len
                     else:
@@ -238,7 +243,7 @@ class HeadingAwareSplitter:
                         current_len += sub_chunk_len
                         
         if current_chunk:
-            chunks.append("\n\n".join(current_chunk))
+            chunks.append({"type": "text", "content": "\n\n".join(current_chunk)})
             
         return chunks
 
@@ -297,12 +302,22 @@ class HeadingAwareSplitter:
             # Split section using table-aware parser
             sub_chunks = self.split_text_with_table_awareness(parent_content)
             
+            table_counter = 0
+            current_table_id = ""
+            current_table_full_chunk_id = ""
+
             for idx, sub_chunk in enumerate(sub_chunks):
+                chunk_type = sub_chunk.get("type", "text")
+                raw_chunk_text = sub_chunk.get("content", "").strip()
+                if not raw_chunk_text:
+                    continue
+
                 meta = {
                     "source": filename,
                     "url": frontmatter_meta.get("url", f"file://{filename}"),
                     "category": category,
                     "parent_chunk_id": parent_chunk_id,
+                    "chunk_type": chunk_type,
                 }
                 
                 meta.update(frontmatter_meta)
@@ -313,15 +328,39 @@ class HeadingAwareSplitter:
                         headers.append(doc.metadata[h])
                 
                 meta["section"] = " > ".join(headers) if headers else "Introduction"
-                
-                # Enforce clean ASCII MD5 key to avoid DB crashes
-                unique_str = f"{filename}_{meta['section']}_{idx}"
-                meta["chunk_id"] = hashlib.md5(unique_str.encode('utf-8')).hexdigest()
+
+                if chunk_type == "html_table_full":
+                    table_counter += 1
+                    current_table_id = hashlib.md5(
+                        f"{filename}_{meta['section']}_table_{table_counter}".encode("utf-8")
+                    ).hexdigest()
+                    meta["table_id"] = current_table_id
+                    meta["table_title"] = meta["section"]
+                elif chunk_type == "table_row_index":
+                    meta["table_id"] = current_table_id
+                    meta["table_title"] = meta["section"]
+                    meta["row_start"] = sub_chunk.get("row_start")
+                    meta["row_end"] = sub_chunk.get("row_end")
+                    meta["derived_from"] = current_table_full_chunk_id
+
+                stable_basis = "|".join([
+                    str(meta.get("url", "")),
+                    filename,
+                    meta["section"],
+                    chunk_type,
+                    str(meta.get("table_id", "")),
+                    str(meta.get("row_start", "")),
+                    str(meta.get("row_end", "")),
+                    hashlib.md5(raw_chunk_text.encode("utf-8")).hexdigest(),
+                ])
+                meta["chunk_id"] = hashlib.md5(stable_basis.encode("utf-8")).hexdigest()
+                if chunk_type == "html_table_full":
+                    current_table_full_chunk_id = meta["chunk_id"]
                 
                 # Prepend semantic header path to subsequent chunks to preserve search relevance
-                chunk_text = sub_chunk
+                chunk_text = raw_chunk_text
                 if idx > 0 and meta["section"] != "Introduction":
-                    chunk_text = f"### {meta['section']}\n\n{sub_chunk}"
+                    chunk_text = f"### {meta['section']}\n\n{raw_chunk_text}"
                 
                 enriched_doc = Document(
                     page_content=chunk_text,
