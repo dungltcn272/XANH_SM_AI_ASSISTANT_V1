@@ -125,7 +125,14 @@ function shortTime(value) {
 }
 
 function Sparkline({ values = [], color = 'emerald', latency = false }) {
-  const safe = values.length ? values.map(Number).filter(Number.isFinite) : [0.42, 0.48, 0.45, 0.52, 0.49, 0.58, 0.61];
+  const safe = values.map(Number).filter(Number.isFinite);
+  if (safe.length < 2) {
+    return (
+      <div className="flex h-9 w-full items-center justify-center rounded border border-dashed border-slate-700/70 bg-slate-950/30 text-[10px] text-slate-600">
+        No history
+      </div>
+    );
+  }
   const max = Math.max(...safe, latency ? 1 : 0.01);
   const min = Math.min(...safe, 0);
   const range = max - min || 1;
