@@ -46,11 +46,14 @@ VEHICLE_SPEC_LABELS = {
     "productInfo.batteryCapacity": "Dung lượng pin (kWh) - khả dụng",
     "productInfo.dcFastChargingPower": "Công suất sạc nhanh DC",
     "productInfo.dcFastChargingPowerValue": "Công suất sạc nhanh DC",
+    "productInfo.maxChargingPower": "Công suất sạc tối đa (kW)",
+    "ProductInfo.maxChargingPower": "Công suất sạc tối đa (kW)",
     "productInfo.luggageVolume": "Thể tích khoang chứa hàng",
     "productInfo.luggageVolumeValue": "Thể tích khoang chứa hàng",
     "productInfo.brakeSystem": "Hệ thống phanh",
     "productInfo.brakeSystemValue": "Hệ thống phanh",
     "productInfoAdvanced.maxTorque": "Mô men xoắn cực đại (Nm)",
+    "productInfoAdvanced.range": "Quãng đường chạy một lần sạc đầy (km) - NEDC",
     "productInfoAdvanced.wheel_type": "Kích thước la-zăng",
     "productInfoAdvanced.fastChargeTime": "Thời gian nạp pin nhanh nhất",
     "productInfoAdvanced.batteryCapacity": "Dung lượng pin (kWh) - khả dụng",
@@ -96,11 +99,12 @@ class DeterministicCleaner:
                 return self.clean_news_list(html, title, url)
             return self.clean_news_detail(html, title, url)
 
+        if document_type == "vehicle" or self._looks_like_vehicle_url(url):
+            return self.clean_vehicle_page(html, title, url, category=category)
+
         if source_profile == "platform":
             if document_type == "platform_overview":
                 return self.clean_platform_overview(html, title, url)
-            if document_type == "vehicle" or self._looks_like_vehicle_url(url):
-                return self.clean_vehicle_page(html, title, url, category=category)
             return self.clean_platform_page(html, title, url, document_type=document_type)
 
         markdown = self.default_converter.html_to_markdown(html, title, url)
@@ -513,7 +517,7 @@ class DeterministicCleaner:
             if self._is_bike_vehicle(slug, vehicle_kind):
                 data["specs"].extend(self._extract_motorbike_js_specs(js_text, slug, next_data))
             else:
-                data["specs"].extend(self._extract_vehicle_js_specs(js_text))
+                data["specs"].extend(self._extract_vehicle_js_specs(js_text, next_data, slug))
         if next_data:
             if self._is_bike_vehicle(slug, vehicle_kind):
                 data["specs"].extend(self._extract_motorbike_message_specs(next_data, slug))
@@ -522,7 +526,10 @@ class DeterministicCleaner:
 
         data["images"] = self._dedupe_lines(data["images"])[:40]
         data["specs"] = self._dedupe_specs(data["specs"])
-        data["highlights"] = self._extract_vehicle_highlights(html, slug)
+        data["highlights"] = self._dedupe_lines(
+            self._extract_vehicle_message_highlights(next_data, slug)
+            + self._extract_vehicle_highlights(html, slug)
+        )[:12]
         return data
 
     def _vehicle_slug(self, url: str) -> str:
@@ -864,15 +871,16 @@ class DeterministicCleaner:
         except Exception:
             return value.replace(r"\/", "/").replace(r"\"", '"').replace(r"\n", "\n")
 
-    def _extract_vehicle_js_specs(self, js_text: str) -> list[dict]:
+    def _extract_vehicle_js_specs(self, js_text: str, next_data: Any = None, slug: str = "") -> list[dict]:
         specs = []
+        label_map = self._vehicle_translation_map(next_data, slug)
         patterns = [
             r'(?:title|label):\w+\("([^"]+)"\),value:\w+\("([^"]+)","([^"]*)"\)',
             r'(?:title|label):\w+\("([^"]+)"\),value:\w+\("([^"]+)",\{defaultValue:"([^"]*)"\}\)',
         ]
         for pattern in patterns:
             for label_key, value_key, value in re.findall(pattern, js_text):
-                label = VEHICLE_SPEC_LABELS.get(label_key)
+                label = label_map.get(label_key) or VEHICLE_SPEC_LABELS.get(label_key)
                 if not label or not value:
                     continue
                 specs.append({
@@ -880,6 +888,22 @@ class DeterministicCleaner:
                     "version": self._spec_version(value_key),
                     "value": value.strip(),
                 })
+        direct_pattern = re.compile(
+            r'(?:title|label):\w+\("([^"]+)"\),value:'
+            r'(?:(?:\w+\.has\("[^"]+"\)\?\w+\("[^"]+"\):)?'
+            r'"((?:\\.|[^"])*)"|\w+\("([^"]+)"(?:,[^)]*)?\))',
+            re.S,
+        )
+        for label_key, literal_value, translated_value_key in direct_pattern.findall(js_text):
+            label = label_map.get(label_key) or VEHICLE_SPEC_LABELS.get(label_key)
+            value = self._decode_js_string(literal_value) if literal_value else label_map.get(translated_value_key, "")
+            if not label or not value or label == value:
+                continue
+            specs.append({
+                "label": label,
+                "version": "Chung",
+                "value": re.sub(r"\s+", " ", value.strip()),
+            })
         return specs
 
     def _extract_vehicle_message_specs(self, data: Any, slug: str) -> list[dict]:
@@ -901,7 +925,7 @@ class DeterministicCleaner:
 
         def visit_product_info(node: Any, key: str = "") -> None:
             if isinstance(node, dict):
-                if key == "productInfo":
+                if key in {"productInfo", "ProductInfo", "productInfoAdvanced", "ProductInfoAdvanced"}:
                     message_dicts.append(node)
                 for child_key, child in node.items():
                     if isinstance(child, (dict, list)):
@@ -916,17 +940,61 @@ class DeterministicCleaner:
         if not message_dicts:
             visit_product_info(data)
         for info in message_dicts:
-            for key, value in info.items():
-                label = VEHICLE_SPEC_LABELS.get(f"productInfo.{key}")
-                if not label or not isinstance(value, str):
-                    continue
-                if key.endswith("Value") or re.search(r"\d", value):
-                    specs.append({
-                        "label": label,
-                        "version": "Chung",
-                        "value": value.strip(),
-                    })
+            self._append_vehicle_message_specs(specs, info, "productInfo")
         return specs
+
+    def _append_vehicle_message_specs(self, specs: list[dict], info: dict, prefix: str) -> None:
+        for key, value in info.items():
+            if isinstance(value, dict) and key == "value":
+                for nested_key, nested_value in value.items():
+                    label = info.get(nested_key) or VEHICLE_SPEC_LABELS.get(f"{prefix}.{nested_key}")
+                    if label and isinstance(nested_value, str):
+                        specs.append({
+                            "label": str(label).strip(),
+                            "version": "Chung",
+                            "value": re.sub(r"\s+", " ", nested_value.strip()),
+                        })
+                continue
+            if not isinstance(value, str):
+                continue
+            if key.endswith("_value"):
+                label_key = key[:-6]
+            elif key.endswith("Value"):
+                label_key = key[:-5]
+            else:
+                label_key = key
+            label = info.get(label_key) or VEHICLE_SPEC_LABELS.get(f"{prefix}.{label_key}") or VEHICLE_SPEC_LABELS.get(f"{prefix}.{key}")
+            if not label or label == value:
+                continue
+            if key.endswith(("_value", "Value")) or re.search(r"\d", value):
+                specs.append({
+                    "label": str(label).strip(),
+                    "version": "Chung",
+                    "value": re.sub(r"\s+", " ", value.strip()),
+                })
+
+    def _vehicle_translation_map(self, data: Any, slug: str) -> dict[str, str]:
+        messages = self._find_vehicle_messages(data, slug)
+        values: dict[str, str] = {}
+
+        def visit(node: Any, path: str = "") -> None:
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    child_path = f"{path}.{key}" if path else str(key)
+                    if isinstance(value, str) and value.strip():
+                        values[child_path] = re.sub(r"\s+", " ", value.strip())
+                    elif isinstance(value, (dict, list)):
+                        visit(value, child_path)
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    if isinstance(value, str) and value.strip():
+                        values[f"{path}.{index}"] = re.sub(r"\s+", " ", value.strip())
+                    elif isinstance(value, (dict, list)):
+                        visit(value, f"{path}.{index}")
+
+        if isinstance(messages, dict):
+            visit(messages)
+        return values
 
     def _find_vehicle_messages(self, data: Any, slug: str) -> dict:
         vehicle_key = self._vehicle_message_key(slug)
@@ -948,6 +1016,77 @@ class DeterministicCleaner:
             return {}
 
         return visit(data)
+
+    def _extract_vehicle_message_highlights(self, data: Any, slug: str) -> list[str]:
+        messages = self._find_vehicle_messages(data, slug)
+        if not isinstance(messages, dict):
+            return []
+
+        highlights: list[str] = []
+        meta = messages.get("meta")
+        if isinstance(meta, dict):
+            for key in ["title", "description"]:
+                value = self._clean_vehicle_text(meta.get(key))
+                if value:
+                    highlights.append(value)
+
+        section_keys = sorted(
+            [key for key, value in messages.items() if isinstance(value, dict) and re.match(r"^(sec|section)\d+", str(key), re.I)],
+            key=self._natural_key,
+        )
+        for key in section_keys:
+            section = messages.get(key)
+            if not isinstance(section, dict):
+                continue
+            title = self._join_vehicle_texts(section.get("title"), section.get("title1"), section.get("title2"))
+            description = self._join_vehicle_texts(section.get("description"), section.get("des"))
+            if title and description:
+                highlights.append(f"{title}: {description}")
+            elif title:
+                highlights.append(title)
+            elif description:
+                highlights.append(description)
+
+            indexes = sorted({
+                int(match.group(1))
+                for child_key in section
+                if (match := re.fullmatch(r"sub(?:Title|Des)(\d+)", str(child_key)))
+            })
+            untitled_descriptions: list[str] = []
+            for index in indexes:
+                sub_title = self._clean_vehicle_text(section.get(f"subTitle{index}"))
+                sub_description = self._clean_vehicle_text(section.get(f"subDes{index}"))
+                if sub_title and sub_description and len(sub_title) <= 90:
+                    highlights.append(f"{sub_title}: {sub_description}")
+                    continue
+                else:
+                    if sub_title:
+                        highlights.append(sub_title)
+                    if sub_description:
+                        untitled_descriptions.append(sub_description)
+                    continue
+            if title and untitled_descriptions:
+                highlights.append(f"{title}: {'; '.join(untitled_descriptions)}")
+            else:
+                highlights.extend(untitled_descriptions)
+
+        return [
+            item
+            for item in self._dedupe_lines(highlights)
+            if self._is_vehicle_content_block(item, slug, allow_long=True)
+        ]
+
+    def _join_vehicle_texts(self, *values: Any) -> str:
+        parts = [self._clean_vehicle_text(value) for value in values]
+        return " ".join(part for part in parts if part)
+
+    def _clean_vehicle_text(self, value: Any) -> str:
+        if not isinstance(value, str):
+            return ""
+        return re.sub(r"\s+", " ", value.replace("$undefined", "")).strip(" :-")
+
+    def _natural_key(self, value: Any) -> list[Any]:
+        return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", str(value))]
 
     def _vehicle_message_key(self, slug: str) -> str:
         return {
@@ -1016,12 +1155,15 @@ class DeterministicCleaner:
                 blocks.append(text)
         return "\n\n".join(self._dedupe_lines(blocks))
 
-    def _is_vehicle_content_block(self, text: str, slug: str) -> bool:
-        if len(text) < 35 or len(text) > 420:
+    def _is_vehicle_content_block(self, text: str, slug: str, allow_long: bool = False) -> bool:
+        max_len = 900 if allow_long else 420
+        if len(text) < 20 or len(text) > max_len:
             return False
         folded = self._fold_text(text)
         normalized_slug = self._normalize_vehicle_key(slug)
         if text.startswith("http") or "platform-static.car-trading" in text:
+            return False
+        if "?order-type=" in folded or "order type" in folded:
             return False
         junk_terms = [
             "du toan", "dang ky", "coc mua", "tai ngay", "hotline", "footer",
@@ -1044,6 +1186,14 @@ class DeterministicCleaner:
             "thong so ky thuat",
             "quang duong",
             "cong suat",
+            "hieu suat",
+            "pin",
+            "phanh",
+            "chong nuoc",
+            "quan ly thong minh",
+            "lam chu hanh trinh",
+            "toi uu chay dich vu",
+            "dong xe toi uu",
         ]
         vehicle_terms = [term for term in vehicle_terms if len(term) >= 3]
         return any(term in folded or term in self._normalize_vehicle_key(text) for term in vehicle_terms)
