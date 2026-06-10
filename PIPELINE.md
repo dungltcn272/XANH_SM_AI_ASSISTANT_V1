@@ -1,8 +1,8 @@
-# Kien truc RAG Pipeline hien tai
+# Kiến trúc RAG Pipeline hiện tại
 
-Tai lieu nay mo ta pipeline dang chay cua Xanh SM RAG sau khi safety duoc dua ve tang dau vao va benchmark co lich su so sanh theo tung lan eval.
+Tài liệu này mô tả pipeline đang chạy của Xanh SM RAG sau khi safety được đưa về tầng đầu vào và benchmark có lịch sử so sánh theo từng lần eval.
 
-## So do tong quan
+## Sơ đồ tổng quan
 
 ```mermaid
 graph TD
@@ -37,79 +37,79 @@ graph TD
 
 ## 1. Input Gateway Safety
 
-Gateway chay truoc cache, NLU, retriever va LLM. Tang nay chan som cac cau hoi co dau hieu prompt injection, yeu cau lo system prompt/API key/cau hinh noi bo, hoac yeu cau boi nho khong co can cu.
+Gateway chạy trước cache, NLU, retriever và LLM. Tầng này chặn sớm các câu hỏi có dấu hiệu prompt injection, yêu cầu lộ system prompt/API key/cấu hình nội bộ, hoặc yêu cầu bôi nhọ không có căn cứ.
 
-Viec chan o dau vao giup answer path khong phai quet lai cau tra loi hop le. Day la thay doi quan trong de tranh false-positive voi cac cau tra loi co thong so ky thuat nhu EC Van.
+Việc chặn ở đầu vào giúp answer path không phải quét lại câu trả lời hợp lệ. Đây là thay đổi quan trọng để tránh false-positive với các câu trả lời có thông số kỹ thuật như EC Van.
 
 ## 2. Early Exact Cache
 
-Sau khi cau hoi vuot qua gateway, he thong tim exact match trong `SemanticCache` bang cau hoi tho da normalize. Neu hit, cau tra loi duoc tra ve ngay qua SSE voi latency rat thap va khong ton token LLM.
+Sau khi câu hỏi vượt qua gateway, hệ thống tìm exact match trong `SemanticCache` bằng câu hỏi thô đã normalize. Nếu hit, câu trả lời được trả về ngay qua SSE với latency rất thấp và không tốn token LLM.
 
 ## 3. Unified NLU Gateway
 
-`UNIFIED_NLU_PROMPT` gom cac viec tien RAG vao mot lan goi LLM:
+`UNIFIED_NLU_PROMPT` gom các việc tiền RAG vào một lần gọi LLM:
 
-- `intent`: phan loai `rag`, `small-talk`, hoac `sensitive`.
-- `rewritten_query`: viet lai cau hoi doc lap, ngan, ro keyword.
-- `expanded_queries`: sinh toi da mot bien the dong nghia de ho tro retrieval.
-- `suggested_answer`: tra nhanh cho small-talk khi phu hop.
+- `intent`: phân loại `rag`, `small-talk`, hoặc `sensitive`.
+- `rewritten_query`: viết lại câu hỏi độc lập, ngắn, rõ keyword.
+- `expanded_queries`: sinh tối đa một biến thể đồng nghĩa để hỗ trợ retrieval.
+- `suggested_answer`: trả nhanh cho small-talk khi phù hợp.
 
-`max_tokens` NLU dang duoc giam nhe xuong `220`. Anh huong du kien thap vi output NLU la JSON ngan; doi lai giam tran sinh token, chi phi va latency xau nhat. Ruu ro chinh la JSON bi cat neu prompt sinh qua dai, nhung pipeline da co fallback rule-based khi parse loi.
+`max_tokens` NLU đang được giảm nhẹ xuống `220`. Ảnh hưởng dự kiến thấp vì output NLU là JSON ngắn; đổi lại giúp giảm trần sinh token, chi phí và latency xấu nhất. Rủi ro chính là JSON bị cắt nếu prompt sinh quá dài, nhưng pipeline đã có fallback rule-based khi parse lỗi.
 
 ## 4. Second Exact Cache
 
-Neu NLU tra ve intent `rag`, pipeline kiem tra cache lan hai bang `rewritten_query`. Lop cache nay bat duoc cac cau hoi dien dat khac nhau nhung cung y nghia.
+Nếu NLU trả về intent `rag`, pipeline kiểm tra cache lần hai bằng `rewritten_query`. Lớp cache này bắt được các câu hỏi diễn đạt khác nhau nhưng cùng ý nghĩa.
 
 ## 5. Hybrid Retrieval
 
-Retriever ket hop:
+Retriever kết hợp:
 
-- Dense vector voi OpenAI embedding.
+- Dense vector với OpenAI embedding.
 - Sparse/BM25 trong Qdrant.
-- SQL keyword fallback tren `document_chunks` de bat cac cum literal, ma xe, gia, chinh sach hoac so lieu ma vector search co the bo sot.
-- Metadata/domain hints de uu tien dung nhom tai lieu.
+- SQL keyword fallback trên `document_chunks` để bắt các cụm literal, mã xe, giá, chính sách hoặc số liệu mà vector search có thể bỏ sót.
+- Metadata/domain hints để ưu tiên đúng nhóm tài liệu.
 
-Ket qua tho duoc hop nhat va khu trung truoc khi dua sang reranker.
+Kết quả thô được hợp nhất và khử trùng trước khi đưa sang reranker.
 
 ## 6. Cohere Reranker
 
-Pipeline dung Cohere rerank de sap xep lai cac chunk ung vien theo muc do lien quan truc tiep voi cau hoi da rewrite. Sau rerank, he thong giu top chunk tot nhat de tranh dua qua nhieu context nhieu vao LLM.
+Pipeline dùng Cohere rerank để sắp xếp lại các chunk ứng viên theo mức độ liên quan trực tiếp với câu hỏi đã rewrite. Sau rerank, hệ thống giữ top chunk tốt nhất để tránh đưa quá nhiều context nhiễu vào LLM.
 
 ## 7. Parent / Section Context Expansion
 
-Voi chunk co diem rerank du cao, pipeline mo rong theo `parent_chunk_id` hoac section lien quan de lay tron bang bieu/dieu khoan/chinh sach. Voi chunk diem thap hon, pipeline giu chunk goc de tranh lam loang context.
+Với chunk có điểm rerank đủ cao, pipeline mở rộng theo `parent_chunk_id` hoặc section liên quan để lấy trọn bảng biểu/điều khoản/chính sách. Với chunk điểm thấp hơn, pipeline giữ chunk gốc để tránh làm loãng context.
 
-Trong buoc nay he thong cung dedupe header va noi dung trung lap de giam prompt size.
+Trong bước này hệ thống cũng dedupe header và nội dung trùng lặp để giảm prompt size.
 
 ## 8. LLM Synthesis & SSE
 
-LLM nhan context da rerank/mo rong, cau hoi da rewrite va lich su hoi thoai gan nhat. Cau tra loi duoc stream ve client qua SSE kem sources/citations.
+LLM nhận context đã rerank/mở rộng, câu hỏi đã rewrite và lịch sử hội thoại gần nhất. Câu trả lời được stream về client qua SSE kèm sources/citations.
 
-Safety chinh nam o Input Gateway/NLU. Output guardrail khong con la node chan chinh tren duong sinh cau tra loi de tranh chan nham noi dung hop le.
+Safety chính nằm ở Input Gateway/NLU. Output guardrail không còn là node chặn chính trên đường sinh câu trả lời để tránh chặn nhầm nội dung hợp lệ.
 
 ## 9. Semantic Cache Saving
 
-Sau khi sinh cau tra loi thanh cong, pipeline luu cache cho ca cau hoi goc va cau hoi da rewrite. Nhung lan hoi sau co the hit o Early Cache hoac Second Cache.
+Sau khi sinh câu trả lời thành công, pipeline lưu cache cho cả câu hỏi gốc và câu hỏi đã rewrite. Những lần hỏi sau có thể hit ở Early Cache hoặc Second Cache.
 
 ## 10. Evaluation & History
 
-`evaluation/ragas_eval.py` doc `evaluation/golden_dataset.json`, chay qua RAG pipeline va xuat `evaluation_report.json`.
+`evaluation/ragas_eval.py` đọc `evaluation/golden_dataset.json`, chạy qua RAG pipeline và xuất `evaluation_report.json`.
 
-Benchmark ket hop:
+Benchmark kết hợp:
 
 - Retrieval metrics heuristic: Recall@5, Recall@10, MRR, NDCG@5.
-- LLM-as-Judge: faithfulness, correctness, relevancy, va context recall khi co OpenAI API key.
-- Latency trung binh va latency tung case.
+- LLM-as-Judge: faithfulness, correctness, relevancy, và context recall khi có OpenAI API key.
+- Latency trung bình và latency từng case.
 
-Moi lan eval ghi them snapshot vao bang `evaluation_runs`, gom metrics tong, details JSON, model, dataset, total cases va thoi diem chay. Admin UI doc `/api/admin/eval/runs` de hien recent runs, trend va delta so voi lan truoc.
+Mỗi lần eval ghi thêm snapshot vào bảng `evaluation_runs`, gồm metrics tổng, details JSON, model, dataset, total cases và thời điểm chạy. Admin UI đọc `/api/admin/eval/runs` để hiển thị recent runs, trend và delta so với lần trước.
 
-## Cac nguon latency chinh
+## Các nguồn latency chính
 
-Latency cao thuong den tu bon diem:
+Latency cao thường đến từ bốn điểm:
 
-- NLU LLM call: da giam output budget xuong `220`, nhung van la mot network/API call.
-- Embedding + hybrid retrieval: phu thuoc Qdrant, SQL fallback va kich thuoc tap ung vien.
-- Cohere rerank: la API call rieng, thuong ton them hang tram ms den vai giay neu network cham.
-- LLM synthesis: phu thuoc do dai context sau expansion va do dai cau tra loi; day thuong la phan lon nhat neu context/document dai.
+- NLU LLM call: đã giảm output budget xuống `220`, nhưng vẫn là một network/API call.
+- Embedding + hybrid retrieval: phụ thuộc Qdrant, SQL fallback và kích thước tập ứng viên.
+- Cohere rerank: là API call riêng, thường tốn thêm hàng trăm ms đến vài giây nếu network chậm.
+- LLM synthesis: phụ thuộc độ dài context sau expansion và độ dài câu trả lời; đây thường là phần lớn nhất nếu context/document dài.
 
-Cache hit la cach giam latency manh nhat vi bo qua NLU, retrieval, rerank va generation.
+Cache hit là cách giảm latency mạnh nhất vì bỏ qua NLU, retrieval, rerank và generation.

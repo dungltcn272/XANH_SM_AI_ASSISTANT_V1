@@ -132,7 +132,7 @@ graph TD
 ```
 
 ### Chi tiết các công nghệ và thông số kỹ thuật:
-Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 10 Node xử lý độc lập từ đầu vào đến đầu ra, kết hợp nhiều kỹ thuật nâng cao để tối ưu hóa độ trễ, tài nguyên và độ chính xác:
+Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 Node xử lý độc lập từ đầu vào đến đầu ra, kết hợp nhiều kỹ thuật nâng cao để tối ưu hóa độ trễ, tài nguyên và độ chính xác:
 
 1. **NODE 1: API Gateway & Input Guardrail (Kiểm duyệt đầu vào)**
    - **Công nghệ áp dụng**: Thư viện biểu thức chính quy (`re` Python) kết hợp bộ quy tắc phân loại cục bộ.
@@ -181,9 +181,9 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 10 
    - **Logic xử lý**: Nhận prompt chứa toàn bộ ngữ cảnh đã qua giải nén parent-child, câu hỏi chuẩn hóa và lịch sử hội thoại gần nhất. LLM tổng hợp câu trả lời khách quan, trung thực dựa trên tài liệu được cung cấp và truyền dữ liệu từng chữ về client qua giao thức **Server-Sent Events (SSE)** kèm Metadata nguồn trích dẫn (`sources`).
    - **Thông số kỹ thuật**: Nhiệt độ `temperature = 0.2` (giảm thiểu tối đa ảo tưởng thông tin), `max_tokens = 2048`. Chỉ số độ trễ xử lý của máy chủ (`TTFT - Time To First Token`) được chốt ngay khi nhận ký tự đầu tiên từ OpenAI để phản ánh trung thực hiệu năng máy chủ.
 
-9. **NODE 9: Semantic Cache Saving & Output (Luu cache va tra ket qua)**
-    - **Cong nghe ap dung**: PostgreSQL / SQLite Cache Storage.
-    - **Logic xu ly**: Sau khi sinh cau tra loi, he thong luu cau tra loi hop le vao `SemanticCache` cho ca hai khoa: cau hoi tho ban dau (Node 2) va cau hoi da duoc chuan hoa (Node 4) nham toi da hoa co hoi Cache Hit cho cac luot truy van tuong lai. Cac co gang prompt injection, lo system prompt/API key/cau hinh noi bo va yeu cau boi nho khong can cu duoc chan som o Input Gateway/NLU safety, giup answer path khong bi false-positive voi cau tra loi hop le.
+9. **NODE 9: Semantic Cache Saving & Output (Lưu cache và trả kết quả)**
+    - **Công nghệ áp dụng**: PostgreSQL / SQLite Cache Storage.
+    - **Logic xử lý**: Sau khi sinh câu trả lời, hệ thống lưu câu trả lời hợp lệ vào `SemanticCache` cho cả hai khóa: câu hỏi thô ban đầu (Node 2) và câu hỏi đã được chuẩn hóa (Node 4) nhằm tối đa hóa cơ hội Cache Hit cho các lượt truy vấn tương lai. Các cố gắng prompt injection, lộ system prompt/API key/cấu hình nội bộ và yêu cầu bôi nhọ không căn cứ được chặn sớm ở Input Gateway/NLU safety, giúp answer path không bị false-positive với câu trả lời hợp lệ.
 ---
 
 ## 🧱 2.1 Ghi Chú Thay Đổi Kiến Trúc Knowledge Builder
