@@ -1,176 +1,50 @@
-# PLAN: Production Knowledge Pipeline
+# 🚀 Lộ trình Tối ưu hóa RAG Xanh SM (Go-Live Readiness Plan)
 
-## Trạng thái đã chốt
+Dựa trên báo cáo đánh giá `evaluation_report.json`, hệ thống đã đạt độ chính xác (Correctness) 87% và độ trung thực (Faithfulness) 99%. Tuy nhiên, để đạt chuẩn Production cao cấp, chúng ta cần xử lý 3 nhược điểm chính: **Latency cao (>10s)**, **Xử lý câu hỏi mơ hồ**, và **Độ phủ ở các Case khó**.
 
-- Crawler production dùng hướng thuần code, không dùng agent mặc định.
-- Admin quản lý URL qua `crawler/urls.json` và DB `crawl_sources`.
-- `Sync urls.json` dùng để đồng bộ metadata từ file vào DB.
-- Crawler chỉ sinh Markdown/PDF-Markdown trong `data/`.
-- `Clear ALL Knowledge` và `Ingest ALL From data/` là hai thao tác riêng.
-- Nhóm dữ liệu hiện tại:
-  - `user`, `merchant`, `driver`, `green-care`, `helps`, `term-policies`
-  - `vehicle`
-  - `news`
-  - `pdf`
-  - `overview`
+---
 
-## Việc còn cần xử lý
+## 🛠️ Giai đoạn 1: Tối ưu hóa hiệu năng (Latency Reduction)
+**Mục tiêu:** Giảm thời gian phản hồi trung bình từ 10.2s xuống < 6s thông qua xử lý song song.
 
-### 1. Audit Markdown sau crawl
+- [ ] **1.1. Tối ưu hóa Bất đồng bộ (Full Async & Parallelization):** 
+    - Thực hiện truy vấn đồng thời Vector DB (Qdrant) và BM25 thay vì tuần tự.
+    - Gọi API Reranker (Cohere) và các bước xử lý NLU bằng `asyncio.gather` để giảm "blocking time".
+- [ ] **1.2. Tinh chỉnh Reranker & Retrieval:**
+    - Giảm `RETRIEVAL_CANDIDATE_LIMIT` từ 25 xuống 15 để giảm khối lượng tính toán cho Reranker.
+    - Tối ưu hóa số lượng chunk truyền vào LLM (`RERANK_TOP_N`) để giảm thời gian Inference của GPT-4o-mini.
+- [ ] **1.3. Cơ chế Exact Cache (Duy trì hiện tại):**
+    - Giữ nguyên cơ chế Exact Match hiện có để đảm bảo an toàn tuyệt đối cho Production. Tạm hoãn (Delay) việc nâng cấp Semantic Cache để nghiên cứu thêm về vấn đề phủ định (negation).
 
-- Crawl thử từng nhóm nhỏ: `vehicle`, `news`, `pdf`.
-- Kiểm tra file Markdown có còn CTA/sidebar/menu/text lặp không.
-- Kiểm tra trang xe có giữ được giá, thông số, ảnh chính và điều kiện mua/thuê không.
-- Kiểm tra news detail có giữ đủ nội dung bài và bỏ được phần bài viết gần đây/sidebar không.
-- Kiểm tra PDF có đủ số trang, bảng và điều khoản quan trọng.
+## 🧠 Giai đoạn 2: Nâng cao trí tuệ & Độ chính xác (Quality Boost)
+**Mục tiêu:** Nâng Correctness cho Hard cases từ 86% lên > 92%.
 
-### 2. Bổ sung OCR hybrid cho ảnh/PDF dạng slide
+- [ ] **2.1. Layout-aware Chunking (PDF):**
+    - Cải thiện việc đọc bảng biểu trong các file chính sách tài xế/mua xe để không bị mất ngữ cảnh hàng/cột.
+- [ ] **2.2. Query Expansion (Multi-Query):**
+    - Nâng cấp khả năng diễn giải Query để tìm được nhiều tài liệu liên quan hơn cho các câu hỏi phức tạp.
+- [ ] **2.3. Xử lý Ambiguity (Gateway):**
+    - Thêm bước phân loại: Nếu câu hỏi quá mơ hồ, AI sẽ hỏi lại thay vì trả lời sai.
 
-Vấn đề: nhiều bài news và PDF có bảng/chính sách nằm trong ảnh. Parser HTML/PDF text hiện tại có thể bỏ sót.
+## 🛡️ Giai đoạn 3: Guardrail & Multimedia (UX & Safety)
+**Mục tiêu:** Hiển thị trực quan và bảo mật dữ liệu.
 
-Hướng xử lý:
+- [ ] **3.1. Multimedia Mapping (Images):**
+    - Hoàn thiện module `domain_vocabulary.py` để mapping chuẩn xác ảnh xe/banner theo từ khóa.
+- [ ] **3.2. Prompt Engineering:**
+    - Ép định dạng Markdown Table và Bullet points cho câu trả lời để dễ đọc trên UI.
+    - Củng cố Guardrail ngăn chặn Prompt Injection.
 
-- Thêm `image_extractor.py` để lấy ảnh từ HTML/PDF.
-- Thêm `image_classifier.py` để lọc ảnh đáng OCR:
-  - ảnh lớn trong nội dung bài viết,
-  - ảnh có alt/title chứa chính sách, thưởng, phí, cước, bảng giá, thu nhập,
-  - bài viết ít text nhưng nhiều ảnh,
-  - PDF page ít text nhưng nhiều image.
-- Thêm `image_ocr.py` dùng OCR local trước, ví dụ PaddleOCR hoặc EasyOCR.
-- Thêm `vision_parser.py` chỉ dùng khi ảnh quan trọng, nhiều bảng/cột, hoặc OCR confidence thấp.
-- Thêm `document_merger.py` để gộp OCR Markdown vào tài liệu gốc.
+---
 
-Markdown OCR nên có dạng:
+## 📊 Kế hoạch kiểm thử (Validation)
+Sau mỗi thay đổi, cần chạy lại pipeline đánh giá:
+1. `python evaluation/ragas_eval.py`
+2. Kiểm tra `evaluation_report.json`:
+    - `average_latency_sec` < 6.0
+    - `hard_avg_recall_5` > 0.85
+    - `ambiguity_correctness` > 0.80
 
-```markdown
-## Nội dung trích xuất từ ảnh
-
-### Ảnh: <alt hoặc tên ảnh>
-
-Nguồn ảnh: <image_url>
-
-<nội dung OCR/vision đã chuẩn hóa>
-```
-
-Metadata OCR nên lưu kèm chunk:
-
-```json
-{
-  "source_type": "image_ocr",
-  "page_url": "...",
-  "image_url": "...",
-  "content_type": "policy_table",
-  "ocr_engine": "local|vision",
-  "ocr_confidence": 0.0
-}
-```
-
-### 3. Quality gate trước ingestion
-
-- Cảnh báo tài liệu có nhiều ảnh nhưng không có OCR text.
-- Cảnh báo PDF page nhiều image nhưng ít text.
-- Cảnh báo Markdown quá ngắn so với số ảnh/PDF page.
-- Cảnh báo bảng Markdown lỗi format.
-- Chỉ ingest sau khi audit output đạt yêu cầu.
-
-### 4. Tối ưu RAG sau khi dữ liệu sạch hơn
-
-- Ưu tiên `data/overview/*_catalog.md` cho câu hỏi tổng quan.
-- Duy trì domain vocabulary cho từ đồng nghĩa/sai chính tả.
-- Tiếp tục dùng hybrid search + SQL keyword fallback khi vector search miss.
-- Boost theo metadata `category`, `document_type`, `source_type`.
-- Kiểm thử lại các câu hỏi:
-  - danh mục Green SM gồm gì,
-  - phí/cước/phụ phí,
-  - chính sách thu nhập/thưởng,
-  - điều kiện mua/thuê xe,
-  - bảo hiểm/bồi thường.
-
-### 5. Retrieval-first metadata strategy cho Qdrant/PostgreSQL
-
-Mục tiêu: metadata không chỉ để mô tả tài liệu, mà phải đóng vai trò `retrieval control plane` để filter, boost, expand context và trace citation.
-
-Nguyên tắc:
-
-- Chỉ thêm/index field có tác dụng trực tiếp cho retrieval.
-- Qdrant payload lưu metadata đầy đủ hơn PostgreSQL.
-- PostgreSQL `document_chunks` cần đủ metadata tối thiểu để SQL keyword fallback không mất ngữ cảnh.
-- HTML table full chunk và row-index chunk phải cùng tồn tại:
-  - `html_table_full`: giữ nguyên `<table>` với `rowspan`/`colspan`.
-  - `table_row_index`: chunk nhỏ theo 1-3 dòng bảng để rank tốt hơn khi hỏi chi tiết.
-  - `text`: nội dung văn bản thường.
-
-Metadata nên có trên mỗi chunk:
-
-```json
-{
-  "url": "...",
-  "source": "Chinh_sach_ban_xe_may_dien_vinfast.md",
-  "title": "...",
-  "category": "pdf",
-  "document_type": "policy_pdf",
-  "source_type": "pdf",
-  "section": "...",
-  "parent_chunk_id": "...",
-  "chunk_id": "...",
-  "chunk_index": 12,
-  "chunk_type": "text | html_table_full | table_row_index",
-  "table_id": "table_001",
-  "table_title": "2.1 Chinh sach ban hang cua VinFast",
-  "row_start": 3,
-  "row_end": 5,
-  "derived_from": "chunk_id_of_full_table",
-  "page_range": "1-3"
-}
-```
-
-Qdrant payload indexes nên có:
-
-```text
-metadata.url
-metadata.parent_chunk_id
-metadata.chunk_index
-metadata.chunk_type
-metadata.category
-metadata.document_type
-metadata.source_type
-metadata.table_id
-metadata.derived_from
-```
-
-Không nhất thiết index các field như `title`, `section`, `table_title` nếu chỉ dùng để hiển thị/boost text. Vẫn nên lưu trong payload.
-
-Retrieval policy:
-
-- Search trên tất cả chunks.
-- Nếu hit `table_row_index`, dùng `derived_from` hoặc `table_id` để kéo thêm full HTML table.
-- Nếu hit `html_table_full`, giữ làm context đầy đủ, nhưng không phụ thuộc duy nhất vào vector của chunk lớn.
-- Boost nhẹ:
-  - `table_row_index` cho câu hỏi chi tiết về giá, chính sách, dòng xe, điều kiện.
-  - `html_table_full` cho câu hỏi "liệt kê", "so sánh", "bảng", "tất cả".
-  - `text` cho câu hỏi điều kiện/diễn giải.
-- Parent-child expansion vẫn dựa vào `parent_chunk_id` và sắp xếp bằng `chunk_index`.
-
-Rủi ro cần xử lý:
-
-- Nếu PostgreSQL chỉ lưu `source`, `section`, `content`, SQL keyword fallback sẽ mất `chunk_type`, `table_id`, `parent_chunk_id`.
-- `chunk_id` hiện hash theo `filename_section_idx`, có thể đổi nếu chunk order thay đổi.
-- Row-index chunk cần có `derived_from` để trace về full table và citation đúng.
-
-## Rủi ro còn lại
-
-- DB `crawl_sources` có thể còn metadata cũ nếu chưa bấm `Sync urls.json`.
-- Một số URL PDF có thể là viewer/redirect, cần admin thay bằng URL file thật.
-- OCR local có thể sai với ảnh nhiều cột hoặc chữ nhỏ.
-- Vision fallback tốn chi phí, chỉ nên bật có điều kiện.
-- Markdown OCR nếu không qua quality gate có thể làm vector DB nhiễu.
-
-## Luồng vận hành khuyến nghị
-
-1. Cập nhật `urls.json`.
-2. Bấm `Sync urls.json`.
-3. Crawl theo nhóm nhỏ.
-4. Audit Markdown.
-5. Nếu đạt: `Clear ALL Knowledge`.
-6. `Ingest ALL From data/`.
-7. Test RAG bằng bộ câu hỏi nghiệp vụ.
+---
+*Ngày lập kế hoạch: 10/06/2026*
+*Trạng thái: Đang thực hiện*
