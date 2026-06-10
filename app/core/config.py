@@ -49,10 +49,13 @@ class Settings(BaseSettings):
     # LLM & Embedding
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    NLU_MODEL: str = os.getenv("NLU_MODEL", "gpt-4o-mini")
     OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "900"))
     EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "openai")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    NLU_FAST_PATH_ENABLED: bool = os.getenv("NLU_FAST_PATH_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+    NLU_FAST_PATH_MIN_CHARS: int = int(os.getenv("NLU_FAST_PATH_MIN_CHARS", "28"))
 
     # Retrieval tuning
     RETRIEVAL_CANDIDATE_LIMIT: int = int(os.getenv("RETRIEVAL_CANDIDATE_LIMIT", "25"))

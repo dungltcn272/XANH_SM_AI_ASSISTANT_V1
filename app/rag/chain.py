@@ -250,6 +250,8 @@ class XanhSMRAGPipeline:
         intent = nlu_res["intent"]
         expanded_queries = nlu_res["expanded_queries"]
         nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+        nlu_fast_path = bool(nlu_res.get("fast_path"))
+        nlu_fast_path_reason = nlu_res.get("fast_path_reason")
 
         # 4. Handle Sensitive / Safety Block
         if intent == "sensitive":
@@ -266,7 +268,10 @@ class XanhSMRAGPipeline:
                 "llm_cost_usd": 0.0,
                 "llm_cost_vnd": 0.0,
                 "num_chunks_before_expansion": 0,
-                "compressed_context_len": 0
+                "compressed_context_len": 0,
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason
             }
 
         # 5. Handle Small Talk
@@ -286,7 +291,10 @@ class XanhSMRAGPipeline:
                 "strategy_selected": "Bypass",
                 "faithfulness_passed": True,
                 "llm_cost_usd": 0.0,
-                "llm_cost_vnd": 0.0
+                "llm_cost_vnd": 0.0,
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason
             }
 
         # 5. Second Cache Lookup
@@ -306,7 +314,10 @@ class XanhSMRAGPipeline:
                     "llm_cost_usd": 0.0,
                     "llm_cost_vnd": 0.0,
                     "cache_hit": hit_res.get("cache_hit", "exact"),
-                    "cache_similarity": hit_res.get("cache_similarity", 1.0)
+                    "cache_similarity": hit_res.get("cache_similarity", 1.0),
+                    "nlu_latency_ms": round(nlu_latency, 2),
+                    "nlu_fast_path": nlu_fast_path,
+                    "nlu_fast_path_reason": nlu_fast_path_reason
                 }
 
         # 6. Search Strategy Selection
@@ -382,6 +393,9 @@ class XanhSMRAGPipeline:
             "expanded_queries": expanded_queries,
             "compressed_context_len": len(compressed_context),
             "num_chunks_before_expansion": num_chunks_before_expansion,
+            "nlu_latency_ms": round(nlu_latency, 2),
+            "nlu_fast_path": nlu_fast_path,
+            "nlu_fast_path_reason": nlu_fast_path_reason,
             "intent": intent,
             "gateway_checked": True,
             "strategy_selected": strategy,
@@ -441,6 +455,8 @@ class XanhSMRAGPipeline:
         intent = nlu_res["intent"]
         expanded_queries = nlu_res["expanded_queries"]
         nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+        nlu_fast_path = bool(nlu_res.get("fast_path"))
+        nlu_fast_path_reason = nlu_res.get("fast_path_reason")
 
         # 3. Handle Sensitive / Safety Block from NLU
         if intent == "sensitive":
@@ -463,6 +479,9 @@ class XanhSMRAGPipeline:
                 "expanded_docs": [],
                 "num_chunks_before_expansion": 0,
                 "compressed_context_len": 0,
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason,
                 "token_usage": {
                     "unified_nlu": nlu_usage,
                     "generation": {"prompt_tokens": 0, "completion_tokens": 0},
@@ -491,6 +510,9 @@ class XanhSMRAGPipeline:
                 "raw_candidates": [],
                 "reranked_docs": [],
                 "expanded_docs": [],
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason,
                 "token_usage": {
                     "unified_nlu": nlu_usage,
                     "generation": {"prompt_tokens": 0, "completion_tokens": 0},
@@ -592,6 +614,9 @@ class XanhSMRAGPipeline:
             "expanded_queries": expanded_queries,
             "compressed_context_len": len(compressed_context),
             "num_chunks_before_expansion": len(top_docs),
+            "nlu_latency_ms": round(nlu_latency, 2),
+            "nlu_fast_path": nlu_fast_path,
+            "nlu_fast_path_reason": nlu_fast_path_reason,
             "intent": intent,
             "gateway_checked": True,
             "safety_res": {"safe": True, "reason": ""},
@@ -690,6 +715,8 @@ class XanhSMRAGPipeline:
         metrics["rewritten_query"] = rewritten_query
         metrics["intent"] = intent
         metrics["expanded_queries"] = expanded_queries
+        metrics["nlu_fast_path"] = bool(nlu_res.get("fast_path"))
+        metrics["nlu_fast_path_reason"] = nlu_res.get("fast_path_reason")
         metrics["total_tokens"] += nlu_usage.get("prompt_tokens", 0) + nlu_usage.get("completion_tokens", 0)
         
         # Calculate NLU/Rewrite cost immediately so it is recorded even if generating fails/is interrupted

@@ -4,6 +4,7 @@ from typing import List
 from openai import OpenAI
 from app.core.config import settings as config
 from app.core.logger import log_warn
+from app.rag.domain_vocabulary import enrich_queries
 
 class XanhSMQueryExpansion:
     """
@@ -37,7 +38,7 @@ class XanhSMQueryExpansion:
                 for syn in synonyms:
                     if syn not in expanded:
                         expanded.append(syn)
-        return expanded
+        return enrich_queries(query, expanded, max_queries=8)
 
     def expand_query_llm(self, query: str) -> List[str]:
         """
@@ -59,7 +60,7 @@ class XanhSMQueryExpansion:
             )
             
             response = client.chat.completions.create(
-                model=config.LLM_MODEL,
+                model=config.NLU_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
                 max_tokens=120,
@@ -75,7 +76,7 @@ class XanhSMQueryExpansion:
             for val in data.values():
                 if isinstance(val, list):
                     # Limit to 1 extra query to avoid search noise
-                    return [query] + val[:1]
+                    return enrich_queries(query, [query] + val[:1], max_queries=8)
             return self.expand_query_rule_based(query)
         except Exception as e:
             log_warn("RETRIEVAL", f"LLM Query Expansion failed: {str(e)}. Falling back to rule-based.")

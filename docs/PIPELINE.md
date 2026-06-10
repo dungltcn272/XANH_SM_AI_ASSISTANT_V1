@@ -1,6 +1,6 @@
 # Kiến trúc RAG Pipeline hiện tại
 
-Tài liệu này mô tả pipeline đang chạy của Xanh SM RAG sau khi safety được đưa về tầng đầu vào và benchmark có lịch sử so sánh theo từng lần eval.
+Tài liệu này mô tả pipeline đang chạy của Xanh SM RAG sau khi safety được đưa về tầng đầu vào, NLU có fast-path cho câu RAG rõ ràng, và benchmark có lịch sử so sánh theo từng lần eval.
 
 ## Sơ đồ tổng quan
 
@@ -12,26 +12,31 @@ graph TD
     C -- Safe --> D{Early Exact Cache}
 
     D -- Hit --> O([SSE Answer + Sources])
-    D -- Miss --> E[Unified NLU: intent + rewrite + expansion]
+    D -- Miss --> E{NLU Fast-path Eligible?}
 
-    E -- small-talk --> S[Fast Small-talk Response]
-    E -- sensitive --> X
-    E -- rag --> F{Second Exact Cache}
+    E -- Yes: clear domain RAG query --> E1[Rule-based RAG NLU + Query Expansion]
+    E -- No: context rewrite / ambiguous --> E2[LLM Unified NLU: intent + rewrite + expansion]
 
-    F -- Hit --> O
-    F -- Miss --> G[Hybrid Retrieval: Dense + Sparse + SQL Keyword Fallback]
-    G --> H[Cohere Reranker]
-    H --> I[Parent / Section Context Expansion]
-    I --> J[LLM Synthesis]
-    J --> K[Save Semantic Cache]
-    K --> O
+    E1 --> F{Intent}
+    E2 --> F
+    F -- small-talk --> S[Fast Small-talk Response]
+    F -- sensitive --> X
+    F -- rag --> G{Second Exact Cache}
+
+    G -- Hit --> O
+    G -- Miss --> H[Hybrid Retrieval: Dense + Sparse + SQL Keyword Fallback]
+    H --> I[Cohere Reranker]
+    I --> J[Parent / Section Context Expansion]
+    J --> K[LLM Synthesis]
+    K --> L[Save Semantic Cache]
+    L --> O
 
     subgraph Evaluation
-      R[ragas_eval.py] --> L[LLM-as-Judge Metrics]
-      R --> M[Heuristic Retrieval Metrics]
-      L --> N[evaluation_report.json]
-      M --> N
-      N --> P[(evaluation_runs)]
+      R[ragas_eval.py] --> M[LLM-as-Judge Metrics]
+      R --> N[Heuristic Retrieval Metrics]
+      M --> P[evaluation_report.json]
+      N --> P
+      P --> Q[(evaluation_runs)]
     end
 ```
 
@@ -47,14 +52,13 @@ Sau khi câu hỏi vượt qua gateway, hệ thống tìm exact match trong `Sem
 
 ## 3. Unified NLU Gateway
 
-`UNIFIED_NLU_PROMPT` gom các việc tiền RAG vào một lần gọi LLM:
+NLU hiện có hai đường:
 
-- `intent`: phân loại `rag`, `small-talk`, hoặc `sensitive`.
-- `rewritten_query`: viết lại câu hỏi độc lập, ngắn, rõ keyword.
-- `expanded_queries`: sinh tối đa một biến thể đồng nghĩa để hỗ trợ retrieval.
-- `suggested_answer`: trả nhanh cho small-talk khi phù hợp.
+- **Fast-path rule-based**: dùng cho câu hỏi RAG rõ ràng, có domain keyword mạnh như VinFast, Xanh SM, V-GREEN, tài xế, sạc, pin, giá, phí, ưu đãi, bảo hiểm, hoàn tiền, chính sách. Đường này không gọi OpenAI, giữ nguyên query làm `rewritten_query`, sinh `expanded_queries` bằng rule-based expansion và làm giàu bằng `domain_vocabulary`.
+- **Domain Vocabulary**: chạy regex/local dictionary để map câu viết tắt, sai chính tả, từ đời thường như `xsm/gsm`, `vgreen`, `dk/đk`, `platfom`, `sạc free`, `ăn chia`, `đền hàng` sang thuật ngữ tài liệu. Đây là lớp bảo hiểm tốc độ cao cho fast-path.
+- **LLM Unified NLU**: dùng khi câu hỏi cần rewrite theo lịch sử hội thoại, có tham chiếu mơ hồ như “nó”, “cái này”, “vậy còn”, hoặc không đủ tín hiệu domain. Prompt `UNIFIED_NLU_PROMPT` vẫn gom intent classification, rewrite và expansion vào một lần gọi LLM. Model NLU tách bằng biến `NLU_MODEL`, mặc định hiện là `gpt-4o-mini`.
 
-`max_tokens` NLU đang được giảm nhẹ xuống `220`. Ảnh hưởng dự kiến thấp vì output NLU là JSON ngắn; đổi lại giúp giảm trần sinh token, chi phí và latency xấu nhất. Rủi ro chính là JSON bị cắt nếu prompt sinh quá dài, nhưng pipeline đã có fallback rule-based khi parse lỗi.
+`max_tokens` NLU đang là `220`. Ảnh hưởng dự kiến thấp vì output NLU là JSON ngắn; đổi lại giúp giảm trần sinh token, chi phí và latency xấu nhất. Rủi ro chính là JSON bị cắt nếu prompt sinh quá dài, nhưng pipeline đã có fallback rule-based khi parse lỗi.
 
 ## 4. Second Exact Cache
 
@@ -107,7 +111,7 @@ Mỗi lần eval ghi thêm snapshot vào bảng `evaluation_runs`, gồm metrics
 
 Latency cao thường đến từ bốn điểm:
 
-- NLU LLM call: đã giảm output budget xuống `220`, nhưng vẫn là một network/API call.
+- NLU Gateway: trước đây luôn gọi LLM nên có thể tốn 1-5 giây. Fast-path mới bỏ qua LLM NLU cho câu RAG rõ ràng.
 - Embedding + hybrid retrieval: phụ thuộc Qdrant, SQL fallback và kích thước tập ứng viên.
 - Cohere rerank: là API call riêng, thường tốn thêm hàng trăm ms đến vài giây nếu network chậm.
 - LLM synthesis: phụ thuộc độ dài context sau expansion và độ dài câu trả lời; đây thường là phần lớn nhất nếu context/document dài.

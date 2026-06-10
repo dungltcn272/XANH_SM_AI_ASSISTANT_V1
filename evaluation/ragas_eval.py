@@ -132,6 +132,9 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 log_warn("EVAL", f"LLM Judge error: {e}")
         num_chunks_before_expansion = result.get("num_chunks_before_expansion", 0)
         compressed_context_len = result.get("compressed_context_len", 0)
+        nlu_latency_ms = result.get("nlu_latency_ms")
+        nlu_fast_path = bool(result.get("nlu_fast_path"))
+        nlu_fast_path_reason = result.get("nlu_fast_path_reason")
         
         print(f"   -> AI Answer: {answer[:100]}...")
         print(f"   -> R@5: {recall_5:.2f} | MRR: {mrr:.2f} | Faithfulness: {faithfulness:.2f} | Correctness: {correctness:.2f}")
@@ -142,6 +145,9 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
             "category": case.get("category", "general"),
             "query": query,
             "latency_seconds": round(latency, 3),
+            "nlu_latency_ms": nlu_latency_ms,
+            "nlu_fast_path": nlu_fast_path,
+            "nlu_fast_path_reason": nlu_fast_path_reason,
             "num_chunks_before_expansion": num_chunks_before_expansion,
             "compressed_context_len": compressed_context_len,
             "retrieval": {

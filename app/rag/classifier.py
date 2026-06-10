@@ -1,9 +1,11 @@
 import json
 import re
+import unicodedata
 from typing import Dict, Any, List, Tuple, Optional
 from openai import OpenAI
 from app.core.config import settings as config
 from app.rag.prompt import UNIFIED_NLU_PROMPT
+from app.rag.domain_vocabulary import enrich_queries, understand_query
 from app.core.logger import log_warn
 
 class XanhSMClassifier:
@@ -13,6 +15,67 @@ class XanhSMClassifier:
     
     def __init__(self):
         pass
+
+    def _strip_accents(self, text: str) -> str:
+        normalized = unicodedata.normalize("NFD", text or "")
+        return "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn").lower()
+
+    def _needs_context_rewrite(self, query: str, chat_history: List[Dict[str, str]] = None) -> bool:
+        if not chat_history:
+            return False
+        q = self._strip_accents(query)
+        reference_patterns = [
+            r"\b(no|nay|do|kia|tren|duoi|cai nay|cai do|van de nay|muc nay|phan nay)\b",
+            r"\b(con|the|vay|nhu vay|doi voi no|truong hop do)\b",
+            r"^\s*(con|vay|the)\b",
+        ]
+        return any(re.search(pattern, q) for pattern in reference_patterns)
+
+    def _is_obvious_rag_query(self, query: str) -> bool:
+        q = self._strip_accents(query)
+        domain_understanding = understand_query(query)
+        strong_domain_signal = bool(domain_understanding.services and domain_understanding.intents)
+        if len(q.strip()) < config.NLU_FAST_PATH_MIN_CHARS and not strong_domain_signal:
+            return False
+
+        domain_terms = [
+            "xanh sm", "xsm", "gsm", "green sm", "vinfast", "v-green", "v green", "vgreen", "vf ", "vf3", "vf 3",
+            "vf5", "vf 5", "vf6", "vf 6", "vf7", "vf 7", "herio", "limo", "ec van",
+            "xe may dien", "o to dien", "taxi", "bike", "platform", "platfom", "merchant",
+            "tai xe", "tx", "bac tai", "doi tac", "khach hang", "mua xe", "thue pin",
+            "sac", "tram sac", "doi pin", "pin", "bao hiem", "boi thuong", "den hang",
+            "hoan tien", "huy chuyen", "cuoc", "gia", "phi", "uu dai", "vay von", "free",
+            "chinh sach", "dieu kien", "quy dinh", "thuong", "doanh thu",
+            "chiet khau", "ho so", "dang ky", "dk", "hop dong", "khuyen mai"
+        ]
+        question_terms = [
+            "bao nhieu", "la gi", "nhu the nao", "co khong", "dieu kien", "chinh sach",
+            "so sanh", "ap dung", "can gi", "duoc gi", "tu khi nao", "den nam", "muc nao",
+            "bn", "ntn", "khac j", "khac gi", "the nao", "ra sao", "la sao"
+        ]
+        has_domain_signal = any(term in q for term in domain_terms) or bool(
+            domain_understanding.services or domain_understanding.intents
+        )
+        return has_domain_signal and (
+            any(term in q for term in question_terms) or "?" in query or len(q.split()) >= 8
+        )
+
+    def _fast_rag_nlu(self, query: str) -> Dict[str, Any]:
+        from app.retrieval.multi_query import XanhSMQueryExpansion
+        expander = XanhSMQueryExpansion()
+        expanded = expander.expand_query_rule_based(query)
+        expanded = enrich_queries(query, expanded, max_queries=8)
+        if query not in expanded:
+            expanded = [query] + expanded
+        return {
+            "rewritten_query": query,
+            "intent": "rag",
+            "expanded_queries": expanded[:8],
+            "suggested_answer": None,
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+            "fast_path": True,
+            "fast_path_reason": "obvious_rag_query"
+        }
 
     def unified_nlu(self, query: str, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         """
@@ -33,7 +96,10 @@ class XanhSMClassifier:
                 "intent": "sensitive", # Blocked immediately by gateway rule
                 "expanded_queries": [query],
                 "safety_blocked": True,
-                "safety_reason": safety_res["reason"]
+                "safety_reason": safety_res["reason"],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+                "fast_path": True,
+                "fast_path_reason": "safety_rule"
             }
 
         # Rule-based Small-talk fast check (exact matches or very short phrases)
@@ -42,8 +108,18 @@ class XanhSMClassifier:
             return {
                 "rewritten_query": query,
                 "intent": "small-talk",
-                "expanded_queries": [query]
+                "expanded_queries": [query],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+                "fast_path": True,
+                "fast_path_reason": "small_talk_rule"
             }
+
+        if (
+            config.NLU_FAST_PATH_ENABLED
+            and self._is_obvious_rag_query(query)
+            and not self._needs_context_rewrite(query, chat_history)
+        ):
+            return self._fast_rag_nlu(query)
 
         # If LLM is available, use it for NLU
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
@@ -58,7 +134,7 @@ class XanhSMClassifier:
                 client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
                 user_prompt = f"Lịch sử hội thoại:\n{history_str}\nCâu hỏi mới nhất: '{query}'\nJSON kết quả:"
                 response = client.chat.completions.create(
-                    model=config.LLM_MODEL,
+                    model=config.NLU_MODEL,
                     messages=[
                         {"role": "system", "content": UNIFIED_NLU_PROMPT},
                         {"role": "user", "content": user_prompt}
@@ -84,6 +160,9 @@ class XanhSMClassifier:
                     expanded = [rewritten_query]
                 
                 # Ensure the rewritten query is in the expansion list
+                expanded = enrich_queries(rewritten_query, expanded, max_queries=8)
+                if query != rewritten_query:
+                    expanded = enrich_queries(query, expanded, max_queries=8)
                 if rewritten_query not in expanded:
                     expanded = [rewritten_query] + expanded
                 return {
@@ -94,7 +173,8 @@ class XanhSMClassifier:
                     "usage": {
                         "prompt_tokens": response.usage.prompt_tokens,
                         "completion_tokens": response.usage.completion_tokens
-                    }
+                    },
+                    "fast_path": False
                 }
             except Exception as e:
                 log_warn("NLU", f"Unified NLU LLM Call failed: {e}. Falling back to Rule-based.")
@@ -113,12 +193,15 @@ class XanhSMClassifier:
         from app.retrieval.multi_query import XanhSMQueryExpansion
         expander = XanhSMQueryExpansion()
         expanded = expander.expand_query_rule_based(rewritten_query)
+        expanded = enrich_queries(rewritten_query, expanded, max_queries=8)
         
         return {
             "rewritten_query": rewritten_query,
             "intent": intent,
             "expanded_queries": expanded,
-            "usage": {"prompt_tokens": 0, "completion_tokens": 0}
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+            "fast_path": True,
+            "fast_path_reason": "rule_based_fallback"
         }
 
 if __name__ == "__main__":

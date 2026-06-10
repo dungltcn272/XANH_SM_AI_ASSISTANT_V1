@@ -307,14 +307,14 @@ export default function DatabaseManager() {
         <div className="px-4 py-3 border-b border-outline-variant/20 bg-surface-container-lowest/50 flex flex-wrap gap-4 items-center">
           {/* Keyword Search */}
           <div className="flex items-center gap-2 min-w-[260px] flex-1 max-w-md">
-            <span className="text-xs font-semibold text-on-surface-variant">Tá»« khÃ³a:</span>
+            <span className="text-xs font-semibold text-on-surface-variant">Từ khóa:</span>
             <div className="relative flex-1">
               <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
               <input
                 type="search"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="TÃ¬m trong content, description, message..."
+                placeholder="Tìm trong content, description, message..."
                 className="w-full bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-8 pr-8 focus:ring-primary focus:border-primary"
               />
               {keyword && (
