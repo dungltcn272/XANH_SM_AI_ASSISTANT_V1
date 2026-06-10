@@ -1,12 +1,14 @@
 import os
 import json
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import String, Text, case, or_
 from app.db.database import get_db, Base
-from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource
+from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource, EvaluationRun
+from app.core.config import settings
 from fastapi.responses import StreamingResponse
 import asyncio
 from typing import Optional
@@ -205,6 +207,103 @@ def get_eval_results():
                 })
         report["details"] = merged_details
     return report
+
+def serialize_eval_run(row: EvaluationRun) -> dict:
+    return {
+        "id": row.id,
+        "run_name": row.run_name,
+        "dataset_name": row.dataset_name,
+        "model_name": row.model_name,
+        "total_cases": row.total_cases,
+        "status": row.status,
+        "average_latency_sec": row.average_latency_sec,
+        "retrieval": {
+            "recall_5": row.recall_5,
+            "recall_10": row.recall_10,
+            "mrr": row.mrr,
+            "ndcg_5": row.ndcg_5,
+        },
+        "generation": {
+            "faithfulness": row.faithfulness,
+            "correctness": row.correctness,
+            "relevancy": row.relevancy,
+        },
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
+@router.get("/eval/runs")
+def get_eval_runs(limit: int = 20, db: Session = Depends(get_db)):
+    from app.db.database import engine
+    Base.metadata.create_all(bind=engine)
+    if db.query(EvaluationRun).count() == 0 and os.path.exists("evaluation_report.json"):
+        try:
+            with open("evaluation_report.json", "r", encoding="utf-8") as f:
+                report = json.load(f)
+            metrics = report.get("metrics", {})
+            retrieval = metrics.get("retrieval", {})
+            generation = metrics.get("generation", {})
+            seed = EvaluationRun(
+                run_name=f"legacy_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                dataset_name=f"golden_{metrics.get('total_cases', len(report.get('details', [])))}",
+                model_name=settings.LLM_MODEL,
+                total_cases=metrics.get("total_cases", 0),
+                status="completed",
+                average_latency_sec=metrics.get("average_latency_sec", 0),
+                recall_5=retrieval.get("recall_5", 0),
+                recall_10=retrieval.get("recall_10", 0),
+                mrr=retrieval.get("mrr", 0),
+                ndcg_5=retrieval.get("ndcg_5", 0),
+                faithfulness=generation.get("faithfulness", 0),
+                correctness=generation.get("correctness", 0),
+                relevancy=generation.get("relevancy", 0),
+                metrics_json=json.dumps(metrics, ensure_ascii=False),
+                details_json=json.dumps(report.get("details", []), ensure_ascii=False),
+            )
+            db.add(seed)
+            db.commit()
+        except Exception:
+            db.rollback()
+    rows = db.query(EvaluationRun).order_by(EvaluationRun.created_at.desc()).limit(limit).all()
+    runs = [serialize_eval_run(row) for row in rows]
+    chronological = list(reversed(runs))
+    latest = runs[0] if runs else None
+    previous = runs[1] if len(runs) > 1 else None
+
+    def delta(path: tuple[str, ...]):
+        if not latest or not previous:
+            return None
+        cur = latest
+        prev = previous
+        for key in path:
+            cur = cur.get(key, {}) if isinstance(cur, dict) else {}
+            prev = prev.get(key, {}) if isinstance(prev, dict) else {}
+        if not isinstance(cur, (int, float)) or not isinstance(prev, (int, float)):
+            return None
+        return round(cur - prev, 4)
+
+    return {
+        "runs": runs,
+        "trend": [
+            {
+                "run_name": item["run_name"],
+                "created_at": item["created_at"],
+                "recall_5": item["retrieval"]["recall_5"],
+                "faithfulness": item["generation"]["faithfulness"],
+                "correctness": item["generation"]["correctness"],
+                "ndcg_5": item["retrieval"]["ndcg_5"],
+                "latency": item["average_latency_sec"],
+            }
+            for item in chronological
+        ],
+        "delta": {
+            "recall_5": delta(("retrieval", "recall_5")),
+            "faithfulness": delta(("generation", "faithfulness")),
+            "correctness": delta(("generation", "correctness")),
+            "ndcg_5": delta(("retrieval", "ndcg_5")),
+            "latency": delta(("average_latency_sec",)),
+        },
+    }
 
 @router.get("/logs")
 def get_rag_logs(intent: str = None, limit: int = 50, db: Session = Depends(get_db)):

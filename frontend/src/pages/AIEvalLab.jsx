@@ -14,6 +14,7 @@ export default function AIEvalLab() {
     pending_cases: 0
   });
   const [dataset, setDataset] = useState([]);
+  const [evalHistory, setEvalHistory] = useState({ runs: [], trend: [], delta: {} });
   const [filters, setFilters] = useState({
     search: '',
     level: 'all',
@@ -28,9 +29,11 @@ export default function AIEvalLab() {
     }
   }, [logs]);
 
-  useEffect(() => {
-    // Fetch initial metrics
-    api.getEvalResults().then(data => {
+  const loadEvalData = async () => {
+    const [data, history] = await Promise.all([
+      api.getEvalResults(),
+      api.getEvalRuns(12).catch(() => ({ runs: [], trend: [], delta: {} }))
+    ]);
        if (data && data.metrics) {
          setMetrics({
            retrieval: data.metrics.retrieval || { recall_5: 0, recall_10: 0, mrr: 0, ndcg_5: 0 },
@@ -44,7 +47,11 @@ export default function AIEvalLab() {
        if (data && data.details) {
          setDataset(data.details);
        }
-    }).catch(console.error);
+       setEvalHistory(history || { runs: [], trend: [], delta: {} });
+  };
+
+  useEffect(() => {
+    loadEvalData().catch(console.error);
   }, []);
 
   const runEvaluation = async () => {
@@ -73,21 +80,7 @@ export default function AIEvalLab() {
             const data = line.slice(6);
             if (data.trim() === '[DONE]') {
                setLogs(prev => [...prev, "[SYSTEM] Quá trình đánh giá hoàn tất."]);
-               api.getEvalResults().then(d => {
-                 if (d && d.metrics) {
-                   setMetrics({
-                     retrieval: d.metrics.retrieval || { recall_5: 0, recall_10: 0, mrr: 0, ndcg_5: 0 },
-                     generation: d.metrics.generation || { faithfulness: 0, correctness: 0, relevancy: 0 },
-                     system_latency: d.metrics.average_latency_sec || 0,
-                     total_cases: d.metrics.total_cases || 0,
-                     golden_total_cases: d.metrics.golden_total_cases || d.metrics.total_cases || 0,
-                     pending_cases: d.metrics.pending_cases || 0
-                   });
-                 }
-                 if (d && d.details) {
-                   setDataset(d.details);
-                 }
-               });
+               loadEvalData().catch(console.error);
                break;
             }
             try {
@@ -146,6 +139,15 @@ export default function AIEvalLab() {
     .filter(row => row.latency_seconds)
     .sort((a, b) => (b.latency_seconds || 0) - (a.latency_seconds || 0))
     .slice(0, 3);
+  const latestRuns = evalHistory.runs || [];
+  const historyDelta = evalHistory.delta || {};
+
+  const formatDelta = (value, lowerIsBetter = false) => {
+    if (value === null || value === undefined) return 'n/a';
+    const isGood = lowerIsBetter ? value < 0 : value > 0;
+    const sign = value > 0 ? '+' : '';
+    return `${isGood ? '↑' : value === 0 ? '→' : '↓'} ${sign}${value.toFixed(3)}`;
+  };
 
   const CircularProgress = ({ value, label, colorClass }) => {
     const dashArray = 364.4;
@@ -269,6 +271,66 @@ export default function AIEvalLab() {
           <p className="text-sm leading-relaxed text-orange-700/80">
             Benchmark latency gồm pipeline trả lời và một lượt LLM judge sau đó. Các case chậm thường do NLU LLM, rerank, context dài và generation dài.
           </p>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-12">
+        <div className="glass-panel p-6 rounded-2xl border border-outline-variant/40">
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 className="text-2xl font-bold text-on-surface">Metric Trends</h2>
+              <p className="text-xs text-on-surface-variant mt-1">Latest run compared with the previous saved run</p>
+            </div>
+            <span className="text-xs font-bold text-primary uppercase tracking-widest">{latestRuns.length} saved runs</span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            {[
+              ['Recall@5', historyDelta.recall_5, false],
+              ['Faith', historyDelta.faithfulness, false],
+              ['Correct', historyDelta.correctness, false],
+              ['NDCG@5', historyDelta.ndcg_5, false],
+              ['Latency', historyDelta.latency, true],
+            ].map(([label, value, lowerIsBetter]) => (
+              <div key={label} className="rounded-xl border border-outline-variant/40 p-4 bg-surface-container/40">
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">{label}</p>
+                <p className={`text-lg font-black ${value === null || value === undefined ? 'text-on-surface-variant' : (lowerIsBetter ? value < 0 : value > 0) ? 'text-emerald-500' : value === 0 ? 'text-on-surface-variant' : 'text-orange-500'}`}>
+                  {formatDelta(value, lowerIsBetter)}
+                </p>
+              </div>
+            ))}
+          </div>
+          {latestRuns.length === 0 && (
+            <p className="text-sm text-on-surface-variant mt-4">No saved evaluation runs yet. Run a benchmark to start tracking improvement.</p>
+          )}
+        </div>
+
+        <div className="glass-panel p-6 rounded-2xl border border-outline-variant/40">
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 className="text-2xl font-bold text-on-surface">Recent Runs</h2>
+              <p className="text-xs text-on-surface-variant mt-1">Saved in the evaluation_runs table</p>
+            </div>
+            <span className="text-xs font-bold text-secondary uppercase tracking-widest">History</span>
+          </div>
+          <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            {latestRuns.slice(0, 6).map(run => (
+              <div key={run.id} className="flex items-center justify-between gap-4 rounded-xl border border-outline-variant/40 p-4 bg-surface-container/40">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs font-bold text-on-surface truncate">{run.run_name}</p>
+                  <p className="text-xs text-on-surface-variant mt-1">{run.dataset_name} · {run.model_name || 'model n/a'} · {run.total_cases} cases</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${run.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'}`}>
+                    {run.status}
+                  </span>
+                  <p className="font-mono text-xs text-orange-500 mt-2">{(run.average_latency_sec || 0).toFixed(2)}s</p>
+                </div>
+              </div>
+            ))}
+            {latestRuns.length === 0 && (
+              <p className="text-sm text-on-surface-variant">No evaluation history found.</p>
+            )}
+          </div>
         </div>
       </section>
 

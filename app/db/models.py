@@ -116,3 +116,23 @@ class SystemLog(Base):
     message = Column(Text, nullable=False)
     details = Column(Text, nullable=True)
 
+class EvaluationRun(Base):
+    __tablename__ = "evaluation_runs"
+    id = Column(String, primary_key=True, default=lambda: generate_id("evalrun"))
+    run_name = Column(String, index=True, nullable=False)
+    dataset_name = Column(String, default="golden_50")
+    model_name = Column(String, nullable=True)
+    total_cases = Column(Integer, default=0)
+    status = Column(String, default="completed", index=True)
+    average_latency_sec = Column(Float, default=0)
+    recall_5 = Column(Float, default=0)
+    recall_10 = Column(Float, default=0)
+    mrr = Column(Float, default=0)
+    ndcg_5 = Column(Float, default=0)
+    faithfulness = Column(Float, default=0)
+    correctness = Column(Float, default=0)
+    relevancy = Column(Float, default=0)
+    metrics_json = Column(Text, nullable=False)
+    details_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+

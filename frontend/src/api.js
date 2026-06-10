@@ -161,6 +161,12 @@ export const api = {
     return res.json();
   },
 
+  getEvalRuns: async (limit = 20) => {
+    const res = await fetch(`${API_BASE}/admin/eval/runs?limit=${limit}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getDbTables: async () => {
     const res = await fetch(`${API_BASE}/admin/db/tables`);
     if (!res.ok) throw new Error('API Error');

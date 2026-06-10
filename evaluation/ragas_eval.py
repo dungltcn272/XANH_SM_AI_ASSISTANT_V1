@@ -3,6 +3,7 @@ import os
 import time
 import json
 import math
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 # Set TIKTOKEN_CACHE_DIR for offline mode
@@ -207,9 +208,50 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         
         with open("evaluation_report.json", "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
+
+        self.save_run_snapshot(report)
             
         print("[INFO] Evaluation results successfully saved to evaluation_report.json.")
         return report
+
+    def save_run_snapshot(self, report: Dict[str, Any]) -> None:
+        try:
+            from app.db.database import Base, engine, SessionLocal
+            from app.db.models import EvaluationRun
+
+            Base.metadata.create_all(bind=engine)
+            metrics = report.get("metrics", {})
+            retrieval = metrics.get("retrieval", {})
+            generation = metrics.get("generation", {})
+            run_name = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            dataset_name = f"golden_{metrics.get('total_cases', len(report.get('details', [])))}"
+
+            db = SessionLocal()
+            try:
+                row = EvaluationRun(
+                    run_name=run_name,
+                    dataset_name=dataset_name,
+                    model_name=settings.LLM_MODEL,
+                    total_cases=metrics.get("total_cases", 0),
+                    status="completed",
+                    average_latency_sec=metrics.get("average_latency_sec", 0),
+                    recall_5=retrieval.get("recall_5", 0),
+                    recall_10=retrieval.get("recall_10", 0),
+                    mrr=retrieval.get("mrr", 0),
+                    ndcg_5=retrieval.get("ndcg_5", 0),
+                    faithfulness=generation.get("faithfulness", 0),
+                    correctness=generation.get("correctness", 0),
+                    relevancy=generation.get("relevancy", 0),
+                    metrics_json=json.dumps(metrics, ensure_ascii=False),
+                    details_json=json.dumps(report.get("details", []), ensure_ascii=False),
+                )
+                db.add(row)
+                db.commit()
+                print(f"[INFO] Evaluation run snapshot saved to evaluation_runs: {run_name}")
+            finally:
+                db.close()
+        except Exception as e:
+            log_warn("EVAL", f"Failed to save evaluation run snapshot: {e}")
 
     def summarize_bucket(self, results: List[Dict[str, Any]], key: str) -> Dict[str, Any]:
         buckets: Dict[str, List[Dict[str, Any]]] = {}
