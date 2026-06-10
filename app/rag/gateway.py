@@ -29,6 +29,29 @@ class XanhSMGateway:
         self.strict_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.strictly_banned]), re.IGNORECASE)
         self.competitor_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.competitors]), re.IGNORECASE)
         self.negative_pattern = re.compile("|".join([rf"\b{re.escape(w)}\b" for w in self.negative_context]), re.IGNORECASE)
+        negative_no_accent = [self._strip_accents(w).lower() for w in self.negative_context]
+        self.negative_no_accent_pattern = re.compile(
+            "|".join([rf"\b{re.escape(w)}\b" for w in negative_no_accent]),
+            re.IGNORECASE,
+        )
+        self.benign_risk_context_pattern = re.compile(
+            r"("
+            r"neu\s+(toi|minh|khach\s+hang|nguoi\s+dung)?\s*(gap|bi|gap\s+phai)|"
+            r"(toi|minh|khach\s+hang|nguoi\s+dung)\s+(bi|gap|gap\s+phai)|"
+            r"(gap|gap\s+phai|bi)\s+(lua\s+dao|noi\s+xau|chui|lam\s+phien)|"
+            r"(phong\s+tranh|tranh|canh\s+bao|xu\s+ly|lam\s+gi|bao\s+cao|khieu\s+nai|lien\s+he|ho\s+tro|bao\s+ve)"
+            r")",
+            re.IGNORECASE,
+        )
+        self.malicious_negative_context_pattern = re.compile(
+            r"("
+            r"boi\s+nho|noi\s+xau|vu\s+khong|dim\s+hang|ha\s+be|"
+            r"khong\s+co\s+bang\s+chung|khong\s+can\s+bang\s+chung|"
+            r"hay\s+viet|viet\s+mot\s+bai|tao\s+noi\s+dung|"
+            r"chui|so\s+sanh|hon|thua"
+            r")",
+            re.IGNORECASE,
+        )
         self.injection_pattern = re.compile(
             r"("
             r"ignore\s+(all\s+)?previous\s+instructions|"
@@ -72,12 +95,14 @@ class XanhSMGateway:
             
         text_normalized = self.normalize_input(text)
         text_no_accent = self._strip_accents(text_normalized).lower()
+        has_benign_risk_context = bool(self.benign_risk_context_pattern.search(text_no_accent))
+        has_malicious_negative_context = bool(self.malicious_negative_context_pattern.search(text_no_accent))
 
         injection_match = self.injection_pattern.search(text_no_accent)
         if injection_match:
             return {
                 "safe": False,
-                "reason": "Yêu cầu có dấu hiệu prompt injection hoặc đòi tiết lộ thông tin nội bộ."
+                "reason": "Em không thể chia sẻ system prompt, API key hoặc cấu hình nội bộ của hệ thống."
             }
 
         if (
@@ -86,7 +111,7 @@ class XanhSMGateway:
         ):
             return {
                 "safe": False,
-                "reason": "Yêu cầu có dấu hiệu tạo nội dung bôi nhọ hoặc cáo buộc không có căn cứ."
+                "reason": "Em không thể hỗ trợ bôi nhọ hoặc đưa ra cáo buộc không có căn cứ; em chỉ có thể hỗ trợ thông tin trung lập dựa trên nguồn đáng tin cậy."
             }
         
         # 1. Check Strict Banned List
@@ -94,27 +119,27 @@ class XanhSMGateway:
         if strict_match:
             return {
                 "safe": False,
-                "reason": f"Phát hiện nội dung không phù hợp (từ khóa: '{strict_match.group(0)}')."
+                "reason": "Nội dung có từ ngữ chưa phù hợp, nên em xin phép không tiếp tục với câu hỏi này."
             }
             
         # 2. Check Competitors with Context
         comp_match = self.competitor_pattern.search(text_normalized)
         if comp_match:
-            neg_match = self.negative_pattern.search(text_normalized)
-            if neg_match:
+            neg_match = self.negative_pattern.search(text_normalized) or self.negative_no_accent_pattern.search(text_no_accent)
+            if neg_match and (has_malicious_negative_context or not has_benign_risk_context):
                 return {
                     "safe": False,
-                    "reason": f"Hệ thống không hỗ trợ các nội dung so sánh hoặc tiêu cực về đối thủ ('{comp_match.group(0)}')."
+                    "reason": f"Em chưa thể hỗ trợ nội dung so sánh hoặc nhận xét tiêu cực về {comp_match.group(0)}."
                 }
             # If competitor mentioned but no negative context, we let it pass.
             # The LLM will handle it gracefully according to system instructions.
 
         # 3. Spam protection
         if len(text_normalized) > 1000:
-            return {"safe": False, "reason": "Câu hỏi quá dài."}
+            return {"safe": False, "reason": "Câu hỏi đang hơi dài, anh/chị vui lòng tách thành vài ý ngắn hơn để em hỗ trợ chính xác hơn."}
             
         if re.findall(r"(.)\1{9,}", text_normalized):
-            return {"safe": False, "reason": "Phát hiện ký tự lặp lại bất thường."}
+            return {"safe": False, "reason": "Tin nhắn có nhiều ký tự lặp lại bất thường, anh/chị vui lòng gửi lại nội dung rõ hơn."}
 
         return {"safe": True, "reason": "Safe"}
 

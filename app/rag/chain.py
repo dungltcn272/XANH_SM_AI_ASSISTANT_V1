@@ -35,6 +35,13 @@ class XanhSMRAGPipeline:
         except Exception as e:
             log_warn("CACHE", f"Failed to load cache: {e}")
             self.cache = None
+
+    def _gateway_refusal_message(self, safety_res: Dict[str, Any]) -> str:
+        reason = (safety_res or {}).get("reason") or "Nội dung này chưa phù hợp để em hỗ trợ trực tiếp."
+        return (
+            f"Dạ, em xin phép chưa hỗ trợ nội dung này. {reason} "
+            "Anh/chị có thể hỏi em về dịch vụ, giá cước, chính sách hoặc cách xử lý sự cố khi sử dụng Xanh SM ạ."
+        )
             
     def _compress_context(self, docs: List[Any]) -> str:
         """
@@ -211,7 +218,7 @@ class XanhSMRAGPipeline:
         if not safety_res["safe"]:
             return {
                 "query": query,
-                "answer": f"⚠️ Cảnh báo bảo mật: {safety_res['reason']}",
+                "answer": self._gateway_refusal_message(safety_res),
                 "citations": [],
                 "intent": "sensitive",
                 "gateway_checked": True,
@@ -432,7 +439,7 @@ class XanhSMRAGPipeline:
             return {
                 "query": query,
                 "normalized_query": normalized_query,
-                "answer": f"⚠️ Cảnh báo bảo mật: {safety_res['reason']}",
+                "answer": self._gateway_refusal_message(safety_res),
                 "citations": [],
                 "intent": "sensitive",
                 "gateway_checked": True,
@@ -679,7 +686,7 @@ class XanhSMRAGPipeline:
         normalized_query = self.gateway.normalize_input(query)
         safety_res = self.gateway.safety_precheck(normalized_query)
         if not safety_res["safe"]:
-            yield from yield_msg(f"data: ⚠️ Cảnh báo bảo mật: {safety_res['reason']}\n\n")
+            yield from yield_msg(f"data: {self._gateway_refusal_message(safety_res)}\n\n")
             yield from yield_msg("data: [DONE]\n\n")
             return
 
