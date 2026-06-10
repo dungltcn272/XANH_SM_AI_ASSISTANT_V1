@@ -183,7 +183,7 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
 
 9. **NODE 9: Semantic Cache Saving & Output (Lưu cache và trả kết quả)**
     - **Công nghệ áp dụng**: PostgreSQL / SQLite Cache Storage.
-    - **Logic xử lý**: Sau khi sinh câu trả lời, hệ thống lưu câu trả lời hợp lệ vào `SemanticCache` cho cả hai khóa: câu hỏi thô ban đầu (Node 2) và câu hỏi đã được chuẩn hóa (Node 4) nhằm tối đa hóa cơ hội Cache Hit cho các lượt truy vấn tương lai. Các cố gắng prompt injection, lộ system prompt/API key/cấu hình nội bộ và yêu cầu bôi nhọ không căn cứ được chặn sớm ở Input Gateway/NLU safety, giúp answer path không bị false-positive với câu trả lời hợp lệ.
+    - **Logic xử lý**: Sau khi sinh câu trả lời, hệ thống lưu câu trả lời hợp lệ vào `SemanticCache` cho cả hai khóa: câu hỏi thô ban đầu (Node 2) và câu hỏi đã được chuẩn hóa (Node 4) nhằm tối đa hóa cơ hội Cache Hit cho các lượt truy vấn tương lai. Các nỗ lực prompt injection, lộ system prompt/API key/cấu hình nội bộ và yêu cầu bôi nhọ không căn cứ được chặn sớm ở Input Gateway/NLU safety, giúp answer path không bị false-positive với câu trả lời hợp lệ.
 ---
 
 ## 🧱 2.1 Ghi Chú Thay Đổi Kiến Trúc Knowledge Builder
