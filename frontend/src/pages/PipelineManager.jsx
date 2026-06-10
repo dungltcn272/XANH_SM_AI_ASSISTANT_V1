@@ -227,29 +227,6 @@ const FLOW_NODES = [
   }
 ];
 
-const FLOW_EDGES = [
-  { from: 'user_input', to: 'gateway' },
-  { from: 'gateway', to: 'refusal', label: 'unsafe', tone: 'rose' },
-  { from: 'gateway', to: 'early_cache', label: 'safe' },
-  { from: 'early_cache', to: 'output', label: 'cache hit', tone: 'sky', path: 'cache-output' },
-  { from: 'early_cache', to: 'nlu_fast_gate', label: 'miss' },
-  { from: 'nlu_fast_gate', to: 'domain_vocabulary', label: 'yes', tone: 'amber' },
-  { from: 'nlu_fast_gate', to: 'llm_nlu', label: 'no', tone: 'violet' },
-  { from: 'domain_vocabulary', to: 'intent' },
-  { from: 'llm_nlu', to: 'intent' },
-  { from: 'intent', to: 'small_talk', label: 'small-talk', tone: 'amber' },
-  { from: 'intent', to: 'refusal', label: 'sensitive', tone: 'rose', path: 'intent-refusal' },
-  { from: 'intent', to: 'second_cache', label: 'rag' },
-  { from: 'second_cache', to: 'output', label: 'cache hit', tone: 'blue', path: 'second-output' },
-  { from: 'second_cache', to: 'hybrid_search', label: 'miss' },
-  { from: 'hybrid_search', to: 'reranker' },
-  { from: 'reranker', to: 'context_expansion' },
-  { from: 'context_expansion', to: 'llm_gen' },
-  { from: 'llm_gen', to: 'semantic_cache' },
-  { from: 'semantic_cache', to: 'output' },
-  { from: 'hybrid_search', to: 'evaluation', label: 'eval suite', tone: 'lime', dashed: true, path: 'eval' }
-];
-
 const toneClass = {
   emerald: 'border-emerald-400/50 text-emerald-200 bg-emerald-500/10',
   rose: 'border-rose-400/50 text-rose-200 bg-rose-500/10',
@@ -263,19 +240,6 @@ const toneClass = {
   amber: 'border-amber-400/50 text-amber-200 bg-amber-500/10',
   lime: 'border-lime-400/50 text-lime-200 bg-lime-500/10'
 };
-
-const edgeColor = {
-  rose: '#fb7185',
-  sky: '#38bdf8',
-  blue: '#60a5fa',
-  amber: '#fbbf24',
-  violet: '#a78bfa',
-  lime: '#a3e635',
-  default: '#475569'
-};
-
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 76;
 
 export default function PipelineManager() {
   const [selectedNode, setSelectedNode] = useState('nlu_fast_gate');
@@ -320,7 +284,7 @@ export default function PipelineManager() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-white">Mermaid-like Flow</div>
-              <div className="text-xs text-white/45">Click vào node để xem ý nghĩa; chạy debug để highlight nhánh thực tế.</div>
+              <div className="text-xs text-white/45">Click vào node để xem ý nghĩa; chạy debug để highlight nhanh thực tế.</div>
             </div>
             <div className="rounded-lg border border-cyan-400/25 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200">
               NLU_MODEL: gpt-4o-mini
@@ -410,238 +374,126 @@ export default function PipelineManager() {
 }
 
 function ReadableFlow({ nodeMap, selectedNode, executed, onSelect }) {
-  const mainPath = ['user_input', 'gateway', 'early_cache', 'nlu_fast_gate', 'intent', 'second_cache', 'hybrid_search', 'reranker', 'context_expansion', 'llm_gen', 'semantic_cache', 'output'];
+  const nodes = {
+    user_input: { x: 425, y: 15 },
+    gateway: { x: 425, y: 85 },
+    refusal: { x: 150, y: 85 },
+    early_cache: { x: 425, y: 155 },
+    nlu_fast_gate: { x: 425, y: 225 },
+    domain_vocabulary: { x: 280, y: 305 },
+    llm_nlu: { x: 570, y: 305 },
+    intent: { x: 425, y: 395 },
+    small_talk: { x: 150, y: 395 },
+    second_cache: { x: 700, y: 395 },
+    hybrid_search: { x: 700, y: 475 },
+    reranker: { x: 700, y: 555 },
+    context_expansion: { x: 700, y: 635 },
+    llm_gen: { x: 700, y: 715 },
+    semantic_cache: { x: 425, y: 715 },
+    output: { x: 425, y: 805 },
+    evaluation: { x: 880, y: 475 }
+  };
+
+  const edges = [
+    { from: 'user_input', to: 'gateway', tone: 'emerald', d: 'M 500 65 V 85' },
+    { from: 'gateway', to: 'early_cache', label: 'safe', tone: 'sky', d: 'M 500 135 V 155' },
+    { from: 'gateway', to: 'refusal', label: 'unsafe', tone: 'rose', d: 'M 425 110 H 300' },
+    { from: 'early_cache', to: 'output', label: 'cache hit', tone: 'sky', d: 'M 425 180 H 70 V 830 H 425' },
+    { from: 'early_cache', to: 'nlu_fast_gate', label: 'miss', tone: 'slate', d: 'M 500 205 V 225' },
+    { from: 'nlu_fast_gate', to: 'domain_vocabulary', label: 'fast', tone: 'amber', d: 'M 425 250 H 355 V 305' },
+    { from: 'domain_vocabulary', to: 'intent', label: 'enrich', tone: 'amber', d: 'M 355 355 V 395 H 425' },
+    { from: 'nlu_fast_gate', to: 'llm_nlu', label: 'rewrite', tone: 'violet', d: 'M 575 250 H 645 V 305' },
+    { from: 'llm_nlu', to: 'intent', label: 'json', tone: 'violet', d: 'M 645 355 V 395 H 575' },
+    { from: 'intent', to: 'small_talk', label: 'small-talk', tone: 'amber', d: 'M 425 420 H 300' },
+    { from: 'intent', to: 'refusal', label: 'sensitive', tone: 'rose', d: 'M 425 420 H 70 V 110 H 150' },
+    { from: 'intent', to: 'second_cache', label: 'rag', tone: 'cyan', d: 'M 575 420 H 700' },
+    { from: 'second_cache', to: 'output', label: 'cache hit', tone: 'blue', d: 'M 850 420 H 920 V 830 H 575' },
+    { from: 'second_cache', to: 'hybrid_search', label: 'miss', tone: 'cyan', d: 'M 775 445 V 475' },
+    { from: 'hybrid_search', to: 'reranker', tone: 'cyan', d: 'M 775 525 V 555' },
+    { from: 'reranker', to: 'context_expansion', tone: 'pink', d: 'M 775 605 V 635' },
+    { from: 'context_expansion', to: 'llm_gen', tone: 'teal', d: 'M 775 685 V 715' },
+    { from: 'llm_gen', to: 'semantic_cache', tone: 'violet', d: 'M 700 740 H 575' },
+    { from: 'semantic_cache', to: 'output', tone: 'emerald', d: 'M 500 765 V 805' },
+    { from: 'small_talk', to: 'output', tone: 'amber', d: 'M 150 420 H 70 V 830 H 425' },
+    { from: 'refusal', to: 'output', tone: 'rose', d: 'M 150 110 H 70 V 830 H 425' },
+    { from: 'hybrid_search', to: 'evaluation', label: 'eval', tone: 'lime', d: 'M 850 500 H 880' }
+  ];
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#020817] p-4">
-      <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <FlowLegend tone="emerald" label="Executed" desc="Nhánh đã chạy trong lần debug gần nhất" />
-        <FlowLegend tone="amber" label="Fast path" desc="NLU local + Domain Vocabulary, không gọi LLM NLU" />
-        <FlowLegend tone="violet" label="LLM fallback" desc="Dùng NLU_MODEL khi cần rewrite/ngữ cảnh" />
-      </div>
-
-      <div className="overflow-x-auto">
-        <div className="min-w-[1560px] space-y-6 pb-2">
-          <FlowLane title="Happy Path" subtitle="Luồng chính khi câu hỏi an toàn, cache miss và cần RAG">
-            {mainPath.map((id, index) => (
-              <FlowStepGroup key={id}>
-                <LaneNode
-                  node={nodeMap[id]}
-                  selected={selectedNode === id}
-                  executed={executed.includes(id)}
-                  onClick={() => onSelect(id)}
-                />
-                {index < mainPath.length - 1 && <LaneArrow active={isAdjacentExecuted(id, mainPath[index + 1], executed)} />}
-              </FlowStepGroup>
+    <div className="rounded-xl border border-white/10 bg-[#020817] p-3">
+      <div className="overflow-x-auto overflow-y-hidden">
+        <div className="relative h-[880px] min-w-[1000px] origin-top-left">
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 880" aria-hidden="true">
+            <defs>
+              <marker id="pipeline-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L6,3 z" fill="currentColor" />
+              </marker>
+            </defs>
+            {edges.map(edge => (
+              <PipelineEdge key={`${edge.from}-${edge.to}-${edge.label || ''}`} edge={edge} active={executed.includes(edge.from) && executed.includes(edge.to)} />
             ))}
-          </FlowLane>
+          </svg>
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-            <FlowBranch
-              title="Safety & Early Exit"
-              desc="Các nhánh dừng sớm để tránh tốn token/latency."
-              items={[
-                ['gateway', 'unsafe', 'refusal'],
-                ['intent', 'sensitive', 'refusal'],
-                ['intent', 'small-talk', 'small_talk'],
-                ['early_cache', 'cache hit', 'output'],
-                ['second_cache', 'cache hit', 'output']
-              ]}
-              nodeMap={nodeMap}
-              selectedNode={selectedNode}
-              executed={executed}
-              onSelect={onSelect}
+          {Object.entries(nodes).map(([id, pos]) => (
+            <PipelineBox
+              key={id}
+              node={nodeMap[id]}
+              x={pos.x}
+              y={pos.y}
+              selected={selectedNode === id}
+              executed={executed.includes(id)}
+              onClick={() => onSelect(id)}
             />
-
-            <FlowBranch
-              title="NLU Routing"
-              desc="Fast-path xử lý câu rõ ràng; LLM NLU chỉ dùng khi cần hiểu ngữ cảnh."
-              items={[
-                ['nlu_fast_gate', 'yes', 'domain_vocabulary'],
-                ['domain_vocabulary', 'enrich', 'intent'],
-                ['nlu_fast_gate', 'no', 'llm_nlu'],
-                ['llm_nlu', 'json', 'intent']
-              ]}
-              nodeMap={nodeMap}
-              selectedNode={selectedNode}
-              executed={executed}
-              onSelect={onSelect}
-            />
-
-            <FlowBranch
-              title="Evaluation Loop"
-              desc="Benchmark và review thực tế dùng để phát hiện regression."
-              items={[
-                ['hybrid_search', 'eval cases', 'evaluation'],
-                ['evaluation', 'report', 'output']
-              ]}
-              nodeMap={nodeMap}
-              selectedNode={selectedNode}
-              executed={executed}
-              onSelect={onSelect}
-            />
-          </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function FlowLane({ title, subtitle, children }) {
-  return (
-    <div className="rounded-2xl border border-slate-700/70 bg-slate-950/70 p-4">
-      <div className="mb-4 flex items-end justify-between gap-4">
-        <div>
-          <div className="text-sm font-bold text-white">{title}</div>
-          <div className="text-xs text-white/45">{subtitle}</div>
-        </div>
-      </div>
-      <div className="flex items-stretch gap-2">{children}</div>
-    </div>
-  );
-}
-
-function FlowStepGroup({ children }) {
-  return <div className="flex shrink-0 items-center gap-2">{children}</div>;
-}
-
-function LaneNode({ node, selected, executed, compact = false, onClick }) {
+function PipelineBox({ node, x, y, selected, executed, onClick }) {
   const Icon = node.icon;
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-[76px] ${compact ? 'w-[178px]' : 'w-[152px]'} rounded-xl border p-3 text-left transition hover:-translate-y-0.5 ${
-        selected ? toneClass[node.tone] : 'border-slate-700 bg-slate-900/80 text-white/75 hover:bg-slate-800'
-      } ${executed ? 'ring-2 ring-emerald-400/60' : ''}`}
+      style={{ left: x, top: y }}
+      className={`absolute min-h-[50px] w-[150px] rounded-md border p-1.5 text-left transition-all hover:scale-[1.02] ${
+        selected ? toneClass[node.tone] : 'border-slate-700 bg-slate-900/90 text-white/70 hover:bg-slate-800'
+      } ${executed ? 'ring-1.5 ring-emerald-400/60' : ''}`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Icon size={15} className="shrink-0" />
-            <span className="truncate text-xs font-bold">{node.title}</span>
+          <div className="flex items-center gap-1">
+            <Icon size={12} className="shrink-0" />
+            <span className="truncate text-[10px] font-bold leading-tight">{node.title}</span>
           </div>
-          <div className="mt-1 truncate text-[11px] opacity-65">{node.subtitle}</div>
+          <div className="mt-0.5 truncate text-[9px] font-medium opacity-60">{node.subtitle}</div>
         </div>
-        {executed && <CheckCircle size={14} className="shrink-0 text-emerald-300" />}
+        {executed && <CheckCircle size={10} className="mt-0.5 shrink-0 text-emerald-400" />}
       </div>
     </button>
   );
 }
 
-function LaneArrow({ active }) {
+function PipelineEdge({ edge, active }) {
+  const color = active ? '#34d399' : edgeStroke(edge.tone);
+  const labelPos = labelPoint(edge.d);
   return (
-    <div className={`flex w-8 shrink-0 items-center ${active ? 'text-emerald-300' : 'text-slate-600'}`}>
-      <div className={`h-px flex-1 ${active ? 'bg-emerald-300' : 'bg-slate-700'}`} />
-      <span className="-ml-0.5 text-lg leading-none">›</span>
-    </div>
-  );
-}
-
-function FlowBranch({ title, desc, items, nodeMap, selectedNode, executed, onSelect }) {
-  return (
-    <div className="rounded-2xl border border-slate-700/70 bg-slate-950/70 p-4">
-      <div className="mb-4">
-        <div className="text-sm font-bold text-white">{title}</div>
-        <div className="text-xs text-white/45">{desc}</div>
-      </div>
-      <div className="space-y-3">
-        {items.map(([from, label, to]) => (
-          <div key={`${from}-${label}-${to}`} className="grid grid-cols-[minmax(0,1fr)_76px_minmax(0,1fr)] items-center gap-2">
-            <LaneNode
-              compact
-              node={nodeMap[from]}
-              selected={selectedNode === from}
-              executed={executed.includes(from)}
-              onClick={() => onSelect(from)}
-            />
-            <div className={`rounded-full border px-2 py-1 text-center text-[11px] font-bold ${
-              isAdjacentExecuted(from, to, executed) ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200' : 'border-slate-700 bg-slate-900 text-slate-400'
-            }`}>
-              {label}
-            </div>
-            <LaneNode
-              compact
-              node={nodeMap[to]}
-              selected={selectedNode === to}
-              executed={executed.includes(to)}
-              onClick={() => onSelect(to)}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FlowLegend({ tone, label, desc }) {
-  return (
-    <div className={`rounded-xl border p-3 ${toneClass[tone]}`}>
-      <div className="text-xs font-bold uppercase tracking-wide">{label}</div>
-      <div className="mt-1 text-xs opacity-70">{desc}</div>
-    </div>
-  );
-}
-
-function FlowNode({ node, active, executed, onClick }) {
-  const Icon = node.icon;
-  const decision = node.kind === 'decision';
-  const subgraph = node.kind === 'subgraph';
-
-  return (
-    <button
-      onClick={onClick}
-      style={{ left: node.x, top: node.y, width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
-      className={`absolute text-left transition-all hover:-translate-y-0.5 ${
-        decision ? 'rounded-xl border-dashed' : subgraph ? 'rounded-2xl border-dashed' : 'rounded-xl'
-      } border p-3 ${
-        active ? `${toneClass[node.tone]} shadow-lg shadow-black/30` : 'border-slate-700 bg-slate-950 text-white/75 hover:bg-slate-900'
-      } ${executed ? 'ring-2 ring-emerald-400/60' : ''}`}
-    >
-      <div>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Icon size={16} className="shrink-0" />
-              <span className="truncate text-sm font-bold leading-tight">{node.title}</span>
-            </div>
-            <div className="mt-1 truncate text-xs opacity-65">{node.subtitle}</div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {decision && <span className="rounded-md border border-current/25 px-1.5 py-0.5 text-[10px] font-bold uppercase opacity-75">if</span>}
-            {executed && <CheckCircle size={15} className="text-emerald-300" />}
-          </div>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function FlowEdge({ edge, from, to, active }) {
-  const start = edgeStart(edge, from, to);
-  const end = edgeEnd(edge, from, to);
-  const color = active ? '#34d399' : edgeColor[edge.tone] || edgeColor.default;
-  const strokeWidth = active ? 2.6 : 1.5;
-  const dash = edge.dashed && !active ? '5 5' : undefined;
-  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-
-  const d = edgePath(edge, start, end);
-
-  return (
-    <g>
+    <g style={{ color }}>
       <path
-        d={d}
+        d={edge.d}
         fill="none"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeDasharray={dash}
-        markerEnd={active ? 'url(#arrow-active)' : 'url(#arrow)'}
-        opacity={active ? 1 : 0.72}
+        stroke="currentColor"
+        strokeWidth={active ? 1.8 : 1.2}
+        strokeDasharray="4 4"
+        markerEnd="url(#pipeline-arrow)"
+        opacity={active ? 1 : 0.5}
       />
       {edge.label && (
         <g>
-          <rect x={mid.x - 40} y={mid.y - 12} width="80" height="24" rx="7" fill="#020817" stroke={color} opacity="0.96" />
-          <text x={mid.x} y={mid.y + 4} textAnchor="middle" fontSize="11" fill={color} fontWeight="700">
+          <rect x={labelPos.x - 25} y={labelPos.y - 9} width="50" height="18" rx="4" fill="#020817" stroke="currentColor" opacity="0.9" />
+          <text x={labelPos.x} y={labelPos.y + 4} textAnchor="middle" fontSize="8" fill="currentColor" fontWeight="700">
             {edge.label}
           </text>
         </g>
@@ -650,50 +502,30 @@ function FlowEdge({ edge, from, to, active }) {
   );
 }
 
-function edgeStart(edge, from, to) {
-  if (edge.path === 'cache-output') return { x: from.x + NODE_WIDTH / 2, y: from.y + NODE_HEIGHT };
-  if (edge.path === 'second-output') return { x: from.x + NODE_WIDTH / 2, y: from.y + NODE_HEIGHT };
-  if (edge.path === 'intent-refusal') return { x: from.x + NODE_WIDTH / 2, y: from.y };
-  if (edge.path === 'eval') return { x: from.x + NODE_WIDTH / 2, y: from.y + NODE_HEIGHT };
-  if (Math.abs(to.x - from.x) < 24) return { x: from.x + NODE_WIDTH / 2, y: from.y + (to.y >= from.y ? NODE_HEIGHT : 0) };
+function edgeStroke(tone) {
   return {
-    x: from.x + (to.x >= from.x ? NODE_WIDTH : 0),
-    y: from.y + NODE_HEIGHT / 2
+    emerald: '#34d399',
+    rose: '#fb7185',
+    sky: '#38bdf8',
+    blue: '#60a5fa',
+    amber: '#fbbf24',
+    violet: '#a78bfa',
+    cyan: '#22d3ee',
+    pink: '#f472b6',
+    teal: '#2dd4bf',
+    lime: '#a3e635',
+    slate: '#64748b'
+  }[tone] || '#64748b';
+}
+
+function labelPoint(path) {
+  const nums = [...path.matchAll(/-?\d+/g)].map(match => Number(match[0]));
+  if (nums.length < 4) return { x: 0, y: 0 };
+  return {
+    x: (nums[0] + nums[nums.length - 2]) / 2,
+    y: (nums[1] + nums[nums.length - 1]) / 2
   };
 }
-
-function edgeEnd(edge, from, to) {
-  if (edge.path === 'cache-output') return { x: to.x + NODE_WIDTH / 2, y: to.y };
-  if (edge.path === 'second-output') return { x: to.x + NODE_WIDTH / 2, y: to.y };
-  if (edge.path === 'intent-refusal') return { x: to.x + NODE_WIDTH / 2, y: to.y + NODE_HEIGHT };
-  if (edge.path === 'eval') return { x: to.x + NODE_WIDTH / 2, y: to.y };
-  if (Math.abs(to.x - from.x) < 24) return { x: to.x + NODE_WIDTH / 2, y: to.y + (to.y >= from.y ? 0 : NODE_HEIGHT) };
-  return {
-    x: to.x + (to.x >= from.x ? 0 : NODE_WIDTH),
-    y: to.y + NODE_HEIGHT / 2
-  };
-}
-
-function edgePath(edge, start, end) {
-  if (edge.path === 'cache-output') {
-    return `M ${start.x} ${start.y} V 806 H ${end.x} V ${end.y}`;
-  }
-  if (edge.path === 'second-output') {
-    return `M ${start.x} ${start.y} V 806 H ${end.x} V ${end.y}`;
-  }
-  if (edge.path === 'intent-refusal') {
-    return `M ${start.x} ${start.y} V 166 H ${end.x} V ${end.y}`;
-  }
-  if (edge.path === 'eval') {
-    return `M ${start.x} ${start.y} V 824 H ${end.x} V ${end.y}`;
-  }
-  if (Math.abs(start.x - end.x) < 2 || Math.abs(start.y - end.y) < 2) {
-    return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
-  }
-  const midX = (start.x + end.x) / 2;
-  return `M ${start.x} ${start.y} H ${midX} V ${end.y} H ${end.x}`;
-}
-
 function RuntimeSummary({ data }) {
   const rows = [
     ['Intent', data.intent || 'n/a'],
@@ -743,16 +575,4 @@ function inferExecutedNodes(data) {
     'semantic_cache',
     'output'
   ];
-}
-
-function isEdgeActive(edge, executed) {
-  const fromIndex = executed.indexOf(edge.from);
-  const toIndex = executed.indexOf(edge.to);
-  return fromIndex >= 0 && toIndex === fromIndex + 1;
-}
-
-function isAdjacentExecuted(from, to, executed) {
-  const fromIndex = executed.indexOf(from);
-  const toIndex = executed.indexOf(to);
-  return fromIndex >= 0 && toIndex === fromIndex + 1;
 }
