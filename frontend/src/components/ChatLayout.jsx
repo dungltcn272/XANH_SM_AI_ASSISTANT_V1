@@ -14,7 +14,7 @@ const stripNode = (props) => {
   return rest;
 };
 
-const MessageCard = ({ icon, title, desc, link, index }) => {
+const MessageCard = ({ icon, title, desc, image, link, index }) => {
   const IconComponent = useMemo(() => {
     switch (icon) {
       case 'car': return Car;
@@ -38,9 +38,18 @@ const MessageCard = ({ icon, title, desc, link, index }) => {
 
   return (
     <CardWrapper {...wrapperProps}>
-      <div className={`w-12 h-12 rounded-xl bg-[#00c897]/10 flex items-center justify-center text-[#00c897] shrink-0 ${link ? 'group-hover:bg-[#00c897] group-hover:text-white' : ''} transition-all`}>
-        <IconComponent size={24} />
-      </div>
+      {image ? (
+        <img
+          src={image}
+          alt={title || "Hình ảnh Xanh SM"}
+          className="w-16 h-16 rounded-xl object-cover border border-outline-variant/20 bg-surface-container-high shrink-0"
+          loading="lazy"
+        />
+      ) : (
+        <div className={`w-12 h-12 rounded-xl bg-[#00c897]/10 flex items-center justify-center text-[#00c897] shrink-0 ${link ? 'group-hover:bg-[#00c897] group-hover:text-white' : ''} transition-all`}>
+          <IconComponent size={24} />
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="w-5 h-5 rounded-full bg-[#00c897] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -270,7 +279,6 @@ export default function ChatLayout() {
                     sourcesObj = parsed.sources;
                     handledAsMetadata = true;
                   } 
-                  
                   if (!handledAsMetadata) {
                     textDataParts.push(data);
                   }
@@ -347,7 +355,7 @@ export default function ChatLayout() {
 
   const renderContent = (content) => {
     // Robust regex to handle optional colons, variable whitespace, and optional link
-    const cardRegex = /:::card\s+\[icon:?\s*(.*?)\]\s+\[title:?\s*(.*?)\]\s+\[desc:?\s*(.*?)\](?:\s+\[link:?\s*(.*?)\])?\s+:::/g;
+    const cardRegex = /:::card\s+\[icon:?\s*(.*?)\]\s+\[title:?\s*(.*?)\]\s+\[desc:?\s*(.*?)\](?:\s+\[image:?\s*(.*?)\])?(?:\s+\[link:?\s*(.*?)\])?\s+:::/g;
     const parts = [];
     let lastIndex = 0;
     let match;
@@ -365,7 +373,8 @@ export default function ChatLayout() {
           icon={match[1]?.trim()}
           title={match[2]?.trim()}
           desc={match[3]?.trim()}
-          link={match[4]?.trim()}
+          image={match[4]?.trim()}
+          link={match[5]?.trim()}
           index={cardIndex++}
         />
       );
@@ -542,7 +551,6 @@ export default function ChatLayout() {
                             {renderContent(msg.content)}
                           </div>
                         )}
-
                         {/* Citations / Sources */}
                         {msg.sources && msg.sources.length > 0 && (() => {
                           const uniqueSources = [];

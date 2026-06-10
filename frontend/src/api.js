@@ -53,14 +53,18 @@ export const api = {
     return res.json();
   },
 
-  runCrawler: async () => {
-    return fetch(`${API_BASE}/admin/ingest/crawl`, {
+  runCrawler: async (maxUrls = 0) => {
+    const params = new URLSearchParams();
+    params.set('max_urls', String(Math.max(0, Number(maxUrls) || 0)));
+    return fetch(`${API_BASE}/admin/ingest/crawl?${params.toString()}`, {
       method: 'POST'
     });
   },
 
-  runAgentCrawler: async () => {
-    return fetch(`${API_BASE}/admin/ingest/crawl/agent`, {
+  runAgentCrawler: async (maxUrls = 0) => {
+    const params = new URLSearchParams();
+    params.set('max_urls', String(Math.max(0, Number(maxUrls) || 0)));
+    return fetch(`${API_BASE}/admin/ingest/crawl/agent?${params.toString()}`, {
       method: 'POST'
     });
   },
@@ -77,8 +81,88 @@ export const api = {
     });
   },
 
+  getCrawlSources: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.source_profile) params.set('source_profile', filters.source_profile);
+    if (filters.category) params.set('category', filters.category);
+    if (filters.enabled !== undefined && filters.enabled !== '') params.set('enabled', filters.enabled);
+    if (filters.keyword) params.set('keyword', filters.keyword);
+    const qs = params.toString();
+    const res = await fetch(`${API_BASE}/admin/crawl-sources${qs ? `?${qs}` : ''}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getCrawlSourceStats: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.source_profile) params.set('source_profile', filters.source_profile);
+    if (filters.category) params.set('category', filters.category);
+    if (filters.enabled !== undefined && filters.enabled !== '') params.set('enabled', filters.enabled);
+    if (filters.keyword) params.set('keyword', filters.keyword);
+    const qs = params.toString();
+    const res = await fetch(`${API_BASE}/admin/crawl-sources/stats${qs ? `?${qs}` : ''}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  createCrawlSource: async (payload) => {
+    const res = await fetch(`${API_BASE}/admin/crawl-sources`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  updateCrawlSource: async (id, payload) => {
+    const res = await fetch(`${API_BASE}/admin/crawl-sources/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  deleteCrawlSource: async (id) => {
+    const res = await fetch(`${API_BASE}/admin/crawl-sources/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  bootstrapCrawlSources: async () => {
+    const res = await fetch(`${API_BASE}/admin/crawl-sources/bootstrap`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  syncCrawlSources: async () => {
+    const res = await fetch(`${API_BASE}/admin/crawl-sources/sync`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  clearAllKnowledge: async () => {
+    const res = await fetch(`${API_BASE}/admin/knowledge/clear`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  ingestAllKnowledge: async () => {
+    const res = await fetch(`${API_BASE}/admin/knowledge/ingest-all`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getEvalResults: async () => {
     const res = await fetch(`${API_BASE}/admin/eval`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getEvalRuns: async (limit = 20) => {
+    const res = await fetch(`${API_BASE}/admin/eval/runs?limit=${limit}`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
@@ -97,6 +181,8 @@ export const api = {
     if (filters.end_date) url += `&end_date=${encodeURIComponent(filters.end_date)}`;
     if (filters.level) url += `&level=${encodeURIComponent(filters.level)}`;
     if (filters.error_type) url += `&error_type=${encodeURIComponent(filters.error_type)}`;
+    if (filters.keyword) url += `&keyword=${encodeURIComponent(filters.keyword)}`;
+    if (filters.search_columns) url += `&search_columns=${encodeURIComponent(filters.search_columns)}`;
     
     const res = await fetch(url);
     if (!res.ok) throw new Error('API Error');

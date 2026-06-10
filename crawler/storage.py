@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict
 import re
+from markdown_quality import validate_markdown
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,18 +26,39 @@ class Storage:
     
     def url_to_filename(self, url: str) -> str:
         """Chuyển URL thành tên file"""
-        # Lấy path từ URL
-        # https://www.greensm.com/vn-vi/terms-policies/privacy-notice
-        # → terms_policies_privacy_notice
+        from urllib.parse import urlparse
+        import urllib.parse
         
-        path = url.split("vn-vi/", 1)[-1]  # Lấy phần sau /vn-vi/
-        path = path.rstrip("/")
-        path = path.replace("/", "_")      # / → _
-        path = path.replace("-", "_")      # - → _
-        path = re.sub(r'[^\w_]', '', path)  # Loại bỏ ký tự đặc biệt
-        path = re.sub(r'_+', '_', path)     # _ liên tiếp → _
+        # Parse URL
+        parsed = urlparse(url)
+        path = urllib.parse.unquote(parsed.path)
         
-        return path or "index"
+        # If it's a PDF, we use the filename without extension
+        if path.lower().endswith('.pdf'):
+            filename = path.split('/')[-1][:-4]
+        # For standard vn-vi paths
+        elif "/vn-vi/" in path.lower():
+            filename = path.lower().split("/vn-vi/", 1)[-1]
+        # For platform paths
+        else:
+            filename = path.strip('/')
+            if not filename:
+                filename = "index"
+        # Include query params for platform vehicle pages to differentiate
+        # buy/rent pages that share the same path.
+        if parsed.netloc.lower() == "platform.greensm.com" and parsed.query:
+            query_str = urllib.parse.unquote(parsed.query)
+            filename += "_" + query_str
+                
+        filename = filename.replace("/", "_")
+        filename = filename.replace("-", "_")
+        filename = filename.replace("?", "_")
+        filename = filename.replace("=", "_")
+        filename = filename.replace("&", "_")
+        filename = re.sub(r'[^\w_]', '', filename)
+        filename = re.sub(r'_+', '_', filename)
+        
+        return filename.strip('_') or "index"
     
     def save_markdown(self, 
                      url: str,
@@ -59,8 +81,9 @@ title: {title}
 
 """
         
-        # Combine frontmatter + content
-        full_content = frontmatter + content
+        # Combine frontmatter + content and run quality gate
+        quality = validate_markdown(frontmatter + content)
+        full_content = quality.content
         
         # Tên file
         filename = self.url_to_filename(url) + ".md"
@@ -75,7 +98,7 @@ title: {title}
         filepath.write_text(full_content, encoding="utf-8")
         logger.info(f"✅ Saved: {filepath}")
         
-        return filepath
+        return filepath, quality.warnings
     
     def save_batch(self, documents: list) -> Dict:
         """Lưu nhiều document"""
@@ -87,7 +110,7 @@ title: {title}
         
         for doc in documents:
             try:
-                filepath = self.save_markdown(
+                filepath, warnings = self.save_markdown(
                     url=doc["url"],
                     title=doc.get("title", ""),
                     content=doc["content"],
@@ -95,7 +118,16 @@ title: {title}
                     crawl_date=doc.get("crawl_date")
                 )
                 
-                results["saved"].append(str(filepath))
+                results["saved"].append({
+                    "path": str(filepath),
+                    "url": doc["url"],
+                    "category": doc["category"],
+                    "content": filepath.read_text(encoding="utf-8"),
+                    "warnings": warnings,
+                    "source_profile": doc.get("source_profile", "main_site"),
+                    "source_type": doc.get("source_type", "web"),
+                    "document_type": doc.get("document_type", "service"),
+                })
                 
                 category = doc["category"]
                 if category not in results["by_category"]:
@@ -126,5 +158,5 @@ if __name__ == "__main__":
         "category": "policy"
     }
     
-    filepath = storage.save_markdown(**test_doc)
+    filepath, _ = storage.save_markdown(**test_doc)
     print(f"Saved to: {filepath}")

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, Trash2, RefreshCw, AlertCircle, CheckSquare, Square } from 'lucide-react';
+import { Database, Search, Trash2, RefreshCw, AlertCircle, CheckSquare, Square, X } from 'lucide-react';
 import { api } from '../api';
 
 export default function DatabaseManager() {
@@ -24,6 +24,8 @@ export default function DatabaseManager() {
   const [endDate, setEndDate] = useState('');
   const [level, setLevel] = useState('');
   const [errorType, setErrorType] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [metadata, setMetadata] = useState({});
 
   // Pagination
@@ -53,6 +55,15 @@ export default function DatabaseManager() {
   }, []);
 
   useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedKeyword(keyword.trim());
+      changePage(0);
+    }, 350);
+
+    return () => clearTimeout(timeout);
+  }, [keyword]);
+
+  useEffect(() => {
     if (!selectedTable) return;
     
     const fetchTableData = async () => {
@@ -65,7 +76,8 @@ export default function DatabaseManager() {
           start_date: startDate,
           end_date: endDate,
           level: level,
-          error_type: errorType
+          error_type: errorType,
+          keyword: debouncedKeyword
         };
         const res = await api.getTableData(selectedTable, limit, page * limit, filters);
         setData(res.data || []);
@@ -79,7 +91,7 @@ export default function DatabaseManager() {
       setDataLoading(false);
     };
     fetchTableData();
-  }, [selectedTable, page, sortBy, sortOrder, startDate, endDate, level, errorType]);
+  }, [selectedTable, page, sortBy, sortOrder, startDate, endDate, level, errorType, debouncedKeyword]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === data.length) {
@@ -113,7 +125,8 @@ export default function DatabaseManager() {
         start_date: startDate,
         end_date: endDate,
         level: level,
-        error_type: errorType
+        error_type: errorType,
+        keyword: debouncedKeyword
       };
       const res = await api.getTableData(selectedTable, limit, page * limit, filters);
       setData(res.data || []);
@@ -219,6 +232,8 @@ export default function DatabaseManager() {
                 setEndDate('');
                 setLevel('');
                 setErrorType('');
+                setKeyword('');
+                setDebouncedKeyword('');
                 changePage(0);
               }}
               className="bg-surface-variant border border-outline-variant/50 text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block py-2.5 pl-2.5 pr-10 cursor-pointer"
@@ -244,7 +259,8 @@ export default function DatabaseManager() {
                   start_date: startDate,
                   end_date: endDate,
                   level: level,
-                  error_type: errorType
+                  error_type: errorType,
+                  keyword: debouncedKeyword
                 };
                 api.getTableData(selectedTable, limit, page * limit, filters).then(res => {
                   setData(res.data || []);
@@ -289,6 +305,34 @@ export default function DatabaseManager() {
 
         {/* Filter Panel (Dynamic based on selected table columns) */}
         <div className="px-4 py-3 border-b border-outline-variant/20 bg-surface-container-lowest/50 flex flex-wrap gap-4 items-center">
+          {/* Keyword Search */}
+          <div className="flex items-center gap-2 min-w-[260px] flex-1 max-w-md">
+            <span className="text-xs font-semibold text-on-surface-variant">Từ khóa:</span>
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <input
+                type="search"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="Tìm trong content, description, message..."
+                className="w-full bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-8 pr-8 focus:ring-primary focus:border-primary"
+              />
+              {keyword && (
+                <button
+                  onClick={() => {
+                    setKeyword('');
+                    setDebouncedKeyword('');
+                    changePage(0);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+                  title="XÃ³a tá»« khÃ³a"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Sorting */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-on-surface-variant">Sắp xếp:</span>
@@ -367,7 +411,7 @@ export default function DatabaseManager() {
           )}
 
           {/* Reset Filters button */}
-          {(sortBy || startDate || endDate || level || errorType) && (
+          {(sortBy || startDate || endDate || level || errorType || keyword) && (
             <button
               onClick={() => {
                 setSortBy('');
@@ -376,6 +420,8 @@ export default function DatabaseManager() {
                 setEndDate('');
                 setLevel('');
                 setErrorType('');
+                setKeyword('');
+                setDebouncedKeyword('');
                 changePage(0);
               }}
               className="text-xs font-bold text-primary hover:underline ml-auto"

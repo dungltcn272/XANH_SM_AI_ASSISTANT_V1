@@ -1,0 +1,13 @@
+FROM qdrant/qdrant:latest
+
+# Thiết lập các biến môi trường mặc định cho Qdrant
+ENV QDRANT__STORAGE__STORAGE_PATH=/qdrant/storage
+ENV QDRANT__SERVICE__HTTP_PORT=6333
+ENV QDRANT__SERVICE__GRPC_PORT=6334
+
+# Railway yêu cầu expose port để routing
+EXPOSE 6333
+EXPOSE 6334
+
+# Khởi chạy Qdrant
+CMD ["./qdrant"]

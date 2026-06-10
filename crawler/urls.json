@@ -1,43 +1,96 @@
 {
-  "user": [
-    "https://www.greensm.com/vn-vi/greensm-car",
-    "https://www.greensm.com/vn-vi/greensm-mini",
-    "https://www.greensm.com/vn-vi/greensm-premium",
-    "https://www.greensm.com/vn-vi/greensm-limo",
-    "https://www.greensm.com/vn-vi/green-airport",
-    "https://www.greensm.com/vn-vi/green-tour",
-    "https://www.greensm.com/vn-vi/green-gift-card",
-    "https://www.greensm.com/vn-vi/green-lien-tinh",
-    "https://www.greensm.com/vn-vi/greensm-bike",
-    "https://www.greensm.com/vn-vi/greensm-ngon",
-    "https://www.greensm.com/vn-vi/green-express",
-    "https://www.greensm.com/vn-vi/green-van",
-    "https://www.greensm.com/vn-vi/green-subscription"
-  ],
-  "merchant": [
-    "https://www.greensm.com/vn-vi/green-subscription",
-    "https://www.greensm.com/vn-vi/greensm-merchant",
-    "https://www.greensm.com/vn-vi/business-payment"
-  ],
-  "driver": [
-    "https://www.greensm.com/vn-vi/driver-car",
-    "https://www.greensm.com/vn-vi/driver-bike",
-    "https://www.greensm.com/vn-vi/driver-platform",
-    "https://www.greensm.com/vn-vi/driver-center"
-  ],
-  "green-care": [
-    "https://www.greensm.com/vn-vi/bao-hiem-khach-hang",
-    "https://www.greensm.com/vn-vi/bao-hiem-hang-hoa-xanh-express",
-    "https://www.greensm.com/vn-vi/bao-hiem-giao-do-an"
-  ],
-  "helps": [
-    "https://www.greensm.com/vn-vi/helps"
-  ],
-  "term-policies": [
-    "https://www.greensm.com/vn-vi/terms-policies/general",
-    "https://www.greensm.com/vn-vi/terms-policies/regulations (pdf)",
-    "https://www.greensm.com/vn-vi/terms-policies/privacy-notice",
-    "https://www.greensm.com/vn-vi/terms-policies/service-agreement",
-    "https://www.greensm.com/vn-vi/terms-policies/consumer-protection-policy"
-  ]
+    "user":  [
+                 "https://www.greensm.com/vn-vi/greensm-car",
+                 "https://www.greensm.com/vn-vi/greensm-mini",
+                 "https://www.greensm.com/vn-vi/greensm-premium",
+                 "https://www.greensm.com/vn-vi/greensm-limo",
+                 "https://www.greensm.com/vn-vi/green-airport",
+                 "https://www.greensm.com/vn-vi/green-tour",
+                 "https://www.greensm.com/vn-vi/green-gift-card",
+                 "https://www.greensm.com/vn-vi/green-lien-tinh",
+                 "https://www.greensm.com/vn-vi/greensm-bike",
+                 "https://www.greensm.com/vn-vi/greensm-ngon",
+                 "https://www.greensm.com/vn-vi/green-express",
+                 "https://www.greensm.com/vn-vi/green-van",
+                 "https://www.greensm.com/vn-vi/green-subscription"
+             ],
+    "merchant":  [
+                     "https://www.greensm.com/vn-vi/green-subscription",
+                     "https://www.greensm.com/vn-vi/greensm-merchant",
+                     "https://www.greensm.com/vn-vi/business-payment"
+                 ],
+    "driver":  [
+                   "https://www.greensm.com/vn-vi/driver-car",
+                   "https://www.greensm.com/vn-vi/driver-bike",
+                   "https://www.greensm.com/vn-vi/driver-platform",
+                   "https://www.greensm.com/vn-vi/driver-center"
+               ],
+    "green-care":  [
+                       "https://www.greensm.com/vn-vi/bao-hiem-khach-hang",
+                       "https://www.greensm.com/vn-vi/bao-hiem-hang-hoa-xanh-express",
+                       "https://www.greensm.com/vn-vi/bao-hiem-giao-do-an"
+                   ],
+    "helps":  [
+                  "https://www.greensm.com/vn-vi/helps"
+              ],
+    "term-policies":  [
+                          "https://www.greensm.com/vn-vi/terms-policies/general",
+                          "https://www.greensm.com/vn-vi/terms-policies/privacy-notice",
+                          "https://www.greensm.com/vn-vi/terms-policies/service-agreement",
+                          "https://www.greensm.com/vn-vi/terms-policies/consumer-protection-policy",
+                          "https://www.greensm.com/vn-vi/terms-policies/regulations"
+                      ],
+    "vehicle-car":  [
+                        "https://platform.greensm.com/VN-vi/vf6?order-type=buy",
+                        "https://platform.greensm.com/VN-vi/ec_van?order-type=buy",
+                        "https://platform.greensm.com/VN-vi/herio_green?order-type=buy",
+                        "https://platform.greensm.com/VN-vi/minio_green?order-type=buy",
+                        "https://platform.greensm.com/VN-vi/limo_green?order-type=buy",
+                        "https://platform.greensm.com/VN-vi/vf5?order-type=buy",
+                        "https://platform.greensm.com/VN-vi/minio_green?order-type=rent",
+                        "https://platform.greensm.com/VN-vi/herio_green?order-type=rent",
+                        "https://platform.greensm.com/VN-vi/limo_green?order-type=rent",
+                        "https://platform.greensm.com/VN-vi/vf5?order-type=rent"
+                    ],
+    "vehicle-bike":  [
+                         "https://platform.greensm.com/VN-vi/feliz2?order-type=buy",
+                         "https://platform.greensm.com/VN-vi/evo?order-type=buy",
+                         "https://platform.greensm.com/VN-vi/feliz?order-type=buy",
+                         "https://platform.greensm.com/VN-vi/evo_grand?order-type=buy",
+                         "https://platform.greensm.com/VN-vi/evo?order-type=rent",
+                         "https://platform.greensm.com/VN-vi/feliz2?order-type=rent"
+                     ],
+    "pdf":  [
+                "https://platform-static-staging.car-trading.gsm-api.net/public/document/Chuong_trinh_mua_xe_oto_dien_vinfast_truc_tiep_qua_green_sm.pdf",
+                "https://platform-static-staging.car-trading.gsm-api.net/public/document/Chuong_trinh_thue_van_hanh_thuong_van_doanh_xe_o_to_dien_vinfast.pdf",
+                "https://platform-static.car-trading.gsm-api.net/public/document/Chuong_trinh_cho_thue_xe_o_to_dien_gsm_rental.pdf",
+                "https://platform-static.car-trading.gsm-api.net/public/document/Chinh_sach_ban_xe_may_dien_vinfast.pdf"
+            ],
+    "overview":  [
+                     "https://www.greensm.com/vn-vi/about",
+                     "https://platform.greensm.com/VN-vi",
+                     "https://www.greensm.com/vn-vi/news"
+                 ],
+    "news":  [
+                 "https://www.greensm.com/vn-vi/news",
+                 "https://www.greensm.com/vn-vi/news/cap-nhat-chinh-sach-uu-dai-sac-xe-moi-danh-cho-bac-tai-xanh-2026",
+                 "https://www.greensm.com/vn-vi/news/ban-tin-van-doanh-cuoi-tuan-01-07-06-2026",
+                 "https://www.greensm.com/vn-vi/news/bac-tai-xanh-platform-doc-quyen-cap-nhat-chinh-sach-uu-dai-sac-xe-moi",
+                 "https://www.greensm.com/vn-vi/news/bac-tai-xanh-taxi-cap-nhat-dieu-kien-chinh-sach-dam-bao-thu-nhap-moi",
+                 "https://www.greensm.com/vn-vi/news/thuong-nong-den-15-000d-chuyen-xe-tai-dai-nhac-hoi-nuoc-k-pulse-hanoi-2026",
+                 "https://www.greensm.com/vn-vi/news/thuong-nong-den-40000d-chuyen-xe-tai-dai-nhac-hoi-nuoc-k-pulse-hanoi-2026",
+                 "https://www.greensm.com/vn-vi/news/green-sm-ra-mat-dich-vu-taxi-thuan-dien-green-sm-limo-tai-an-do",
+                 "https://www.greensm.com/vn-vi/news/doi-pin-dung-tai-khoan-bao-ve-quyen-loi-van-doanh",
+                 "https://www.greensm.com/vn-vi/news/thu-nhap-on-dinh-thuong-hap-dan-danh-cho-bac-tai-xanh-chuyen-express",
+                 "https://www.greensm.com/vn-vi/news/ban-tin-van-doanh-tuan-01-07-06-2026",
+                 "https://www.greensm.com/vn-vi/news/cap-nhat-chuong-trinh-thuong-danh-cho-bac-tai-green-sm-bike",
+                 "https://www.greensm.com/vn-vi/news/green-sm-hop-tac-cung-la-siesta-hotels-uu-dai-di-chuyen-cho-khach-luu-tru",
+                 "https://www.greensm.com/vn-vi/news/thuong-nong-15000d-chuyen-xe-tai-le-hoi-phao-hoa-quoc-te-da-nang-2026",
+                 "https://www.greensm.com/vn-vi/news/ha-noi-chuong-trinh-thuong-chong-thuong-bac-tai-xanh-cam-ket-ap-dung-khu-vuc-tai-ha-noi-2",
+                 "https://www.greensm.com/vn-vi/news/mien-nam-chuong-trinh-thuong-chong-thuong-bac-tai-xanh-cam-ket-ap-dung-khu-vuc-tai-cac-tinh-mien-nam",
+                 "https://www.greensm.com/vn-vi/news/tp-ho-chi-minh-chuong-trinh-thuong-chong-thuong-bac-tai-xanh-cam-ket-ap-dung-khu-vuc-tai-tp-ho-chi-minh",
+                 "https://www.greensm.com/vn-vi/news/green-sm-cung-v-green-huong-dan-doi-pin-xe-may-dien-tren-tu-doi-pin",
+                 "https://www.greensm.com/vn-vi/news/dong-hanh-cham-soc-suc-khoe-chu-dong-green-sm-trung-tam-y-khoa-diag",
+                 "https://www.greensm.com/vn-vi/news/cap-nhat-bo-quy-tac-ung-xu-danh-cho-doi-tac-tai-xe-car-platform-tu-ngay-01-06-2026"
+             ]
 }

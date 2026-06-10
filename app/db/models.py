@@ -86,6 +86,26 @@ class DocumentChunk(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+class CrawlSource(Base):
+    __tablename__ = "crawl_sources"
+    id = Column(String, primary_key=True, default=lambda: generate_id("crawlsrc"))
+    url = Column(Text, nullable=False)
+    title = Column(String, nullable=True)
+    source_profile = Column(String, index=True, default="main_site")
+    source_type = Column(String, index=True, default="web")
+    category = Column(String, index=True, default="user")
+    document_type = Column(String, index=True, default="service")
+    output_dir = Column(String, default="data/user")
+    crawl_strategy = Column(String, default="default")
+    enabled = Column(Boolean, default=True, index=True)
+    priority = Column(Integer, default=100)
+    notes = Column(Text, nullable=True)
+    last_crawled_at = Column(DateTime(timezone=True), nullable=True)
+    last_status = Column(String, nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
 class SystemLog(Base):
     __tablename__ = "system_logs"
     id = Column(String, primary_key=True, default=lambda: generate_id("log"))
@@ -95,4 +115,24 @@ class SystemLog(Base):
     error_type = Column(String, nullable=True)
     message = Column(Text, nullable=False)
     details = Column(Text, nullable=True)
+
+class EvaluationRun(Base):
+    __tablename__ = "evaluation_runs"
+    id = Column(String, primary_key=True, default=lambda: generate_id("evalrun"))
+    run_name = Column(String, index=True, nullable=False)
+    dataset_name = Column(String, default="golden_50")
+    model_name = Column(String, nullable=True)
+    total_cases = Column(Integer, default=0)
+    status = Column(String, default="completed", index=True)
+    average_latency_sec = Column(Float, default=0)
+    recall_5 = Column(Float, default=0)
+    recall_10 = Column(Float, default=0)
+    mrr = Column(Float, default=0)
+    ndcg_5 = Column(Float, default=0)
+    faithfulness = Column(Float, default=0)
+    correctness = Column(Float, default=0)
+    relevancy = Column(Float, default=0)
+    metrics_json = Column(Text, nullable=False)
+    details_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 

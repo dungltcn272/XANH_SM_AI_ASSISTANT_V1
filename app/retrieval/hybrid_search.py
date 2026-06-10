@@ -1,7 +1,11 @@
 from typing import List, Dict, Any
+from sqlalchemy import case, or_
 from langchain_core.documents import Document
+from app.db.database import SessionLocal
+from app.db.models import DocumentChunk
 from app.vectordb.qdrant_client import vectordb
 from app.retrieval.multi_query import XanhSMQueryExpansion
+from app.core.config import settings as config
 from app.core.logger import log_info, log_warn, log_error
 
 class XanhSMHybridSearch:
@@ -13,6 +17,81 @@ class XanhSMHybridSearch:
     def __init__(self):
         self.db = vectordb
         self.expander = XanhSMQueryExpansion()
+
+    def _is_overview_query(self, query: str) -> bool:
+        q = (query or "").lower()
+        return any(term in q for term in [
+            "green sm gồm",
+            "xanh sm gồm",
+            "danh mục",
+            "cung cấp những dịch vụ",
+            "các dịch vụ",
+            "tổng quan",
+            "bao gồm những gì",
+        ])
+
+    def _keyword_search_document_chunks(self, queries: List[str], limit: int = 10) -> List[Document]:
+        """
+        Adds exact keyword recall from SQL document_chunks. Qdrant remains the
+        primary retriever; this catches literal phrases, codes, hotline numbers,
+        and text snippets that should be prioritized in content-like fields.
+        """
+        db = SessionLocal()
+        docs_map = {}
+
+        try:
+            for q in queries:
+                clean_q = (q or "").strip()
+                if not clean_q:
+                    continue
+
+                pattern = f"%{clean_q}%"
+                content_match = DocumentChunk.content.ilike(pattern)
+                section_match = DocumentChunk.section.ilike(pattern)
+                source_match = DocumentChunk.source.ilike(pattern)
+                keyword_score = (
+                    case((content_match, 100), else_=0)
+                    + case((section_match, 40), else_=0)
+                    + case((source_match, 30), else_=0)
+                )
+
+                rows = (
+                    db.query(DocumentChunk, keyword_score.label("keyword_score"))
+                    .filter(or_(content_match, section_match, source_match))
+                    .order_by(keyword_score.desc(), DocumentChunk.created_at.desc())
+                    .limit(limit)
+                    .all()
+                )
+
+                for chunk, score in rows:
+                    if chunk.id in docs_map:
+                        continue
+
+                    docs_map[chunk.id] = Document(
+                        page_content=chunk.content,
+                        metadata={
+                            "chunk_id": chunk.id,
+                            "source": chunk.source,
+                            "url": chunk.source,
+                            "section": chunk.section or "Introduction",
+                            "score": float(score or 0) / 100,
+                            "keyword_score": int(score or 0),
+                            "retrieval_source": "sql_keyword",
+                        }
+                    )
+
+            docs = list(docs_map.values())
+            if docs:
+                log_info("RETRIEVAL", f"SQL keyword search added {len(docs)} candidate documents.")
+            return docs[:limit]
+        except Exception as e:
+            log_warn("RETRIEVAL", f"SQL keyword search skipped: {e}")
+            return []
+        finally:
+            db.close()
+
+    def _apply_domain_boosts(self, docs: List[Document], query: str) -> List[Document]:
+        return sorted(docs, key=lambda d: d.metadata.get("score", 0.0), reverse=True)
 
     def expand_context(self, base_docs: List[Document]) -> List[Document]:
         """
@@ -27,17 +106,25 @@ class XanhSMHybridSearch:
         from qdrant_client.http import models as qdrant_models
         from app.vectordb.qdrant_client import COLLECTION_NAME
 
-        EXPANSION_THRESHOLD = 0.7
-        MAX_CHUNKS_PER_SECTION = 10
+        EXPANSION_THRESHOLD = config.CONTEXT_EXPANSION_THRESHOLD
+        MAX_CHUNKS_PER_SECTION = config.MAX_CHUNKS_PER_SECTION
 
         # Phân loại tài liệu
         docs_to_expand = []
         docs_to_keep = []
+        table_row_docs = []
 
         for doc in base_docs:
-            parent_id = doc.metadata.get("parent_chunk_id")
+            meta = doc.metadata or {}
+            chunk_type = meta.get("chunk_type")
+            derived_from = meta.get("derived_from")
+            parent_id = meta.get("parent_chunk_id")
             score = doc.metadata.get("rerank_score", 0.0)
-            
+
+            if chunk_type == "table_row_index" and derived_from:
+                table_row_docs.append(doc)
+                continue
+
             if parent_id and score >= EXPANSION_THRESHOLD:
                 docs_to_expand.append(doc)
             else:
@@ -45,6 +132,68 @@ class XanhSMHybridSearch:
 
         expanded_docs = []
         covered_chunk_ids = set()
+
+        # Mở rộng các hit bảng dạng row-index về lại full HTML table gốc
+        for doc in table_row_docs:
+            meta = doc.metadata or {}
+            derived_from = meta.get("derived_from")
+            if not derived_from:
+                docs_to_keep.append(doc)
+                continue
+
+            try:
+                log_info("RETRIEVAL", f"Table row hit: scrolling full table for derived_from={derived_from}")
+                q_filter = qdrant_models.Filter(
+                    must=[
+                        qdrant_models.FieldCondition(
+                            key="metadata.chunk_id",
+                            match=qdrant_models.MatchValue(value=derived_from)
+                        )
+                    ]
+                )
+                results = self.db.qdrant.scroll(
+                    collection_name=COLLECTION_NAME,
+                    scroll_filter=q_filter,
+                    limit=1,
+                    with_payload=True,
+                    with_vectors=False
+                )[0]
+            except Exception as e:
+                log_error("RETRIEVAL", f"Failed to expand table row chunk {derived_from}: {e}")
+                docs_to_keep.append(doc)
+                continue
+
+            if not results:
+                docs_to_keep.append(doc)
+                continue
+
+            payload = results[0].payload or {}
+            payload_meta = payload.get("metadata", {})
+            full_content = payload.get("page_content", "").strip()
+            full_chunk_id = payload_meta.get("chunk_id", derived_from)
+            if full_chunk_id:
+                covered_chunk_ids.add(full_chunk_id)
+
+            if not full_content:
+                docs_to_keep.append(doc)
+                continue
+
+            expanded_meta = payload_meta.copy()
+            expanded_meta["retrieval_source"] = "table_full_expansion"
+            expanded_meta["expanded_from"] = meta.get("chunk_id")
+            expanded_meta["expanded_from_chunk_type"] = "table_row_index"
+            if doc.metadata.get("rerank_score") is not None:
+                expanded_meta["rerank_score"] = doc.metadata.get("rerank_score")
+
+            row_chunk_id = meta.get("chunk_id")
+            if row_chunk_id:
+                covered_chunk_ids.add(row_chunk_id)
+
+            expanded_docs.append(Document(
+                page_content=full_content,
+                metadata=expanded_meta
+            ))
+            log_info("RETRIEVAL", f"Expanded table row hit to full table chunk {full_chunk_id}")
 
         # Nhóm docs_to_expand theo parent_chunk_id
         parent_groups = {}
@@ -151,6 +300,15 @@ class XanhSMHybridSearch:
         """
         if expanded_queries is None:
             expanded_queries = self.expander.get_queries(query)
+        if query not in expanded_queries:
+            expanded_queries = [query] + expanded_queries
+        if self._is_overview_query(query):
+            expanded_queries.extend([
+                "Tổng quan danh mục dịch vụ và tài liệu Green SM",
+                "service_catalog overview Green SM",
+                "Green SM gồm những danh mục dịch vụ nào",
+            ])
+            expanded_queries = list(dict.fromkeys(expanded_queries))
         log_info("RETRIEVAL", f"Expanded queries for search: {expanded_queries}")
         
         # Dùng set để deduplicate theo chunk_id
@@ -163,8 +321,14 @@ class XanhSMHybridSearch:
                 doc_id = doc.metadata.get("chunk_id", doc.page_content[:50])
                 if doc_id not in all_docs_map:
                     all_docs_map[doc_id] = doc
+
+        keyword_docs = self._keyword_search_document_chunks(expanded_queries, limit=min(10, limit))
+        for doc in keyword_docs:
+            doc_id = doc.metadata.get("chunk_id", doc.page_content[:50])
+            if doc_id not in all_docs_map:
+                all_docs_map[doc_id] = doc
                     
-        unique_docs = list(all_docs_map.values())
+        unique_docs = self._apply_domain_boosts(list(all_docs_map.values()), " ".join(expanded_queries))
         
         log_info("RETRIEVAL", f"Native Qdrant Hybrid Search returned {len(unique_docs)} unique documents.")
         

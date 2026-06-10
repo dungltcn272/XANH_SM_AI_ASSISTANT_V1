@@ -1,3 +1,5 @@
+import re
+from urllib.parse import urlparse
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qdrant_models
 from langchain_core.documents import Document
@@ -14,22 +16,45 @@ class VectorDBClient:
         if cls._instance is None:
             cls._instance = super(VectorDBClient, cls).__new__(cls)
             qdrant_url = settings.QDRANT_URL or "http://localhost:6333"
-            # Bypass API key requirement when connecting to localhost/127.0.0.1
-            is_local = "localhost" in qdrant_url or "127.0.0.1" in qdrant_url
-            api_key = None if is_local else (settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None)
+            
+            # Tự động nhận diện môi trường Railway hoặc Local để ép api_key = None
+            host = urlparse(qdrant_url).hostname or ""
+            is_local = host in {"localhost", "127.0.0.1", "0.0.0.0"}
+            is_railway = bool(
+                re.search(r"(^|\.)railway\.app$", host)
+                or re.search(r"(^|\.)up\.railway\.app$", host)
+                or re.search(r"(^|\.)railway\.internal$", host)
+            )
+            
+            api_key = None if (is_local or is_railway) else (settings.QDRANT_API_KEY or None)
             
             cls._instance.client = QdrantClient(
                 url=qdrant_url,
-                api_key=api_key
+                api_key=api_key,
+                timeout=60, # Tăng timeout cho môi trường cloud
+                prefer_grpc=False # Railway thường ưu tiên HTTP/1.1 hoặc HTTPS qua Proxy
             )
             cls._instance.dense_model = get_embedding_model()
             cls._instance.sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
             
             # Auto-healing: Ensure required payload indexes exist (especially metadata.parent_chunk_id)
             try:
-                for field in ["metadata.url", "metadata.chunk_index", "metadata.parent_chunk_id"]:
+                for field in [
+                    "metadata.url",
+                    "metadata.chunk_id",
+                    "metadata.chunk_index",
+                    "metadata.parent_chunk_id",
+                    "metadata.chunk_type",
+                    "metadata.category",
+                    "metadata.document_type",
+                    "metadata.source_type",
+                    "metadata.table_id",
+                    "metadata.derived_from",
+                    "metadata.row_start",
+                    "metadata.row_end",
+                ]:
                     schema = qdrant_models.PayloadSchemaType.KEYWORD
-                    if field == "metadata.chunk_index":
+                    if field in {"metadata.chunk_index", "metadata.row_start", "metadata.row_end"}:
                         schema = qdrant_models.PayloadSchemaType.INTEGER
                     try:
                         cls._instance.client.create_payload_index(

@@ -3,6 +3,7 @@ import os
 import time
 import json
 import math
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 # Set TIKTOKEN_CACHE_DIR for offline mode
@@ -46,6 +47,18 @@ class XanhSMEvaluation:
                     break
         return found / len(expected_kws)
 
+    def count_sources_in_docs(self, docs, expected_sources):
+        if not expected_sources:
+            return 1.0
+        haystack = " ".join(
+            [
+                f"{doc.get('source', '')} {doc.get('section', '')} {doc.get('content', '')[:500]}"
+                for doc in docs
+            ]
+        ).lower()
+        found = sum(1 for source in expected_sources if source.lower() in haystack)
+        return found / len(expected_sources)
+
     def evaluate_item(self, case: Dict[str, Any]) -> Dict[str, Any]:
         query = case["query"]
         expected = case.get("expected_keywords", [])
@@ -60,6 +73,7 @@ class XanhSMEvaluation:
         # Retrieval Metrics
         recall_5 = self.count_keywords_in_docs(top_docs[:5], expected)
         recall_10 = self.count_keywords_in_docs(top_docs[:10], expected)
+        source_recall_5 = self.count_sources_in_docs(top_docs[:5], case.get("expected_sources", []))
         
         first_rel_rank = -1
         for i, doc in enumerate(top_docs):
@@ -118,18 +132,28 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 log_warn("EVAL", f"LLM Judge error: {e}")
         num_chunks_before_expansion = result.get("num_chunks_before_expansion", 0)
         compressed_context_len = result.get("compressed_context_len", 0)
+        nlu_latency_ms = result.get("nlu_latency_ms")
+        nlu_fast_path = bool(result.get("nlu_fast_path"))
+        nlu_fast_path_reason = result.get("nlu_fast_path_reason")
         
         print(f"   -> AI Answer: {answer[:100]}...")
         print(f"   -> R@5: {recall_5:.2f} | MRR: {mrr:.2f} | Faithfulness: {faithfulness:.2f} | Correctness: {correctness:.2f}")
         
         return {
+            "id": case.get("id", query[:60]),
+            "level": case.get("level", "unspecified"),
+            "category": case.get("category", "general"),
             "query": query,
             "latency_seconds": round(latency, 3),
+            "nlu_latency_ms": nlu_latency_ms,
+            "nlu_fast_path": nlu_fast_path,
+            "nlu_fast_path_reason": nlu_fast_path_reason,
             "num_chunks_before_expansion": num_chunks_before_expansion,
             "compressed_context_len": compressed_context_len,
             "retrieval": {
                 "recall_5": recall_5,
                 "recall_10": recall_10,
+                "source_recall_5": source_recall_5,
                 "mrr": mrr,
                 "ndcg_5": ndcg_5
             },
@@ -147,7 +171,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         print("\n[*] Starting Automated Quality Evaluation Suite (RAGAS)...")
         results = []
         
-        avg = {"recall_5": 0, "recall_10": 0, "mrr": 0, "ndcg_5": 0, "faithfulness": 0, "correctness": 0, "relevancy": 0, "latency": 0, "num_chunks": 0, "context_len": 0}
+        avg = {"recall_5": 0, "recall_10": 0, "source_recall_5": 0, "mrr": 0, "ndcg_5": 0, "faithfulness": 0, "correctness": 0, "relevancy": 0, "latency": 0, "num_chunks": 0, "context_len": 0}
         
         for idx, case in enumerate(self.test_cases):
             try:
@@ -160,7 +184,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 res = self.evaluate_item(case)
                 results.append(res)
                 
-                for k in ["recall_5", "recall_10", "mrr", "ndcg_5"]:
+                for k in ["recall_5", "recall_10", "source_recall_5", "mrr", "ndcg_5"]:
                     avg[k] += res["retrieval"][k]
                 for k in ["faithfulness", "correctness", "relevancy"]:
                     avg[k] += res["generation"][k]
@@ -176,9 +200,11 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
             "average_latency_sec": round(avg["latency"] / count, 3),
             "average_num_chunks_before_expansion": round(avg["num_chunks"] / count, 2),
             "average_context_len": round(avg["context_len"] / count, 1),
-            "retrieval": {k: round(v / count, 3) for k, v in avg.items() if k in ["recall_5", "recall_10", "mrr", "ndcg_5"]},
+            "retrieval": {k: round(v / count, 3) for k, v in avg.items() if k in ["recall_5", "recall_10", "source_recall_5", "mrr", "ndcg_5"]},
             "generation": {k: round(v / count, 3) for k, v in avg.items() if k in ["faithfulness", "correctness", "relevancy"]},
-            "total_cases": len(results)
+            "total_cases": len(results),
+            "by_level": self.summarize_bucket(results, "level"),
+            "by_category": self.summarize_bucket(results, "category"),
         }
         
         report = {
@@ -188,9 +214,68 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         
         with open("evaluation_report.json", "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
+
+        self.save_run_snapshot(report)
             
         print("[INFO] Evaluation results successfully saved to evaluation_report.json.")
         return report
+
+    def save_run_snapshot(self, report: Dict[str, Any]) -> None:
+        try:
+            from app.db.database import Base, engine, SessionLocal
+            from app.db.models import EvaluationRun
+
+            Base.metadata.create_all(bind=engine)
+            metrics = report.get("metrics", {})
+            retrieval = metrics.get("retrieval", {})
+            generation = metrics.get("generation", {})
+            run_name = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            dataset_name = f"golden_{metrics.get('total_cases', len(report.get('details', [])))}"
+
+            db = SessionLocal()
+            try:
+                row = EvaluationRun(
+                    run_name=run_name,
+                    dataset_name=dataset_name,
+                    model_name=settings.LLM_MODEL,
+                    total_cases=metrics.get("total_cases", 0),
+                    status="completed",
+                    average_latency_sec=metrics.get("average_latency_sec", 0),
+                    recall_5=retrieval.get("recall_5", 0),
+                    recall_10=retrieval.get("recall_10", 0),
+                    mrr=retrieval.get("mrr", 0),
+                    ndcg_5=retrieval.get("ndcg_5", 0),
+                    faithfulness=generation.get("faithfulness", 0),
+                    correctness=generation.get("correctness", 0),
+                    relevancy=generation.get("relevancy", 0),
+                    metrics_json=json.dumps(metrics, ensure_ascii=False),
+                    details_json=json.dumps(report.get("details", []), ensure_ascii=False),
+                )
+                db.add(row)
+                db.commit()
+                print(f"[INFO] Evaluation run snapshot saved to evaluation_runs: {run_name}")
+            finally:
+                db.close()
+        except Exception as e:
+            log_warn("EVAL", f"Failed to save evaluation run snapshot: {e}")
+
+    def summarize_bucket(self, results: List[Dict[str, Any]], key: str) -> Dict[str, Any]:
+        buckets: Dict[str, List[Dict[str, Any]]] = {}
+        for item in results:
+            buckets.setdefault(item.get(key, "unspecified"), []).append(item)
+
+        summary = {}
+        for name, items in sorted(buckets.items()):
+            n = len(items)
+            summary[name] = {
+                "cases": n,
+                "avg_latency_sec": round(sum(i["latency_seconds"] for i in items) / n, 3),
+                "avg_recall_5": round(sum(i["retrieval"]["recall_5"] for i in items) / n, 3),
+                "avg_source_recall_5": round(sum(i["retrieval"]["source_recall_5"] for i in items) / n, 3),
+                "avg_correctness": round(sum(i["generation"]["correctness"] for i in items) / n, 3),
+                "avg_faithfulness": round(sum(i["generation"]["faithfulness"] for i in items) / n, 3),
+            }
+        return summary
 
 if __name__ == "__main__":
     evaluator = XanhSMEvaluation()

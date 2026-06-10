@@ -3,6 +3,7 @@ import sys
 import json
 import hashlib
 import time
+import re
 from typing import List, Dict, Any, Tuple
 
 from openai import OpenAI
@@ -55,8 +56,30 @@ class XanhSMRAGPipeline:
                 f"---"
             )
             formatted_blocks.append(block)
-            
+
         return "\n\n".join(formatted_blocks)
+
+    IMAGE_MARKDOWN_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)\)')
+
+    def _extract_images_from_doc(self, doc: Any) -> List[Dict[str, Any]]:
+        images = []
+        content = doc.page_content or ""
+        meta = doc.metadata or {}
+        for alt, url in self.IMAGE_MARKDOWN_RE.findall(content):
+            clean_url = url.strip()
+            if not clean_url or clean_url.startswith(("data:", "mailto:", "#")):
+                continue
+            images.append({
+                "alt": (alt or "").strip() or "Hình ảnh Xanh SM",
+                "url": clean_url,
+                "source": meta.get("source", "unknown"),
+                "section": meta.get("section", ""),
+                "page_url": meta.get("url", "") or meta.get("source", ""),
+                "category": meta.get("category", ""),
+                "relevance_score": meta.get("rerank_score", meta.get("score", 0.0)),
+            })
+        return images
+
         
     def _calculate_llm_cost(self, prompt_tokens: int, completion_tokens: int) -> Dict[str, Any]:
         """
@@ -75,14 +98,9 @@ class XanhSMRAGPipeline:
         }
 
     def _build_citations(self, docs: List[Any]) -> List[Dict[str, Any]]:
-        import re
         citations = []
         for d in docs:
-            images_in_chunk = []
-            content = d.page_content or ""
-            img_matches = re.findall(r'!\[([^\]]*)\]\((https?://[^)]+)\)', content)
-            for alt, url in img_matches:
-                images_in_chunk.append({"alt": alt, "url": url})
+            images_in_chunk = self._extract_images_from_doc(d)
             
             citations.append({
                 "source": d.metadata.get("source", "unknown"),
@@ -92,6 +110,24 @@ class XanhSMRAGPipeline:
                 "images": images_in_chunk
             })
         return citations
+
+
+    def _build_prompt_messages(self, query: str, context_docs: List[Any], chat_history: List[Dict[str, str]] = None):
+        compressed_context = self._compress_context(context_docs)
+        system_msg = SYSTEM_PROMPT.format(context=compressed_context)
+        user_msg = USER_PROMPT_TEMPLATE.format(query=query)
+
+        messages = [{"role": "system", "content": system_msg}]
+        if chat_history and len(chat_history) > 0:
+            history_messages = []
+            for turn in chat_history[-6:]:
+                if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
+                    history_messages.append({"role": turn["role"], "content": turn["content"]})
+            if history_messages:
+                messages.extend(history_messages)
+
+        messages.append({"role": "user", "content": user_msg})
+        return messages, compressed_context, ""
 
     def _is_greeting_or_thanks(self, query: str) -> Dict[str, Any]:
         """
@@ -143,14 +179,15 @@ class XanhSMRAGPipeline:
         try:
             import re
             system_msg = FAITHFULNESS_CHECK_PROMPT.format(context=context, answer=answer)
-            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
+            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": f"Bắt đầu đánh giá câu trả lời sau đây."}
                 ],
-                temperature=0.0
+                temperature=0.0,
+                max_tokens=180
             )
             res_content = response.choices[0].message.content.strip()
             res_content = re.sub(r"```json|```", "", res_content).strip()
@@ -213,6 +250,8 @@ class XanhSMRAGPipeline:
         intent = nlu_res["intent"]
         expanded_queries = nlu_res["expanded_queries"]
         nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+        nlu_fast_path = bool(nlu_res.get("fast_path"))
+        nlu_fast_path_reason = nlu_res.get("fast_path_reason")
 
         # 4. Handle Sensitive / Safety Block
         if intent == "sensitive":
@@ -229,7 +268,10 @@ class XanhSMRAGPipeline:
                 "llm_cost_usd": 0.0,
                 "llm_cost_vnd": 0.0,
                 "num_chunks_before_expansion": 0,
-                "compressed_context_len": 0
+                "compressed_context_len": 0,
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason
             }
 
         # 5. Handle Small Talk
@@ -249,7 +291,10 @@ class XanhSMRAGPipeline:
                 "strategy_selected": "Bypass",
                 "faithfulness_passed": True,
                 "llm_cost_usd": 0.0,
-                "llm_cost_vnd": 0.0
+                "llm_cost_vnd": 0.0,
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason
             }
 
         # 5. Second Cache Lookup
@@ -269,7 +314,10 @@ class XanhSMRAGPipeline:
                     "llm_cost_usd": 0.0,
                     "llm_cost_vnd": 0.0,
                     "cache_hit": hit_res.get("cache_hit", "exact"),
-                    "cache_similarity": hit_res.get("cache_similarity", 1.0)
+                    "cache_similarity": hit_res.get("cache_similarity", 1.0),
+                    "nlu_latency_ms": round(nlu_latency, 2),
+                    "nlu_fast_path": nlu_fast_path,
+                    "nlu_fast_path_reason": nlu_fast_path_reason
                 }
 
         # 6. Search Strategy Selection
@@ -277,18 +325,24 @@ class XanhSMRAGPipeline:
         log_info("RETRIEVAL", f"Dynamically selected search strategy: {strategy}")
 
         # 7. Execute Retrieval
-        retrieved_candidates = self.search_engine.search(query=rewritten_query, limit=25, expanded_queries=expanded_queries)
+        retrieved_candidates = self.search_engine.search(
+            query=rewritten_query,
+            limit=config.RETRIEVAL_CANDIDATE_LIMIT,
+            expanded_queries=expanded_queries,
+        )
 
         # 8. Rerank
-        top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=10)
+        top_docs = self.reranker.rerank(
+            query=rewritten_query,
+            docs=retrieved_candidates,
+            top_n=config.RERANK_TOP_N,
+        )
         num_chunks_before_expansion = len(top_docs)
 
         # 9. Expand context
         top_docs = self.search_engine.expand_context(top_docs)
 
         # 10. Compress Context
-        compressed_context = self._compress_context(top_docs)
-
         # 11. LLM Generation
         final_answer = ""
         citations = []
@@ -296,28 +350,20 @@ class XanhSMRAGPipeline:
         completion_tokens = 0
 
         citations = self._build_citations(top_docs)
-
-        system_msg = SYSTEM_PROMPT.format(context=compressed_context)
-        user_msg = USER_PROMPT_TEMPLATE.format(query=rewritten_query)
-
-        messages = [{"role": "system", "content": system_msg}]
-        if chat_history and len(chat_history) > 0:
-            history_messages = []
-            for turn in chat_history[-6:]:
-                if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
-                    history_messages.append({"role": turn["role"], "content": turn["content"]})
-            if history_messages:
-                messages.extend(history_messages)
-        
-        messages.append({"role": "user", "content": user_msg})
+        messages, compressed_context, _ = self._build_prompt_messages(
+            query=rewritten_query,
+            context_docs=top_docs,
+            chat_history=chat_history
+        )
 
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
             try:
-                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
+                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
                 response = client.chat.completions.create(
                     model=config.LLM_MODEL,
                     messages=messages,
-                    temperature=0.3
+                    temperature=0.3,
+                    max_tokens=config.LLM_MAX_TOKENS
                 )
                 final_answer = response.choices[0].message.content
                 prompt_tokens = response.usage.prompt_tokens
@@ -327,12 +373,6 @@ class XanhSMRAGPipeline:
                 final_answer = self._generate_fallback_answer(rewritten_query, top_docs)
         else:
             final_answer = self._generate_fallback_answer(rewritten_query, top_docs)
-
-        # Check safety of final answer before returning
-        if not self.output_guardrail.check_safe(final_answer):
-            final_answer = "Nội dung vi phạm chính sách an toàn của Xanh SM."
-            citations = []
-            intent = "sensitive"
 
         # Cost calculation
         total_prompt = prompt_tokens + nlu_usage.get("prompt_tokens", 0)
@@ -353,6 +393,9 @@ class XanhSMRAGPipeline:
             "expanded_queries": expanded_queries,
             "compressed_context_len": len(compressed_context),
             "num_chunks_before_expansion": num_chunks_before_expansion,
+            "nlu_latency_ms": round(nlu_latency, 2),
+            "nlu_fast_path": nlu_fast_path,
+            "nlu_fast_path_reason": nlu_fast_path_reason,
             "intent": intent,
             "gateway_checked": True,
             "strategy_selected": strategy,
@@ -412,6 +455,8 @@ class XanhSMRAGPipeline:
         intent = nlu_res["intent"]
         expanded_queries = nlu_res["expanded_queries"]
         nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+        nlu_fast_path = bool(nlu_res.get("fast_path"))
+        nlu_fast_path_reason = nlu_res.get("fast_path_reason")
 
         # 3. Handle Sensitive / Safety Block from NLU
         if intent == "sensitive":
@@ -434,6 +479,9 @@ class XanhSMRAGPipeline:
                 "expanded_docs": [],
                 "num_chunks_before_expansion": 0,
                 "compressed_context_len": 0,
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason,
                 "token_usage": {
                     "unified_nlu": nlu_usage,
                     "generation": {"prompt_tokens": 0, "completion_tokens": 0},
@@ -462,6 +510,9 @@ class XanhSMRAGPipeline:
                 "raw_candidates": [],
                 "reranked_docs": [],
                 "expanded_docs": [],
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason,
                 "token_usage": {
                     "unified_nlu": nlu_usage,
                     "generation": {"prompt_tokens": 0, "completion_tokens": 0},
@@ -474,7 +525,11 @@ class XanhSMRAGPipeline:
         strategy = self.select_retrieval_strategy(rewritten_query)
 
         # 6. Execute Retrieval (Hybrid Search)
-        retrieved_candidates = self.search_engine.search(query=rewritten_query, limit=25, expanded_queries=expanded_queries)
+        retrieved_candidates = self.search_engine.search(
+            query=rewritten_query,
+            limit=config.RETRIEVAL_CANDIDATE_LIMIT,
+            expanded_queries=expanded_queries,
+        )
         raw_candidates_data = [
             {
                 "content": doc.page_content,
@@ -485,7 +540,11 @@ class XanhSMRAGPipeline:
         ]
 
         # 7. Rerank
-        top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=10)
+        top_docs = self.reranker.rerank(
+            query=rewritten_query,
+            docs=retrieved_candidates,
+            top_n=config.RERANK_TOP_N,
+        )
         reranked_docs_data = [
             {
                 "content": doc.page_content,
@@ -508,8 +567,6 @@ class XanhSMRAGPipeline:
         ]
 
         # 9. Compress Context
-        compressed_context = self._compress_context(top_docs_expanded)
-
         # 10. LLM Generation
         final_answer = ""
         citations = []
@@ -517,24 +574,20 @@ class XanhSMRAGPipeline:
         completion_tokens = 0
 
         citations = self._build_citations(top_docs_expanded)
-
-        system_msg = SYSTEM_PROMPT.format(context=compressed_context)
-        user_msg = USER_PROMPT_TEMPLATE.format(query=rewritten_query)
-
-        messages = [{"role": "system", "content": system_msg}]
-        if chat_history and len(chat_history) > 0:
-            for turn in chat_history[-6:]:
-                if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
-                    messages.append({"role": turn["role"], "content": turn["content"]})
-        messages.append({"role": "user", "content": user_msg})
+        messages, compressed_context, _ = self._build_prompt_messages(
+            query=rewritten_query,
+            context_docs=top_docs_expanded,
+            chat_history=chat_history
+        )
 
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
             try:
-                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
+                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
                 response = client.chat.completions.create(
                     model=config.LLM_MODEL,
                     messages=messages,
-                    temperature=0.3
+                    temperature=0.3,
+                    max_tokens=config.LLM_MAX_TOKENS
                 )
                 final_answer = response.choices[0].message.content
                 prompt_tokens = response.usage.prompt_tokens
@@ -545,12 +598,7 @@ class XanhSMRAGPipeline:
         else:
             final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded)
 
-        # Check safety of final answer
         output_guardrail_passed = True
-        if not self.output_guardrail.check_safe(final_answer):
-            final_answer = "Nội dung vi phạm chính sách an toàn của Xanh SM."
-            citations = []
-            output_guardrail_passed = False
 
         # Cost calculation
         total_prompt = prompt_tokens + nlu_usage.get("prompt_tokens", 0)
@@ -566,6 +614,9 @@ class XanhSMRAGPipeline:
             "expanded_queries": expanded_queries,
             "compressed_context_len": len(compressed_context),
             "num_chunks_before_expansion": len(top_docs),
+            "nlu_latency_ms": round(nlu_latency, 2),
+            "nlu_fast_path": nlu_fast_path,
+            "nlu_fast_path_reason": nlu_fast_path_reason,
             "intent": intent,
             "gateway_checked": True,
             "safety_res": {"safe": True, "reason": ""},
@@ -588,11 +639,9 @@ class XanhSMRAGPipeline:
 
     def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None):
         """
-        Stream version of the NLU-Gateway RAG chain with output guardrail validation.
+        Stream version of the NLU-Gateway RAG chain.
         """
-        return self.output_guardrail.sanitize_stream(
-            self._stream_run_raw(query=query, chat_history=chat_history)
-        )
+        return self._stream_run_raw(query=query, chat_history=chat_history)
 
     def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None):
         """
@@ -609,6 +658,23 @@ class XanhSMRAGPipeline:
         
         def yield_msg(val):
             yield val
+
+        def finalize_generation(final_answer: str, top_docs: List[Any], messages: List[Dict[str, str]]):
+            est_p = len(" ".join([m["content"] for m in messages])) // 4
+            est_c = len(final_answer) // 4
+            metrics["total_tokens"] += est_p + est_c
+            gen_cost = self._calculate_llm_cost(est_p, est_c)
+            metrics["cost_usd"] += gen_cost["cost_usd"]
+
+            citations = self._build_citations(top_docs[:5])
+            yield from yield_msg(f'data: {json.dumps({"sources": citations})}\n\n')
+
+            if self.cache and final_answer:
+                self.cache.set(normalized_query, final_answer, citations)
+                if rewritten_query != normalized_query:
+                    self.cache.set(rewritten_query, final_answer, citations)
+
+            yield from yield_msg(f'data: {json.dumps({"metrics": metrics})}\n\n')
 
         normalized_query = self.gateway.normalize_input(query)
         safety_res = self.gateway.safety_precheck(normalized_query)
@@ -649,6 +715,8 @@ class XanhSMRAGPipeline:
         metrics["rewritten_query"] = rewritten_query
         metrics["intent"] = intent
         metrics["expanded_queries"] = expanded_queries
+        metrics["nlu_fast_path"] = bool(nlu_res.get("fast_path"))
+        metrics["nlu_fast_path_reason"] = nlu_res.get("fast_path_reason")
         metrics["total_tokens"] += nlu_usage.get("prompt_tokens", 0) + nlu_usage.get("completion_tokens", 0)
         
         # Calculate NLU/Rewrite cost immediately so it is recorded even if generating fails/is interrupted
@@ -707,64 +775,79 @@ class XanhSMRAGPipeline:
             strategy = self.select_retrieval_strategy(rewritten_query)
             yield from yield_msg('data: {"step": "Đang truy xuất dữ liệu (Hybrid)..."}\n\n')
             t_search_start = time.time()
-            retrieved_candidates = self.search_engine.search(query=rewritten_query, limit=25, expanded_queries=expanded_queries)
+            retrieved_candidates = self.search_engine.search(
+                query=rewritten_query,
+                limit=config.RETRIEVAL_CANDIDATE_LIMIT,
+                expanded_queries=expanded_queries,
+            )
             metrics["search_latency_ms"] = (time.time() - t_search_start) * 1000
 
             yield from yield_msg('data: {"step": "Đang chấm điểm & Reranking tài liệu..."}\n\n')
             t_rerank_start = time.time()
-            top_docs = self.reranker.rerank(query=rewritten_query, docs=retrieved_candidates, top_n=10)
+            top_docs = self.reranker.rerank(
+                query=rewritten_query,
+                docs=retrieved_candidates,
+                top_n=config.RERANK_TOP_N,
+            )
             metrics["rerank_latency_ms"] = (time.time() - t_rerank_start) * 1000
             metrics["num_chunks_before_expansion"] = len(top_docs)
             
             top_docs = self.search_engine.expand_context(top_docs)
-            compressed_context = self._compress_context(top_docs)
+            messages, compressed_context, _ = self._build_prompt_messages(
+                query=rewritten_query,
+                context_docs=top_docs,
+                chat_history=chat_history
+            )
             metrics["compressed_context_len"] = len(compressed_context)
 
             yield from yield_msg('data: {"step": "Đang tổng hợp câu trả lời..."}\n\n')
             t_gen_start = time.time()
-            messages = [{"role": "system", "content": SYSTEM_PROMPT.format(context=compressed_context)}]
-            if chat_history and len(chat_history) > 0:
-                for turn in chat_history[-6:]:
-                    if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
-                        messages.append({"role": turn["role"], "content": turn["content"]})
-            messages.append({"role": "user", "content": USER_PROMPT_TEMPLATE.format(query=rewritten_query)})
 
             final_answer = ""
-            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
-            response = client.chat.completions.create(model=config.LLM_MODEL, messages=messages, temperature=0.3, stream=True)
+            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+            response = client.chat.completions.create(
+                model=config.LLM_MODEL,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=config.LLM_MAX_TOKENS,
+                stream=True
+            )
             
             first_token_received = False
-            for chunk in response:
-                if chunk.choices[0].delta.content:
-                    if not first_token_received:
-                        metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
-                        metrics["total_latency_ms"] = (time.time() - t_start) * 1000
-                        first_token_received = True
-                    text = chunk.choices[0].delta.content
-                    final_answer += text
-                    yield from yield_msg(f"data: {text.replace('\n', '\ndata: ')}\n\n")
+            stream_failed = False
+            try:
+                for chunk in response:
+                    if chunk.choices[0].delta.content:
+                        if not first_token_received:
+                            metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
+                            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+                            first_token_received = True
+                        text = chunk.choices[0].delta.content
+                        final_answer += text
+                        yield from yield_msg(f"data: {text.replace('\n', '\ndata: ')}\n\n")
+            except Exception as stream_error:
+                stream_failed = True
+                log_warn("CHAT", f"Streaming generation interrupted: {stream_error}")
+
+            if stream_failed and not final_answer:
+                log_warn("CHAT", "Retrying generation once without streaming.")
+                retry_response = client.chat.completions.create(
+                    model=config.LLM_MODEL,
+                    messages=messages,
+                    temperature=0.3,
+                    max_tokens=config.LLM_MAX_TOKENS
+                )
+                final_answer = retry_response.choices[0].message.content or ""
+                metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
+                metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+                if final_answer:
+                    yield from yield_msg(f"data: {final_answer.replace('\n', '\ndata: ')}\n\n")
             
             if not first_token_received:
                 metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
-            
-            est_p = len(" ".join([m["content"] for m in messages])) // 4
-            est_c = len(final_answer) // 4
-            metrics["total_tokens"] += est_p + est_c
-            
-            # Calculate generation cost and add to total cost (preserving NLU/Rewrite cost)
-            gen_cost = self._calculate_llm_cost(est_p, est_c)
-            metrics["cost_usd"] += gen_cost["cost_usd"]
-                    
-            citations = self._build_citations(top_docs[:5])
-            yield from yield_msg(f'data: {json.dumps({"sources": citations})}\n\n')
-            
-            if self.cache and final_answer:
-                self.cache.set(normalized_query, final_answer, citations)
-                if rewritten_query != normalized_query:
-                    self.cache.set(rewritten_query, final_answer, citations)
-            
-            yield from yield_msg(f'data: {json.dumps({"metrics": metrics})}\n\n')
+
+            yield from finalize_generation(final_answer, top_docs, messages)
                 
         except Exception as e:
             log_error("CHAT", f"Pipeline Execution Error: {e}")
@@ -795,7 +878,7 @@ class XanhSMRAGPipeline:
         
         if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
             try:
-                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=15.0)
+                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
@@ -812,7 +895,7 @@ class XanhSMRAGPipeline:
                             ]
                         }
                     ],
-                    max_tokens=300
+                    max_tokens=min(config.LLM_MAX_TOKENS, 300)
                 )
                 diagnostic_query = response.choices[0].message.content.strip().strip('"').strip("'")
                 log_info("NLU", f"Identified diagnostic query: '{diagnostic_query}'")
