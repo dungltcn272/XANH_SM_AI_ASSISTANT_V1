@@ -28,16 +28,6 @@ try:
 except Exception:
     pass
 
-def safe_print(*args, **kwargs):
-    """Print that never raises UnicodeEncodeError on Windows."""
-    try:
-        print(*args, **kwargs)
-    except UnicodeEncodeError:
-        # Encode to ASCII with replacement for unrepresentable chars
-        safe_args = [str(a).encode('ascii', errors='replace').decode('ascii') for a in args]
-        print(*safe_args, **kwargs)
-    except Exception:
-        pass
 
 load_dotenv(override=True)
 

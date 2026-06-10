@@ -465,19 +465,27 @@ export default function AIEvalLab() {
                   </div>
                 </div>
 
-                <Panel title="Metric Trends" action={<span className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300">Last 7 runs</span>}>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                      ['Recall@5', 'recall_5', 'emerald'],
-                      ['Faithfulness', 'faithfulness', 'cyan'],
-                      ['NDCG@5', 'ndcg_5', 'violet'],
-                      ['Latency', 'latency', 'orange']
-                    ].map(([label, key, color]) => (
-                      <div key={key} className="grid grid-cols-[84px_minmax(0,1fr)] items-center gap-2 text-xs">
-                        <span className="text-slate-400">{label}</span>
-                        <Sparkline values={trend.map(row => row[key]).filter(v => v !== undefined)} color={color} latency={key === 'latency'} />
-                      </div>
-                    ))}
+                <Panel title="Detailed Metric Trends" action={<span className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300">Historical performance (Last 12 runs)</span>}>
+                  <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
+                    {metricMeta.map(meta => {
+                      const values = trend.map(row => row[meta.key === 'system_latency' ? 'latency' : meta.key]).filter(v => v !== undefined);
+                      const latestValue = metricValue(metrics, meta);
+                      const palette = colorClass[meta.color];
+                      
+                      return (
+                        <div key={meta.key} className="group flex items-center gap-4 rounded-md border border-slate-800/40 bg-slate-900/20 p-2 transition-all hover:border-slate-700/60 hover:bg-slate-900/40">
+                          <div className="w-24 shrink-0">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{meta.label}</div>
+                            <div className={`mt-0.5 text-base font-bold tabular-nums ${palette.value}`}>
+                              {meta.suffix ? latestValue.toFixed(2) + meta.suffix : formatScore(latestValue)}
+                            </div>
+                          </div>
+                          <div className="h-8 flex-1 min-w-0">
+                            <Sparkline values={values} color={meta.color} latency={meta.good === 'low'} />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </Panel>
               </div>
@@ -643,47 +651,6 @@ export default function AIEvalLab() {
                 </div>
               </div>
             </section>
-          <div className="hidden">
-            <Panel title="Top Problematic Cases" action={<button onClick={() => openCasesDialog('All problematic cases', allProblematicCases)} className="text-xs text-sky-300 hover:text-sky-200">View all</button>}>
-              <p className="mb-3 text-xs leading-relaxed text-slate-400">Các case nổi bật theo latency cao hoặc metric thấp nhất dưới ngưỡng 0.70.</p>
-              <div className="space-y-3">
-                {(problematicCases.length ? problematicCases : dataset.slice(0, 4)).map((row, idx) => (
-                  <div key={row.id || idx} className="grid grid-cols-[28px_minmax(0,1fr)] gap-2">
-                    <span className={`flex h-5 w-5 items-center justify-center rounded text-xs font-semibold ${idx === 0 ? 'bg-red-500' : idx === 1 ? 'bg-orange-500' : 'bg-amber-500'}`}>{idx + 1}</span>
-                    <div className="min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-medium text-slate-100">Case #{row.id || idx + 1}</p>
-                        <span className="group relative rounded border border-orange-400/25 px-1.5 py-0.5 text-[10px] text-orange-300">
-                          {row.issueLabel || 'Review'} {row.issueValue ? Number(row.issueValue).toFixed(row.issueLabel === 'Latency' ? 2 : 2) : ''}
-                          <Tooltip>{issueDescriptions[row.issueLabel] || 'Case cần admin xem lại vì có dấu hiệu yếu hơn các case khác.'}</Tooltip>
-                        </span>
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-xs text-slate-400">{row.query}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel title="Recent Runs" action={<button onClick={openRunsDialog} className="text-xs text-sky-300 hover:text-sky-200">View all</button>}>
-              <div className="space-y-2">
-                {(latestRuns.length ? latestRuns : []).map(run => (
-                  <div key={run.id || run.run_name} className="flex items-center justify-between gap-3 rounded-md py-1.5 text-sm">
-                    <span className="min-w-0 flex items-center gap-2 text-slate-300">
-                      {run.status === 'failed' ? <XCircle size={13} className="text-red-400" /> : <CheckCircle2 size={13} className="text-lime-400" />}
-                      <span className="truncate">{run.run_name}</span>
-                    </span>
-                    <span className="flex items-center gap-2 text-xs text-slate-500">
-                      {shortTime(run.created_at)}
-                      <StatusBadge status={run.status || 'completed'} />
-                      <ChevronRight size={14} />
-                    </span>
-                  </div>
-                ))}
-                {!latestRuns.length && <p className="text-sm text-slate-500">No eval runs recorded yet.</p>}
-              </div>
-            </Panel>
-          </div>
         </div>
       </div>
       {dialog && <EvalDialog dialog={dialog} onClose={() => setDialog(null)} />}

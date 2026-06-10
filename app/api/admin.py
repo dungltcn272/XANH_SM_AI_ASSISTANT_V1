@@ -289,19 +289,25 @@ def get_eval_runs(limit: int = 20, db: Session = Depends(get_db)):
                 "run_name": item["run_name"],
                 "created_at": item["created_at"],
                 "recall_5": item["retrieval"]["recall_5"],
+                "recall_10": item["retrieval"]["recall_10"],
+                "mrr": item["retrieval"]["mrr"],
+                "ndcg_5": item["retrieval"]["ndcg_5"],
                 "faithfulness": item["generation"]["faithfulness"],
                 "correctness": item["generation"]["correctness"],
-                "ndcg_5": item["retrieval"]["ndcg_5"],
+                "relevancy": item["generation"]["relevancy"],
                 "latency": item["average_latency_sec"],
             }
             for item in chronological
         ],
         "delta": {
             "recall_5": delta(("retrieval", "recall_5")),
+            "recall_10": delta(("retrieval", "recall_10")),
+            "mrr": delta(("retrieval", "mrr")),
+            "ndcg_5": delta(("retrieval", "ndcg_5")),
             "faithfulness": delta(("generation", "faithfulness")),
             "correctness": delta(("generation", "correctness")),
-            "ndcg_5": delta(("retrieval", "ndcg_5")),
-            "latency": delta(("average_latency_sec",)),
+            "relevancy": delta(("generation", "relevancy")),
+            "average_latency_sec": delta(("average_latency_sec",)),
         },
     }
 
