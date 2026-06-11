@@ -108,12 +108,13 @@ graph TD
     C -- "Cache Hit (~5ms)" --> Out([Stream Answer + Citations])
     C -- "Cache Miss" --> D{NLU Fast-path Eligible?}
 
-    D -- "Yes: clear RAG query" --> D1[Rule-based RAG NLU + expansion]
-    D -- "No: context rewrite needed" --> D2[Unified LLM NLU: intent + rewrite + expansion]
+    D -- "Yes: clear RAG query" --> D1[Rule-based RAG NLU + Rule Expansion]
+    D -- "No: context rewrite needed" --> D2[Unified LLM NLU: intent + rewrite]
     D1 --> DV[Domain Vocabulary]
-    D2 --> DV
+    D2 --> RuleExp[Rule-based Expansion]
+    RuleExp --> DV
     DV --> E{Intent}
-    E -- "small-talk" --> Stalk[Fast response]
+    E -- "small-talk" --> Stalk[LLM Persona Answer]
     E -- "sensitive" --> Block
     E -- "rag" --> F{Second Exact Cache}
 
@@ -126,6 +127,7 @@ graph TD
     K --> CacheSave[Save Semantic Cache]
     CacheSave --> Out
     Block --> Out
+    Stalk --> Out
 
     style A fill:#00A651,stroke:#fff,color:#fff
     style Out fill:#00A651,stroke:#fff,color:#fff
@@ -148,13 +150,13 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
    - **Thông số kỹ thuật**: Độ trễ **~5-10ms**. Nếu xảy ra Cache Hit (đã có câu trả lời hợp lệ và còn hiệu lực TTL), hệ thống trả kết quả ngay lập tức về client, bỏ qua toàn bộ các bước RAG sau đó.
 
 3. **NODE 3: NLU Gateway 3-in-1 + Domain Vocabulary (Xử lý ngôn ngữ tự nhiên tích hợp)**
-   - **Công nghệ áp dụng**: OpenAI API `chat/completions` với mô hình `gpt-4o-mini`.
-   - **Logic xử lý**: Tích hợp gộp 3 tác vụ tiền RAG vào duy nhất một lần gọi LLM bằng kỹ thuật Few-Shot Prompting và định dạng dữ liệu đầu ra có cấu trúc (Structured Outputs):
-     - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu), `small-talk` (chào hỏi, tán gẫu) hay `sensitive` (nhạy cảm/vi phạm chính sách).
-     - *Query Rewrite (Viết lại câu hỏi)*: Khử tham chiếu, bổ sung ngữ cảnh từ lịch sử hội thoại gần nhất và chuẩn hóa câu hỏi Tiếng Việt ngắn gọn, tập trung vào keywords.
-     - *Query Expansion (Mở rộng câu hỏi)*: Sinh thêm câu hỏi đồng nghĩa hỗ trợ tìm kiếm đa chiều.
-     - *Domain Vocabulary (Từ điển miền Xanh SM)*: Chuẩn hóa alias/sai chính tả và intent nghiệp vụ, ví dụ `green exress` -> `Green Express`, `đền hàng` -> `bảo hiểm/bồi thường/bồi hoàn`, `ăn chia` -> `doanh thu/chiết khấu/vận doanh`.
-   - **Thông số kỹ thuật**: Nhiệt độ `temperature = 0.1` để đảm bảo độ chính xác tuyệt đối. Gộp 3 API calls giúp giảm độ trễ từ **~4.5s xuống còn ~1.2s - 1.5s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
+   - **Công nghệ áp dụng**: OpenAI API `chat/completions` với mô hình `gpt-4o-mini` kết hợp Rule-based Pipeline.
+   - **Logic xử lý**: Tích hợp gộp các tác vụ tiền RAG bằng kỹ thuật Few-Shot Prompting và Structured Outputs:
+     - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu), `small-talk` (chào hỏi, LLM trả lời trực tiếp), hay `sensitive` (nhạy cảm).
+     - *Query Rewrite (Viết lại câu hỏi)*: Khử tham chiếu, bổ sung ngữ cảnh từ lịch sử hội thoại gần nhất.
+     - *Domain Vocabulary (Từ điển miền Xanh SM)*: Chuẩn hóa alias/sai chính tả.
+     *(Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn để tối ưu hóa hiệu năng, giảm độ trễ và tránh quá tải cho backend/VectorDB).*
+   - **Thông số kỹ thuật**: Gộp API calls giúp giảm độ trễ NLU từ **~1.5s xuống còn ~0.8s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
 
 4. **NODE 4: Second Cache Lookup (Kiểm tra Cache lần 2)**
    - **Công nghệ áp dụng**: PostgreSQL / SQLite SQL Query.
@@ -163,7 +165,7 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
 
 5. **NODE 5: Hybrid Search (Dense + Sparse + SQL Keyword Fallback + Metadata Boost)**
    - **Công nghệ áp dụng**: Qdrant Vector Database (`qdrant-client`) kết hợp Dense Vectors (mô hình `text-embedding-3-small` của OpenAI, 1536 chiều), Sparse Vectors (BM25/FastEmbed), và SQL fallback trên bảng `document_chunks`.
-   - **Logic xử lý**: Chuyển đổi câu hỏi chuẩn hóa và expanded queries thành Dense/Sparse vectors. Qdrant dùng **RRF (Reciprocal Rank Fusion)** để hợp nhất kết quả, sau đó SQL fallback bắt các cụm literal quan trọng bị miss bởi vector search. Domain metadata hints sẽ boost tài liệu theo `category`, `document_type`, `service` và ưu tiên `data/overview/service_catalog.md` cho câu hỏi tổng quát.
+   - **Logic xử lý**: Chuyển đổi câu hỏi chuẩn hóa thành Dense/Sparse vectors (Query Expansion đã được tắt bỏ hoàn toàn để tránh quá tải hệ thống và giảm độ trễ). Qdrant dùng **RRF (Reciprocal Rank Fusion)** để hợp nhất kết quả, sau đó SQL fallback bắt các cụm literal quan trọng bị miss bởi vector search. Domain metadata hints sẽ boost tài liệu theo `category`, `document_type`, `service` và ưu tiên `data/overview/service_catalog.md` cho câu hỏi tổng quát.
    - **Thông số kỹ thuật**: Kích thước Dense Vector `dimensions = 1536`. Lấy ra **Top 25 tài liệu thô** (`limit = 25`) trước khi rerank.
 
 6. **NODE 6: Cohere Reranker (Tái xếp hạng ngữ nghĩa chuyên sâu)**
@@ -204,7 +206,7 @@ Các thay đổi mới nhất của pipeline dữ liệu:
 
 Giải thích node mới trong Mermaid:
 
-- `Domain Vocabulary & Query Expansion`: node rule-based chạy sau NLU để bổ sung canonical query, expanded queries và metadata hints. Node này giảm lỗi "không có thông tin" khi từ khóa người dùng không trùng nguyên văn tài liệu nhưng tương đương về nghĩa.
+- `Domain Vocabulary`: node rule-based chạy sau NLU để bổ sung canonical query, chuẩn hóa từ vựng và metadata hints. (Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn để giảm thiểu độ trễ, tiết kiệm tài nguyên sinh token của LLM và concurrency cho VectorDB).
 - `Hybrid Search: Dense + Sparse + SQL Fallback`: node truy xuất hợp nhất semantic vector, BM25 sparse vector và SQL keyword fallback. Metadata boost ưu tiên đúng category/document type, đặc biệt `overview` với câu hỏi tổng quát.
 
 ---
@@ -283,6 +285,7 @@ EMBEDDING_PROVIDER=openai
 EMBEDDING_MODEL=text-embedding-3-small
 LLM_MODEL=gpt-4o-mini
 NLU_MODEL=gpt-4o-mini
+AI_JUDGE_MODEL=gpt-4o-mini
 RERANKER_PROVIDER=cohere
 RERANKER_MODEL=rerank-multilingual-v3.0
 
@@ -321,6 +324,7 @@ Hệ thống được thiết kế để dễ dàng đưa lên Production thông
    - `DATABASE_URL`: Sử dụng Connection URL nội bộ của PostgreSQL plugin (Railway tự cấp phát).
    - `QDRANT_URL`: URL cụm Qdrant Cloud của bạn (Nên tạo tài khoản trên Qdrant Cloud miễn phí).
    - `GOOGLE_CLIENT_ID`: Client ID Google Auth.
+   - `AI_JUDGE_MODEL`: Mô hình AI chấm điểm đánh giá tự động (mặc định: `gpt-4o-mini`).
    - `PORT`: `8000`.
    - `HF_TOKEN`: (Tùy chọn nhưng khuyến nghị) Token Hugging Face của bạn để tải các mô hình FastEmbed nhanh hơn và tránh lỗi giới hạn lượt tải (rate limits).
 5. Railway sẽ tự động detect Python (thông qua `requirements.txt`) và chạy lệnh `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.

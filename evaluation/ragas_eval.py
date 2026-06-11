@@ -64,7 +64,7 @@ class XanhSMEvaluation:
         expected = case.get("expected_keywords", [])
         
         start_time = time.time()
-        result = self.pipeline.run(query=query)
+        result = self.pipeline.run(query=query, bypass_cache=True)
         latency = time.time() - start_time
         
         answer = result["answer"]
@@ -117,7 +117,7 @@ Answer: {answer}
 
 Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy", "context_recall" (floats)."""
                 res = self.llm_client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=settings.AI_JUDGE_MODEL,
                     messages=[{"role": "user", "content": prompt}],
                     response_format={ "type": "json_object" },
                     temperature=0.0
@@ -231,11 +231,13 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
             generation = metrics.get("generation", {})
             run_name = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             dataset_name = f"golden_{metrics.get('total_cases', len(report.get('details', [])))}"
+            description = os.environ.get("EVAL_DESCRIPTION")
 
             db = SessionLocal()
             try:
                 row = EvaluationRun(
                     run_name=run_name,
+                    description=description,
                     dataset_name=dataset_name,
                     model_name=settings.LLM_MODEL,
                     total_cases=metrics.get("total_cases", 0),

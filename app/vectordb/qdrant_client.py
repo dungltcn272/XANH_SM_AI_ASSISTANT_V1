@@ -81,12 +81,19 @@ class VectorDBClient:
         return self.dense_model
 
     def hybrid_search(self, query: str, limit: int = 25) -> list[Document]:
-        """Thực hiện Hybrid Search bằng tính năng RRF tích hợp sẵn của Qdrant"""
-        # Sinh Dense Vector
-        dense_vector = self.dense_embedder.embed_query(query)
+        import concurrent.futures
         
-        # Sinh Sparse Vector
-        sparse_gen = list(self.sparse_embedder.embed([query]))[0]
+        # Use a global thread pool to avoid thread creation overhead for high CCU
+        if not hasattr(self, 'executor'):
+            self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=100)
+        
+        # Chạy song song việc sinh Dense Vector (OpenAI API) và Sparse Vector (CPU local)
+        future_dense = self.executor.submit(self.dense_embedder.embed_query, query)
+        future_sparse = self.executor.submit(lambda q: list(self.sparse_embedder.embed([q]))[0], query)
+        
+        dense_vector = future_dense.result()
+        sparse_gen = future_sparse.result()
+            
         sparse_vector = qdrant_models.SparseVector(
             indices=sparse_gen.indices.tolist(),
             values=sparse_gen.values.tolist()

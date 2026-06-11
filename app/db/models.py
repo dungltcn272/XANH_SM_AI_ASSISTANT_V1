@@ -122,6 +122,7 @@ class EvaluationRun(Base):
     run_name = Column(String, index=True, nullable=False)
     dataset_name = Column(String, default="golden_50")
     model_name = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
     total_cases = Column(Integer, default=0)
     status = Column(String, default="completed", index=True)
     average_latency_sec = Column(Float, default=0)

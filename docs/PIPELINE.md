@@ -14,8 +14,8 @@ graph TD
     D -- Hit --> O([SSE Answer + Sources])
     D -- Miss --> E{NLU Fast-path Eligible?}
 
-    E -- Yes: clear domain RAG query --> E1[Rule-based RAG NLU + Query Expansion]
-    E -- No: context rewrite / ambiguous --> E2[LLM Unified NLU: intent + rewrite + expansion]
+    E -- Yes: clear domain RAG query --> E1[Rule-based RAG NLU]
+    E -- No: context rewrite / ambiguous --> E2[LLM Unified NLU: intent + rewrite]
 
     E1 --> F{Intent}
     E2 --> F
@@ -54,9 +54,10 @@ Sau khi câu hỏi vượt qua gateway, hệ thống tìm exact match trong `Sem
 
 NLU hiện có hai đường:
 
-- **Fast-path rule-based**: dùng cho câu hỏi RAG rõ ràng, có domain keyword mạnh như VinFast, Xanh SM, V-GREEN, tài xế, sạc, pin, giá, phí, ưu đãi, bảo hiểm, hoàn tiền, chính sách. Đường này không gọi OpenAI, giữ nguyên query làm `rewritten_query`, sinh `expanded_queries` bằng rule-based expansion và làm giàu bằng `domain_vocabulary`.
+- **Fast-path rule-based**: dùng cho câu hỏi RAG rõ ràng, có domain keyword mạnh như VinFast, Xanh SM, V-GREEN, tài xế, sạc, pin, giá, phí, ưu đãi, bảo hiểm, hoàn tiền, chính sách. Đường này không gọi OpenAI, giữ nguyên query làm `rewritten_query` và được làm giàu bằng `domain_vocabulary`.
 - **Domain Vocabulary**: chạy regex/local dictionary để map câu viết tắt, sai chính tả, từ đời thường như `xsm/gsm`, `vgreen`, `dk/đk`, `platfom`, `sạc free`, `ăn chia`, `đền hàng` sang thuật ngữ tài liệu. Đây là lớp bảo hiểm tốc độ cao cho fast-path.
-- **LLM Unified NLU**: dùng khi câu hỏi cần rewrite theo lịch sử hội thoại, có tham chiếu mơ hồ như “nó”, “cái này”, “vậy còn”, hoặc không đủ tín hiệu domain. Prompt `UNIFIED_NLU_PROMPT` vẫn gom intent classification, rewrite và expansion vào một lần gọi LLM. Model NLU tách bằng biến `NLU_MODEL`, mặc định hiện là `gpt-4o-mini`.
+- **LLM Unified NLU**: dùng khi câu hỏi cần rewrite theo lịch sử hội thoại, có tham chiếu mơ hồ như “nó”, “cái này”, “vậy còn”, hoặc không đủ tín hiệu domain. Prompt `UNIFIED_NLU_PROMPT` gom intent classification và rewrite vào một lần gọi LLM. Model NLU tách bằng biến `NLU_MODEL`, mặc định hiện là `gpt-4o-mini`.
+  *(Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn trên tất cả các luồng để tránh gánh nặng sinh token, giảm tải cho Qdrant/backend và hạ thấp latency của LLM).*
 
 `max_tokens` NLU đang là `220`. Ảnh hưởng dự kiến thấp vì output NLU là JSON ngắn; đổi lại giúp giảm trần sinh token, chi phí và latency xấu nhất. Rủi ro chính là JSON bị cắt nếu prompt sinh quá dài, nhưng pipeline đã có fallback rule-based khi parse lỗi.
 

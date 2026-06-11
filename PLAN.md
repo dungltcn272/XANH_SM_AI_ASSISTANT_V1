@@ -237,3 +237,44 @@ Không nên đưa tất cả feedback vào golden dataset. Chỉ đưa các case
 - Feedback tốt/xấu đo được theo thời gian.
 - Có đường đưa case thực tế vào eval set.
 - Sau mỗi release, có thể biết production đang tốt lên hay xấu đi dựa trên review thật.
+
+---
+
+# Kế Hoạch Refactor Toàn Bộ RAG Pipeline Sang Async/Await
+
+Việc chuyển đổi toàn bộ kiến trúc từ Đồng bộ (Synchronous) sang Bất đồng bộ (Asynchronous) là một giải pháp tối ưu cho High Concurrency (hàng vạn CCU). Tuy nhiên, đây là một thay đổi lớn, toàn diện mã nguồn Backend do tính chất lan truyền của Async/Await trong Python.
+
+## 1. Đánh giá độ khó & Rủi ro
+- **Độ khó**: 🔴 Khó và Mất nhiều thời gian (Massive Refactoring).
+- **Rủi ro**: Khi thay đổi một hàm bên dưới thành `async` (như truy cập DB, gọi API LLM), tất cả các hàm gọi nó (Retriever, Pipeline, API Endpoint) đều bắt buộc phải chuyển sang `async/await`. Do đó, streaming thông qua Langchain và FastAPI cũng cần thay đổi đồng bộ để tránh lỗi block Event Loop.
+
+## 2. Các Hạng Mục Cần Triển Khai
+
+### 2.1. Vector Database Layer (`app/vectordb/qdrant_client.py`)
+- Thay thế `QdrantClient` đồng bộ bằng `AsyncQdrantClient`.
+- Đổi hàm `hybrid_search` thành `async def hybrid_search`.
+- Tích hợp `AsyncOpenAI` để sinh Dense Vector không chặn luồng (Non-blocking I/O).
+
+### 2.2. Retrieval Layer (`app/retrieval/hybrid_search.py` & `retriever.py`)
+- Lớp `XanhSMHybridSearch` đổi logic gọi DB thành `await self.db.hybrid_search(...)`.
+- Các Pipeline tích hợp Langchain phải chuyển từ dùng class `Retriever` đồng bộ sang `AsyncRetriever` (hoặc kế thừa `BaseRetriever` bất đồng bộ).
+
+### 2.3. NLU & Classifier Layer (`app/rag/classifier.py`)
+- Đổi hàm `unified_nlu` (đang gọi LLM phân tích Intent) sang sử dụng `AsyncOpenAI` và dùng `await client.chat.completions.create(...)`.
+- Hàm này sẽ trở thành `async def unified_nlu`.
+
+### 2.4. RAG Pipeline Core (`app/rag/chain.py` & `pipeline.py`)
+- Toàn bộ Langchain `chain.stream()` phải được đổi sang `async for chunk in chain.astream()`.
+- Hàm `stream_chat_pipeline` trong `pipeline.py` phải biến thành một `AsyncGenerator` (`async def stream_chat_pipeline`).
+
+### 2.5. API Layer (`app/api/chat.py`)
+- Xóa bỏ cơ chế bọc luồng hiện tại (`_run_stream_in_thread`).
+- Truyền trực tiếp `stream_chat_pipeline` vào `StreamingResponse` của FastAPI, để FastAPI tự động quản lý luồng bằng Asyncio.
+
+### 2.6. Database Logging & Sync IO
+- Chuyển các thao tác ghi Log hoặc lịch sử chat vào SQLite/PostgreSQL sang bất đồng bộ, hoặc bọc các hàm đồng bộ bằng `asyncio.to_thread` để tránh block luồng chính.
+
+## 3. Kế hoạch Kiểm Thử (Verification Plan)
+1. Tiến hành refactor theo thứ tự từ dưới lên (Database client -> Retriever -> NLU Classifier -> Chain -> API Controller).
+2. Kiểm thử độc lập API Endpoint `/chat` với Postman/cURL để xác nhận SSE Streaming hoạt động mượt mà.
+3. Chạy Load Test (mô phỏng CCU cao) để so sánh tài nguyên CPU/Memory sử dụng so với phiên bản dùng Global ThreadPool hiện tại.

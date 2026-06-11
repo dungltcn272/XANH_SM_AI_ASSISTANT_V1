@@ -22,40 +22,24 @@ import { api } from '../api';
 
 const FLOW_NODES = [
   {
-    id: 'user_input',
-    title: 'User Input',
-    subtitle: 'Câu hỏi thô',
-    icon: PlayCircle,
-    tone: 'emerald',
-    kind: 'terminal',
-    x: 48,
-    y: 72,
-    desc: 'Người dùng gửi câu hỏi qua chat hoặc endpoint debug.',
-    details: 'Pipeline bắt đầu từ query gốc, sau đó normalize nhẹ trước khi đi vào safety gateway.'
-  },
-  {
     id: 'gateway',
     title: 'Input Gateway Safety',
     subtitle: 'Safety đầu vào',
     icon: Shield,
     tone: 'rose',
     kind: 'decision',
-    x: 308,
-    y: 72,
     desc: 'Chặn prompt injection, yêu cầu lộ system prompt/API key/cấu hình nội bộ và yêu cầu bôi nhọ không căn cứ.',
     details: 'Safety chính nằm ở đầu vào để answer path không phải tự kiểm duyệt lại câu trả lời hợp lệ.'
   },
   {
-    id: 'refusal',
-    title: 'Refusal Response',
-    subtitle: 'Dừng pipeline',
+    id: 'prompt_injection_warning',
+    title: 'Prompt Injection / Defamation',
+    subtitle: 'Mối đe dọa bảo mật',
     icon: AlertTriangle,
-    tone: 'rose',
-    kind: 'terminal',
-    x: 600,
-    y: 34,
-    desc: 'Trả thông báo từ chối khi câu hỏi không an toàn hoặc intent là sensitive.',
-    details: 'Áp dụng cho prompt injection, secret leakage, malicious defamation hoặc yêu cầu vượt chính sách.'
+    tone: 'slate',
+    kind: 'process',
+    desc: 'Phát hiện các hành vi tấn công prompt injection, rò rỉ thông tin mật hoặc bôi nhọ ác ý.',
+    details: 'Khi phát hiện nguy cơ, hệ thống chuyển hướng trực tiếp sang nhánh Từ chối để bảo vệ hệ thống.'
   },
   {
     id: 'early_cache',
@@ -64,45 +48,37 @@ const FLOW_NODES = [
     icon: Database,
     tone: 'sky',
     kind: 'decision',
-    x: 308,
-    y: 200,
     desc: 'Tìm exact match trong SemanticCache bằng câu hỏi gốc đã normalize.',
     details: 'Nếu hit, hệ thống trả lời ngay qua SSE và bỏ qua NLU, retrieval, rerank, generation.'
   },
   {
     id: 'nlu_fast_gate',
-    title: 'NLU Fast-path?',
+    title: 'NLU Fast-path Eligible?',
     subtitle: 'RAG rõ ràng?',
     icon: GitBranch,
     tone: 'indigo',
     kind: 'decision',
-    x: 308,
-    y: 328,
     desc: 'Quyết định câu hỏi có đủ tín hiệu domain để bỏ qua LLM NLU hay không.',
     details: 'Fast-path chạy khi câu hỏi có keyword/domain rõ và không cần rewrite theo lịch sử hội thoại.'
   },
   {
     id: 'domain_vocabulary',
-    title: 'Domain Vocabulary',
+    title: 'Rule-based RAG NLU & Vocab',
     subtitle: 'Regex alias local',
     icon: Zap,
     tone: 'amber',
     kind: 'process',
-    x: 48,
-    y: 468,
-    desc: 'Làm giàu query bằng từ điển miền tốc độ cao.',
+    desc: 'Làm giàu query bằng từ điển miền tốc độ cao (Regex alias local).',
     details: 'Map các câu viết tắt/sai chính tả như xsm, gsm, vgreen, dk, platfom, tx, bn, sạc free, ăn chia, đền hàng sang thuật ngữ tài liệu.'
   },
   {
     id: 'llm_nlu',
-    title: 'LLM Unified NLU',
-    subtitle: 'NLU_MODEL',
+    title: 'Unified LLM NLU: Intent + rewrite',
+    subtitle: 'NLU_MODEL fallback',
     icon: Brain,
     tone: 'violet',
     kind: 'process',
-    x: 600,
-    y: 468,
-    desc: 'Dùng model NLU để phân loại intent, rewrite và mở rộng query khi fast-path không đủ chắc.',
+    desc: 'Dùng model NLU để phân loại intent và rewrite query khi fast-path không đủ chắc.',
     details: 'Model được cấu hình bằng NLU_MODEL, mặc định hiện là gpt-4o-mini. Nhánh này dành cho câu mơ hồ, cần lịch sử hội thoại hoặc cần rewrite.'
   },
   {
@@ -112,20 +88,16 @@ const FLOW_NODES = [
     icon: GitBranch,
     tone: 'cyan',
     kind: 'decision',
-    x: 308,
-    y: 596,
     desc: 'Điều hướng theo intent sau fast-path hoặc LLM NLU.',
     details: 'rag đi tiếp retrieval; small-talk trả nhanh; sensitive đi refusal.'
   },
   {
     id: 'small_talk',
-    title: 'Fast Small-talk',
-    subtitle: 'Trả nhanh',
+    title: 'Fast response',
+    subtitle: 'Trả nhanh small-talk',
     icon: MessageSquare,
     tone: 'amber',
     kind: 'terminal',
-    x: 48,
-    y: 724,
     desc: 'Trả lời nhanh cho chào hỏi hoặc câu không cần RAG.',
     details: 'Không đi qua retriever/reranker/LLM synthesis đầy đủ.'
   },
@@ -136,20 +108,26 @@ const FLOW_NODES = [
     icon: Database,
     tone: 'blue',
     kind: 'decision',
-    x: 600,
-    y: 596,
     desc: 'Kiểm tra cache lần hai bằng rewritten_query.',
     details: 'Bắt được các câu hỏi diễn đạt khác nhau nhưng cùng ý nghĩa sau khi NLU chuẩn hóa.'
   },
   {
+    id: 'refusal',
+    title: 'Refusal Response',
+    subtitle: 'Dừng pipeline',
+    icon: AlertTriangle,
+    tone: 'rose',
+    kind: 'terminal',
+    desc: 'Trả thông báo từ chối khi câu hỏi không an toàn hoặc intent là sensitive.',
+    details: 'Áp dụng cho prompt injection, secret leakage, malicious defamation hoặc yêu cầu vượt chính sách.'
+  },
+  {
     id: 'hybrid_search',
-    title: 'Hybrid Retrieval',
-    subtitle: 'Dense + Sparse + SQL',
+    title: 'Hybrid Retrieval: Dense + Sparse + SQL',
+    subtitle: 'Dense + Sparse + SQL fallback',
     icon: Search,
     tone: 'cyan',
     kind: 'process',
-    x: 852,
-    y: 596,
     desc: 'Kết hợp dense vector, sparse/BM25 và SQL keyword fallback trên document_chunks.',
     details: 'SQL fallback giúp bắt literal quan trọng như mã xe, giá, số liệu, tên chính sách hoặc điều kiện trong PDF.'
   },
@@ -160,86 +138,60 @@ const FLOW_NODES = [
     icon: Layers,
     tone: 'pink',
     kind: 'process',
-    x: 1104,
-    y: 596,
     desc: 'Dùng Cohere rerank để đưa chunk liên quan nhất lên đầu trước khi mở rộng context.',
     details: 'Đây là API call riêng nên có latency, nhưng giúp giảm nhiễu mạnh trước khi đưa context vào LLM.'
   },
   {
     id: 'context_expansion',
-    title: 'Context Expansion',
-    subtitle: 'Parent / Section',
+    title: 'Parent / Section Context Expansion',
+    subtitle: 'Mở rộng context',
     icon: Layers,
     tone: 'teal',
     kind: 'process',
-    x: 1104,
-    y: 724,
     desc: 'Mở rộng theo parent_chunk_id hoặc section khi chunk đủ liên quan.',
     details: 'Giúp LLM đọc trọn bảng biểu, điều khoản PDF hoặc chính sách dài; đồng thời dedupe header/nội dung trùng.'
   },
   {
     id: 'llm_gen',
-    title: 'LLM Synthesis',
-    subtitle: 'LLM_MODEL',
+    title: 'LLM Synthesis & SSE Stream',
+    subtitle: 'LLM_MODEL synthesis',
     icon: Sparkles,
     tone: 'violet',
     kind: 'process',
-    x: 852,
-    y: 724,
     desc: 'Tổng hợp câu trả lời dựa trên context đã rerank/mở rộng và query đã rewrite.',
     details: 'Câu trả lời được stream qua SSE kèm sources/citations. Độ dài context là một nguồn latency lớn.'
   },
   {
     id: 'semantic_cache',
     title: 'Save Semantic Cache',
-    subtitle: 'Ghi cache',
+    subtitle: 'Ghi cache kết quả',
     icon: Database,
     tone: 'lime',
     kind: 'process',
-    x: 600,
-    y: 724,
     desc: 'Lưu câu trả lời hợp lệ vào SemanticCache cho cả query gốc và rewritten query.',
     details: 'Giúp các lượt hỏi sau hit cache ở Early Cache hoặc Second Cache.'
   },
   {
     id: 'output',
-    title: 'SSE Output',
-    subtitle: 'Answer + sources',
+    title: 'Stream Answer + Citations',
+    subtitle: 'SSE Output Stream',
     icon: MessageSquare,
     tone: 'emerald',
     kind: 'terminal',
-    x: 308,
-    y: 840,
     desc: 'Trả kết quả cuối cùng cho frontend qua Server-Sent Events.',
     details: 'Telemetry ghi nhận latency, token, sources, nlu_fast_path và các thông tin debug phục vụ quan sát chất lượng.'
   },
   {
     id: 'evaluation',
     title: 'Evaluation History',
-    subtitle: 'evaluation_runs',
+    subtitle: 'Báo cáo eval_runs',
     icon: FileCheck,
     tone: 'lime',
     kind: 'subgraph',
-    x: 852,
-    y: 852,
     desc: 'Benchmark ghi evaluation_report.json và snapshot vào bảng evaluation_runs.',
     details: 'Admin UI dùng lịch sử này để xem recent runs, trend và delta so với lần eval trước.'
   }
 ];
-
-const toneClass = {
-  emerald: 'border-emerald-400/50 text-emerald-200 bg-emerald-500/10',
-  rose: 'border-rose-400/50 text-rose-200 bg-rose-500/10',
-  sky: 'border-sky-400/50 text-sky-200 bg-sky-500/10',
-  indigo: 'border-indigo-400/50 text-indigo-200 bg-indigo-500/10',
-  blue: 'border-blue-400/50 text-blue-200 bg-blue-500/10',
-  cyan: 'border-cyan-400/50 text-cyan-200 bg-cyan-500/10',
-  pink: 'border-pink-400/50 text-pink-200 bg-pink-500/10',
-  teal: 'border-teal-400/50 text-teal-200 bg-teal-500/10',
-  violet: 'border-violet-400/50 text-violet-200 bg-violet-500/10',
-  amber: 'border-amber-400/50 text-amber-200 bg-amber-500/10',
-  lime: 'border-lime-400/50 text-lime-200 bg-lime-500/10'
-};
 
 export default function PipelineManager() {
   const [selectedNode, setSelectedNode] = useState('nlu_fast_gate');
@@ -261,7 +213,7 @@ export default function PipelineManager() {
       const data = await api.testPipeline(testQuery.trim());
       setDebugData(data);
       const steps = inferExecutedNodes(data);
-      setSelectedNode(steps[steps.length - 1] || 'user_input');
+      setSelectedNode(steps[steps.length - 1] || 'gateway');
     } catch (err) {
       setError(err.message || 'Không thể chạy debug pipeline.');
     } finally {
@@ -274,8 +226,8 @@ export default function PipelineManager() {
       <header className="mb-6 flex flex-col gap-2">
         <h1 className="text-3xl font-bold text-on-surface">Pipeline Manager</h1>
         <p className="max-w-5xl text-sm text-on-surface-variant">
-          Sơ đồ admin theo pipeline hiện tại: Input Gateway, cache hai lớp, NLU fast-path với Domain Vocabulary, LLM NLU fallback,
-          Hybrid Retrieval, Cohere Rerank, Context Expansion, LLM Synthesis và Semantic Cache.
+          Sơ đồ quản lý luồng xử lý RAG: Input Gateway Safety, Cache hai lớp, NLU fast-path, LLM NLU fallback,
+          Hybrid Retrieval, Cohere Rerank, Context Expansion, LLM Synthesis và Save Semantic Cache.
         </p>
       </header>
 
@@ -283,8 +235,8 @@ export default function PipelineManager() {
         <div className="order-3 rounded-2xl border border-outline-variant/40 bg-[#07111f] p-4 shadow-xl xl:col-span-2">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-white">Mermaid-like Flow</div>
-              <div className="text-xs text-white/45">Click vào node để xem ý nghĩa; chạy debug để highlight nhanh thực tế.</div>
+              <div className="text-sm font-semibold text-white">RAG Processing Pipeline Flowchart</div>
+              <div className="text-xs text-white/45">Click vào các hình khối để xem chi tiết nghiệp vụ; chạy debug để quan sát luồng chạy thực tế.</div>
             </div>
             <div className="rounded-lg border border-cyan-400/25 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200">
               NLU_MODEL: gpt-4o-mini
@@ -302,11 +254,11 @@ export default function PipelineManager() {
         <aside className="contents">
           <div className="order-2 rounded-2xl border border-outline-variant/40 bg-[#0d1527] p-5 shadow-xl">
             <div className="flex items-start gap-3">
-              <div className={`rounded-xl border p-3 ${toneClass[selected.tone]}`}>
-                <selected.icon size={22} />
+              <div className="rounded-xl border p-3 border-cyan-500/30 text-cyan-300 bg-cyan-500/10">
+                {selected.icon && <selected.icon size={22} />}
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-white/50">Node detail</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-white/50">Chi tiết bước xử lý</div>
                 <h2 className="mt-1 text-xl font-bold text-white">{selected.title}</h2>
                 <p className="mt-1 text-sm text-white/50">{selected.subtitle}</p>
               </div>
@@ -375,62 +327,83 @@ export default function PipelineManager() {
 
 function ReadableFlow({ nodeMap, selectedNode, executed, onSelect }) {
   const nodes = {
-    user_input: { x: 425, y: 15 },
-    gateway: { x: 425, y: 85 },
-    refusal: { x: 150, y: 85 },
-    early_cache: { x: 425, y: 155 },
-    nlu_fast_gate: { x: 425, y: 225 },
-    domain_vocabulary: { x: 280, y: 305 },
-    llm_nlu: { x: 570, y: 305 },
-    intent: { x: 425, y: 395 },
-    small_talk: { x: 150, y: 395 },
-    second_cache: { x: 700, y: 395 },
-    hybrid_search: { x: 700, y: 475 },
-    reranker: { x: 700, y: 555 },
-    context_expansion: { x: 700, y: 635 },
-    llm_gen: { x: 700, y: 715 },
-    semantic_cache: { x: 425, y: 715 },
-    output: { x: 425, y: 805 },
-    evaluation: { x: 880, y: 475 }
+    gateway: { x: 400, y: 80 },
+    prompt_injection_warning: { x: 620, y: 200 },
+    early_cache: { x: 400, y: 220 },
+    nlu_fast_gate: { x: 400, y: 380 },
+    domain_vocabulary: { x: 180, y: 510 },
+    llm_nlu: { x: 620, y: 510 },
+    intent: { x: 400, y: 640 },
+    small_talk: { x: 180, y: 760 },
+    second_cache: { x: 400, y: 760 },
+    refusal: { x: 620, y: 760 },
+    hybrid_search: { x: 400, y: 900 },
+    reranker: { x: 400, y: 1000 },
+    context_expansion: { x: 400, y: 1090 },
+    llm_gen: { x: 400, y: 1180 },
+    semantic_cache: { x: 400, y: 1270 },
+    output: { x: 400, y: 1400 },
+    evaluation: { x: 640, y: 900 }
   };
 
   const edges = [
-    { from: 'user_input', to: 'gateway', tone: 'emerald', d: 'M 500 65 V 85' },
-    { from: 'gateway', to: 'early_cache', label: 'safe', tone: 'sky', d: 'M 500 135 V 155' },
-    { from: 'gateway', to: 'refusal', label: 'unsafe', tone: 'rose', d: 'M 425 110 H 300' },
-    { from: 'early_cache', to: 'output', label: 'cache hit', tone: 'sky', d: 'M 425 180 H 70 V 830 H 425' },
-    { from: 'early_cache', to: 'nlu_fast_gate', label: 'miss', tone: 'slate', d: 'M 500 205 V 225' },
-    { from: 'nlu_fast_gate', to: 'domain_vocabulary', label: 'fast', tone: 'amber', d: 'M 425 250 H 355 V 305' },
-    { from: 'domain_vocabulary', to: 'intent', label: 'enrich', tone: 'amber', d: 'M 355 355 V 395 H 425' },
-    { from: 'nlu_fast_gate', to: 'llm_nlu', label: 'rewrite', tone: 'violet', d: 'M 575 250 H 645 V 305' },
-    { from: 'llm_nlu', to: 'intent', label: 'json', tone: 'violet', d: 'M 645 355 V 395 H 575' },
-    { from: 'intent', to: 'small_talk', label: 'small-talk', tone: 'amber', d: 'M 425 420 H 300' },
-    { from: 'intent', to: 'refusal', label: 'sensitive', tone: 'rose', d: 'M 425 420 H 70 V 110 H 150' },
-    { from: 'intent', to: 'second_cache', label: 'rag', tone: 'cyan', d: 'M 575 420 H 700' },
-    { from: 'second_cache', to: 'output', label: 'cache hit', tone: 'blue', d: 'M 850 420 H 920 V 830 H 575' },
-    { from: 'second_cache', to: 'hybrid_search', label: 'miss', tone: 'cyan', d: 'M 775 445 V 475' },
-    { from: 'hybrid_search', to: 'reranker', tone: 'cyan', d: 'M 775 525 V 555' },
-    { from: 'reranker', to: 'context_expansion', tone: 'pink', d: 'M 775 605 V 635' },
-    { from: 'context_expansion', to: 'llm_gen', tone: 'teal', d: 'M 775 685 V 715' },
-    { from: 'llm_gen', to: 'semantic_cache', tone: 'violet', d: 'M 700 740 H 575' },
-    { from: 'semantic_cache', to: 'output', tone: 'emerald', d: 'M 500 765 V 805' },
-    { from: 'small_talk', to: 'output', tone: 'amber', d: 'M 150 420 H 70 V 830 H 425' },
-    { from: 'refusal', to: 'output', tone: 'rose', d: 'M 150 110 H 70 V 830 H 425' },
-    { from: 'hybrid_search', to: 'evaluation', label: 'eval', tone: 'lime', d: 'M 850 500 H 880' }
+    { from: 'gateway', to: 'early_cache', label: 'Safe', tone: 'sky', d: 'M 400 120 V 180', labelX: 400, labelY: 150 },
+    { from: 'gateway', to: 'prompt_injection_warning', label: 'Unsafe', tone: 'rose', d: 'M 480 80 H 620 V 170', labelX: 550, labelY: 80 },
+    { from: 'prompt_injection_warning', to: 'refusal', tone: 'rose', d: 'M 620 230 V 735' },
+    { from: 'early_cache', to: 'output', label: 'Cache Hit (~5ms)', tone: 'sky', d: 'M 320 220 H 60 V 1400 H 280', labelX: 150, labelY: 220 },
+    { from: 'early_cache', to: 'nlu_fast_gate', label: 'Cache Miss', tone: 'slate', d: 'M 400 260 V 340', labelX: 400, labelY: 300 },
+    { from: 'nlu_fast_gate', to: 'domain_vocabulary', label: 'Yes: clear RAG query', tone: 'amber', d: 'M 320 380 H 180 V 480', labelX: 240, labelY: 380 },
+    { from: 'domain_vocabulary', to: 'intent', tone: 'amber', d: 'M 180 540 V 570 H 400 V 600' },
+    { from: 'nlu_fast_gate', to: 'llm_nlu', label: 'No: context rewrite needed', tone: 'violet', d: 'M 480 380 H 620 V 480', labelX: 560, labelY: 380 },
+    { from: 'llm_nlu', to: 'intent', tone: 'violet', d: 'M 620 540 V 570 H 400 V 600' },
+    { from: 'intent', to: 'small_talk', label: 'small-talk', tone: 'amber', d: 'M 320 640 H 180 V 735', labelX: 240, labelY: 640 },
+    { from: 'intent', to: 'refusal', label: 'sensitive', tone: 'rose', d: 'M 480 640 H 620 V 735', labelX: 560, labelY: 640 },
+    { from: 'intent', to: 'second_cache', label: 'rag', tone: 'cyan', d: 'M 400 680 V 720', labelX: 400, labelY: 700 },
+    { from: 'second_cache', to: 'output', label: 'Cache Hit', tone: 'blue', d: 'M 320 760 H 85 V 1390 H 280', labelX: 170, labelY: 760 },
+    { from: 'second_cache', to: 'hybrid_search', label: 'Cache Miss', tone: 'cyan', d: 'M 400 800 V 870', labelX: 400, labelY: 835 },
+    { from: 'hybrid_search', to: 'reranker', tone: 'cyan', d: 'M 400 930 V 973' },
+    { from: 'reranker', to: 'context_expansion', tone: 'pink', d: 'M 400 1027 V 1063' },
+    { from: 'context_expansion', to: 'llm_gen', tone: 'teal', d: 'M 400 1117 V 1153' },
+    { from: 'llm_gen', to: 'semantic_cache', tone: 'violet', d: 'M 400 1207 V 1243' },
+    { from: 'semantic_cache', to: 'output', tone: 'emerald', d: 'M 400 1297 V 1370' },
+    { from: 'small_talk', to: 'output', tone: 'amber', d: 'M 180 785 V 1350 H 320 V 1370' },
+    { from: 'refusal', to: 'output', tone: 'rose', d: 'M 620 785 V 1350 H 480 V 1370' },
+    { from: 'hybrid_search', to: 'evaluation', label: 'Eval', tone: 'lime', d: 'M 520 900 H 560', labelX: 540, labelY: 900 }
   ];
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#020817] p-3">
+    <div className="rounded-xl border border-white/10 bg-[#030914] p-3 shadow-inner">
+      <style>
+        {`
+          @keyframes flowDash {
+            to { stroke-dashoffset: -20; }
+          }
+          .animate-flow-dash {
+            animation: flowDash 0.7s linear infinite;
+          }
+          @keyframes glowPulse {
+            0%, 100% { filter: drop-shadow(0 0 2px currentColor); }
+            50% { filter: drop-shadow(0 0 6px currentColor); }
+          }
+          .glow-active {
+            animation: glowPulse 2s ease-in-out infinite;
+          }
+        `}
+      </style>
       <div className="overflow-x-auto overflow-y-hidden">
-        <div className="relative h-[880px] min-w-[1000px] origin-top-left">
-          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 880" aria-hidden="true">
+        <div className="relative h-[1480px] min-w-[800px] origin-top-left max-w-[900px] mx-auto">
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 800 1480" aria-hidden="true">
             <defs>
               <marker id="pipeline-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
                 <path d="M0,0 L0,6 L6,3 z" fill="currentColor" />
               </marker>
             </defs>
             {edges.map(edge => (
-              <PipelineEdge key={`${edge.from}-${edge.to}-${edge.label || ''}`} edge={edge} active={executed.includes(edge.from) && executed.includes(edge.to)} />
+              <PipelineEdge
+                key={`${edge.from}-${edge.to}-${edge.label || ''}`}
+                edge={edge}
+                active={executed.includes(edge.from) && executed.includes(edge.to)}
+              />
             ))}
           </svg>
 
@@ -452,48 +425,244 @@ function ReadableFlow({ nodeMap, selectedNode, executed, onSelect }) {
 }
 
 function PipelineBox({ node, x, y, selected, executed, onClick }) {
+  if (!node) return null;
   const Icon = node.icon;
+  const isSelected = selected;
+  const isExecuted = executed;
+
+  let width = 200;
+  let height = 54;
+  if (node.kind === 'decision') {
+    width = 160;
+    height = 80;
+  } else if (node.kind === 'terminal') {
+    width = 180;
+    height = 50;
+    if (node.id === 'output') {
+      width = 240;
+      height = 60;
+    }
+  } else if (node.id === 'hybrid_search') {
+    width = 240;
+    height = 60;
+  } else if (node.id === 'prompt_injection_warning') {
+    width = 200;
+    height = 60;
+  }
+
+  const theme = {
+    emerald: { border: 'text-emerald-400', bg: 'bg-emerald-500/10', text: 'text-emerald-300', glow: 'rgba(16,185,129,0.3)', fill: 'rgba(6, 78, 59, 0.4)' },
+    rose: { border: 'text-rose-400', bg: 'bg-rose-500/10', text: 'text-rose-300', glow: 'rgba(244,63,94,0.3)', fill: 'rgba(159, 18, 57, 0.4)' },
+    sky: { border: 'text-sky-400', bg: 'bg-sky-500/10', text: 'text-sky-300', glow: 'rgba(14,165,233,0.3)', fill: 'rgba(12, 74, 96, 0.4)' },
+    indigo: { border: 'text-indigo-400', bg: 'bg-indigo-500/10', text: 'text-indigo-300', glow: 'rgba(99,102,241,0.3)', fill: 'rgba(49, 46, 129, 0.4)' },
+    blue: { border: 'text-blue-400', bg: 'bg-blue-500/10', text: 'text-blue-300', glow: 'rgba(59,130,246,0.3)', fill: 'rgba(30, 58, 138, 0.4)' },
+    cyan: { border: 'text-cyan-400', bg: 'bg-cyan-500/10', text: 'text-cyan-300', glow: 'rgba(6,182,212,0.3)', fill: 'rgba(21, 94, 117, 0.4)' },
+    pink: { border: 'text-pink-400', bg: 'bg-pink-500/10', text: 'text-pink-300', glow: 'rgba(236,72,153,0.3)', fill: 'rgba(131, 24, 67, 0.4)' },
+    teal: { border: 'text-teal-400', bg: 'bg-teal-500/10', text: 'text-teal-300', glow: 'rgba(20,184,166,0.3)', fill: 'rgba(17, 94, 89, 0.4)' },
+    violet: { border: 'text-violet-400', bg: 'bg-violet-500/10', text: 'text-violet-300', glow: 'rgba(139,92,246,0.3)', fill: 'rgba(88, 28, 135, 0.4)' },
+    amber: { border: 'text-amber-400', bg: 'bg-amber-500/10', text: 'text-amber-300', glow: 'rgba(245,158,11,0.3)', fill: 'rgba(120, 53, 4, 0.4)' },
+    lime: { border: 'text-lime-400', bg: 'bg-lime-500/10', text: 'text-lime-300', glow: 'rgba(132,204,22,0.3)', fill: 'rgba(63, 98, 18, 0.4)' },
+    slate: { border: 'text-slate-400', bg: 'bg-slate-500/10', text: 'text-slate-300', glow: 'rgba(100,116,139,0.2)', fill: 'rgba(30, 41, 59, 0.4)' }
+  }[node.tone] || { border: 'text-slate-500', bg: 'bg-slate-800/10', text: 'text-slate-300', glow: 'rgba(100,116,139,0.1)', fill: 'rgba(30, 41, 59, 0.4)' };
+
+  let overrideFill = null;
+  let overrideStroke = null;
+  let textClass = 'text-slate-200';
+  let subtitleClass = 'text-slate-400';
+
+  if (node.id === 'gateway') {
+    overrideFill = 'url(#gateway-grad)';
+    overrideStroke = '#ef4444';
+    textClass = 'text-white font-extrabold';
+    subtitleClass = 'text-red-100';
+  } else if (node.id === 'small_talk') {
+    overrideFill = 'url(#smalltalk-grad)';
+    overrideStroke = '#f59e0b';
+    textClass = 'text-slate-900 font-extrabold';
+    subtitleClass = 'text-amber-950/80';
+  } else if (node.id === 'refusal') {
+    overrideFill = 'url(#refusal-grad)';
+    overrideStroke = '#f43f5e';
+    textClass = 'text-white font-extrabold';
+    subtitleClass = 'text-rose-100';
+  } else if (node.id === 'output') {
+    overrideFill = 'url(#output-grad)';
+    overrideStroke = '#10b981';
+    textClass = 'text-white font-extrabold';
+    subtitleClass = 'text-emerald-100';
+  }
+
+  const isHighlighted = isSelected || isExecuted;
+  const strokeColor = overrideStroke || (isSelected ? '#34d399' : isExecuted ? '#10b981' : 'rgba(148, 163, 184, 0.4)');
+  const fillColor = overrideFill || (isSelected ? 'rgba(30, 41, 59, 0.95)' : isExecuted ? theme.fill : 'rgba(15, 23, 42, 0.85)');
+  const strokeWidth = isSelected ? 3 : isExecuted ? 2 : 1.5;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{ left: x, top: y }}
-      className={`absolute min-h-[50px] w-[150px] rounded-md border p-1.5 text-left transition-all hover:scale-[1.02] ${
-        selected ? toneClass[node.tone] : 'border-slate-700 bg-slate-900/90 text-white/70 hover:bg-slate-800'
-      } ${executed ? 'ring-1.5 ring-emerald-400/60' : ''}`}
+      style={{ left: x - width/2, top: y - height/2, width: `${width}px`, height: `${height}px` }}
+      className={`absolute transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl focus:outline-none group`}
     >
-      <div className="flex items-start justify-between gap-1.5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1">
-            <Icon size={12} className="shrink-0" />
-            <span className="truncate text-[10px] font-bold leading-tight">{node.title}</span>
-          </div>
-          <div className="mt-0.5 truncate text-[9px] font-medium opacity-60">{node.subtitle}</div>
+      <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+        <defs>
+          <filter id={`glow-${node.id}`} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+          <linearGradient id="gateway-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f87171" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#be123c" stopOpacity="0.95" />
+          </linearGradient>
+          <linearGradient id="smalltalk-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#d97706" stopOpacity="0.95" />
+          </linearGradient>
+          <linearGradient id="refusal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fb7185" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#9f1239" stopOpacity="0.95" />
+          </linearGradient>
+          <linearGradient id="output-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#34d399" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#047857" stopOpacity="0.95" />
+          </linearGradient>
+        </defs>
+
+        {isHighlighted && (
+          node.kind === 'decision' ? (
+            <polygon
+              points={`${width/2},2 2,${height/2} ${width/2},${height-2} ${width-2},${height/2}`}
+              fill="none"
+              stroke={isSelected ? '#34d399' : '#10b981'}
+              strokeWidth={6}
+              opacity={0.35}
+              filter={`url(#glow-${node.id})`}
+            />
+          ) : node.kind === 'terminal' ? (
+            <rect
+              x="2" y="2" width={width-4} height={height-4} rx={height/2} ry={height/2}
+              fill="none"
+              stroke={isSelected ? '#34d399' : '#10b981'}
+              strokeWidth={6}
+              opacity={0.35}
+              filter={`url(#glow-${node.id})`}
+            />
+          ) : (
+            <rect
+              x="2" y="2" width={width-4} height={height-4} rx={8} ry={8}
+              fill="none"
+              stroke={isSelected ? '#34d399' : '#10b981'}
+              strokeWidth={6}
+              opacity={0.35}
+              filter={`url(#glow-${node.id})`}
+            />
+          )
+        )}
+
+        {node.kind === 'decision' ? (
+          <polygon
+            points={`${width/2},2 2,${height/2} ${width/2},${height-2} ${width-2},${height/2}`}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            className="transition-all duration-300"
+          />
+        ) : node.kind === 'terminal' ? (
+          <g>
+            <rect
+              x="2" y="2" width={width-4} height={height-4} rx={height/2} ry={height/2}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              className="transition-all duration-300"
+            />
+            {node.id === 'output' && (
+              <rect
+                x="6" y="6" width={width-12} height={height-12} rx={(height-12)/2} ry={(height-12)/2}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={1}
+                opacity={0.4}
+              />
+            )}
+          </g>
+        ) : (
+          <rect
+            x="2" y="2" width={width-4} height={height-4} rx={8} ry={8}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            className="transition-all duration-300"
+          />
+        )}
+      </svg>
+
+      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full px-3 text-center select-none">
+        <div className="flex items-center justify-center gap-1.5 w-full">
+          {Icon && <Icon size={node.kind === 'decision' ? 10 : 12} className={`shrink-0 ${node.id === 'gateway' || node.id === 'refusal' || node.id === 'output' ? 'text-white' : node.id === 'small_talk' ? 'text-slate-900' : theme.text}`} />}
+          <span className={`truncate text-[9.5px] font-bold tracking-wide uppercase ${node.id === 'gateway' || node.id === 'refusal' || node.id === 'output' ? 'text-white' : node.id === 'small_talk' ? 'text-slate-900' : textClass}`}>
+            {node.title}
+          </span>
+          {isExecuted && <CheckCircle size={10} className={`shrink-0 ${node.id === 'gateway' || node.id === 'refusal' || node.id === 'output' ? 'text-emerald-200' : node.id === 'small_talk' ? 'text-emerald-900' : 'text-emerald-400'}`} />}
         </div>
-        {executed && <CheckCircle size={10} className="mt-0.5 shrink-0 text-emerald-400" />}
+        {node.subtitle && (
+          <div className={`mt-0.5 truncate text-[7.5px] font-medium ${node.id === 'gateway' || node.id === 'refusal' || node.id === 'output' ? 'text-white/80' : node.id === 'small_talk' ? 'text-slate-900/80' : subtitleClass}`}>
+            {node.subtitle}
+          </div>
+        )}
       </div>
     </button>
   );
 }
 
 function PipelineEdge({ edge, active }) {
-  const color = active ? '#34d399' : edgeStroke(edge.tone);
-  const labelPos = labelPoint(edge.d);
+  const color = active ? '#10b981' : edgeStroke(edge.tone);
+  const labelPos = (edge.labelX && edge.labelY)
+    ? { x: edge.labelX, y: edge.labelY }
+    : labelPoint(edge.d);
+
+  const labelWidth = edge.label ? Math.max(edge.label.length * 5.5 + 12, 45) : 0;
+
   return (
-    <g style={{ color }}>
+    <g style={{ color }} className={active ? 'glow-active' : ''}>
+      <path
+        d={edge.d}
+        fill="none"
+        stroke={active ? '#059669' : edgeStroke(edge.tone)}
+        strokeWidth={active ? 3 : 1.5}
+        opacity={active ? 0.35 : 0.15}
+      />
       <path
         d={edge.d}
         fill="none"
         stroke="currentColor"
-        strokeWidth={active ? 1.8 : 1.2}
-        strokeDasharray="4 4"
+        strokeWidth={active ? 2.2 : 1.2}
+        strokeDasharray={active ? '6 4' : '4 4'}
+        className={active ? 'animate-flow-dash' : ''}
         markerEnd="url(#pipeline-arrow)"
-        opacity={active ? 1 : 0.5}
+        opacity={active ? 1 : 0.45}
       />
       {edge.label && (
-        <g>
-          <rect x={labelPos.x - 25} y={labelPos.y - 9} width="50" height="18" rx="4" fill="#020817" stroke="currentColor" opacity="0.9" />
-          <text x={labelPos.x} y={labelPos.y + 4} textAnchor="middle" fontSize="8" fill="currentColor" fontWeight="700">
+        <g className="cursor-default">
+          <rect
+            x={labelPos.x - labelWidth / 2}
+            y={labelPos.y - 9}
+            width={labelWidth}
+            height={18}
+            rx="4"
+            fill="#090d16"
+            stroke={active ? '#10b981' : 'rgba(148, 163, 184, 0.3)'}
+            strokeWidth="1"
+          />
+          <text
+            x={labelPos.x}
+            y={labelPos.y + 3.5}
+            textAnchor="middle"
+            fontSize="8"
+            fill={active ? '#34d399' : '#94a3b8'}
+            fontWeight="700"
+            className="select-none font-sans tracking-wide"
+          >
             {edge.label}
           </text>
         </g>
@@ -504,18 +673,18 @@ function PipelineEdge({ edge, active }) {
 
 function edgeStroke(tone) {
   return {
-    emerald: '#34d399',
-    rose: '#fb7185',
-    sky: '#38bdf8',
-    blue: '#60a5fa',
-    amber: '#fbbf24',
-    violet: '#a78bfa',
-    cyan: '#22d3ee',
-    pink: '#f472b6',
-    teal: '#2dd4bf',
-    lime: '#a3e635',
-    slate: '#64748b'
-  }[tone] || '#64748b';
+    emerald: '#10b981',
+    rose: '#f43f5e',
+    sky: '#0ea5e9',
+    blue: '#3b82f6',
+    amber: '#f59e0b',
+    violet: '#8b5cf6',
+    cyan: '#06b6d4',
+    pink: '#ec4899',
+    teal: '#14b8a6',
+    lime: '#84cc16',
+    slate: '#475569'
+  }[tone] || '#475569';
 }
 
 function labelPoint(path) {
@@ -526,6 +695,7 @@ function labelPoint(path) {
     y: (nums[1] + nums[nums.length - 1]) / 2
   };
 }
+
 function RuntimeSummary({ data }) {
   const rows = [
     ['Intent', data.intent || 'n/a'],
@@ -550,10 +720,25 @@ function RuntimeSummary({ data }) {
 
 function inferExecutedNodes(data) {
   if (!data) return [];
-  const steps = ['user_input', 'gateway'];
+  const steps = ['gateway'];
   const answer = String(data.answer || '').toLowerCase();
-  const blocked = data.safety_res?.safe === false || answer.includes('vi phạm chính sách') || data.intent === 'sensitive';
-  if (blocked) return [...steps, 'refusal', 'output'];
+  
+  if (data.safety_res?.safe === false) {
+    return [...steps, 'prompt_injection_warning', 'refusal', 'output'];
+  }
+
+  const blocked = answer.includes('vi phạm chính sách') || data.intent === 'sensitive';
+  if (blocked) {
+    return [
+      ...steps,
+      'early_cache',
+      'nlu_fast_gate',
+      data.nlu_fast_path ? 'domain_vocabulary' : 'llm_nlu',
+      'intent',
+      'refusal',
+      'output'
+    ];
+  }
 
   if (data.cache_hit || data.cache_hit_stage === 'early') return [...steps, 'early_cache', 'output'];
   steps.push('early_cache', 'nlu_fast_gate');

@@ -208,7 +208,7 @@ class XanhSMRAGPipeline:
             log_warn("GUARDRAIL", f"Faithfulness Check failed: {e}. Defaulting to True.")
             return True, 1.0, f"Error: {e}"
 
-    def run(self, query: str, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+    def run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False) -> Dict[str, Any]:
         """
         Executes the full advanced NLU-Gateway RAG chain.
         """
@@ -229,7 +229,7 @@ class XanhSMRAGPipeline:
             }
 
         # 2. Early Cache Lookup
-        if self.cache:
+        if self.cache and not bypass_cache:
             is_hit, hit_res, hit_type = self.cache.get(normalized_query)
             if is_hit:
                 log_info("CACHE", f"Early cache hit query via {hit_type} match.")
@@ -283,11 +283,10 @@ class XanhSMRAGPipeline:
 
         # 5. Handle Small Talk
         if intent == "small-talk":
-            intercept = self._is_greeting_or_thanks(rewritten_query)
-            if intercept["type"] != "none":
-                answer = intercept["answer"]
-            else:
-                answer = nlu_res.get("suggested_answer") or "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
+            answer = nlu_res.get("suggested_answer")
+            if not answer:
+                intercept = self._is_greeting_or_thanks(rewritten_query)
+                answer = intercept["answer"] if intercept["type"] != "none" else "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
             return {
                 "query": query,
                 "rewritten_query": rewritten_query,
@@ -305,7 +304,7 @@ class XanhSMRAGPipeline:
             }
 
         # 5. Second Cache Lookup
-        if self.cache and rewritten_query != normalized_query:
+        if self.cache and not bypass_cache and rewritten_query != normalized_query:
             is_hit, hit_res, hit_type = self.cache.get(rewritten_query)
             if is_hit:
                 log_info("CACHE", f"Hit query after rewrite via {hit_type} match.")
@@ -387,7 +386,7 @@ class XanhSMRAGPipeline:
         cost_info = self._calculate_llm_cost(total_prompt, total_comp)
 
         # Save to Cache
-        if self.cache:
+        if self.cache and not bypass_cache:
             self.cache.set(normalized_query, final_answer, citations)
             if rewritten_query != normalized_query:
                 self.cache.set(rewritten_query, final_answer, citations)
@@ -499,8 +498,10 @@ class XanhSMRAGPipeline:
 
         # 4. Handle Small Talk
         if intent == "small-talk":
-            intercept = self._is_greeting_or_thanks(rewritten_query)
-            answer = intercept["answer"] if intercept["type"] != "none" else "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
+            answer = nlu_res.get("suggested_answer")
+            if not answer:
+                intercept = self._is_greeting_or_thanks(rewritten_query)
+                answer = intercept["answer"] if intercept["type"] != "none" else "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
             return {
                 "query": query,
                 "normalized_query": normalized_query,
@@ -644,13 +645,13 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
 
-    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None):
+    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False):
         """
         Stream version of the NLU-Gateway RAG chain.
         """
-        return self._stream_run_raw(query=query, chat_history=chat_history)
+        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache)
 
-    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None):
+    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False):
         """
         Internal raw streaming implementation of the RAG chain.
         """
@@ -676,7 +677,7 @@ class XanhSMRAGPipeline:
             citations = self._build_citations(top_docs[:5])
             yield from yield_msg(f'data: {json.dumps({"sources": citations})}\n\n')
 
-            if self.cache and final_answer:
+            if self.cache and not bypass_cache and final_answer:
                 self.cache.set(normalized_query, final_answer, citations)
                 if rewritten_query != normalized_query:
                     self.cache.set(rewritten_query, final_answer, citations)
@@ -691,7 +692,7 @@ class XanhSMRAGPipeline:
             return
 
         # 2. Early Cache Lookup
-        if self.cache:
+        if self.cache and not bypass_cache:
             is_hit, hit_res, hit_type = self.cache.get(normalized_query)
             if is_hit:
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
@@ -745,11 +746,13 @@ class XanhSMRAGPipeline:
 
         # 5. Handle Small Talk
         if intent == "small-talk":
-            intercept = self._is_greeting_or_thanks(rewritten_query)
-            if intercept["type"] != "none":
-                answer = intercept["answer"]
-            else:
-                answer = nlu_res.get("suggested_answer") or "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
+            answer = nlu_res.get("suggested_answer")
+            if not answer:
+                intercept = self._is_greeting_or_thanks(rewritten_query)
+                if intercept["type"] != "none":
+                    answer = intercept["answer"]
+                else:
+                    answer = "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
             
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
             import re
@@ -762,7 +765,7 @@ class XanhSMRAGPipeline:
             return
 
         # 5. Second Cache Lookup
-        if self.cache and rewritten_query != normalized_query:
+        if self.cache and not bypass_cache and rewritten_query != normalized_query:
             is_hit, hit_res, hit_type = self.cache.get(rewritten_query)
             if is_hit:
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000

@@ -53,3 +53,7 @@ qdrant_data/
 /logs/
 # Plan
 PLAN.md 
+
+# Evaluation results
+evaluation_report.json
+
