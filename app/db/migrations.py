@@ -31,7 +31,8 @@ def run_auto_migrations():
                 conn.commit()
                 logger.info(f"Migration Success: {query}")
             except Exception as e:
-                # Bỏ qua lỗi nếu column đã tồn tại (hoặc lỗi cú pháp do dialect nhưng thường là duplicate column)
+                # Phải rollback transaction nếu gặp lỗi (đặc biệt quan trọng với PostgreSQL)
+                conn.rollback()
                 pass
                 
     logger.info("Auto migrations completed.")
