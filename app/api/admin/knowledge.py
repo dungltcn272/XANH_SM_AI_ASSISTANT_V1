@@ -346,7 +346,8 @@ async def run_vlm_processor():
             q.put(msg)
             
         loop = asyncio.get_event_loop()
-        news_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "news")
+        # knowledge.py is in app/api/admin/ -> 4 levels up to get to root
+        news_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "data", "news")
         
         def run_vlm():
             process_markdown_images_in_directory(news_dir, log_callback=log_cb)
