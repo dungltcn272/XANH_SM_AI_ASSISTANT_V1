@@ -167,12 +167,25 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     }
 
 @router.get("/eval")
-def get_eval_results():
-    try:
-        with open("evaluation_report.json", "r", encoding="utf-8") as f:
-            report = json.load(f)
-    except FileNotFoundError:
-        report = {"error": "Evaluation report not found. Please run the benchmark first."}
+def get_eval_results(db: Session = Depends(get_db)):
+    # Try to load the latest evaluation run from the database first
+    latest_run = db.query(EvaluationRun).order_by(EvaluationRun.created_at.desc()).first()
+    report = None
+    if latest_run:
+        try:
+            report = {
+                "metrics": json.loads(latest_run.metrics_json) if latest_run.metrics_json else {},
+                "details": json.loads(latest_run.details_json) if latest_run.details_json else []
+            }
+        except Exception as e:
+            pass
+
+    if not report:
+        try:
+            with open("evaluation_report.json", "r", encoding="utf-8") as f:
+                report = json.load(f)
+        except FileNotFoundError:
+            report = {"error": "Evaluation report not found in DB or file. Please run the benchmark first."}
 
     try:
         with open("evaluation/golden_dataset.json", "r", encoding="utf-8") as f:
