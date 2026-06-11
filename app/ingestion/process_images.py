@@ -19,38 +19,56 @@ def get_image_base64_from_url(url: str) -> str:
     response.raise_for_status()
     return base64.b64encode(response.content).decode('utf-8')
 
+import time
+
 def process_image(image_url: str, log_callback=None) -> str:
     msg = f"Đang xử lý ảnh: {image_url}"
     log_info("VLM", msg)
     if log_callback: log_callback(msg)
-    try:
-        base64_image = get_image_base64_from_url(image_url)
-        message = HumanMessage(
-            content=[
-                {"type": "text", "text": "Extract all text and tables from this image. Format the output as Markdown. IMPORTANT: For tables with merged cells (colspan/rowspan), you MUST use HTML <table> tags instead of Markdown tables to preserve the structure accurately. Do not include any introductory or concluding text, only the extracted content."},
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-                },
-            ]
-        )
-        response = llm.invoke([message])
-        markdown_text = response.content.strip()
-        
-        # Remove markdown code blocks if the model wrapped it
-        if markdown_text.startswith("```markdown"):
-            markdown_text = markdown_text[len("```markdown"):].strip()
-        if markdown_text.startswith("```"):
-            markdown_text = markdown_text[3:].strip()
-        if markdown_text.endswith("```"):
-            markdown_text = markdown_text[:-3].strip()
+    
+    max_retries = 3
+    base_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            base64_image = get_image_base64_from_url(image_url)
+            message = HumanMessage(
+                content=[
+                    {"type": "text", "text": "Extract all text and tables from this image. Format the output as Markdown. IMPORTANT: For tables with merged cells (colspan/rowspan), you MUST use HTML <table> tags instead of Markdown tables to preserve the structure accurately. Do not include any introductory or concluding text, only the extracted content."},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                    },
+                ]
+            )
+            response = llm.invoke([message])
+            markdown_text = response.content.strip()
             
-        return markdown_text
-    except Exception as e:
-        err_msg = f"Lỗi xử lý {image_url}: {e}"
-        log_error("VLM", err_msg)
-        if log_callback: log_callback(err_msg)
-        return None
+            # Remove markdown code blocks if the model wrapped it
+            if markdown_text.startswith("```markdown"):
+                markdown_text = markdown_text[len("```markdown"):].strip()
+            if markdown_text.startswith("```"):
+                markdown_text = markdown_text[3:].strip()
+            if markdown_text.endswith("```"):
+                markdown_text = markdown_text[:-3].strip()
+                
+            # Nghỉ 2 giây sau mỗi ảnh thành công để giảm tải API (tránh TooManyRequestsError)
+            time.sleep(2)
+                
+            return markdown_text
+        except Exception as e:
+            err_msg = f"Lỗi xử lý {image_url} (Lần thử {attempt + 1}/{max_retries}): {e}"
+            log_error("VLM", err_msg)
+            if log_callback: log_callback(err_msg)
+            
+            if attempt < max_retries - 1:
+                sleep_time = base_delay * (2 ** attempt) # Exponential backoff: 5s, 10s
+                wait_msg = f"Đợi {sleep_time} giây trước khi thử lại để tránh Rate Limit..."
+                log_info("VLM", wait_msg)
+                if log_callback: log_callback(wait_msg)
+                time.sleep(sleep_time)
+            else:
+                return None
 
 def process_file(file_path: str, log_callback=None):
     with open(file_path, "r", encoding="utf-8") as f:
