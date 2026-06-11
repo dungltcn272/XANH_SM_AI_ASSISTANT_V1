@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { History, Search, ShieldAlert, ShieldCheck, PlayCircle } from 'lucide-react';
+import { History, Search, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { api } from '../api';
 
 export default function RAGHistory() {
@@ -31,12 +31,6 @@ export default function RAGHistory() {
     };
     fetchLogs();
   }, [selectedIntent]);
-
-  const handleManualEval = (logId) => {
-    // In a real app, we would call an API to evaluate this specific request
-    // api.evaluateRequest(logId)
-    alert(`Triggered manual evaluation for log ${logId}`);
-  };
 
   if (loading) return <div className="p-8 text-on-surface-variant animate-pulse">Loading RAG history...</div>;
 
@@ -184,13 +178,6 @@ export default function RAGHistory() {
                   </span>
                 )}
               </div>
-              
-              <button 
-                onClick={() => handleManualEval(log.id)}
-                className="text-sm font-bold text-primary flex items-center gap-2 hover:bg-primary/10 px-4 py-2 rounded-full transition-colors"
-              >
-                <PlayCircle size={18} /> Chấm Điểm Request Này
-              </button>
             </div>
 
           </div>

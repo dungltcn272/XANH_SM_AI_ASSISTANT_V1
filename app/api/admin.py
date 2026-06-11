@@ -77,6 +77,10 @@ class CrawlSourceRequest(BaseModel):
     notes: Optional[str] = ""
 
 
+class EvaluateRequest(BaseModel):
+    description: Optional[str] = None
+
+
 def serialize_crawl_source(row: CrawlSource) -> dict:
     return {
         "id": row.id,
@@ -212,6 +216,7 @@ def serialize_eval_run(row: EvaluationRun) -> dict:
     return {
         "id": row.id,
         "run_name": row.run_name,
+        "description": row.description,
         "dataset_name": row.dataset_name,
         "model_name": row.model_name,
         "total_cases": row.total_cases,
@@ -245,6 +250,7 @@ def get_eval_runs(limit: int = 20, db: Session = Depends(get_db)):
             generation = metrics.get("generation", {})
             seed = EvaluationRun(
                 run_name=f"legacy_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                description="Legacy evaluation run snapshot.",
                 dataset_name=f"golden_{metrics.get('total_cases', len(report.get('details', [])))}",
                 model_name=settings.LLM_MODEL,
                 total_cases=metrics.get("total_cases", 0),
@@ -513,7 +519,7 @@ def ingest_all_knowledge():
     return {"success": True, **summary}
 
 @router.post("/evaluate")
-async def evaluate_rag():
+async def evaluate_rag(req: Optional[EvaluateRequest] = None):
     """
     Chạy đánh giá bằng RAGAS. Trả về stream SSE báo cáo tiến độ.
     """
@@ -530,6 +536,8 @@ async def evaluate_rag():
             env["PYTHONIOENCODING"] = "utf-8"
             env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
             env["TQDM_DISABLE"] = "1"
+            if req and req.description:
+                env["EVAL_DESCRIPTION"] = req.description
             
             process = subprocess.Popen(
                 [sys.executable, "-W", "ignore", "-u", "evaluation/ragas_eval.py"], 

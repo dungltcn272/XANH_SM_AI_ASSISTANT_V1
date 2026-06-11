@@ -283,6 +283,7 @@ EMBEDDING_PROVIDER=openai
 EMBEDDING_MODEL=text-embedding-3-small
 LLM_MODEL=gpt-4o-mini
 NLU_MODEL=gpt-4o-mini
+AI_JUDGE_MODEL=gpt-4o-mini
 RERANKER_PROVIDER=cohere
 RERANKER_MODEL=rerank-multilingual-v3.0
 
@@ -321,6 +322,7 @@ Hệ thống được thiết kế để dễ dàng đưa lên Production thông
    - `DATABASE_URL`: Sử dụng Connection URL nội bộ của PostgreSQL plugin (Railway tự cấp phát).
    - `QDRANT_URL`: URL cụm Qdrant Cloud của bạn (Nên tạo tài khoản trên Qdrant Cloud miễn phí).
    - `GOOGLE_CLIENT_ID`: Client ID Google Auth.
+   - `AI_JUDGE_MODEL`: Mô hình AI chấm điểm đánh giá tự động (mặc định: `gpt-4o-mini`).
    - `PORT`: `8000`.
    - `HF_TOKEN`: (Tùy chọn nhưng khuyến nghị) Token Hugging Face của bạn để tải các mô hình FastEmbed nhanh hơn và tránh lỗi giới hạn lượt tải (rate limits).
 5. Railway sẽ tự động detect Python (thông qua `requirements.txt`) và chạy lệnh `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.

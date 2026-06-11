@@ -216,6 +216,7 @@ function ScoreCell({ label, value }) {
 
 export default function AIEvalLab() {
   const [running, setRunning] = useState(false);
+  const [runDescription, setRunDescription] = useState('');
   const [logs, setLogs] = useState([]);
   const [metrics, setMetrics] = useState(fallbackMetrics);
   const [dataset, setDataset] = useState([]);
@@ -266,7 +267,11 @@ export default function AIEvalLab() {
       const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
       const response = await fetch(`${apiBase}/admin/evaluate`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${api.getAuthToken() || ''}` }
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${api.getAuthToken() || ''}`
+        },
+        body: JSON.stringify({ description: runDescription })
       });
 
       if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
@@ -441,6 +446,17 @@ export default function AIEvalLab() {
                       </button>
                     </div>
                   </div>
+                  <div className="border-b border-slate-800 bg-[#08121d] px-4 py-2 flex items-center gap-3">
+                    <span className="text-xs text-slate-400 font-medium shrink-0">Ghi chú:</span>
+                    <input
+                      type="text"
+                      value={runDescription}
+                      onChange={e => setRunDescription(e.target.value)}
+                      placeholder="Nhập mô tả cho lần chạy đánh giá này (ví dụ: đổi model NLU, tăng RERANK_TOP_N...)"
+                      disabled={running}
+                      className="flex-1 bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 disabled:opacity-50"
+                    />
+                  </div>
                   <div ref={terminalRef} className="h-[190px] overflow-auto bg-[#06101a] px-5 py-4 font-mono text-xs leading-6 text-slate-300">
                     {(logs.length ? logs : [
                       '[09:12:03] INFO  Ready for evaluation run',
@@ -515,16 +531,22 @@ export default function AIEvalLab() {
                 <Panel title="Recent Runs" action={<button onClick={openRunsDialog} className="text-xs text-sky-300 hover:text-sky-200">View all</button>}>
                   <div className="space-y-2">
                     {(latestRuns.length ? latestRuns.slice(0, 4) : []).map(run => (
-                      <div key={run.id || run.run_name} className="flex items-center justify-between gap-3 rounded-md py-1.5 text-sm">
-                        <span className="min-w-0 flex items-center gap-2 text-slate-300">
-                          {run.status === 'failed' ? <XCircle size={13} className="text-red-400" /> : <CheckCircle2 size={13} className="text-lime-400" />}
-                          <span className="truncate">{run.run_name}</span>
-                        </span>
-                        <span className="flex items-center gap-2 text-xs text-slate-500">
-                          {shortTime(run.created_at)}
-                          <StatusBadge status={run.status || 'completed'} />
-                          <ChevronRight size={14} />
-                        </span>
+                      <div key={run.id || run.run_name} className="flex flex-col gap-1 rounded-md py-1.5 text-sm border-b border-slate-800/40 last:border-0">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="min-w-0 flex items-center gap-2 text-slate-300 font-medium">
+                            {run.status === 'failed' ? <XCircle size={13} className="text-red-400" /> : <CheckCircle2 size={13} className="text-lime-400" />}
+                            <span className="truncate">{run.run_name}</span>
+                          </span>
+                          <span className="flex items-center gap-2 text-xs text-slate-500">
+                            {shortTime(run.created_at)}
+                            <StatusBadge status={run.status || 'completed'} />
+                          </span>
+                        </div>
+                        {run.description && (
+                          <div className="pl-5 text-xs text-slate-400 truncate" title={run.description}>
+                            {run.description}
+                          </div>
+                        )}
                       </div>
                     ))}
                     {!latestRuns.length && <p className="text-sm text-slate-500">No eval runs recorded yet.</p>}
@@ -766,15 +788,22 @@ function RunList({ rows }) {
   if (!rows.length) return <p className="text-sm text-slate-400">Chưa có lịch sử eval.</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-left text-xs">
+      <table className="w-full min-w-[1200px] text-left text-xs">
         <thead className="text-slate-400">
           <tr>
             <th className="px-3 py-2">Run</th>
+            <th className="px-3 py-2">Mô tả</th>
+            <th className="px-3 py-2">Model</th>
             <th className="px-3 py-2">Dataset</th>
+            <th className="px-3 py-2">Cases</th>
             <th className="px-3 py-2">Status</th>
             <th className="px-3 py-2">Recall@5</th>
-            <th className="px-3 py-2">Faith</th>
-            <th className="px-3 py-2">Correct</th>
+            <th className="px-3 py-2">Recall@10</th>
+            <th className="px-3 py-2">MRR</th>
+            <th className="px-3 py-2">NDCG@5</th>
+            <th className="px-3 py-2">Faithfulness</th>
+            <th className="px-3 py-2">Correctness</th>
+            <th className="px-3 py-2">Relevancy</th>
             <th className="px-3 py-2">Latency</th>
             <th className="px-3 py-2">Created</th>
           </tr>
@@ -782,13 +811,22 @@ function RunList({ rows }) {
         <tbody className="divide-y divide-slate-800">
           {rows.map(run => (
             <tr key={run.id || run.run_name}>
-              <td className="px-3 py-3 text-slate-100">{run.run_name}</td>
+              <td className="px-3 py-3 text-slate-100 font-medium">{run.run_name}</td>
+              <td className="px-3 py-3 text-slate-300 max-w-[200px] truncate" title={run.description || ''}>
+                {run.description || <span className="text-slate-600 italic">No description</span>}
+              </td>
+              <td className="px-3 py-3 text-slate-300 truncate" title={run.model_name || ''}>{run.model_name || 'gpt-4o-mini'}</td>
               <td className="px-3 py-3 text-slate-300">{run.dataset_name}</td>
+              <td className="px-3 py-3 text-slate-300">{run.total_cases || 0}</td>
               <td className="px-3 py-3"><StatusBadge status={run.status || 'completed'} /></td>
-              <td className="px-3 py-3 text-slate-300">{formatScore(run.metrics?.retrieval?.recall_5 ?? run.recall_5)}</td>
-              <td className="px-3 py-3 text-slate-300">{formatScore(run.metrics?.generation?.faithfulness ?? run.faithfulness)}</td>
-              <td className="px-3 py-3 text-slate-300">{formatScore(run.metrics?.generation?.correctness ?? run.correctness)}</td>
-              <td className="px-3 py-3 text-orange-300">{Number(run.average_latency_sec || 0).toFixed(2)}s</td>
+              <td className="px-3 py-3 text-slate-300">{formatScore(run.retrieval?.recall_5)}</td>
+              <td className="px-3 py-3 text-slate-300">{formatScore(run.retrieval?.recall_10)}</td>
+              <td className="px-3 py-3 text-slate-300">{formatScore(run.retrieval?.mrr)}</td>
+              <td className="px-3 py-3 text-slate-300">{formatScore(run.retrieval?.ndcg_5)}</td>
+              <td className="px-3 py-3 text-slate-300">{formatScore(run.generation?.faithfulness)}</td>
+              <td className="px-3 py-3 text-slate-300">{formatScore(run.generation?.correctness)}</td>
+              <td className="px-3 py-3 text-slate-300">{formatScore(run.generation?.relevancy)}</td>
+              <td className="px-3 py-3 text-orange-300 font-medium">{Number(run.average_latency_sec || 0).toFixed(2)}s</td>
               <td className="px-3 py-3 text-slate-400">{shortTime(run.created_at)}</td>
             </tr>
           ))}
