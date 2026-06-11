@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { LayoutDashboard, Beaker, Network, Database, History, User as UserIcon, Hammer } from 'lucide-react';
+import { LayoutDashboard, Beaker, Network, Database, History, User as UserIcon, Hammer, MessageSquareHeart } from 'lucide-react';
 
 export default function AdminLayout() {
   const { user } = useAuth();
@@ -12,6 +12,7 @@ export default function AdminLayout() {
     { path: '/admin/eval', label: 'AI Evaluation Lab', icon: <Beaker size={20} /> },
     { path: '/admin/pipeline', label: 'Pipeline Manager', icon: <Network size={20} /> },
     { path: '/admin/knowledge-builder', label: 'Knowledge Builder', icon: <Hammer size={20} /> },
+    { path: '/admin/reviews', label: 'User Reviews', icon: <MessageSquareHeart size={20} /> },
     { path: '/admin/history', label: 'RAG History', icon: <History size={20} /> },
     { path: '/admin/db', label: 'Raw Database', icon: <Database size={20} /> }
   ];

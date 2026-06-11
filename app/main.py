@@ -40,21 +40,16 @@ except Exception:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, chat, admin, conversations
+from app.api import auth, chat, conversations, reviews
+from app.api.admin import router as admin_router
 from app.db.database import engine, Base
 
 # Tạo các bảng trong CSDL
 Base.metadata.create_all(bind=engine)
 
-# Chạy ALTER TABLE động để thêm các cột latency mới vào bảng rag_request_logs nếu chưa tồn tại
-from sqlalchemy import text
-with engine.connect() as conn:
-    for col in ["rewrite_latency_ms", "classification_latency_ms", "expansion_latency_ms", "rerank_latency_ms"]:
-        try:
-            conn.execute(text(f"ALTER TABLE rag_request_logs ADD COLUMN {col} FLOAT DEFAULT 0;"))
-            conn.commit()
-        except Exception:
-            pass
+# Chạy Migration thủ công thay vì Alembic
+from app.db.migrations import run_auto_migrations
+run_auto_migrations()
 
 app = FastAPI(
     title="GreenSM Production RAG",
@@ -79,7 +74,8 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(conversations.router, prefix="/api/conversations", tags=["conversations"])
-app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
+app.include_router(admin_router, prefix="/api/admin")
 
 @app.get("/")
 def root():

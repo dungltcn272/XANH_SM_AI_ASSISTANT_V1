@@ -4,7 +4,7 @@ import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognitio
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon } from 'lucide-react';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -80,6 +80,53 @@ export default function ChatLayout() {
   const [loading, setLoading] = useState(false);
   const [pipelineStep, setPipelineStep] = useState(null);
   
+  // Feedback States
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [feedbackMessageId, setFeedbackMessageId] = useState(null);
+  const [feedbackRating, setFeedbackRating] = useState(null);
+  const [feedbackTags, setFeedbackTags] = useState([]);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [submittedReviews, setSubmittedReviews] = useState({});
+
+  const handleReviewClick = async (messageId, rating) => {
+    if (!messageId) return;
+    if (rating === 'up') {
+      try {
+        await api.submitReview({ message_id: messageId, rating: 'up' });
+        setSubmittedReviews(prev => ({ ...prev, [messageId]: 'up' }));
+      } catch(e) {
+        console.error("Failed to submit review", e);
+      }
+    } else {
+      setFeedbackMessageId(messageId);
+      setFeedbackRating('down');
+      setFeedbackTags([]);
+      setFeedbackComment('');
+      setFeedbackModalOpen(true);
+    }
+  };
+
+  const submitDownReview = async () => {
+    if (!feedbackMessageId) return;
+    try {
+      setSubmittingReview(true);
+      await api.submitReview({
+        message_id: feedbackMessageId,
+        rating: 'down',
+        reason_tags: feedbackTags,
+        comment: feedbackComment
+      });
+      setSubmittedReviews(prev => ({ ...prev, [feedbackMessageId]: 'down' }));
+      setFeedbackModalOpen(false);
+    } catch(e) {
+      console.error(e);
+      alert('Gửi đánh giá thất bại');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const [searchParams, setSearchParams] = useSearchParams();
   const activeConversationId = searchParams.get('c');
   const currentConvIdRef = useRef(activeConversationId);
@@ -285,6 +332,14 @@ export default function ChatLayout() {
                     sourcesObj = parsed.sources;
                     handledAsMetadata = true;
                   } 
+                  if (parsed.message_id) {
+                    setMessages(prev => {
+                      const newMsgs = [...prev];
+                      newMsgs[newMsgs.length - 1].id = parsed.message_id;
+                      return newMsgs;
+                    });
+                    handledAsMetadata = true;
+                  }
                   if (!handledAsMetadata) {
                     textDataParts.push(data);
                   }
@@ -630,9 +685,31 @@ export default function ChatLayout() {
                               <span className="scale-110">⏱️</span>
                               <span>Tổng thời gian: {msg.latency_ms ? `${Math.round(msg.latency_ms)}ms` : 'N/A'}</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <span>Nguồn: Xanh SM Official</span>
-                              <ShieldCheck size={12} className="text-[#00c897]" />
+                            <div className="flex items-center gap-3">
+                              {msg.id && (
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => handleReviewClick(msg.id, 'up')}
+                                    className={`hover:text-[#00c897] transition-colors p-1 rounded-md ${submittedReviews[msg.id] === 'up' ? 'text-[#00c897] bg-[#00c897]/10' : ''}`}
+                                    title="Hữu ích"
+                                    disabled={!!submittedReviews[msg.id]}
+                                  >
+                                    <ThumbsUp size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleReviewClick(msg.id, 'down')}
+                                    className={`hover:text-red-500 transition-colors p-1 rounded-md ${submittedReviews[msg.id] === 'down' ? 'text-red-500 bg-red-50' : ''}`}
+                                    title="Không hữu ích"
+                                    disabled={!!submittedReviews[msg.id]}
+                                  >
+                                    <ThumbsDown size={14} />
+                                  </button>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1.5">
+                                <span>Nguồn: Xanh SM Official</span>
+                                <ShieldCheck size={12} className="text-[#00c897]" />
+                              </div>
                             </div>
                           </div>
                         )}
@@ -951,6 +1028,74 @@ export default function ChatLayout() {
           <ShieldCheck size={12} /> Thông tin của bạn được bảo mật và chỉ sử dụng để hỗ trợ.
         </span>
       </div>
+
+      {/* Feedback Modal */}
+      {feedbackModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-surface-container-high rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-outline-variant/20 flex flex-col scale-in-95 duration-200">
+            <div className="p-5 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container/30">
+              <h3 className="font-bold text-lg text-on-surface">Đóng góp ý kiến</h3>
+              <button 
+                onClick={() => setFeedbackModalOpen(false)}
+                className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-5">
+              <p className="text-sm text-on-surface-variant">Xin lỗi vì câu trả lời chưa đáp ứng mong đợi của bạn. Hãy cho chúng tôi biết lý do (chọn nhiều):</p>
+              
+              <div className="flex flex-wrap gap-2">
+                {['Không đúng thực tế', 'Thiếu thông tin', 'Sai ngữ cảnh', 'Lỗi hiển thị', 'Lạc đề', 'Lý do khác'].map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => {
+                      if (feedbackTags.includes(tag)) setFeedbackTags(feedbackTags.filter(t => t !== tag));
+                      else setFeedbackTags([...feedbackTags, tag]);
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                      feedbackTags.includes(tag) 
+                        ? 'bg-primary text-white border-primary shadow-md' 
+                        : 'bg-transparent text-on-surface-variant border-outline-variant/40 hover:border-primary/50'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Bình luận thêm (không bắt buộc)</label>
+                <textarea
+                  value={feedbackComment}
+                  onChange={e => setFeedbackComment(e.target.value)}
+                  placeholder="Góp ý của bạn sẽ giúp Xanh SM AI thông minh hơn..."
+                  className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-xl p-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none h-24"
+                ></textarea>
+              </div>
+            </div>
+            
+            <div className="p-5 border-t border-outline-variant/20 bg-surface-container/30 flex justify-end gap-3">
+              <button 
+                onClick={() => setFeedbackModalOpen(false)}
+                className="px-4 py-2 font-semibold text-sm text-on-surface-variant hover:bg-surface-variant rounded-xl transition-colors"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={submitDownReview}
+                disabled={submittingReview || (feedbackTags.length === 0 && !feedbackComment.trim())}
+                className="px-6 py-2 font-bold text-sm bg-primary text-white rounded-xl shadow-md hover:shadow-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              >
+                {submittingReview && <Loader2 size={16} className="animate-spin" />}
+                Gửi Đánh Giá
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -12,6 +12,8 @@ import RAGHistory from './pages/RAGHistory';
 import DatabaseManager from './pages/DatabaseManager';
 import AgentCrawler from './pages/AgentCrawler';
 import KnowledgeBuilder from './pages/KnowledgeBuilder';
+import UserReviews from './pages/UserReviews';
+import AdminLogin from './pages/AdminLogin';
 import { Moon, Sun, LogOut, Plus, User, HelpCircle, X, Menu, ChevronLeft, ChevronRight, MoreHorizontal, Bell, ChevronDown, MessageSquare, Search } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -610,6 +612,9 @@ function MainLayout({ children }) {
 function App() {
   return (
     <Routes>
+      {/* Login Route */}
+      <Route path="/admin-login" element={<AdminLogin />} />
+
       {/* User Chat Route */}
       <Route path="/" element={
         <MainLayout>
@@ -624,6 +629,7 @@ function App() {
         </ProtectedRoute>
       }>
         <Route index element={<CommandCenter />} />
+        <Route path="reviews" element={<UserReviews />} />
         <Route path="eval" element={<AIEvalLab />} />
         <Route path="pipeline" element={<PipelineManager />} />
         <Route path="knowledge-builder" element={<KnowledgeBuilder />} />

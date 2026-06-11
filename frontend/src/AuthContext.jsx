@@ -12,6 +12,7 @@ export const AuthProvider = ({ children }) => {
     const savedUserId = localStorage.getItem('user_id');
     const savedEmail = localStorage.getItem('email');
     const savedName = localStorage.getItem('name');
+    const savedRole = localStorage.getItem('user_role');
 
     if (savedToken && savedType) {
       return {
@@ -19,7 +20,8 @@ export const AuthProvider = ({ children }) => {
         type: savedType,
         id: savedUserId,
         email: savedEmail,
-        name: savedName
+        name: savedName,
+        role: savedRole
       };
     }
     return null;
@@ -83,6 +85,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginAsAdmin = async (username, password) => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if (!res.ok) throw new Error('Admin login failed');
+      const data = await res.json();
+      
+      setUser({
+        token: data.access_token,
+        type: 'user',
+        role: data.role,
+        id: data.user_id,
+        email: data.email,
+        name: data.name
+      });
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('auth_type', 'user');
+      localStorage.setItem('user_role', data.role);
+      localStorage.setItem('user_id', data.user_id);
+      localStorage.setItem('email', data.email);
+      localStorage.setItem('name', data.name);
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
   const logout = async () => {
     localStorage.clear();
     setUser(null);
@@ -106,7 +139,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginAsGuest, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginAsGuest, loginAsAdmin, logout }}>
       {children}
     </AuthContext.Provider>
   );

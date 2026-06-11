@@ -71,3 +71,37 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
     except ValueError as e:
         log_error("AUTH", f"Token verification failed: {e}", error_type="ValueError")
         raise HTTPException(status_code=401, detail="Invalid Google token")
+
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+@router.post("/admin-login")
+def admin_login(req: AdminLoginRequest, db: Session = Depends(get_db)):
+    if req.username != settings.ADMIN_USERNAME or req.password != settings.ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+        
+    admin_email = f"{req.username}@system.admin"
+    user = db.query(User).filter(User.email == admin_email).first()
+    if not user:
+        user = User(email=admin_email, name="System Admin", role=UserRole.ADMIN)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    elif user.role != UserRole.ADMIN:
+        user.role = UserRole.ADMIN
+        db.commit()
+        
+    access_token = create_access_token(
+        data={"sub": user.id, "type": "user"}
+    )
+    
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "user_id": user.id, 
+        "email": user.email, 
+        "name": user.name,
+        "role": user.role.value,
+        "type": "user"
+    }

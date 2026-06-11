@@ -1,6 +1,18 @@
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
 export const api = {
+    _fetch: async (url, options = {}) => {
+    const token = api.getAuthToken();
+    const headers = { ...options.headers };
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
+    return fetch(url, { ...options, headers });
+  },
+
   getAuthToken: () => {
     return localStorage.getItem('access_token');
   },
@@ -17,7 +29,7 @@ export const api = {
       body.image_base64 = imageBase64;
     }
 
-    return fetch(`${API_BASE}/chat`, {
+    return api._fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body)
@@ -25,7 +37,7 @@ export const api = {
   },
   
   getDbStats: async () => {
-    const res = await fetch(`${API_BASE}/admin/stats`);
+    const res = await api._fetch(`${API_BASE}/admin/stats`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
@@ -35,25 +47,25 @@ export const api = {
     if (intent) {
       url += `?intent=${encodeURIComponent(intent)}`;
     }
-    const res = await fetch(url);
+    const res = await api._fetch(url);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   getAdminUsers: async () => {
-    const res = await fetch(`${API_BASE}/admin/users`);
+    const res = await api._fetch(`${API_BASE}/admin/users`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   getAdminData: async () => {
-    const res = await fetch(`${API_BASE}/admin/data`);
+    const res = await api._fetch(`${API_BASE}/admin/data`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   getAdminChunks: async () => {
-    const res = await fetch(`${API_BASE}/admin/chunks`);
+    const res = await api._fetch(`${API_BASE}/admin/chunks`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
@@ -61,25 +73,25 @@ export const api = {
   runCrawler: async (maxUrls = 0) => {
     const params = new URLSearchParams();
     params.set('max_urls', String(Math.max(0, Number(maxUrls) || 0)));
-    return fetch(`${API_BASE}/admin/ingest/crawl?${params.toString()}`, {
+    return api._fetch(`${API_BASE}/admin/ingest/crawl?${params.toString()}`, {
       method: 'POST'
     });
   },
 
   runVLMProcessor: async () => {
-    return fetch(`${API_BASE}/admin/ingest/process/vlm`, {
+    return api._fetch(`${API_BASE}/admin/ingest/process/vlm`, {
       method: 'POST'
     });
   },
 
   runIngestion: async () => {
-    return fetch(`${API_BASE}/admin/ingest/process`, {
+    return api._fetch(`${API_BASE}/admin/ingest/process`, {
       method: 'POST'
     });
   },
 
   runPlatformIngestion: async () => {
-    return fetch(`${API_BASE}/admin/ingest/process/platform`, {
+    return api._fetch(`${API_BASE}/admin/ingest/process/platform`, {
       method: 'POST'
     });
   },
@@ -91,7 +103,7 @@ export const api = {
     if (filters.enabled !== undefined && filters.enabled !== '') params.set('enabled', filters.enabled);
     if (filters.keyword) params.set('keyword', filters.keyword);
     const qs = params.toString();
-    const res = await fetch(`${API_BASE}/admin/crawl-sources${qs ? `?${qs}` : ''}`);
+    const res = await api._fetch(`${API_BASE}/admin/crawl-sources${qs ? `?${qs}` : ''}`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
@@ -103,13 +115,13 @@ export const api = {
     if (filters.enabled !== undefined && filters.enabled !== '') params.set('enabled', filters.enabled);
     if (filters.keyword) params.set('keyword', filters.keyword);
     const qs = params.toString();
-    const res = await fetch(`${API_BASE}/admin/crawl-sources/stats${qs ? `?${qs}` : ''}`);
+    const res = await api._fetch(`${API_BASE}/admin/crawl-sources/stats${qs ? `?${qs}` : ''}`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   createCrawlSource: async (payload) => {
-    const res = await fetch(`${API_BASE}/admin/crawl-sources`, {
+    const res = await api._fetch(`${API_BASE}/admin/crawl-sources`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -119,7 +131,7 @@ export const api = {
   },
 
   updateCrawlSource: async (id, payload) => {
-    const res = await fetch(`${API_BASE}/admin/crawl-sources/${id}`, {
+    const res = await api._fetch(`${API_BASE}/admin/crawl-sources/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -129,49 +141,49 @@ export const api = {
   },
 
   deleteCrawlSource: async (id) => {
-    const res = await fetch(`${API_BASE}/admin/crawl-sources/${id}`, { method: 'DELETE' });
+    const res = await api._fetch(`${API_BASE}/admin/crawl-sources/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   bootstrapCrawlSources: async () => {
-    const res = await fetch(`${API_BASE}/admin/crawl-sources/bootstrap`, { method: 'POST' });
+    const res = await api._fetch(`${API_BASE}/admin/crawl-sources/bootstrap`, { method: 'POST' });
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   syncCrawlSources: async () => {
-    const res = await fetch(`${API_BASE}/admin/crawl-sources/sync`, { method: 'POST' });
+    const res = await api._fetch(`${API_BASE}/admin/crawl-sources/sync`, { method: 'POST' });
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   clearAllKnowledge: async () => {
-    const res = await fetch(`${API_BASE}/admin/knowledge/clear`, { method: 'POST' });
+    const res = await api._fetch(`${API_BASE}/admin/knowledge/clear`, { method: 'POST' });
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   ingestAllKnowledge: async () => {
-    const res = await fetch(`${API_BASE}/admin/knowledge/ingest-all`, { method: 'POST' });
+    const res = await api._fetch(`${API_BASE}/admin/knowledge/ingest-all`, { method: 'POST' });
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   getEvalResults: async () => {
-    const res = await fetch(`${API_BASE}/admin/eval`);
+    const res = await api._fetch(`${API_BASE}/admin/eval`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   getEvalRuns: async (limit = 20) => {
-    const res = await fetch(`${API_BASE}/admin/eval/runs?limit=${limit}`);
+    const res = await api._fetch(`${API_BASE}/admin/eval/runs?limit=${limit}`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   getDbTables: async () => {
-    const res = await fetch(`${API_BASE}/admin/db/tables`);
+    const res = await api._fetch(`${API_BASE}/admin/db/tables`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
@@ -187,13 +199,13 @@ export const api = {
     if (filters.keyword) url += `&keyword=${encodeURIComponent(filters.keyword)}`;
     if (filters.search_columns) url += `&search_columns=${encodeURIComponent(filters.search_columns)}`;
     
-    const res = await fetch(url);
+    const res = await api._fetch(url);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   deleteTableData: async (tableName, ids) => {
-    const res = await fetch(`${API_BASE}/admin/db/table/${tableName}/delete`, {
+    const res = await api._fetch(`${API_BASE}/admin/db/table/${tableName}/delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids })
@@ -203,7 +215,7 @@ export const api = {
   },
 
   deleteAllTableData: async (tableName) => {
-    const res = await fetch(`${API_BASE}/admin/db/table/${tableName}/delete_all`, {
+    const res = await api._fetch(`${API_BASE}/admin/db/table/${tableName}/delete_all`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -216,7 +228,7 @@ export const api = {
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     
-    const res = await fetch(`${API_BASE}/conversations`, { headers });
+    const res = await api._fetch(`${API_BASE}/conversations`, { headers });
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
@@ -226,16 +238,82 @@ export const api = {
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     
-    const res = await fetch(`${API_BASE}/conversations/${id}/messages`, { headers });
+    const res = await api._fetch(`${API_BASE}/conversations/${id}/messages`, { headers });
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
 
   testPipeline: async (query) => {
-    const res = await fetch(`${API_BASE}/admin/pipeline/test`, {
+    const res = await api._fetch(`${API_BASE}/admin/pipeline/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  adminLogin: async (username, password) => {
+    const res = await api._fetch(`${API_BASE}/auth/admin-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  submitReview: async (payload) => {
+    const token = api.getAuthToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await api._fetch(`${API_BASE}/reviews`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getAdminReviews: async (filters = {}) => {
+    const token = api.getAuthToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.rating) params.set('rating', filters.rating);
+    if (filters.keyword) params.set('keyword', filters.keyword);
+    if (filters.limit) params.set('limit', filters.limit);
+    if (filters.offset) params.set('offset', filters.offset);
+
+    const qs = params.toString();
+    const res = await api._fetch(`${API_BASE}/admin/reviews${qs ? `?${qs}` : ''}`, { headers });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getAdminReviewDetail: async (id) => {
+    const token = api.getAuthToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await api._fetch(`${API_BASE}/admin/reviews/${id}`, { headers });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  updateAdminReviewStatus: async (id, payload) => {
+    const token = api.getAuthToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await api._fetch(`${API_BASE}/admin/reviews/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('API Error');
     return res.json();
