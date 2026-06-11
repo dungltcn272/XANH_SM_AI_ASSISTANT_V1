@@ -61,12 +61,7 @@ class XanhSMClassifier:
         )
 
     def _fast_rag_nlu(self, query: str) -> Dict[str, Any]:
-        from app.retrieval.multi_query import XanhSMQueryExpansion
-        expander = XanhSMQueryExpansion()
-        expanded = expander.expand_query_rule_based(query)
-        expanded = enrich_queries(query, expanded, max_queries=8)
-        if query not in expanded:
-            expanded = [query] + expanded
+        expanded = [query]
         return {
             "rewritten_query": query,
             "intent": "rag",
@@ -157,14 +152,7 @@ class XanhSMClassifier:
                 suggested_answer = result.get("suggested_answer")
                 
                 # Expansion is now handled locally to save LLM tokens
-                from app.retrieval.multi_query import XanhSMQueryExpansion
-                expander = XanhSMQueryExpansion()
-                expanded = expander.expand_query_rule_based(rewritten_query)
-                expanded = enrich_queries(rewritten_query, expanded, max_queries=8)
-                if query != rewritten_query:
-                    expanded = enrich_queries(query, expanded, max_queries=8)
-                if rewritten_query not in expanded:
-                    expanded = [rewritten_query] + expanded
+                expanded = [rewritten_query]
                 return {
                     "rewritten_query": rewritten_query,
                     "intent": intent,
@@ -190,10 +178,7 @@ class XanhSMClassifier:
         rewritten_query = query
         
         # 3. Expansion fallback (use rule-based expansion or return list of rewritten)
-        from app.retrieval.multi_query import XanhSMQueryExpansion
-        expander = XanhSMQueryExpansion()
-        expanded = expander.expand_query_rule_based(rewritten_query)
-        expanded = enrich_queries(rewritten_query, expanded, max_queries=8)
+        expanded = [rewritten_query]
         
         return {
             "rewritten_query": rewritten_query,
