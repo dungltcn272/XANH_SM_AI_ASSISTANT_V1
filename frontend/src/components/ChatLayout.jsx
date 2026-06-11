@@ -4,7 +4,7 @@ import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognitio
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine } from 'lucide-react';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -74,6 +74,9 @@ export default function ChatLayout() {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [imageBase64, setImageBase64] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [pipelineStep, setPipelineStep] = useState(null);
   
@@ -208,13 +211,16 @@ export default function ChatLayout() {
     if (!query || loading) return;
 
     const userQuery = query;
+    const currentImageBase64 = imageBase64;
     setInput('');
+    setImageBase64(null);
+    setImagePreview(null);
     const now = new Date().toISOString();
-    setMessages(prev => [...prev, { role: 'user', content: userQuery, created_at: now }]);
+    setMessages(prev => [...prev, { role: 'user', content: userQuery, image: imagePreview, created_at: now }]);
     setLoading(true);
 
     try {
-      const response = await api.chatStream(userQuery, currentConvIdRef.current);
+      const response = await api.chatStream(userQuery, currentConvIdRef.current, currentImageBase64);
       if (!response.ok) throw new Error('API Error');
       
       setMessages(prev => [...prev, { role: 'assistant', content: '', latency_ms: null, metrics: null, created_at: new Date().toISOString() }]);
@@ -351,6 +357,41 @@ export default function ChatLayout() {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Kích thước ảnh tối đa là 5MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+        const base64String = reader.result.replace(/^data:image\/[a-z]+;base64,/, "");
+        setImageBase64(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePaste = (e) => {
+    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+      const file = e.clipboardData.files[0];
+      if (file.type.startsWith('image/')) {
+        e.preventDefault();
+        handleImageUpload({ target: { files: [file] } });
+      }
+    }
+  };
+
+  const clearImage = () => {
+    setImageBase64(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const renderContent = (content) => {
@@ -545,7 +586,12 @@ export default function ChatLayout() {
                           : 'bg-white/88 dark:bg-white/5 backdrop-blur-md border border-white/40 dark:border-white/10 text-on-surface rounded-tl-none shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.2)]'
                       }`}>
                         {msg.role === 'user' ? (
-                          <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
+                          <div className="flex flex-col gap-2">
+                            {msg.image && (
+                              <img src={msg.image} alt="User upload" className="max-w-[200px] max-h-[200px] rounded-xl object-contain bg-black/20" />
+                            )}
+                            <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
+                          </div>
                         ) : (
                           <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
                             {renderContent(msg.content)}
@@ -803,10 +849,22 @@ export default function ChatLayout() {
         ) : (
           /* Standard Input Box */
           <div className="w-full max-w-5xl glass-panel p-3 rounded-3xl shadow-[0_20px_50px_rgba(0,108,80,0.15)] flex flex-col gap-2 group border-white/20 dark:border-white/10 focus-within:border-[#00c897]/50 focus-within:ring-2 focus-within:ring-[#00c897]/10 transition-all bg-white/80 dark:bg-[#0c1618]/80 backdrop-blur-xl pointer-events-auto">
+            {imagePreview && (
+              <div className="relative w-20 h-20 mb-2 ml-2">
+                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-xl border border-[#00c897]/30 shadow-sm" />
+                <button 
+                  onClick={clearImage}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-md"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
             <textarea 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/60 font-bold px-2 py-1 resize-none max-h-32 min-h-[48px] outline-none text-sm" 
               placeholder="Hỏi Xanh SM bất cứ điều gì..." 
               rows={1}
@@ -814,12 +872,19 @@ export default function ChatLayout() {
             
             <div className="flex items-center justify-between border-t border-outline-variant/10 pt-2 shrink-0">
               <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                <button 
-                  onClick={() => alert("Tính năng này đang được phát triển...")}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10 transition-colors shrink-0"
-                  title="Tính năng bổ sung"
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  ref={fileInputRef} 
+                  onChange={handleImageUpload} 
+                  className="hidden" 
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10 transition-all active:scale-95 shrink-0"
+                  title="Tải ảnh lên"
                 >
-                  <Plus size={16} />
+                  <ImageIcon size={16} />
                 </button>
 
                 {/* Horizontally scrollable suggestion pills */}

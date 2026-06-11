@@ -16,6 +16,7 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     query: str
     conversation_id: Optional[str] = None
+    image_base64: Optional[str] = None
 
 
 async def _run_stream_in_thread(gen_func, **kwargs) -> AsyncGenerator[str, None]:
@@ -105,7 +106,8 @@ async def chat_endpoint(
             db=db,
             user_id=user_identifier,
             conversation_id=conv_id,
-            question=req.query
+            question=req.query,
+            image_base64=req.image_base64
         ),
         media_type="text/event-stream",
         headers={

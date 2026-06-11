@@ -1,20 +1,19 @@
-# 🚗 Xanh SM Enterprise Production RAG System (Phase 5)
+# 🚗 Xanh SM Enterprise Production RAG System (Phase 6)
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live-00A651?style=for-the-badge&logo=vercel&logoColor=white)](https://rag-xanh-sm-v1.vercel.app/)
 
 > [!NOTE]
-> **🚀 CẬP NHẬT MỚI TẠI PHASE 5 (SCOPE EXPANSION & IMAGE SUPPORT):**
-> *   **Mở rộng kho tri thức (Green SM Platform)**:
->     *   **Các dòng xe VinFast hỗ trợ**: Cập nhật thông số kỹ thuật chi tiết, giá bán, giá thuê và các tùy chọn mua/thuê của toàn bộ các dòng ô tô điện (**VF 6, VF 5, EC Van, Herio Green, Limo Green, Minio Green**) và xe máy điện (**Evo, Evo Grand, Feliz II, Viper**).
->     *   **Các chính sách mua/thuê xe & sạc pin**: Tích hợp các tài liệu PDF chính sách lớn (chương trình mua xe trực tiếp qua Green SM, chương trình "Mua xe 0 đồng", ưu đãi sạc pin miễn phí tại trạm V-Green, cơ chế thuê vận doanh và chia sẻ doanh số lên tới 90%).
->     *   **Tổng hợp tin tức & sự kiện**: Danh sách 12 bài viết tin tức mới nhất về các chiến dịch ra mắt xe mới, nâng cấp pin miễn phí, ngày hội thu cũ đổi mới và các chương trình khuyến mại.
-> *   **Hiển thị hình ảnh trực quan trong Chat**: Trích xuất tự động thẻ ảnh từ chunks và hiển thị hình ảnh minh họa thực tế của dòng xe hoặc tin tức trực quan trong câu trả lời (bo góc tròn, zoom khi hover và mở tab mới khi click).
-> *   **Hỗ trợ kết nối Docker Local**: Tự động nhận diện và kết nối trực tiếp đến Qdrant chạy local Docker (`localhost`/`127.0.0.1`) mà không yêu cầu API Key.
+> **🚀 CẬP NHẬT MỚI TẠI PHASE 6 (MULTIMODAL RAG & VLM OPTIMIZATION):**
+> *   **Tách biệt Luồng Xử Lý Hình Ảnh VLM**: Tiền xử lý hình ảnh Markdown (giải mã bằng Vision Language Model - VLM) được tách độc lập khỏi luồng Ingest/Crawl, cho phép kiểm soát độc lập, tăng tốc Ingest và log (SSE) theo dõi tiến độ theo thời gian thực trên giao diện UI.
+> *   **Bảo toàn Hình Ảnh Gốc**: URL thẻ ảnh nguyên bản được bảo toàn khi VLM giải mã (nội dung chữ được chèn xuống dưới ảnh). Giúp Frontend hiển thị cả ảnh gốc lẫn mô tả chữ một cách trực quan nhất.
+> *   **Cập nhật Knowledge Builder UI**: Thiết kế lại toàn bộ giao diện quản trị tri thức. Tối ưu Grid Layout, bổ sung tính năng phân trang (Pagination) cho URL Registry giúp quản lý hàng ngàn tài liệu dễ dàng hơn.
+> *   **Mở rộng Cấu hình Model (`VLM_MODEL`)**: Khả năng chỉ định mô hình VLM độc lập (mặc định `gpt-4o`) ra cấu hình `.env`, cho phép tùy chỉnh model xử lý hình ảnh linh hoạt.
+> *   **(Phase 5 - Legacy)**: Hỗ trợ thông số xe VinFast đầy đủ, chính sách mua/thuê xe, và kết nối Docker Qdrant cục bộ.
 
 
 Hệ thống **Retrieval-Augmented Generation (RAG)** cấp doanh nghiệp (Production-Grade) được thiết kế và tối ưu hóa đặc biệt dành riêng cho **Xanh SM** nhằm hỗ trợ tra cứu tập trung và chính xác mọi thông tin chính sách cước phí, điều khoản dịch vụ, cơ chế tài chính cho khách hàng, đối tác tài xế, đối tác cửa hàng merchant và nhân viên CSKH.
 
-Hệ thống này triển khai kiến trúc **NLU-Gateway RAG (Phase 5)** tiên tiến nhất hiện nay với tốc độ xử lý siêu tốc:
+Hệ thống này triển khai kiến trúc **NLU-Gateway RAG (Phase 6)** tiên tiến nhất hiện nay với tốc độ xử lý siêu tốc:
 `Question ➔ Safety Guardrail ➔ Intent Classifier ➔ Slot Filling (Task/RAG) ➔ Memory Query Rewrite ➔ Hybrid Search (Qdrant Dense + BM25) ➔ Cohere Reranker ➔ Adjacent Context Expansion ➔ LLM Synthesizer ➔ Server-Sent Events (SSE) Stream ➔ Citation Validator`.
 
 > [!IMPORTANT]
@@ -286,6 +285,7 @@ EMBEDDING_MODEL=text-embedding-3-small
 LLM_MODEL=gpt-4o-mini
 NLU_MODEL=gpt-4o-mini
 AI_JUDGE_MODEL=gpt-4o-mini
+VLM_MODEL=gpt-4o
 RERANKER_PROVIDER=cohere
 RERANKER_MODEL=rerank-multilingual-v3.0
 

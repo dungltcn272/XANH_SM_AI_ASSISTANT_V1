@@ -23,7 +23,19 @@ from app.db.models import DocumentChunk
 from app.ingestion.chunking import HeadingAwareSplitter
 from app.ingestion.embedding import get_embedding_model
 from app.vectordb.qdrant_client import vectordb
-from app.core.logger import log_info, log_warn, log_error
+from app.core.logger import log_info as original_log_info, log_warn as original_log_warn, log_error as original_log_error
+
+def log_info(phase: str, msg: str):
+    print(msg, flush=True)
+    original_log_info(phase, msg)
+
+def log_warn(phase: str, msg: str):
+    print(f"WARNING: {msg}", flush=True)
+    original_log_warn(phase, msg)
+
+def log_error(phase: str, msg: str):
+    print(f"ERROR: {msg}", flush=True)
+    original_log_error(phase, msg)
 
 COLLECTION_NAME = "greensm_knowledge"
 
@@ -113,8 +125,10 @@ def ingest_data(data_dir: str, category_filter: str = None, reset_collection: bo
     sparse_model = vectordb.sparse_embedder
 
     setup_qdrant(qdrant, recreate=reset_collection)
-    
-    splitter = HeadingAwareSplitter(chunk_size=400, chunk_overlap=50)
+
+    chunk_size = int(os.getenv("CHUNK_SIZE", 400))
+    chunk_overlap = int(os.getenv("CHUNK_OVERLAP", 50))
+    splitter = HeadingAwareSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     log_info("INGESTION", "Bắt đầu duyệt và chunk file...")
     chunks: List[Document] = splitter.split_directory(data_dir, category_filter=category_filter)
     

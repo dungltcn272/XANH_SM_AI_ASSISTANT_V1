@@ -593,28 +593,23 @@ async def evaluate_rag(req: Optional[EvaluateRequest] = None):
 @router.post("/ingest/crawl")
 async def run_crawler(max_urls: int = 0):
     """
-    Chạy Script Cào Dữ Liệu. Trả về stream SSE báo cáo tiến độ.
+    Chạy Script Cào Dữ Liệu: Main Site, Platform/PDF, và VLM Image Processing. 
+    Trả về stream SSE báo cáo tiến độ.
     """
     async def event_generator():
-        yield 'data: {"step": "Bắt đầu khởi động Web Crawler..."}\n\n'
-        
+        import subprocess
+        import sys
+        import os
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+        env["TQDM_DISABLE"] = "1"
+
+        # 1. Main Site Crawler
+        yield 'data: {"step": "1/2 Bắt đầu Web Crawler (Main Site)..."}\n\n'
         try:
-            import subprocess
-            import sys
-            import os
-            env = os.environ.copy()
-            env["PYTHONIOENCODING"] = "utf-8"
-            env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-            env["TQDM_DISABLE"] = "1"
-            
             cmd = [sys.executable, "-W", "ignore", "-u", "crawler/run_crawler.py", "--max-urls", str(max(0, max_urls))]
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT,
-                env=env
-            )
-            
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
             loop = asyncio.get_event_loop()
             
             def read_line():
@@ -622,90 +617,88 @@ async def run_crawler(max_urls: int = 0):
             
             while True:
                 line = await loop.run_in_executor(None, read_line)
-                if not line:
-                    break
+                if not line: break
                 line_str = line.decode('utf-8', errors='replace').strip()
                 if line_str:
-                    data_json = json.dumps({"step": line_str}, ensure_ascii=False)
-                    yield f"data: {data_json}\n\n"
-                    await asyncio.sleep(0.05)
+                    yield f'data: {{"step": {json.dumps(line_str, ensure_ascii=False)}}}\n\n'
+                    await asyncio.sleep(0.01)
                     
             process.wait()
-            if process.returncode == 0:
-                yield 'data: {"step": "Cào dữ liệu hoàn tất!"}\n\n'
-            else:
-                yield 'data: {"error": "Lỗi trong quá trình cào dữ liệu."}\n\n'
+            if process.returncode != 0:
+                yield 'data: {"error": "Lỗi trong quá trình cào dữ liệu Main Site."}\n\n'
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            err_msg = json.dumps({"error": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False)
-            yield f"data: {err_msg}\n\n"
-            
-        yield "data: [DONE]\n\n"
+            yield f'data: {{"error": "Lỗi cào Main Site: {str(e)}"}}\n\n'
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-@router.post("/ingest/crawl/agent")
-async def run_agent_crawler(max_urls: int = 0):
-    """
-    Chạy deterministic crawler cho Green SM Platform/PDF. Trả về stream SSE báo cáo tiến độ.
-    """
-    async def event_generator():
-        yield 'data: {"step": "Bắt đầu khởi động Platform/PDF Crawler thuần code..."}\n\n'
+        # 2. Platform / PDF Crawler
+        yield 'data: {"step": "2/2 Bắt đầu Platform/PDF Crawler..."}\n\n'
         try:
-            import subprocess
-            import sys
-            import os
-            env = os.environ.copy()
-            env["PYTHONIOENCODING"] = "utf-8"
-            
-            cmd = [
-                sys.executable, "-W", "ignore", "-u",
-                "crawler/agent_crawler.py",
-                "--sources", "platform,platform_pdf",
-                "--max-urls", str(max(0, max_urls)),
-            ]
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT,
-                env=env
-            )
-            
+            cmd = [sys.executable, "-W", "ignore", "-u", "crawler/agent_crawler.py", "--sources", "platform,platform_pdf", "--max-urls", str(max(0, max_urls))]
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
             loop = asyncio.get_event_loop()
+            
             def read_line():
                 return process.stdout.readline()
             
             while True:
                 line = await loop.run_in_executor(None, read_line)
-                if not line:
-                    break
+                if not line: break
                 line_str = line.decode('utf-8', errors='replace').strip()
                 if line_str:
                     if "[AGENT_STEP]" in line_str:
                         step_part = line_str.split("[AGENT_STEP]")[-1].strip()
                         yield f'data: {{"step": "[AGENT_STEP] {step_part}"}}\n\n'
                     else:
-                        data_json = json.dumps({"step": line_str}, ensure_ascii=False)
-                        yield f"data: {data_json}\n\n"
+                        yield f'data: {{"step": {json.dumps(line_str, ensure_ascii=False)}}}\n\n'
                     await asyncio.sleep(0.01)
                     
             process.wait()
-            if process.returncode == 0:
-                yield 'data: {"step": "[AGENT_STEP] Complete"}\n\n'
-                yield 'data: {"step": "Platform/PDF Crawler hoàn tất!"}\n\n'
-            else:
-                yield 'data: {"error": "Lỗi trong quá trình chạy Platform/PDF Crawler."}\n\n'
+            if process.returncode != 0:
+                yield 'data: {"error": "Lỗi trong quá trình cào Platform/PDF."}\n\n'
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            err_msg = json.dumps({"error": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False)
-            yield f"data: {err_msg}\n\n"
-            
+            yield f'data: {{"error": "Lỗi cào Platform/PDF: {str(e)}"}}\n\n'
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+import queue
+
+@router.post("/ingest/process/vlm")
+async def run_vlm_processor():
+    """
+    Chạy VLM Process cho hình ảnh trong data/news. Trả về stream SSE báo cáo tiến độ.
+    """
+    async def event_generator():
+        yield 'data: {"step": "Bắt đầu tiền xử lý hình ảnh bằng VLM cho data/news..."}\n\n'
+        import os
+        import asyncio
+        from app.ingestion.process_images import process_markdown_images_in_directory
+        
+        q = queue.Queue()
+        def log_cb(msg: str):
+            q.put(msg)
+            
+        loop = asyncio.get_event_loop()
+        news_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "news")
+        
+        def run_vlm():
+            process_markdown_images_in_directory(news_dir, log_callback=log_cb)
+            q.put(None) # EOF marker
+            
+        task = loop.run_in_executor(None, run_vlm)
+        
+        while True:
+            # wait for messages
+            msg = await loop.run_in_executor(None, q.get)
+            if msg is None:
+                break
+            yield f'data: {{"step": {json.dumps(msg, ensure_ascii=False)}}}\n\n'
+            
+        await task
+        yield 'data: {"step": "Xử lý hình ảnh VLM hoàn tất!"}\n\n'
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 
 @router.post("/ingest/process/platform")
