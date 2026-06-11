@@ -609,11 +609,16 @@ function MainLayout({ children }) {
     </div>
   );
 }
+import PresentationFlow from './pages/PresentationFlow';
+
 function App() {
   return (
     <Routes>
       {/* Login Route */}
       <Route path="/admin-login" element={<AdminLogin />} />
+
+      {/* Presentation Route */}
+      <Route path="/presentation" element={<PresentationFlow />} />
 
       {/* User Chat Route */}
       <Route path="/" element={
