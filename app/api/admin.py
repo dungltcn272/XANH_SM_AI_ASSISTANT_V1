@@ -606,7 +606,7 @@ async def run_crawler(max_urls: int = 0):
         env["TQDM_DISABLE"] = "1"
 
         # 1. Main Site Crawler
-        yield 'data: {"step": "1/3 Bắt đầu Web Crawler (Main Site)..."}\n\n'
+        yield 'data: {"step": "1/2 Bắt đầu Web Crawler (Main Site)..."}\n\n'
         try:
             cmd = [sys.executable, "-W", "ignore", "-u", "crawler/run_crawler.py", "--max-urls", str(max(0, max_urls))]
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
@@ -630,7 +630,7 @@ async def run_crawler(max_urls: int = 0):
             yield f'data: {{"error": "Lỗi cào Main Site: {str(e)}"}}\n\n'
 
         # 2. Platform / PDF Crawler
-        yield 'data: {"step": "2/3 Bắt đầu Platform/PDF Crawler..."}\n\n'
+        yield 'data: {"step": "2/2 Bắt đầu Platform/PDF Crawler..."}\n\n'
         try:
             cmd = [sys.executable, "-W", "ignore", "-u", "crawler/agent_crawler.py", "--sources", "platform,platform_pdf", "--max-urls", str(max(0, max_urls))]
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)

@@ -27,7 +27,7 @@ def process_image(image_url: str, log_callback=None) -> str:
         base64_image = get_image_base64_from_url(image_url)
         message = HumanMessage(
             content=[
-                {"type": "text", "text": "Extract all text and tables from this image. Format the output strictly as Markdown. Do not include any introductory or concluding text, only the extracted markdown content."},
+                {"type": "text", "text": "Extract all text and tables from this image. Format the output as Markdown. IMPORTANT: For tables with merged cells (colspan/rowspan), you MUST use HTML <table> tags instead of Markdown tables to preserve the structure accurately. Do not include any introductory or concluding text, only the extracted content."},
                 {
                     "type": "image_url",
                     "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
