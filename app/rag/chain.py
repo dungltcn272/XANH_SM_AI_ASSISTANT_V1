@@ -645,13 +645,13 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
 
-    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False):
+    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None):
         """
         Stream version of the NLU-Gateway RAG chain.
         """
-        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache)
+        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache, image_base64=image_base64)
 
-    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False):
+    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None):
         """
         Internal raw streaming implementation of the RAG chain.
         """
@@ -808,6 +808,19 @@ class XanhSMRAGPipeline:
                 context_docs=top_docs,
                 chat_history=chat_history
             )
+            
+            if image_base64:
+                original_text = messages[-1]["content"]
+                messages[-1]["content"] = [
+                    {"type": "text", "text": original_text},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image_base64}"
+                        }
+                    }
+                ]
+            
             metrics["compressed_context_len"] = len(compressed_context)
 
             yield from yield_msg('data: {"step": "Đang tổng hợp câu trả lời..."}\n\n')

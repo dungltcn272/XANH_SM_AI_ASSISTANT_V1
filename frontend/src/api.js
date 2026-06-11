@@ -5,17 +5,22 @@ export const api = {
     return localStorage.getItem('access_token');
   },
 
-  chatStream: async (query, conversation_id = null) => {
+  chatStream: async (query, conversation_id = null, imageBase64 = null) => {
     const token = api.getAuthToken();
     const headers = { 'Content-Type': 'application/json' };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const body = { query, conversation_id };
+    if (imageBase64) {
+      body.image_base64 = imageBase64;
+    }
+
     return fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ query, conversation_id })
+      body: JSON.stringify(body)
     });
   },
   
@@ -61,10 +66,8 @@ export const api = {
     });
   },
 
-  runAgentCrawler: async (maxUrls = 0) => {
-    const params = new URLSearchParams();
-    params.set('max_urls', String(Math.max(0, Number(maxUrls) || 0)));
-    return fetch(`${API_BASE}/admin/ingest/crawl/agent?${params.toString()}`, {
+  runVLMProcessor: async () => {
+    return fetch(`${API_BASE}/admin/ingest/process/vlm`, {
       method: 'POST'
     });
   },

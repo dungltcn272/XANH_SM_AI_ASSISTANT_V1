@@ -1,7 +1,10 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ChevronLeft,
+  ChevronRight,
   DatabaseZap,
   FileDown,
+  Image as ImageIcon,
   Loader2,
   Pencil,
   Plus,
@@ -74,6 +77,8 @@ export default function KnowledgeBuilder() {
   const [confirmText, setConfirmText] = useState('');
   const [crawlLimit, setCrawlLimit] = useState(2);
   const [crawlUnlimited, setCrawlUnlimited] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const terminalRef = useRef(null);
 
   const loadSources = useCallback(async (nextFilters = {}) => {
@@ -238,8 +243,12 @@ export default function KnowledgeBuilder() {
   };
 
   const applyFilters = async () => {
+    setCurrentPage(1);
     await loadSources(filters);
   };
+
+  const totalPages = Math.max(1, Math.ceil(sources.length / itemsPerPage));
+  const currentSources = sources.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const selectedCrawlLimit = crawlUnlimited ? 0 : Math.max(1, Number(crawlLimit) || 1);
 
@@ -299,7 +308,7 @@ export default function KnowledgeBuilder() {
                 </tr>
               </thead>
               <tbody>
-                {sources.map((item) => (
+                {currentSources.map((item) => (
                   <tr key={item.id} className="border-t border-outline-variant/15 hover:bg-surface-container/60">
                     <td className="p-3">
                       <button onClick={() => toggleSource(item)} className={`w-9 h-5 rounded-full p-0.5 flex ${item.enabled ? 'bg-primary justify-end' : 'bg-outline-variant justify-start'}`}>
@@ -307,7 +316,7 @@ export default function KnowledgeBuilder() {
                       </button>
                     </td>
                     <td className="p-3 min-w-[320px]">
-                      <div className="font-bold text-on-surface">{item.title || '(no title)'}</div>
+                      {item.title ? <div className="font-bold text-on-surface">{item.title}</div> : null}
                       <div className="text-on-surface-variant break-all">{item.url}</div>
                     </td>
                     <td className="p-3">{item.source_profile}</td>
@@ -324,6 +333,54 @@ export default function KnowledgeBuilder() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {sources.length > 0 && (
+            <div className="flex items-center justify-between mt-4 text-xs">
+              <span className="text-on-surface-variant">
+                Hiển thị {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, sources.length)} trong {sources.length} kết quả
+              </span>
+              <div className="flex items-center gap-1">
+                <button 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  // Hiển thị các trang gần trang hiện tại hoặc đầu/cuối
+                  const page = i + 1;
+                  if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                    return (
+                      <button 
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-7 h-7 rounded flex items-center justify-center ${page === currentPage ? 'bg-primary text-white font-bold' : 'hover:bg-surface-container text-on-surface'}`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <span key={page} className="px-1 text-on-surface-variant">...</span>;
+                  }
+                  return null;
+                })}
+                <button 
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <select className="px-2 py-1.5 rounded bg-surface-container border border-outline-variant/30 text-xs">
+                  <option>10 / trang</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="glass-panel border border-outline-variant/30 rounded-2xl p-5">
@@ -384,13 +441,13 @@ export default function KnowledgeBuilder() {
               UNLIMIT
             </label>
           </div>
-          <button onClick={() => runStreamAction('crawl-main', `Crawl Main Site -> Markdown (${crawlUnlimited ? 'UNLIMIT' : `${selectedCrawlLimit} URL`})`, () => api.runCrawler(selectedCrawlLimit))} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
-            {busy === 'crawl-main' ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
-            Crawl Main Site
+          <button onClick={() => runStreamAction('crawl-all', `Crawl All Data (${crawlUnlimited ? 'UNLIMIT' : `${selectedCrawlLimit} URL`})`, () => api.runCrawler(selectedCrawlLimit))} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+            {busy === 'crawl-all' ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
+            Crawl All Data (Main Site + Vehicle/PDF)
           </button>
-          <button onClick={() => runStreamAction('crawl-platform', `Crawl Vehicle/PDF -> Markdown (${crawlUnlimited ? 'UNLIMIT' : `${selectedCrawlLimit} URL`})`, () => api.runAgentCrawler(selectedCrawlLimit))} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-cyan-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
-            {busy === 'crawl-platform' ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
-            Crawl Vehicle/PDF
+          <button onClick={() => runStreamAction('vlm-process', 'Tiền xử lý Ảnh VLM (data/news)', api.runVLMProcessor)} disabled={Boolean(busy)} className="w-full py-3 rounded-xl border-2 border-primary text-primary hover:bg-primary/10 font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50 active:scale-95 transition-all">
+            {busy === 'vlm-process' ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
+            Tiền xử lý Ảnh VLM (data/news)
           </button>
         </div>
 
@@ -402,7 +459,7 @@ export default function KnowledgeBuilder() {
             {busy === 'clear' ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
             Clear ALL Knowledge
           </button>
-          <button onClick={() => runJsonAction('ingest-all', 'Ingest ALL From data/', api.ingestAllKnowledge)} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
+          <button onClick={() => runStreamAction('ingest-all', 'Ingest ALL From data/', api.runIngestion)} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
             {busy === 'ingest-all' ? <Loader2 size={18} className="animate-spin" /> : <DatabaseZap size={18} />}
             Ingest ALL From data/
           </button>
