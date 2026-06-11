@@ -62,14 +62,24 @@ def process_file(file_path: str, log_callback=None):
     matches = image_pattern.findall(content)
     if not matches:
         return
+        
+    # Lọc bỏ các ảnh rác (logo, icon, banner, v.v.)
+    valid_matches = []
+    junk_keywords = ['logo', 'icon', 'banner', 'avatar', 'header', 'footer', '.svg']
+    for url in matches:
+        if not any(junk in url.lower() for junk in junk_keywords):
+            valid_matches.append(url)
+            
+    if not valid_matches:
+        return
     
-    msg = f"Tìm thấy {len(matches)} ảnh trong {os.path.basename(file_path)}"
+    msg = f"Tìm thấy {len(valid_matches)} ảnh hợp lệ trong {os.path.basename(file_path)}"
     log_info("VLM", msg)
     if log_callback: log_callback(msg)
     
     new_content = content
     
-    for url in matches:
+    for url in valid_matches:
         extracted_md = process_image(url, log_callback)
         if extracted_md:
             # Giữ nguyên thẻ ảnh và chèn nội dung phía dưới
