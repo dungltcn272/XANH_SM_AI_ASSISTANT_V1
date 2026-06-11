@@ -39,6 +39,18 @@ class Message(Base):
     conversation_id = Column(String, ForeignKey("conversations.id"))
     role = Column(String, nullable=False)
     content = Column(Text, nullable=False)
+    pipeline_trace = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class UserReview(Base):
+    __tablename__ = "user_reviews"
+    id = Column(String, primary_key=True, default=lambda: generate_id("review"))
+    message_id = Column(String, ForeignKey("messages.id"), unique=True)
+    rating = Column(String, nullable=False)  # 'up' or 'down'
+    reason_tags = Column(String, nullable=True)  # JSON string of tags
+    comment = Column(Text, nullable=True)
+    status = Column(String, default="new", index=True) # 'new', 'reviewed', 'promoted', 'rejected'
+    admin_note = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class RagRequestLog(Base):

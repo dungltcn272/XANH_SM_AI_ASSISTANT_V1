@@ -120,7 +120,12 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
         
         # Lưu câu trả lời vào DB
         if final_answer:
-            new_memory_service.save_message(conversation_id, "assistant", final_answer.strip())
+            msg = new_memory_service.save_message(conversation_id, "assistant", final_answer.strip())
+            msg.pipeline_trace = json.dumps(metrics, ensure_ascii=False)
+            new_db.commit()
+            
+            # Gửi message_id về cho frontend
+            yield f'data: {{"message_id": "{msg.id}"}}\n\n'
             
             # Log request with metrics
             try:
