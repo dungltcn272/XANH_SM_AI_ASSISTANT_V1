@@ -11,7 +11,7 @@ from app.core.logger import log_info, log_error
 load_dotenv()
 
 # Initialize VLM
-vlm_model = os.getenv("VLM_MODEL", "gpt-4o")
+vlm_model = os.getenv("VLM_MODEL", "gpt-4o-mini")
 llm = ChatOpenAI(model=vlm_model, max_tokens=2000)
 
 def get_image_base64_from_url(url: str) -> str:
