@@ -63,7 +63,7 @@ const FLOW_NODES = [
   },
   {
     id: 'domain_vocabulary',
-    title: 'Rule-based RAG NLU + expansion',
+    title: 'Rule-based RAG NLU & Vocab',
     subtitle: 'Regex alias local',
     icon: Zap,
     tone: 'amber',
@@ -78,7 +78,7 @@ const FLOW_NODES = [
     icon: Brain,
     tone: 'violet',
     kind: 'process',
-    desc: 'Dùng model NLU để phân loại intent, rewrite và mở rộng query khi fast-path không đủ chắc.',
+    desc: 'Dùng model NLU để phân loại intent và rewrite query khi fast-path không đủ chắc.',
     details: 'Model được cấu hình bằng NLU_MODEL, mặc định hiện là gpt-4o-mini. Nhánh này dành cho câu mơ hồ, cần lịch sử hội thoại hoặc cần rewrite.'
   },
   {

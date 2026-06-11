@@ -154,9 +154,9 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
    - **Logic xử lý**: Tích hợp gộp các tác vụ tiền RAG bằng kỹ thuật Few-Shot Prompting và Structured Outputs:
      - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu), `small-talk` (chào hỏi, LLM trả lời trực tiếp), hay `sensitive` (nhạy cảm).
      - *Query Rewrite (Viết lại câu hỏi)*: Khử tham chiếu, bổ sung ngữ cảnh từ lịch sử hội thoại gần nhất.
-     - *Rule-based Query Expansion (Mở rộng câu hỏi)*: Được chuyển từ LLM sang xử lý cục bộ tĩnh bằng Python dictionary để giảm độ trễ sinh token, sinh câu hỏi đồng nghĩa với độ trễ ~0ms.
      - *Domain Vocabulary (Từ điển miền Xanh SM)*: Chuẩn hóa alias/sai chính tả.
-   - **Thông số kỹ thuật**: Gộp API calls và offload Expansion sang Rule-based giúp giảm độ trễ NLU từ **~1.5s xuống còn ~0.8s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
+     *(Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn để tối ưu hóa hiệu năng, giảm độ trễ và tránh quá tải cho backend/VectorDB).*
+   - **Thông số kỹ thuật**: Gộp API calls giúp giảm độ trễ NLU từ **~1.5s xuống còn ~0.8s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
 
 4. **NODE 4: Second Cache Lookup (Kiểm tra Cache lần 2)**
    - **Công nghệ áp dụng**: PostgreSQL / SQLite SQL Query.
@@ -165,7 +165,7 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
 
 5. **NODE 5: Hybrid Search (Dense + Sparse + SQL Keyword Fallback + Metadata Boost)**
    - **Công nghệ áp dụng**: Qdrant Vector Database (`qdrant-client`) kết hợp Dense Vectors (mô hình `text-embedding-3-small` của OpenAI, 1536 chiều), Sparse Vectors (BM25/FastEmbed), và SQL fallback trên bảng `document_chunks`.
-   - **Logic xử lý**: Chuyển đổi câu hỏi chuẩn hóa và expanded queries thành Dense/Sparse vectors. Qdrant dùng **RRF (Reciprocal Rank Fusion)** để hợp nhất kết quả, sau đó SQL fallback bắt các cụm literal quan trọng bị miss bởi vector search. Domain metadata hints sẽ boost tài liệu theo `category`, `document_type`, `service` và ưu tiên `data/overview/service_catalog.md` cho câu hỏi tổng quát.
+   - **Logic xử lý**: Chuyển đổi câu hỏi chuẩn hóa thành Dense/Sparse vectors (Query Expansion đã được tắt bỏ hoàn toàn để tránh quá tải hệ thống và giảm độ trễ). Qdrant dùng **RRF (Reciprocal Rank Fusion)** để hợp nhất kết quả, sau đó SQL fallback bắt các cụm literal quan trọng bị miss bởi vector search. Domain metadata hints sẽ boost tài liệu theo `category`, `document_type`, `service` và ưu tiên `data/overview/service_catalog.md` cho câu hỏi tổng quát.
    - **Thông số kỹ thuật**: Kích thước Dense Vector `dimensions = 1536`. Lấy ra **Top 25 tài liệu thô** (`limit = 25`) trước khi rerank.
 
 6. **NODE 6: Cohere Reranker (Tái xếp hạng ngữ nghĩa chuyên sâu)**
@@ -206,7 +206,7 @@ Các thay đổi mới nhất của pipeline dữ liệu:
 
 Giải thích node mới trong Mermaid:
 
-- `Domain Vocabulary & Query Expansion`: node rule-based chạy sau NLU để bổ sung canonical query, expanded queries và metadata hints. Node này giảm lỗi "không có thông tin" khi từ khóa người dùng không trùng nguyên văn tài liệu nhưng tương đương về nghĩa.
+- `Domain Vocabulary`: node rule-based chạy sau NLU để bổ sung canonical query, chuẩn hóa từ vựng và metadata hints. (Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn để giảm thiểu độ trễ, tiết kiệm tài nguyên sinh token của LLM và concurrency cho VectorDB).
 - `Hybrid Search: Dense + Sparse + SQL Fallback`: node truy xuất hợp nhất semantic vector, BM25 sparse vector và SQL keyword fallback. Metadata boost ưu tiên đúng category/document type, đặc biệt `overview` với câu hỏi tổng quát.
 
 ---
