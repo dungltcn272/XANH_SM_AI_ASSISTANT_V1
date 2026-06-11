@@ -108,12 +108,13 @@ graph TD
     C -- "Cache Hit (~5ms)" --> Out([Stream Answer + Citations])
     C -- "Cache Miss" --> D{NLU Fast-path Eligible?}
 
-    D -- "Yes: clear RAG query" --> D1[Rule-based RAG NLU + expansion]
-    D -- "No: context rewrite needed" --> D2[Unified LLM NLU: intent + rewrite + expansion]
+    D -- "Yes: clear RAG query" --> D1[Rule-based RAG NLU + Rule Expansion]
+    D -- "No: context rewrite needed" --> D2[Unified LLM NLU: intent + rewrite]
     D1 --> DV[Domain Vocabulary]
-    D2 --> DV
+    D2 --> RuleExp[Rule-based Expansion]
+    RuleExp --> DV
     DV --> E{Intent}
-    E -- "small-talk" --> Stalk[Fast response]
+    E -- "small-talk" --> Stalk[LLM Persona Answer]
     E -- "sensitive" --> Block
     E -- "rag" --> F{Second Exact Cache}
 
@@ -126,6 +127,7 @@ graph TD
     K --> CacheSave[Save Semantic Cache]
     CacheSave --> Out
     Block --> Out
+    Stalk --> Out
 
     style A fill:#00A651,stroke:#fff,color:#fff
     style Out fill:#00A651,stroke:#fff,color:#fff
@@ -148,13 +150,13 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
    - **Thông số kỹ thuật**: Độ trễ **~5-10ms**. Nếu xảy ra Cache Hit (đã có câu trả lời hợp lệ và còn hiệu lực TTL), hệ thống trả kết quả ngay lập tức về client, bỏ qua toàn bộ các bước RAG sau đó.
 
 3. **NODE 3: NLU Gateway 3-in-1 + Domain Vocabulary (Xử lý ngôn ngữ tự nhiên tích hợp)**
-   - **Công nghệ áp dụng**: OpenAI API `chat/completions` với mô hình `gpt-4o-mini`.
-   - **Logic xử lý**: Tích hợp gộp 3 tác vụ tiền RAG vào duy nhất một lần gọi LLM bằng kỹ thuật Few-Shot Prompting và định dạng dữ liệu đầu ra có cấu trúc (Structured Outputs):
-     - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu), `small-talk` (chào hỏi, tán gẫu) hay `sensitive` (nhạy cảm/vi phạm chính sách).
-     - *Query Rewrite (Viết lại câu hỏi)*: Khử tham chiếu, bổ sung ngữ cảnh từ lịch sử hội thoại gần nhất và chuẩn hóa câu hỏi Tiếng Việt ngắn gọn, tập trung vào keywords.
-     - *Query Expansion (Mở rộng câu hỏi)*: Sinh thêm câu hỏi đồng nghĩa hỗ trợ tìm kiếm đa chiều.
-     - *Domain Vocabulary (Từ điển miền Xanh SM)*: Chuẩn hóa alias/sai chính tả và intent nghiệp vụ, ví dụ `green exress` -> `Green Express`, `đền hàng` -> `bảo hiểm/bồi thường/bồi hoàn`, `ăn chia` -> `doanh thu/chiết khấu/vận doanh`.
-   - **Thông số kỹ thuật**: Nhiệt độ `temperature = 0.1` để đảm bảo độ chính xác tuyệt đối. Gộp 3 API calls giúp giảm độ trễ từ **~4.5s xuống còn ~1.2s - 1.5s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
+   - **Công nghệ áp dụng**: OpenAI API `chat/completions` với mô hình `gpt-4o-mini` kết hợp Rule-based Pipeline.
+   - **Logic xử lý**: Tích hợp gộp các tác vụ tiền RAG bằng kỹ thuật Few-Shot Prompting và Structured Outputs:
+     - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu), `small-talk` (chào hỏi, LLM trả lời trực tiếp), hay `sensitive` (nhạy cảm).
+     - *Query Rewrite (Viết lại câu hỏi)*: Khử tham chiếu, bổ sung ngữ cảnh từ lịch sử hội thoại gần nhất.
+     - *Rule-based Query Expansion (Mở rộng câu hỏi)*: Được chuyển từ LLM sang xử lý cục bộ tĩnh bằng Python dictionary để giảm độ trễ sinh token, sinh câu hỏi đồng nghĩa với độ trễ ~0ms.
+     - *Domain Vocabulary (Từ điển miền Xanh SM)*: Chuẩn hóa alias/sai chính tả.
+   - **Thông số kỹ thuật**: Gộp API calls và offload Expansion sang Rule-based giúp giảm độ trễ NLU từ **~1.5s xuống còn ~0.8s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
 
 4. **NODE 4: Second Cache Lookup (Kiểm tra Cache lần 2)**
    - **Công nghệ áp dụng**: PostgreSQL / SQLite SQL Query.

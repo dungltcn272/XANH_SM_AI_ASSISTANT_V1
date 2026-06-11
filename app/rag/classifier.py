@@ -155,11 +155,11 @@ class XanhSMClassifier:
                     
                 rewritten_query = result.get("rewritten_query", query)
                 suggested_answer = result.get("suggested_answer")
-                expanded = result.get("expanded_queries", [])
-                if not isinstance(expanded, list):
-                    expanded = [rewritten_query]
                 
-                # Ensure the rewritten query is in the expansion list
+                # Expansion is now handled locally to save LLM tokens
+                from app.retrieval.multi_query import XanhSMQueryExpansion
+                expander = XanhSMQueryExpansion()
+                expanded = expander.expand_query_rule_based(rewritten_query)
                 expanded = enrich_queries(rewritten_query, expanded, max_queries=8)
                 if query != rewritten_query:
                     expanded = enrich_queries(query, expanded, max_queries=8)

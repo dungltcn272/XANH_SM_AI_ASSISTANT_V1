@@ -9,82 +9,80 @@ from app.rag.domain_vocabulary import enrich_queries
 class XanhSMQueryExpansion:
     """
     Advanced query expansion module.
-    Uses rule-based dictionary lookups for legal & policy Vietnamese synonyms,
-    and handles LLM-based Query Expansion if OpenAI API keys are configured.
-    Includes robust offline check to prevent HTTPS DLL conflicts on Windows hosts.
+    Uses pure rule-based dictionary lookups for legal, policy, and service Vietnamese synonyms.
+    LLM calls have been completely removed for maximum speed (~0ms).
     """
     
     def __init__(self):
-        self.last_token_usage = {"prompt_tokens": 0, "completion_tokens": 0}
-        # Premium Vietnamese Legal/Operations Synonyms
+        # Premium Vietnamese Legal/Operations Synonyms & Xanh SM Specific Terms
         self.synonym_dict = {
-            "tongs dai": ["hotline", "so dien thoai ho tro", "cham soc khach hang", "cskh", "1900 2088"],
+            # Dịch vụ CSKH
+            "tong dai": ["hotline", "so dien thoai ho tro", "cham soc khach hang", "cskh", "1900 2088"],
             "hotline": ["tong dai", "so dien thoai ho tro", "cham soc khach hang", "cskh", "1900 2088"],
+            "quen do": ["hanh ly that lac", "mat do", "quen hanh ly", "tra do", "tim do", "tim dien thoai"],
+            
+            # Tiền nong, cước phí
             "huy chuyen": ["huy xe", "huy cuoc", "phi phat huy", "khong di xe", "hoan tien huy"],
             "huy cuoc": ["huy chuyen", "huy xe", "phi phat huy", "khong di xe"],
-            "hoa hong": ["chiet khau", "phi dich vu he thong", "phan chia doanh thu", "ty le an chia"],
+            "hoa hong": ["chiet khau", "phi dich vu he thong", "phan chia doanh thu", "ty le an chia", "tien an chia"],
             "chiet khau": ["hoa hong", "phi dich vu he thong", "phan chia doanh thu", "ty le an chia"],
-            "phat": ["ky luat", "vi pham", "khoa tai khoan", "tam ngung", "che tai"],
-            "quen do": ["hanh ly that lac", "mat do", "quen hanh ly", "tra do"],
-            "rut tien": ["doi soat", "chu ky thanh toan", "vi tai khoan", "chuyen tien"]
+            "rut tien": ["doi soat", "chu ky thanh toan", "vi tai khoan", "chuyen tien", "chuyen khoan", "thanh toan"],
+            "cuoc": ["gia tien", "phi dich vu", "bang gia", "gia cuoc", "tien xe"],
+            "gia": ["cuoc", "phi", "chi phi", "bang gia", "gia ca"],
+            
+            # Xử lý sự cố, khiếu nại
+            "phat": ["ky luat", "vi pham", "khoa tai khoan", "tam ngung", "che tai", "tru tien"],
+            "khoa": ["tam ngung", "phat", "ky luat", "vi pham", "vo hieu hoa"],
+            "tai nan": ["va cham", "su co", "bao hiem", "boi thuong", "den bu", "gap loi"],
+            "den bu": ["boi thuong", "bao hiem", "hoan tien", "tai nan", "va cham"],
+            "den hang": ["boi thuong", "bao hiem", "lam hong do", "hu hong", "that lac"],
+            
+            # Tên dịch vụ Xanh SM
+            "bike": ["xe may", "xe 2 banh", "xe hai banh", "xanh sm bike", "xe may dien"],
+            "taxi": ["o to", "xe 4 banh", "xe 4 cho", "xe 5 cho", "xanh sm taxi", "xe hoi"],
+            "luxury": ["xe sang", "vf8", "xe vip", "xe cao cap"],
+            "giao hang": ["express", "ship", "shipper", "giao do", "chuyen phat", "giao do an"],
+            "express": ["giao hang", "ship", "shipper"],
+            "tinh": ["duong dai", "di xa", "xe di tinh", "thue xe di tinh", "lien tinh"],
+            "thue xe": ["tu lai", "thue mien phi", "thue o to", "thue xe the"],
+            
+            # Từ đồng nghĩa đời thường
+            "app": ["ung dung", "phan mem", "chuong trinh"],
+            "tx": ["tai xe", "bac tai", "nguoi lai xe", "doi tac", "lai xe"],
+            "doi tac": ["tai xe", "bac tai", "tx"],
+            "kh": ["khach", "nguoi dung", "nguoi di xe", "khach hang"],
+            "sdt": ["so dien thoai", "hotline", "sdt", "sđt", "phone"],
+            "dang ky": ["dk", "tao tai khoan", "mo tai khoan", "dang ki"],
+            "tuyen": ["dang ky chay", "lam tai xe", "chay xe", "hop tac"],
+            
+            # Xe điện
+            "pin": ["sac", "tram sac", "doi pin", "thue pin", "het pin", "pin xe"],
+            "tram sac": ["cay sac", "cho sac", "tram vgreen", "v-green"],
         }
+
+    def _strip_accents(self, text: str) -> str:
+        import unicodedata
+        normalized = unicodedata.normalize("NFD", text or "")
+        return "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn").lower()
 
     def expand_query_rule_based(self, query: str) -> List[str]:
         expanded = [query]
-        query_lower = query.lower()
+        query_lower = self._strip_accents(query)
         
         for key, synonyms in self.synonym_dict.items():
-            if key in query_lower:
+            key_lower = self._strip_accents(key)
+            # Khớp từ một cách tương đối
+            if key_lower in query_lower:
                 for syn in synonyms:
                     if syn not in expanded:
                         expanded.append(syn)
         return enrich_queries(query, expanded, max_queries=8)
 
-    def expand_query_llm(self, query: str) -> List[str]:
-        """
-        Uses LLM to generate 3 alternative queries in Vietnamese.
-        Completely bypasses HTTPS request if the API key is not valid or in mock fallback.
-        """
-        self.last_token_usage = {"prompt_tokens": 0, "completion_tokens": 0}
-        # If in fallback mock mode, bypass HTTPS call to avoid process-level DLL conflicts with local native models
-        if config.EMBEDDING_PROVIDER == "mock" or not config.OPENAI_API_KEY or "YOUR_OPENAI_API_KEY" in config.OPENAI_API_KEY:
-            return self.expand_query_rule_based(query)
-            
-        try:
-            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
-            prompt = (
-                f"Ban la chuyen gia hieu y dinh nguoi dung (Query Understanding). "
-                f"Hay sinh ra 1 cau hoi dong nghia hoac co muc dich tim kiem tuong tu cau hoi duoi duoi bang tieng Viet.\n"
-                f"Cau hoi goc: '{query}'\n\n"
-                f"Tra ve ket qua duoi dang danh sach JSON cac chuoi: [\"cau 1\"]"
-            )
-            
-            response = client.chat.completions.create(
-                model=config.NLU_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-                max_tokens=120,
-                response_format={"type": "json_object"}
-            )
-            
-            self.last_token_usage = {
-                "prompt_tokens": response.usage.prompt_tokens,
-                "completion_tokens": response.usage.completion_tokens
-            }
-            
-            data = json.loads(response.choices[0].message.content)
-            for val in data.values():
-                if isinstance(val, list):
-                    # Limit to 1 extra query to avoid search noise
-                    return enrich_queries(query, [query] + val[:1], max_queries=8)
-            return self.expand_query_rule_based(query)
-        except Exception as e:
-            log_warn("RETRIEVAL", f"LLM Query Expansion failed: {str(e)}. Falling back to rule-based.")
-            return self.expand_query_rule_based(query)
-
     def get_queries(self, query: str) -> List[str]:
-        queries = self.expand_query_llm(query)
-        return list(dict.fromkeys(queries))
+        """
+        Main entry point for expansion. Now purely rule-based.
+        """
+        return self.expand_query_rule_based(query)
 
     def get_understanding(self, query: str):
         return None
