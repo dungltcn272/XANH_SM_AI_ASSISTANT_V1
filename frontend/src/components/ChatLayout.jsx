@@ -974,7 +974,7 @@ export default function ChatLayout() {
                     }
                     setIsDeepSearch(!isDeepSearch);
                   }}
-                  className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold transition-all border shrink-0 active:scale-95 ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold transition-all border shrink-0 active:scale-95 ${
                     isDeepSearch
                       ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
                       : 'bg-transparent text-on-surface-variant/60 dark:text-white/40 border-transparent hover:bg-surface-variant/30 hover:text-on-surface-variant'
