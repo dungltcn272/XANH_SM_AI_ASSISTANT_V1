@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Xanh SM Enterprise RAG Pitch Deck</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  
+  :root {
+    --xanh-sm-cyan: #00d2ff;
+    --xanh-sm-green: #00a651;
+    --dark-bg: #090e17;
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --border-color: rgba(0, 166, 81, 0.3);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+  }
+  
+  body, html {
+    margin: 0; padding: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: #050505;
+    color: var(--text-main);
+  }
+  
+  .slide {
+    width: 1920px; 
+    height: 1080px;
+    background: radial-gradient(circle at 50% 40%, rgba(0, 166, 81, 0.15) 0%, var(--dark-bg) 60%), #05080f;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+    padding: 80px 100px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+    page-break-after: always;
+    page-break-inside: avoid;
+  }
+
+  @media screen {
+    body { display: flex; flex-direction: column; align-items: center; gap: 60px; padding: 60px 0; background: #111; }
+    .slide-wrapper {
+      width: 1920px; height: 1080px; transform-origin: top center;
+      transform: scale(min(calc(90vw / 1920), 0.7));
+      margin-bottom: calc(-1080px * (1 - min(calc(90vw / 1920), 0.7))); 
+      box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 12px;
+    }
+    .slide { border-radius: 12px; }
+  }
+
+  @page { size: 1920px 1080px; margin: 0; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: none; display: block; margin: 0; padding: 0; }
+    .slide-wrapper { transform: none; margin: 0; box-shadow: none; border-radius: 0; page-break-after: always; page-break-inside: avoid; }
+    .slide { border-radius: 0; }
+  }
+
+  /* Glows & Logo */
+  .glow-orb { position: absolute; border-radius: 50%; filter: blur(120px); z-index: 0; pointer-events: none; }
+  .orb-1 { width: 800px; height: 800px; top: -200px; left: -200px; background: rgba(0, 210, 255, 0.08); }
+  .orb-2 { width: 800px; height: 800px; bottom: -200px; right: -200px; background: rgba(0, 166, 81, 0.08); }
+  .logo-top-left { position: absolute; top: 60px; left: 80px; height: 60px; z-index: 10; }
+
+  /* HERO */
+  .hero-section { position: relative; z-index: 10; display: flex; justify-content: space-between; height: 100%; align-items: center; }
+  .hero-left { width: 40%; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 20; }
+  .hero-left .logo { height: 80px; margin-bottom: 40px; width: fit-content; }
+  .title { font-size: 100px; font-weight: 800; margin: 0; line-height: 1.1; color: #fff; text-shadow: 0 0 30px rgba(255,255,255,0.2); }
+  .title .highlight { background: linear-gradient(to right, var(--xanh-sm-green), var(--xanh-sm-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { font-size: 36px; font-weight: 400; color: var(--text-muted); margin-top: 25px; margin-bottom: 40px; }
+  
+  .badges-group { display: flex; flex-direction: column; gap: 20px; }
+  .badge { display: inline-flex; align-items: center; gap: 15px; background: rgba(0, 166, 81, 0.1); border: 1px solid var(--xanh-sm-green); padding: 20px 40px; border-radius: 40px; font-size: 24px; font-weight: 600; color: #fff; width: fit-content; }
+  .badge .dot { width: 14px; height: 14px; background: var(--xanh-sm-green); border-radius: 50%; box-shadow: 0 0 10px var(--xanh-sm-green); }
+  .badge .link { color: var(--xanh-sm-cyan); font-family: monospace; letter-spacing: 1px; font-weight: 400; opacity: 0.9; text-decoration: none; }
+  .badge .link:hover { text-decoration: underline; }
+
+  .badge-secondary { display: inline-flex; align-items: center; gap: 15px; background: rgba(0, 210, 255, 0.05); border: 1px dashed var(--xanh-sm-cyan); padding: 15px 40px; border-radius: 40px; font-size: 20px; font-weight: 500; color: #ccc; width: fit-content; }
+  .badge-secondary .link { color: #ccc; text-decoration: none; font-family: monospace; }
+  .badge-secondary .link:hover { text-decoration: underline; }
+  
+  .desc { font-size: 24px; color: var(--text-muted); margin-top: 40px; line-height: 1.6; max-width: 90%; }
+
+  .hero-center { width: 20%; position: relative; display: flex; justify-content: center; align-items: center; z-index: 5; }
+  .bot-img { width: 400px; filter: drop-shadow(0 20px 30px rgba(0,210,255,0.3)); position: relative; z-index: 2; margin-top: -50px; }
+  .bot-circles { position: absolute; width: 550px; height: 550px; border: 1px dashed rgba(0,166,81,0.3); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; box-shadow: inset 0 0 50px rgba(0,166,81,0.1); margin-top: -50px; }
+  .bot-circles::before { content: ''; position: absolute; width: 450px; height: 450px; border: 1px solid rgba(0,210,255,0.2); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+  .icon-float { position: absolute; width: 60px; height: 60px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; z-index: 3; backdrop-filter: blur(5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+  .icon-float.chat { top: 15%; left: -50px; }
+  .icon-float.doc { top: 5%; right: -20px; }
+  .icon-float.zap { bottom: 35%; left: -30px; }
+  .icon-float.db { bottom: 25%; right: -50px; }
+
+  .hero-right { width: 40%; position: relative; perspective: 1200px; display: flex; justify-content: center; align-items: center; height: 800px; z-index: 10; }
+  .mockup { position: absolute; border-radius: 12px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); width: 95%; object-fit: cover; }
+  .mockup-back { top: 60px; right: -20px; transform: scale(1.0) translateX(20px); opacity: 0.5; z-index: 1; filter: blur(2px); }
+  .mockup-front { bottom: 60px; left: -40px; z-index: 2; border: 2px solid rgba(255,255,255,0.2); transform: scale(1.05); }
+
+  /* SLIDES CHUNG */
+  .slide-content-wrapper { position: relative; z-index: 10; display: flex; flex-direction: column; flex: 1; padding-top: 100px; }
+  .slide-header { font-size: 64px; font-weight: 800; color: #fff; margin-bottom: 60px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; display: inline-block; }
+  .slide-header span { color: var(--xanh-sm-green); }
+  
+  .card-container { display: flex; gap: 50px; flex: 1; }
+  .card { flex: 1; background: var(--card-bg); border-radius: 24px; padding: 50px; border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); display: flex; flex-direction: column; }
+  .card-highlight { border-color: var(--border-color); box-shadow: inset 0 0 50px rgba(0,166,81,0.05); }
+  .card-title { display: flex; align-items: center; gap: 20px; font-size: 40px; font-weight: 700; color: var(--xanh-sm-cyan); margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  
+  .feature-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 30px; }
+  .feature-list li { font-size: 28px; line-height: 1.6; color: var(--text-muted); padding-left: 40px; position: relative; }
+  .feature-list li::before { content: '•'; color: var(--xanh-sm-green); position: absolute; left: 0; font-weight: bold; font-size: 40px; top: -10px; }
+  .feature-list li strong { color: #fff; font-weight: 600; }
+
+  /* Stats Row */
+  .stats-row { display: flex; gap: 40px; margin-top: 20px; }
+  .stat-box { flex: 1; display: flex; align-items: center; gap: 30px; background: linear-gradient(90deg, rgba(255,255,255,0.03), transparent); padding: 40px; border-radius: 20px; border-left: 4px solid var(--xanh-sm-green); border-top: 1px solid rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.02); }
+  .stat-icon { font-size: 60px; filter: hue-rotate(100deg); }
+  .stat-info { display: flex; flex-direction: column; }
+  .stat-title { font-size: 48px; font-weight: 800; color: #fff; margin-bottom: 5px; }
+  .stat-desc { font-size: 20px; color: var(--text-muted); line-height: 1.4; }
+
+  /* Diagram Flow */
+  .diagram-flow { display: flex; align-items: center; justify-content: space-between; margin-top: 50px; background: rgba(0,0,0,0.3); padding: 60px; border-radius: 30px; border: 1px dashed var(--border-color); }
+  .d-node { background: rgba(0,166,81,0.1); border: 2px solid var(--xanh-sm-green); border-radius: 16px; padding: 30px; font-size: 32px; font-weight: 600; color: #fff; text-align: center; box-shadow: 0 10px 30px rgba(0,166,81,0.2); }
+  .d-node-round { border-radius: 50%; padding: 40px 30px; }
+  .d-arrow { color: var(--text-muted); font-size: 40px; }
+  .d-final { background: var(--xanh-sm-green); border: none; font-weight: 800; box-shadow: 0 0 40px var(--xanh-sm-green); }
+
+  /* NLU Specific styles */
+  .nlu-pill { display: inline-block; background: rgba(0,210,255,0.1); border: 1px solid var(--xanh-sm-cyan); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 20px; font-weight: 600; margin-top: 15px; }
+
+  /* Comparison Table */
+  .comparison-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; }
+  .comparison-table th { background: rgba(0,0,0,0.4); padding: 25px 30px; text-align: left; font-size: 28px; border-bottom: 2px solid rgba(255,255,255,0.1); color: #fff; }
+  .comparison-table th:first-child { border-top-left-radius: 20px; width: 30%; }
+  .comparison-table th:last-child { border-top-right-radius: 20px; }
+  .comparison-table th.our-rag { background: rgba(0, 166, 81, 0.2); color: var(--xanh-sm-green); border-bottom: 2px solid var(--xanh-sm-green); text-align: left; width: 35%; padding-left: 40px;}
+  .comparison-table td { padding: 30px; font-size: 24px; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02); vertical-align: top; line-height: 1.5; }
+  .comparison-table td:first-child { font-weight: 600; color: var(--xanh-sm-cyan); background: rgba(0,0,0,0.2); border-right: 1px solid rgba(255,255,255,0.05); }
+  .comparison-table td.our-rag-cell { background: rgba(0, 166, 81, 0.05); color: #fff; font-weight: 600; border-left: 1px solid rgba(0,166,81,0.2); border-right: 1px solid rgba(0,166,81,0.2); padding-left: 40px; }
+  .comparison-table tr:last-child td:first-child { border-bottom-left-radius: 20px; border-bottom: none; }
+  .comparison-table tr:last-child td:nth-child(2) { border-bottom: none; }
+  .comparison-table tr:last-child td:last-child { border-bottom-right-radius: 20px; border-bottom: 1px solid rgba(0,166,81,0.2); }
+  .highlight-cell { color: var(--xanh-sm-green); display: block; font-weight: 800; font-size: 28px; margin-top: 10px; }
+  .bad-cell { color: #f87171; font-weight: 600; }
+
+</style>
+</head>
+<body>
+
+  <!-- SLIDE 1: HERO -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <div class="glow-orb orb-1"></div>
+      <div class="glow-orb orb-2"></div>
+
+      <div class="hero-section">
+        <div class="hero-left">
+          <img src="../frontend/public/logo.svg" class="logo" alt="Xanh SM Logo">
+          <h1 class="title">XANH SM<br>ENTERPRISE <span class="highlight">RAG</span></h1>
+          <div class="subtitle">Trợ lý AI Siêu Tốc & Chính Xác Tuyệt Đối (Phase 7)</div>
+          
+          <div class="badges-group">
+            <div class="badge">
+              <div class="dot"></div>
+              LIVE DEMO <span style="color: rgba(255,255,255,0.2);">|</span> <a href="https://rag-xanh-sm-v1.vercel.app" target="_blank" class="link">rag-xanh-sm-v1.vercel.app</a>
+            </div>
+            <div class="badge-secondary">
+              🔍 Kiến trúc lõi: <a href="https://rag-xanh-sm-v1.vercel.app/presentation" target="_blank" class="link">rag-xanh-sm-v1.vercel.app/presentation</a>
+            </div>
+          </div>
+
+          <div class="desc">
+            Nền tảng AI Retrieval-Augmented Generation thế hệ mới giúp Xanh SM khai thác tri thức nội bộ hiệu quả, trung thực tuyệt đối và an toàn.
+          </div>
+        </div>
+
+        <div class="hero-center">
+          <div class="bot-circles"></div>
+          <div class="icon-float chat">💬</div>
+          <div class="icon-float doc">📄</div>
+          <div class="icon-float zap">⚡</div>
+          <div class="icon-float db">🗄️</div>
+          <img src="../frontend/public/Bot.png" class="bot-img" alt="AI Bot">
+        </div>
+
+        <div class="hero-right">
+          <img src="../dark_mode_UI.png" class="mockup mockup-back" alt="Dark Mode UI">
+          <img src="../light_mode_UI.png" class="mockup mockup-front" alt="Light Mode UI">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: ĐỘ CHÍNH XÁC & HIỆU SUẤT -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <div class="glow-orb orb-1"></div>
+      <img src="../frontend/public/logo.svg" class="logo-top-left" alt="Xanh SM Logo">
+      
+      <div class="slide-content-wrapper">
+        <div class="slide-header">Chính Xác Tuyệt Đối <span>& Hiệu Năng</span></div>
+        
+        <p style="font-size: 30px; color: var(--text-main); margin-bottom: 20px; margin-top: -20px;">
+          Kết quả Benchmark (đo lường tự động qua Ragas) trên tập Golden Dataset 50+ Case Khó Nhất:
+        </p>
+
+        <div class="stats-row">
+          <div class="stat-box">
+            <div class="stat-icon">🛡️</div>
+            <div class="stat-info">
+              <div class="stat-title">99%</div>
+              <div class="stat-desc"><strong>Faithfulness (Độ trung thực)</strong><br>KHÔNG bịa đặt. Bám sát hoàn toàn tài liệu nguồn.</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-info">
+              <div class="stat-title">90%</div>
+              <div class="stat-desc"><strong>Correctness (Độ chính xác)</strong><br>Tổng hợp và cung cấp đầy đủ lượng kiến thức chuẩn xác từ kho tài liệu nội bộ.</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="stats-row" style="margin-top: 30px;">
+          <div class="stat-box">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-info">
+              <div class="stat-title">5.4s</div>
+              <div class="stat-desc"><strong>Average RAG Latency</strong><br>Gồm cả Full Search (Cache hit ~50ms, Guardrail <1ms).</div>
+            </div>
+          </div>
+          <div class="stat-box" style="border-color: var(--xanh-sm-cyan);">
+            <div class="stat-icon" style="filter: none;">🧠</div>
+            <div class="stat-info">
+              <div class="stat-title" style="color: var(--xanh-sm-cyan);">GPT-4o-mini</div>
+              <div class="stat-desc"><strong>Model Phản Hồi</strong><br>Hiệu năng tương đương GPT-4 nhưng siêu tiết kiệm.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: NLU GATEWAY (TỐI ƯU CHI PHÍ VÀ CHUẨN XÁC) -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <div class="glow-orb orb-2"></div>
+      <img src="../frontend/public/logo.svg" class="logo-top-left" alt="Xanh SM Logo">
+      
+      <div class="slide-content-wrapper">
+        <div class="slide-header">Cốt Lõi NLU: Tối Ưu Chi Phí <span>& Đảm Bảo Chuẩn Xác</span></div>
+        
+        <p style="font-size: 30px; color: var(--text-main); margin-bottom: 40px; margin-top: -20px;">
+          Làm thế nào để đạt độ chính xác cao nhất với chi phí vận hành thấp nhất? Bí quyết nằm ở lớp <strong>NLU Gateway 3-in-1</strong>:
+        </p>
+
+        <div class="card-container">
+          <div class="card card-highlight" style="border-color: var(--xanh-sm-cyan);">
+            <div class="card-title" style="color: var(--xanh-sm-cyan);">⚙️ Cấu Trúc NLU Tinh Gọn</div>
+            <ul class="feature-list">
+              <li><strong>Gộp tác vụ (2-in-1):</strong> Xử lý Phân loại ý định (Intent) và Viết lại câu (Rewrite) chỉ trong <strong>1 lượt gọi LLM duy nhất</strong>.
+                <br><span class="nlu-pill">Hiệu quả: Giảm trễ từ 1.5s -> 0.8s, tiết kiệm 60% Token tiêu thụ.</span>
+              </li>
+              <li><strong>Lược Bỏ Query Expansion:</strong> Dừng sinh thêm truy vấn thừa thãi để tránh gây quá tải. Bù đắp lại sự thiếu hụt bằng Reranker v3 để lọc tài liệu, bảo vệ CSDL Vector khỏi tắc nghẽn (Concurrency Overload).</li>
+            </ul>
+          </div>
+          
+          <div class="card">
+            <div class="card-title" style="color: var(--xanh-sm-green);">🧠 Domain Vocabulary (0đ)</div>
+            <ul class="feature-list">
+              <li><strong>Rule-based thông minh:</strong> Tự động chuẩn hóa lỗi chính tả và tiếng lóng nội bộ (Ví dụ: "đền hàng" -> "bảo hiểm", "ăn chia" -> "chiết khấu").</li>
+              <li><strong>Không phụ thuộc LLM:</strong> Việc sửa lỗi được thực thi cục bộ (Local), hoàn toàn <strong>miễn phí</strong> (0 USD) và <strong>chính xác tuyệt đối</strong> theo đúng từ điển quy chuẩn của Xanh SM.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: BẢNG SO SÁNH -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <div class="glow-orb orb-1"></div>
+      <img src="../frontend/public/logo.svg" class="logo-top-left" alt="Xanh SM Logo">
+      
+      <div class="slide-content-wrapper">
+        <div class="slide-header">So Sánh Trực Quan: <span>Tốc Độ & Chi Phí</span></div>
+        
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Tiêu chí thiết kế</th>
+              <th>RAG Thông Thường (Thị trường)</th>
+              <th class="our-rag">⭐ Xanh SM Enterprise RAG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Chặn tin nhắn độc hại (Guardrail)</td>
+              <td>Dùng LLM phân tích, tốn tiền API.<br><span class="bad-cell">Trễ ~2 giây</span></td>
+              <td class="our-rag-cell">Regex Gateway cục bộ, bảo vệ LLM.<br><span class="highlight-cell">< 1 ms (Chi phí: 0đ)</span></td>
+            </tr>
+            <tr>
+              <td>Truy vấn bị lặp lại (Câu hỏi phổ biến)</td>
+              <td>Phải gọi lại LLM và DB từ đầu.<br><span class="bad-cell">Tốn 100% chi phí Token</span></td>
+              <td class="our-rag-cell">Lớp Semantic Cache nhả kết quả ngay.<br><span class="highlight-cell">Trễ ~50 ms (Tiết kiệm 100% Token)</span></td>
+            </tr>
+            <tr>
+              <td>Xử lý NLU (Viết lại câu & Phân loại)</td>
+              <td>Gọi nhiều API rời rạc gây nút thắt cổ chai.<br><span class="bad-cell">Trễ ~1.5 - 2.0s</span></td>
+              <td class="our-rag-cell">Gộp tác vụ bằng 1 prompt Few-Shot.<br><span class="highlight-cell">Trễ ~0.8s (Tiết kiệm 60% Token)</span></td>
+            </tr>
+            <tr>
+              <td>Tối ưu giá thành Model LLM</td>
+              <td>Phải dùng Model siêu lớn (GPT-4o) để không bịa.<br><span class="bad-cell">Chi phí Rất Cao</span></td>
+              <td class="our-rag-cell">Dùng Cohere Reranker kết hợp GPT-4o-mini.<br><span class="highlight-cell">Tiết kiệm >80% tiền API (Vẫn đạt 99% Trung thực)</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: TECH MOAT -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <div class="glow-orb orb-1"></div>
+      <img src="../frontend/public/logo.svg" class="logo-top-left" alt="Xanh SM Logo">
+      
+      <div class="slide-content-wrapper">
+        <div class="slide-header">Lợi Thế Cạnh Tranh <span>(Tech Moat)</span></div>
+        
+        <div class="card-container">
+          <div class="card">
+            <div class="card-title">🛡️ Lớp Bảo Vệ & Cache Đa Tầng</div>
+            <ul class="feature-list">
+              <li><strong>Cổng An Ninh (Guardrail < 1ms):</strong> Thuật toán Regex chặn đứng ngay lập tức các câu hỏi chửi bới, độc hại, prompt injection. <strong>Tiết kiệm 100%</strong> chi phí gọi API vô ích.</li>
+              <li><strong>Semantic Cache (~5ms):</strong> Ghi nhớ những câu trả lời chuẩn xác. Khi có câu hỏi trùng lặp, hệ thống nhả kết quả ngay lập tức, hoàn toàn <strong>không suy hao chi phí LLM mới</strong>.</li>
+            </ul>
+          </div>
+          
+          <div class="card card-highlight">
+            <div class="card-title" style="color: var(--xanh-sm-green);">📂 Xử Lý Dữ Liệu Khó</div>
+            <ul class="feature-list">
+              <li><strong>Table-Aware Chunking:</strong> AI hiểu cấu trúc bảng biểu, giá cước phức tạp (Vượt xa 95% AI RAG thông thường).</li>
+              <li><strong>Parent-Child Expansion:</strong> Đọc trọn vẹn văn bản luật mà không bị đứt gãy ý nghĩa đoạn văn.</li>
+              <li><strong>Multilingual Reranker (Cohere v3):</strong> Tái phân tích và xếp hạng tài liệu ngữ nghĩa Tiếng Việt hàng đầu, khắc phục điểm yếu của Embedding Model.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: KIẾN TRÚC HYBRID RAG -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <div class="glow-orb orb-1"></div>
+      <div class="glow-orb orb-2"></div>
+      <img src="../frontend/public/logo.svg" class="logo-top-left" alt="Xanh SM Logo">
+      
+      <div class="slide-content-wrapper">
+        <div class="slide-header">Kiến Trúc <span>Hybrid RAG Pipeline</span></div>
+        
+        <p style="font-size: 32px; color: var(--text-main); margin-bottom: 20px; margin-top: -20px;">
+          Chuỗi 9-Node Pipeline tự động hóa hoàn chỉnh từ xử lý đầu vào tới đầu ra.
+        </p>
+
+        <div class="diagram-flow">
+          <div class="d-node d-node-round">Query</div>
+          <div class="d-arrow">➔</div>
+          <div class="d-node">NLU Gateway<br><span style="font-size:18px; font-weight: 400; color: #ccc;">Intent & Cache</span></div>
+          <div class="d-arrow">➔</div>
+          <div class="d-node">Hybrid Search<br><span style="font-size:18px; font-weight: 400; color: #ccc;">Dense + Sparse</span></div>
+          <div class="d-arrow">➔</div>
+          <div class="d-node">Reranker<br><span style="font-size:18px; font-weight: 400; color: #ccc;">Cohere v3</span></div>
+          <div class="d-arrow">➔</div>
+          <div class="d-node">GPT-4o-mini<br><span style="font-size:18px; font-weight: 400; color: #ccc;">Synthesis Stream</span></div>
+          <div class="d-arrow">➔</div>
+          <div class="d-node d-final">✓ Answer<br><span style="font-size:18px; font-weight: 400; color: rgba(255,255,255,0.8);">+ Citations</span></div>
+        </div>
+        
+        <div style="margin-top: 60px; text-align: center; padding: 40px; background: rgba(0,166,81,0.1); border-radius: 20px; border: 1px solid var(--xanh-sm-green);">
+          <h3 style="font-size: 40px; color: #fff; margin: 0 0 10px 0;">Sẵn sàng Scale lên hàng vạn CCU - Độ Trễ Chỉ Tính Bằng Mili-giây</h3>
+          <p style="font-size: 26px; color: var(--xanh-sm-cyan); margin: 0;">Khám phá toàn bộ cơ chế: <a href="https://rag-xanh-sm-v1.vercel.app/presentation" target="_blank" style="color: inherit; text-decoration: none;"><strong>rag-xanh-sm-v1.vercel.app/presentation</strong></a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

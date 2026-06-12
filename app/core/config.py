@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     CONTEXT_EXPANSION_THRESHOLD: float = float(os.getenv("CONTEXT_EXPANSION_THRESHOLD", "0.65"))
     MAX_CHUNKS_PER_SECTION: int = int(os.getenv("MAX_CHUNKS_PER_SECTION", "10"))
     
+    # Deep Search limits
+    DEEP_SEARCH_CANDIDATE_LIMIT: int = int(os.getenv("DEEP_SEARCH_CANDIDATE_LIMIT", "100"))
+    DEEP_SEARCH_RERANK_TOP_N: int = int(os.getenv("DEEP_SEARCH_RERANK_TOP_N", "20"))
+    
     # Reranker
     RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "cohere")
     RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "rerank-v3.0")

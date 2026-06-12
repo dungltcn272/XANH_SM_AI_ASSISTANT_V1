@@ -38,26 +38,26 @@ export const PRESENTATION_SLIDES = [
   {
     id: "nlu_fast_path",
     title: "3. NLU Fast-Path",
-    subtitle: "Tư duy Định tuyến Thông minh",
-    strategy: "Thay vì dùng LLM tốn kém để phân tích ý định cho MỌI câu hỏi, chúng ta dùng bộ quy tắc (Regex/Rules) siêu nhẹ để nhận diện các câu hỏi tra cứu chính sách rõ ràng.",
-    tech: "Rule-based Intent Classifier, Regex Pattern Matching",
-    benefits: "Với các luồng Fast-path, tiết kiệm hoàn toàn độ trễ 1-2s của LLM NLU, đồng thời độ chính xác phân loại đạt 100%.",
+    subtitle: "Định tuyến Tốc độ cao",
+    strategy: "Chạy các bài kiểm tra siêu nhẹ (Micro-checks) xem câu hỏi có chứa đại từ phức tạp không, từ khóa rõ ràng không. Nếu hợp lệ, hệ thống lập tức 'nhảy cóc' qua LLM để xử lý thẳng.",
+    tech: "Rule-based Intent Classifier, Micro-checks, Bỏ qua (Bypass) LLM",
+    benefits: "Tiết kiệm 1-2s độ trễ do không gọi LLM, xử lý 60-70% câu hỏi thông thường với tốc độ phản hồi tức thời.",
     focusNodes: ['cache1', 'nlu_check', 'rule_nlu', 'llm_nlu', 'vocab'],
     activeEdges: ['e-cache1-nlucheck', 'e-nlucheck-rulenlu', 'e-rulenlu-vocab'],
     animatedNodes: ['nlu_check', 'rule_nlu'],
-    leadingQuestion: "Quy tắc Fast-path rất nhanh, nhưng nếu tài xế viết sai chính tả, sử dụng ngôn ngữ địa phương thì làm sao để hệ thống vẫn hiểu được?"
+    leadingQuestion: "Fast-path rất nhanh nhưng làm sao hệ thống hiểu được các từ lóng, viết tắt đặc thù của tài xế Xanh SM?"
   },
   {
     id: "semantic_cache",
-    title: "4. Semantic Cache (Lớp 2)",
-    subtitle: "Xử lý Biến thể Ngôn ngữ",
-    strategy: "Nếu người dùng gõ sai ngữ pháp, LLM NLU sẽ chuẩn hóa và viết lại câu. Cấu trúc câu mới được tra vào bộ nhớ Cache lớp 2, tránh việc phải tìm kiếm Database lần nữa.",
-    tech: "Domain Vocabulary, LLM Query Rewriting, Tra cứu Cache Canonical",
-    benefits: "Tăng tỷ lệ trúng Cache thêm 30%, xử lý linh hoạt mọi kiểu ngôn ngữ chat đặc thù của tài xế.",
+    title: "4. Domain Vocabulary",
+    subtitle: "Từ điển Chuyên ngành Thông minh",
+    strategy: "Hệ thống mapping tức thời các từ lóng (như 'tx', 'vf5', 'đền hàng') thành Service và Intent chuẩn. Đồng thời tự động ghép từ (Query Expansion) để tối ưu tìm kiếm mà không cần OpenAI sinh ra.",
+    tech: "Domain Vocabulary Dictionary, Rule-based Mapping & Query Expansion",
+    benefits: "Bóc tách siêu tốc độ, trúng ý định 100% và tăng tỷ lệ tìm kiếm (Recall) dữ liệu mà không tốn kém Token.",
     focusNodes: ['vocab', 'intent', 'cache2', 'out'],
     activeEdges: ['e-vocab-intent', 'e-intent-cache2', 'e-cache2-out'],
-    animatedNodes: ['cache2'],
-    leadingQuestion: "Nếu bộ nhớ đệm (Cache) cả 2 lớp vẫn không có đáp án, hệ thống sẽ tìm kiếm dữ liệu như thế nào để vừa hiểu ngữ nghĩa vừa không bỏ sót từ khóa?"
+    animatedNodes: ['vocab', 'intent'],
+    leadingQuestion: "Với hàng tá từ khóa đã được mở rộng, hệ thống tìm kiếm trong Database như thế nào để không bỏ sót?"
   },
   {
     id: "hybrid_search",
