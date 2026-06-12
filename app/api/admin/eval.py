@@ -183,70 +183,70 @@ def get_eval_runs(limit: int = 20, db: Session = Depends(get_db)):
         },
     }
 
-@router.post("/evaluate")
-async def evaluate_rag(req: Optional[EvaluateRequest] = None):
-    """
-    Chạy đánh giá bằng RAGAS. Trả về stream SSE báo cáo tiến độ.
-    Sử dụng chung process để tránh OOM trên server yếu, và gửi ping để tránh proxy timeout.
-    """
-    import queue
-    import threading
-    
-    message_queue = queue.Queue()
-    
-    def queue_print(msg: str):
-        message_queue.put(msg)
-        
-    def run_eval_thread():
-        try:
-            from evaluation.ragas_eval import XanhSMEvaluation
-            if req and req.description:
-                os.environ["EVAL_DESCRIPTION"] = req.description
-            evaluator = XanhSMEvaluation(print_func=queue_print)
-            evaluator.run_suite()
-            message_queue.put(None)  # EOF marker
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            message_queue.put(f"ERROR_TRACE: {type(e).__name__}: {str(e)}")
-            message_queue.put(None)
+# Global state to track evaluation job
+eval_job = {
+    "running": False,
+    "logs": [],
+    "done": False,
+    "error": None
+}
 
-    async def event_generator():
-        yield 'data: {"step": "Bắt đầu đánh giá RAGAS..."}\n\n'
-        await asyncio.sleep(0.5)
-        yield 'data: {"step": "Đang khởi tạo hệ thống (tránh OOM)..."}\n\n'
-        
-        loop = asyncio.get_event_loop()
-        thread = threading.Thread(target=run_eval_thread)
-        thread.start()
-        
-        while True:
-            # Get message from queue without blocking the event loop
-            try:
-                # Use run_in_executor to not block the event loop if queue is empty
-                # But actually, we can just use queue.get_nowait() and asyncio.sleep
-                msg = message_queue.get_nowait()
-                if msg is None:
-                    yield 'data: {"step": "Đánh giá hoàn tất!"}\n\n'
-                    break
-                
-                if msg.startswith("ERROR_TRACE: "):
-                    err_msg = json.dumps({"error": msg[13:]}, ensure_ascii=False)
-                    yield f"data: {err_msg}\n\n"
-                    break
-                    
-                line_str = msg.strip()
-                if line_str:
-                    data_json = json.dumps({"step": line_str}, ensure_ascii=False)
-                    yield f"data: {data_json}\n\n"
-                    
-            except queue.Empty:
-                # If no message for 2 seconds, yield a ping to keep connection alive
-                yield 'data: {"step": "Đang xử lý... (vui lòng đợi)"}\n\n'
-                await asyncio.sleep(2.0)
+import threading
+
+def run_eval_thread(description: str):
+    global eval_job
+    try:
+        from evaluation.ragas_eval import XanhSMEvaluation
+        if description:
+            os.environ["EVAL_DESCRIPTION"] = description
             
-        yield "data: [DONE]\n\n"
+        def queue_print(msg: str):
+            eval_job["logs"].append({"step": msg.strip()})
+            
+        evaluator = XanhSMEvaluation(print_func=queue_print)
+        evaluator.run_suite()
+        eval_job["done"] = True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        eval_job["error"] = f"{type(e).__name__}: {str(e)}"
+        eval_job["done"] = True
+    finally:
+        eval_job["running"] = False
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+@router.post("/evaluate")
+def evaluate_rag_start(req: Optional[EvaluateRequest] = None):
+    """
+    Starts the evaluation in a background thread to prevent Railway proxy timeouts (100s).
+    """
+    global eval_job
+    if eval_job["running"]:
+        return {"status": "already_running"}
+        
+    eval_job["running"] = True
+    eval_job["logs"] = [{"step": "Bắt đầu đánh giá RAGAS..."}]
+    eval_job["done"] = False
+    eval_job["error"] = None
+    
+    desc = req.description if req else ""
+    thread = threading.Thread(target=run_eval_thread, args=(desc,))
+    thread.start()
+    
+    return {"status": "started"}
+
+@router.get("/evaluate/status")
+def evaluate_rag_status(offset: int = 0):
+    """
+    Returns the evaluation status and logs from the given offset.
+    """
+    global eval_job
+    new_logs = eval_job["logs"][offset:]
+    return {
+        "running": eval_job["running"],
+        "done": eval_job["done"],
+        "error": eval_job["error"],
+        "logs": new_logs,
+        "next_offset": offset + len(new_logs)
+    }
 
 
