@@ -37,6 +37,7 @@ export default function AnimatedParticleEdge({
           transition: 'stroke 0.3s ease',
           strokeDasharray: isActive ? '5 5' : 'none',
           animation: isActive ? 'flowAnimation 1s linear infinite' : 'none',
+          filter: isActive ? 'drop-shadow(0 0 8px rgba(0,230,168,0.8))' : 'none'
         }}
       />
       

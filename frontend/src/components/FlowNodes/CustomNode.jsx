@@ -46,18 +46,20 @@ export default function CustomNode({ data }) {
     position: 'absolute',
     width: rectW,
     height: rectH,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#020617',
     border: `3px solid ${color}`,
     borderRadius: isDiamond ? '4px' : borderRadius,
     transform: isDiamond ? 'rotate(45deg)' : 'none',
-    filter: filter,
+    filter: isActive ? filter : 'none',
+    boxShadow: isActive ? `0 0 20px ${color}40, inset 0 0 10px ${color}20` : 'none',
+    transition: 'all 0.5s ease',
     zIndex: 0,
   };
 
   return (
-    <div className="relative flex items-center justify-center pointer-events-auto" style={{ width: w, height: h }}>
+    <div className={`relative flex items-center justify-center pointer-events-auto transition-transform duration-500 ${isActive ? 'scale-105' : 'scale-100'}`} style={{ width: w, height: h }}>
       {/* Top Handle */}
-      <Handle type="target" position={Position.Top} className="w-1.5 h-1.5 rounded-full bg-gray-400 border-none z-20" />
+      <Handle type="target" position={Position.Top} className="w-1.5 h-1.5 rounded-full bg-gray-400 border-none z-20 opacity-0" />
       
       {/* CSS Background Shape */}
       <div style={bgStyle}></div>
