@@ -8,7 +8,7 @@ import {
   ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { SkipForward, RotateCcw, Workflow, ArrowRight } from 'lucide-react';
+import { SkipForward, RotateCcw, Workflow, ArrowRight, Lightbulb, Box, Star, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import CustomNode from '../components/FlowNodes/CustomNode';
@@ -161,11 +161,11 @@ function PresentationFlowInner() {
     <div className="w-full h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans flex relative">
       {/* Sidebar Presentation Panel */}
       <div className="w-[450px] h-full bg-[#080c14] border-r border-[#00e6a8]/20 flex flex-col z-10 shadow-[8px_0_30px_rgba(0,230,168,0.05)] relative">
-        <div className="p-8 border-b border-[#00e6a8]/20 bg-black/40">
+        <div className="p-8 border-b border-[#00e6a8]/20 bg-[#020617]">
           <h1 className="text-2xl font-black text-[#00e6a8] mb-2 flex items-center gap-3 tracking-widest uppercase">
             <Workflow size={28} className="text-[#00e6a8]" /> RAG Masterpiece
           </h1>
-          <p className="text-sm text-slate-400 font-medium">Interactive Technical Architecture</p>
+          <p className="text-sm text-slate-400 font-medium ml-[40px]">Interactive Technical Architecture</p>
         </div>
         
         <div className="flex-1 overflow-y-auto p-8 relative no-scrollbar">
@@ -189,38 +189,46 @@ function PresentationFlowInner() {
                 )}
               </div>
 
-              {activeSlide.strategy && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tư duy Chiến lược</h4>
-                  <p className="text-slate-300 text-sm leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
-                    {activeSlide.strategy}
-                  </p>
-                </div>
-              )}
-
-              {activeSlide.tech && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Công nghệ Áp dụng</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {activeSlide.tech.split(',').map((t, i) => (
-                      <span key={i} className="px-3 py-1 bg-[#00e6a8]/10 text-[#00e6a8] border border-[#00e6a8]/20 rounded-full text-xs font-semibold">
-                        {t.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {activeSlide.benefits && (
-                <div className="space-y-2 pt-2">
-                  <h4 className="text-xs font-bold text-[#00e6a8] uppercase tracking-widest">Lợi ích</h4>
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-[#00e6a8]/10 to-transparent border border-[#00e6a8]/30">
-                    <p className="text-slate-200 text-sm leading-relaxed font-medium">
-                      {activeSlide.benefits}
+              <div className="space-y-8 mt-6 p-1">
+                {activeSlide.strategy && (
+                  <div className="space-y-3">
+                    <h4 className="flex items-center gap-2 text-xs font-bold text-[#00e6a8] uppercase tracking-widest">
+                      <Lightbulb size={16} /> Tư duy Chiến lược
+                    </h4>
+                    <p className="text-slate-300 text-sm leading-relaxed border-l-2 border-[#00e6a8]/40 pl-4 py-1">
+                      {activeSlide.strategy}
                     </p>
                   </div>
-                </div>
-              )}
+                )}
+
+                {activeSlide.tech && (
+                  <div className="space-y-3">
+                    <h4 className="flex items-center gap-2 text-xs font-bold text-[#00e6a8] uppercase tracking-widest">
+                      <Box size={16} /> Công nghệ Áp dụng
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {activeSlide.tech.split(',').map((t, i) => (
+                        <span key={i} className="px-3 py-1.5 bg-[#00e6a8]/5 text-[#00e6a8] border border-[#00e6a8]/20 rounded-lg text-xs font-medium">
+                          {t.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeSlide.benefits && (
+                  <div className="space-y-3">
+                    <h4 className="flex items-center gap-2 text-xs font-bold text-[#00e6a8] uppercase tracking-widest">
+                      <Star size={16} /> Lợi ích
+                    </h4>
+                    <div className="p-4 rounded-xl bg-[#08121a] border border-[#00e6a8]/20 shadow-[inset_0_0_20px_rgba(0,230,168,0.05)]">
+                      <p className="text-slate-200 text-sm leading-relaxed font-medium">
+                        {activeSlide.benefits}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </motion.div>
           </AnimatePresence>
         </div>
@@ -278,6 +286,30 @@ function PresentationFlowInner() {
 
       {/* React Flow Canvas */}
       <div className="flex-1 h-full relative bg-transparent">
+        {/* Leading Question Floating Box */}
+        <div className="absolute top-8 right-8 z-50 max-w-sm pointer-events-none">
+          <AnimatePresence mode="wait">
+             {activeSlide.leadingQuestion && (
+                <motion.div
+                  key={activeSlide.id}
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.5, delay: 0.8, ease: "easeOut" }}
+                >
+                  <div className="bg-slate-900/90 border border-[#00e6a8]/30 backdrop-blur-xl p-5 rounded-2xl shadow-[0_10px_40px_rgba(0,230,168,0.15)] text-slate-200">
+                     <div className="flex items-center gap-2 text-[#00e6a8] font-bold text-[10px] mb-3 uppercase tracking-[0.2em]">
+                       <HelpCircle size={14} /> Gợi mở vấn đề
+                     </div>
+                     <p className="text-sm font-medium leading-relaxed italic text-slate-300">
+                       "{activeSlide.leadingQuestion}"
+                     </p>
+                  </div>
+                </motion.div>
+             )}
+          </AnimatePresence>
+        </div>
+
         <ReactFlow
           nodes={nodes}
           edges={edges}
