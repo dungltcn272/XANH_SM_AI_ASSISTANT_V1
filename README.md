@@ -153,6 +153,9 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
      - *Domain Vocabulary (Từ điển miền Xanh SM)*: Chuẩn hóa alias/sai chính tả.
      *(Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn để tối ưu hóa hiệu năng, giảm độ trễ và tránh quá tải cho backend/VectorDB).*
    - **Thông số kỹ thuật**: Gộp API calls giúp giảm độ trễ NLU từ **~1.5s xuống còn ~0.8s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
+   - **Xử Lý Ảnh (Multimodal Vision)**: Ép luồng hình ảnh đi qua NLU LLM để "thị giác máy tính" phân tích ảnh và dịch sang `rewritten_query` dạng văn bản cực kỳ chi tiết. Nhờ đó:
+     - Khắc phục hoàn toàn việc mất ngữ cảnh khi người dùng gửi ảnh.
+     - Hình ảnh bị loại bỏ trước khi đến LLM Generator, giúp **tiết kiệm hàng ngàn token** và triệt tiêu lỗi định dạng `expected str instance`.
 
 4. **NODE 4: Second Cache Lookup (Kiểm tra Cache lần 2)**
    - **Công nghệ áp dụng**: PostgreSQL / SQLite SQL Query.

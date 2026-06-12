@@ -109,7 +109,7 @@
   .card-title { display: flex; align-items: center; gap: 20px; font-size: 40px; font-weight: 700; color: var(--xanh-sm-cyan); margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
   
   .feature-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 30px; }
-  .feature-list li { font-size: 28px; line-height: 1.6; color: var(--text-muted); padding-left: 40px; position: relative; }
+  .feature-list li { font-size: 24px; line-height: 1.6; color: var(--text-muted); padding-left: 40px; position: relative; }
   .feature-list li::before { content: '•'; color: var(--xanh-sm-green); position: absolute; left: 0; font-weight: bold; font-size: 40px; top: -10px; }
   .feature-list li strong { color: #fff; font-weight: 600; }
 
@@ -187,8 +187,8 @@
         </div>
 
         <div class="hero-right">
-          <img src="../dark_mode_UI.png" class="mockup mockup-back" alt="Dark Mode UI">
-          <img src="../light_mode_UI.png" class="mockup mockup-front" alt="Light Mode UI">
+          <img src="dark_mode_UI.png" class="mockup mockup-back" alt="Dark Mode UI">
+          <img src="light_mode_UI.png" class="mockup mockup-front" alt="Light Mode UI">
         </div>
       </div>
     </div>
@@ -264,7 +264,9 @@
               <li><strong>Gộp tác vụ (2-in-1):</strong> Xử lý Phân loại ý định (Intent) và Viết lại câu (Rewrite) chỉ trong <strong>1 lượt gọi LLM duy nhất</strong>.
                 <br><span class="nlu-pill">Hiệu quả: Giảm trễ từ 1.5s -> 0.8s, tiết kiệm 60% Token tiêu thụ.</span>
               </li>
-              <li><strong>Lược Bỏ Query Expansion:</strong> Dừng sinh thêm truy vấn thừa thãi để tránh gây quá tải. Bù đắp lại sự thiếu hụt bằng Reranker v3 để lọc tài liệu, bảo vệ CSDL Vector khỏi tắc nghẽn (Concurrency Overload).</li>
+              <li><strong>Multimodal RAG (Xử Lý Ảnh):</strong> NLU trực tiếp "đọc" ảnh và phiên dịch thành Text Query hoàn chỉnh. Ảnh bị hủy ngay lập tức, giúp LLM cuối chỉ cần đọc Text.
+                <br><span class="nlu-pill" style="background: rgba(99,102,241,0.1); color: #818cf8; border-color: rgba(99,102,241,0.2);">Hiệu quả: Ngăn chặn lỗi định dạng, tiết kiệm hàng ngàn Token chi phí ảnh.</span>
+              </li>
             </ul>
           </div>
           
@@ -318,6 +320,7 @@
               <td>Phải dùng Model siêu lớn (GPT-4o) để không bịa.<br><span class="bad-cell">Chi phí Rất Cao</span></td>
               <td class="our-rag-cell">Dùng Cohere Reranker kết hợp GPT-4o-mini.<br><span class="highlight-cell">Tiết kiệm >80% tiền API (Vẫn đạt 99% Trung thực)</span></td>
             </tr>
+
           </tbody>
         </table>
       </div>

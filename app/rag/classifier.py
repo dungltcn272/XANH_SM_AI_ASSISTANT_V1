@@ -72,7 +72,7 @@ class XanhSMClassifier:
             "fast_path_reason": "obvious_rag_query"
         }
 
-    def unified_nlu(self, query: str, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+    def unified_nlu(self, query: str, chat_history: List[Dict[str, str]] = None, image_base64: str = None) -> Dict[str, Any]:
         """
         Unified 3-in-1 NLU Analyzer:
         1. Context-aware rewrite
@@ -111,6 +111,7 @@ class XanhSMClassifier:
 
         if (
             config.NLU_FAST_PATH_ENABLED
+            and not image_base64
             and self._is_obvious_rag_query(query)
             and not self._needs_context_rewrite(query, chat_history)
         ):
@@ -128,11 +129,19 @@ class XanhSMClassifier:
 
                 client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
                 user_prompt = f"Lịch sử hội thoại:\n{history_str}\nCâu hỏi mới nhất: '{query}'\nJSON kết quả:"
+                if image_base64:
+                    user_content = [
+                        {"type": "text", "text": user_prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                    ]
+                else:
+                    user_content = user_prompt
+
                 response = client.chat.completions.create(
                     model=config.NLU_MODEL,
                     messages=[
                         {"role": "system", "content": UNIFIED_NLU_PROMPT},
-                        {"role": "user", "content": user_prompt}
+                        {"role": "user", "content": user_content}
                     ],
                     temperature=0.0,
                     max_tokens=220,
