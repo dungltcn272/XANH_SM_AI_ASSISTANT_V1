@@ -119,7 +119,7 @@ graph TD
     E -- "rag" --> F{Second Exact Cache}
 
     F -- "Cache Hit" --> Out
-    F -- "Cache Miss" --> G[Hybrid Retrieval: Dense + Sparse + SQL keyword fallback]
+    F -- "Cache Miss" --> G[Hybrid Retrieval: Dense + Sparse]
 
     G --> H[Cohere Reranker]
     H --> I[Parent / Section Context Expansion]
@@ -163,9 +163,9 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
    - **Logic xử lý**: Thực hiện đối sánh Cache lần 2 dựa trên câu hỏi đã được chuẩn hóa ở Node 3. Điều này giúp nâng cao đáng kể tỷ lệ trúng cache trong trường hợp câu hỏi thô của người dùng dài dòng hoặc viết sai chính tả nhưng có cùng bản chất ngữ nghĩa với câu hỏi đã lưu.
    - **Thông số kỹ thuật**: Độ trễ **~5-10ms**.
 
-5. **NODE 5: Hybrid Search (Dense + Sparse + SQL Keyword Fallback + Metadata Boost)**
+5. **NODE 5: Hybrid Search (Dense + Sparse + Metadata Boost)**
    - **Công nghệ áp dụng**: Qdrant Vector Database (`qdrant-client`) kết hợp Dense Vectors (mô hình `text-embedding-3-small` của OpenAI, 1536 chiều), Sparse Vectors (BM25/FastEmbed), và SQL fallback trên bảng `document_chunks`.
-   - **Logic xử lý**: Chuyển đổi câu hỏi chuẩn hóa thành Dense/Sparse vectors (Query Expansion đã được tắt bỏ hoàn toàn để tránh quá tải hệ thống và giảm độ trễ). Qdrant dùng **RRF (Reciprocal Rank Fusion)** để hợp nhất kết quả, sau đó SQL fallback bắt các cụm literal quan trọng bị miss bởi vector search. Domain metadata hints sẽ boost tài liệu theo `category`, `document_type`, `service` và ưu tiên `data/overview/service_catalog.md` cho câu hỏi tổng quát.
+   - **Logic xử lý**: Chuyển đổi câu hỏi chuẩn hóa thành Dense/Sparse vectors (Query Expansion đã được tắt bỏ hoàn toàn để tránh quá tải hệ thống và giảm độ trễ). Qdrant dùng **RRF (Reciprocal Rank Fusion)** để hợp nhất kết quả. Domain metadata hints sẽ boost tài liệu theo `category`, `document_type`, `service` và ưu tiên `data/overview/service_catalog.md` cho câu hỏi tổng quát.
    - **Thông số kỹ thuật**: Kích thước Dense Vector `dimensions = 1536`. Lấy ra **Top 25 tài liệu thô** (`limit = 25`) trước khi rerank.
 
 6. **NODE 6: Cohere Reranker (Tái xếp hạng ngữ nghĩa chuyên sâu)**
@@ -207,7 +207,7 @@ Các thay đổi mới nhất của pipeline dữ liệu:
 Giải thích node mới trong Mermaid:
 
 - `Domain Vocabulary`: node rule-based chạy sau NLU để bổ sung canonical query, chuẩn hóa từ vựng và metadata hints. (Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn để giảm thiểu độ trễ, tiết kiệm tài nguyên sinh token của LLM và concurrency cho VectorDB).
-- `Hybrid Search: Dense + Sparse + SQL Fallback`: node truy xuất hợp nhất semantic vector, BM25 sparse vector và SQL keyword fallback. Metadata boost ưu tiên đúng category/document type, đặc biệt `overview` với câu hỏi tổng quát.
+- `Hybrid Search: Dense + Sparse`: node truy xuất hợp nhất semantic vector, BM25 sparse vector. Metadata boost ưu tiên đúng category/document type, đặc biệt `overview` với câu hỏi tổng quát.
 
 ---
 

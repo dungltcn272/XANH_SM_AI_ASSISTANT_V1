@@ -123,8 +123,8 @@ const FLOW_NODES = [
   },
   {
     id: 'hybrid_search',
-    title: 'Hybrid Retrieval: Dense + Sparse + SQL',
-    subtitle: 'Dense + Sparse + SQL fallback',
+    title: 'Hybrid Retrieval: Dense + Sparse',
+    subtitle: 'Dense + Sparse',
     icon: Search,
     tone: 'cyan',
     kind: 'process',
