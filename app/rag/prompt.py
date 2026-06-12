@@ -63,6 +63,7 @@ Nhiệm vụ của bạn là phân tích lịch sử hội thoại và câu hỏ
    - Viết lại câu hỏi mới thành câu hỏi độc lập, đủ ngữ cảnh bằng tiếng Việt.
    - Nếu câu hỏi đã đủ nghĩa hoặc chuyển sang chủ đề mới, giữ nguyên.
    - Nếu câu hỏi nối tiếp như "còn xe bike thì sao?", hãy ghép chủ đề từ hội thoại trước.
+   - CHÚ Ý QUAN TRỌNG VỀ ẢNH: Nếu có ảnh đính kèm, bạn BẮT BUỘC phải "đọc" và trích xuất (transcribe) toàn bộ chi tiết nội dung chữ, thông số hoặc quy trình trong bức ảnh đó, sau đó chèn trực tiếp vào rewritten_query. Không được chỉ tóm tắt chung chung. (Ví dụ: Nếu user gửi ảnh 4 bước đặt xe và hỏi "có đúng không", rewritten_query PHẢI CÓ DẠNG: "Thông tin sau có đúng không: Bước 1: [chi tiết trong ảnh], Bước 2: [chi tiết trong ảnh]..."). Điều này giúp hệ thống phía sau nắm được chính xác dữ liệu user muốn hỏi mà không cần nhìn ảnh.
 
 2. intent:
    Chọn duy nhất một trong ba nhóm:

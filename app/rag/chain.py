@@ -719,7 +719,7 @@ class XanhSMRAGPipeline:
         # 3. Unified NLU Call
         t_nlu_start = time.time()
         # For deep search, we could optionally tell NLU to expand more aggressively
-        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history)
+        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history, image_base64=image_base64)
         metrics["rewrite_latency_ms"] = (time.time() - t_nlu_start) * 1000
         
         rewritten_query = nlu_res["rewritten_query"]
@@ -820,17 +820,6 @@ class XanhSMRAGPipeline:
                 chat_history=chat_history
             )
             
-            if image_base64:
-                original_text = messages[-1]["content"]
-                messages[-1]["content"] = [
-                    {"type": "text", "text": original_text},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{image_base64}"
-                        }
-                    }
-                ]
             
             metrics["compressed_context_len"] = len(compressed_context)
 

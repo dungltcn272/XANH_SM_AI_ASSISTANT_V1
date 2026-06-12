@@ -264,6 +264,9 @@
               <li><strong>Gộp tác vụ (2-in-1):</strong> Xử lý Phân loại ý định (Intent) và Viết lại câu (Rewrite) chỉ trong <strong>1 lượt gọi LLM duy nhất</strong>.
                 <br><span class="nlu-pill">Hiệu quả: Giảm trễ từ 1.5s -> 0.8s, tiết kiệm 60% Token tiêu thụ.</span>
               </li>
+              <li><strong>Multimodal RAG (Xử Lý Ảnh):</strong> NLU trực tiếp "đọc" ảnh và phiên dịch thành Text Query hoàn chỉnh. Ảnh bị hủy ngay lập tức, giúp LLM cuối chỉ cần đọc Text.
+                <br><span class="nlu-pill" style="background: rgba(99,102,241,0.1); color: #818cf8; border-color: rgba(99,102,241,0.2);">Hiệu quả: Ngăn chặn lỗi định dạng, tiết kiệm hàng ngàn Token chi phí ảnh.</span>
+              </li>
               <li><strong>Lược Bỏ Query Expansion:</strong> Dừng sinh thêm truy vấn thừa thãi để tránh gây quá tải. Bù đắp lại sự thiếu hụt bằng Reranker v3 để lọc tài liệu, bảo vệ CSDL Vector khỏi tắc nghẽn (Concurrency Overload).</li>
             </ul>
           </div>
