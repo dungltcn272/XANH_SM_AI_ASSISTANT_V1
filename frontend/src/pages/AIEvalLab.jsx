@@ -274,37 +274,43 @@ export default function AIEvalLab() {
         body: JSON.stringify({ description: runDescription })
       });
 
-      if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const text = decoder.decode(value);
-        const lines = text.split('\n');
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6);
-          if (data.trim() === '[DONE]') {
+      let offset = 0;
+      const pollTimer = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`${apiBase}/admin/evaluate/status?offset=${offset}`, {
+            headers: { Authorization: `Bearer ${api.getAuthToken() || ''}` }
+          });
+          if (!statusRes.ok) return;
+          
+          const data = await statusRes.json();
+          
+          if (data.logs && data.logs.length > 0) {
+            setLogs(prev => {
+              const newLogStrings = data.logs.map(log => `[${new Date().toLocaleTimeString('vi-VN')}] INFO  ${log.step}`);
+              return [...prev, ...newLogStrings];
+            });
+            offset = data.next_offset;
+          }
+          
+          if (data.error) {
+            setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('vi-VN')}] ERROR  ${data.error}`]);
+            clearInterval(pollTimer);
+            setRunning(false);
+          } else if (data.done) {
             setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('vi-VN')}] SUCCESS Evaluation completed`]);
+            clearInterval(pollTimer);
             await loadEvalData();
-            break;
+            setRunning(false);
           }
-          try {
-            const obj = JSON.parse(data);
-            const level = obj.error ? 'ERROR' : obj.warning ? 'WARN' : 'INFO';
-            setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('vi-VN')}] ${level}  ${obj.step || obj.message || obj.error || JSON.stringify(obj)}`]);
-          } catch {
-            setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('vi-VN')}] INFO  ${data}`]);
-          }
+        } catch (e) {
+          console.error("Polling error", e);
         }
-      }
+      }, 2000);
+
     } catch (err) {
       setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('vi-VN')}] ERROR ${err.message}`]);
-    } finally {
       setRunning(false);
     }
   };
