@@ -322,11 +322,11 @@ class XanhSMHybridSearch:
                 if doc_id not in all_docs_map:
                     all_docs_map[doc_id] = doc
 
-        keyword_docs = self._keyword_search_document_chunks(expanded_queries, limit=min(10, limit))
-        for doc in keyword_docs:
-            doc_id = doc.metadata.get("chunk_id", doc.page_content[:50])
-            if doc_id not in all_docs_map:
-                all_docs_map[doc_id] = doc
+        # keyword_docs = self._keyword_search_document_chunks(expanded_queries, limit=min(10, limit))
+        # for doc in keyword_docs:
+        #     doc_id = doc.metadata.get("chunk_id", doc.page_content[:50])
+        #     if doc_id not in all_docs_map:
+        #         all_docs_map[doc_id] = doc
                     
         unique_docs = self._apply_domain_boosts(list(all_docs_map.values()), " ".join(expanded_queries))
         

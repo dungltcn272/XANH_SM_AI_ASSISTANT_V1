@@ -134,7 +134,7 @@ export const initialNodes = [
   { id: 'block2', type: 'block', position: { x: 300, y: 1350 }, data: { label: 'Refusal Response', type: 'block' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
   { id: 'persona', type: 'persona', position: { x: 500, y: 1350 }, data: { label: 'LLM Persona Answer', type: 'persona' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
   
-  { id: 'hybrid', type: 'process', position: { x: 100, y: 1550 }, data: { label: 'Hybrid Retrieval: Dense +\nSparse + SQL keyword fallback', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
+  { id: 'hybrid', type: 'process', position: { x: 100, y: 1550 }, data: { label: 'Hybrid Retrieval: Dense +\nSparse', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
   { id: 'rerank', type: 'process', position: { x: 100, y: 1680 }, data: { label: 'Cohere Reranker', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
   { id: 'context', type: 'process', position: { x: 100, y: 1810 }, data: { label: 'Parent / Section Context\nExpansion', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
   { id: 'llm', type: 'process', position: { x: 100, y: 1940 }, data: { label: 'LLM Synthesis & SSE Stream', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },

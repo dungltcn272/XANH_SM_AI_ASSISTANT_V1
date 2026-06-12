@@ -24,7 +24,7 @@ graph TD
     F -- rag --> G{Second Exact Cache}
 
     G -- Hit --> O
-    G -- Miss --> H[Hybrid Retrieval: Dense + Sparse + SQL Keyword Fallback]
+    G -- Miss --> H[Hybrid Retrieval: Dense + Sparse]
     H --> I[Cohere Reranker]
     I --> J[Parent / Section Context Expansion]
     J --> K[LLM Synthesis]
@@ -71,7 +71,7 @@ Retriever kết hợp:
 
 - Dense vector với OpenAI embedding.
 - Sparse/BM25 trong Qdrant.
-- SQL keyword fallback trên `document_chunks` để bắt các cụm literal, mã xe, giá, chính sách hoặc số liệu mà vector search có thể bỏ sót.
+- Qdrant Vector Search kết hợp semantic (dense vector) và keyword (sparse vector BM25) qua cơ chế RRF (Reciprocal Rank Fusion).
 - Metadata/domain hints để ưu tiên đúng nhóm tài liệu.
 
 Kết quả thô được hợp nhất và khử trùng trước khi đưa sang reranker.
@@ -113,7 +113,7 @@ Mỗi lần eval ghi thêm snapshot vào bảng `evaluation_runs`, gồm metrics
 Latency cao thường đến từ bốn điểm:
 
 - NLU Gateway: trước đây luôn gọi LLM nên có thể tốn 1-5 giây. Fast-path mới bỏ qua LLM NLU cho câu RAG rõ ràng.
-- Embedding + hybrid retrieval: phụ thuộc Qdrant, SQL fallback và kích thước tập ứng viên.
+- Embedding + hybrid retrieval: phụ thuộc Qdrant và kích thước tập ứng viên.
 - Cohere rerank: là API call riêng, thường tốn thêm hàng trăm ms đến vài giây nếu network chậm.
 - LLM synthesis: phụ thuộc độ dài context sau expansion và độ dài câu trả lời; đây thường là phần lớn nhất nếu context/document dài.
 
