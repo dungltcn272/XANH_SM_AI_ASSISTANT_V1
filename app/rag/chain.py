@@ -645,13 +645,13 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
 
-    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None):
+    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False):
         """
         Stream version of the NLU-Gateway RAG chain.
         """
-        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache, image_base64=image_base64)
+        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache, image_base64=image_base64, is_deep_search=is_deep_search)
 
-    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None):
+    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False):
         """
         Internal raw streaming implementation of the RAG chain.
         """
@@ -684,6 +684,9 @@ class XanhSMRAGPipeline:
 
             yield from yield_msg(f'data: {json.dumps({"metrics": metrics})}\n\n')
 
+        if is_deep_search:
+            bypass_cache = True
+
         normalized_query = self.gateway.normalize_input(query)
         safety_res = self.gateway.safety_precheck(normalized_query)
         if not safety_res["safe"]:
@@ -708,10 +711,14 @@ class XanhSMRAGPipeline:
                 yield from yield_msg("data: [DONE]\n\n")
                 return
 
-        yield from yield_msg('data: {"step": "Phân tích ngữ cảnh & Ý định..."}\n\n')
+        if is_deep_search:
+            yield from yield_msg('data: {"step": "Đang phân tích chuyên sâu (Deep Search)..."}\n\n')
+        else:
+            yield from yield_msg('data: {"step": "Phân tích ngữ cảnh & Ý định..."}\n\n')
         
         # 3. Unified NLU Call
         t_nlu_start = time.time()
+        # For deep search, we could optionally tell NLU to expand more aggressively
         nlu_res = self.classifier.unified_nlu(normalized_query, chat_history)
         metrics["rewrite_latency_ms"] = (time.time() - t_nlu_start) * 1000
         
@@ -785,19 +792,23 @@ class XanhSMRAGPipeline:
             strategy = self.select_retrieval_strategy(rewritten_query)
             yield from yield_msg('data: {"step": "Đang truy xuất dữ liệu (Hybrid)..."}\n\n')
             t_search_start = time.time()
+            
+            search_limit = config.DEEP_SEARCH_CANDIDATE_LIMIT if is_deep_search else config.RETRIEVAL_CANDIDATE_LIMIT
             retrieved_candidates = self.search_engine.search(
                 query=rewritten_query,
-                limit=config.RETRIEVAL_CANDIDATE_LIMIT,
+                limit=search_limit,
                 expanded_queries=expanded_queries,
             )
             metrics["search_latency_ms"] = (time.time() - t_search_start) * 1000
 
             yield from yield_msg('data: {"step": "Đang chấm điểm & Reranking tài liệu..."}\n\n')
             t_rerank_start = time.time()
+            
+            rerank_top_n = config.DEEP_SEARCH_RERANK_TOP_N if is_deep_search else config.RERANK_TOP_N
             top_docs = self.reranker.rerank(
                 query=rewritten_query,
                 docs=retrieved_candidates,
-                top_n=config.RERANK_TOP_N,
+                top_n=rerank_top_n,
             )
             metrics["rerank_latency_ms"] = (time.time() - t_rerank_start) * 1000
             metrics["num_chunks_before_expansion"] = len(top_docs)

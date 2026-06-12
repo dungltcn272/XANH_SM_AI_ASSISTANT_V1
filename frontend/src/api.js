@@ -17,14 +17,14 @@ export const api = {
     return localStorage.getItem('access_token');
   },
 
-  chatStream: async (query, conversation_id = null, imageBase64 = null) => {
+  chatStream: async (query, conversation_id = null, imageBase64 = null, isDeepSearch = false) => {
     const token = api.getAuthToken();
     const headers = { 'Content-Type': 'application/json' };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const body = { query, conversation_id };
+    const body = { query, conversation_id, deep_search: isDeepSearch };
     if (imageBase64) {
       body.image_base64 = imageBase64;
     }

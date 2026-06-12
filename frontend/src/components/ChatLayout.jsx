@@ -4,7 +4,7 @@ import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognitio
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown, Search } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -79,6 +79,7 @@ export default function ChatLayout() {
   const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [pipelineStep, setPipelineStep] = useState(null);
+  const [isDeepSearch, setIsDeepSearch] = useState(false);
   
   // Feedback States
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
@@ -267,7 +268,7 @@ export default function ChatLayout() {
     setLoading(true);
 
     try {
-      const response = await api.chatStream(userQuery, currentConvIdRef.current, currentImageBase64);
+      const response = await api.chatStream(userQuery, currentConvIdRef.current, currentImageBase64, isDeepSearch);
       if (!response.ok) throw new Error('API Error');
       
       setMessages(prev => [...prev, { role: 'assistant', content: '', latency_ms: null, metrics: null, created_at: new Date().toISOString() }]);
@@ -962,6 +963,26 @@ export default function ChatLayout() {
                   title="Tải ảnh lên"
                 >
                   <ImageIcon size={16} />
+                </button>
+                
+                {/* Deep Search Toggle */}
+                <button
+                  onClick={() => {
+                    if (user?.type === 'guest') {
+                      alert("Vui lòng đăng nhập để sử dụng tính năng Tìm kiếm chuyên sâu (Deep Search).");
+                      return;
+                    }
+                    setIsDeepSearch(!isDeepSearch);
+                  }}
+                  className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold transition-all border shrink-0 active:scale-95 ${
+                    isDeepSearch
+                      ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
+                      : 'bg-transparent text-on-surface-variant/60 dark:text-white/40 border-transparent hover:bg-surface-variant/30 hover:text-on-surface-variant'
+                  }`}
+                  title={isDeepSearch ? "Tắt Deep Search" : "Bật Deep Search (Tìm kiếm chuyên sâu)"}
+                >
+                  <Search size={12} className={isDeepSearch ? "text-indigo-500" : ""} />
+                  {isDeepSearch ? "Deep Search: Bật" : "Deep Search"}
                 </button>
 
                 {/* Horizontally scrollable suggestion pills */}

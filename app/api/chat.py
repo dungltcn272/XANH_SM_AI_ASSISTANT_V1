@@ -17,6 +17,7 @@ class ChatRequest(BaseModel):
     query: str
     conversation_id: Optional[str] = None
     image_base64: Optional[str] = None
+    deep_search: bool = False
 
 
 async def _run_stream_in_thread(gen_func, **kwargs) -> AsyncGenerator[str, None]:
@@ -107,7 +108,8 @@ async def chat_endpoint(
             user_id=user_identifier,
             conversation_id=conv_id,
             question=req.query,
-            image_base64=req.image_base64
+            image_base64=req.image_base64,
+            is_deep_search=req.deep_search
         ),
         media_type="text/event-stream",
         headers={

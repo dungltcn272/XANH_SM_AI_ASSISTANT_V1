@@ -1,12 +1,15 @@
-# 🚗 Xanh SM Enterprise Production RAG System (Phase 7)
+# 🚗 Xanh SM Enterprise Production RAG System (Phase 6)
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live-00A651?style=for-the-badge&logo=vercel&logoColor=white)](https://rag-xanh-sm-v1.vercel.app/)
 
 > [!NOTE]
-> **🚀 CẬP NHẬT MỚI TẠI PHASE 7 (DEEP SEARCH & INFRASTRUCTURE):**
-> *   **Chế độ Deep Search (Tìm kiếm chuyên sâu)**: Cung cấp tính năng tìm kiếm sức mạnh cao cho người dùng đã đăng nhập. Tự động bỏ qua Cache, mở rộng limit từ 25 lên 100 chunk và tăng Rerank top_n lên 20 để tổng hợp thông tin đa chiều với độ phủ tối đa.
-> *   **Tối ưu Hóa Đánh Giá (Benchmark Asynchronous)**: Chuyển đổi công cụ Benchmark từ SSE stream sang tiến trình nền (background polling) giúp vượt qua giới hạn timeout 100s của Railway, đảm bảo an toàn và ổn định khi chạy đánh giá 50+ case.
-> *   **(Phase 6 - Legacy)**: Tách biệt luồng xử lý hình ảnh VLM, bảo toàn URL ảnh gốc, cập nhật UI Knowledge Builder và cho phép cấu hình `VLM_MODEL` độc lập.
+> **🚀 CẬP NHẬT MỚI TẠI PHASE 6 (MULTIMODAL RAG & VLM OPTIMIZATION):**
+> *   **Tách biệt Luồng Xử Lý Hình Ảnh VLM**: Tiền xử lý hình ảnh Markdown (giải mã bằng Vision Language Model - VLM) được tách độc lập khỏi luồng Ingest/Crawl, cho phép kiểm soát độc lập, tăng tốc Ingest và log (SSE) theo dõi tiến độ theo thời gian thực trên giao diện UI.
+> *   **Bảo toàn Hình Ảnh Gốc**: URL thẻ ảnh nguyên bản được bảo toàn khi VLM giải mã (nội dung chữ được chèn xuống dưới ảnh). Giúp Frontend hiển thị cả ảnh gốc lẫn mô tả chữ một cách trực quan nhất.
+> *   **Cập nhật Knowledge Builder UI**: Thiết kế lại toàn bộ giao diện quản trị tri thức. Tối ưu Grid Layout, bổ sung tính năng phân trang (Pagination) cho URL Registry giúp quản lý hàng ngàn tài liệu dễ dàng hơn.
+> *   **Mở rộng Cấu hình Model (`VLM_MODEL`)**: Khả năng chỉ định mô hình VLM độc lập (mặc định `gpt-4o`) ra cấu hình `.env`, cho phép tùy chỉnh model xử lý hình ảnh linh hoạt.
+> *   **(Phase 5 - Legacy)**: Hỗ trợ thông số xe VinFast đầy đủ, chính sách mua/thuê xe, và kết nối Docker Qdrant cục bộ.
+
 
 Hệ thống **Retrieval-Augmented Generation (RAG)** cấp doanh nghiệp (Production-Grade) được thiết kế và tối ưu hóa đặc biệt dành riêng cho **Xanh SM** nhằm hỗ trợ tra cứu tập trung và chính xác mọi thông tin chính sách cước phí, điều khoản dịch vụ, cơ chế tài chính cho khách hàng, đối tác tài xế, đối tác cửa hàng merchant và nhân viên CSKH.
 
