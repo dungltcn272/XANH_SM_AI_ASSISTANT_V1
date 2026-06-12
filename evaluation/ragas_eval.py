@@ -25,7 +25,8 @@ from app.core.logger import log_warn, log_error
 from openai import OpenAI
 
 class XanhSMEvaluation:
-    def __init__(self, dataset: Optional[List[Dict[str, Any]]] = None):
+    def __init__(self, dataset: Optional[List[Dict[str, Any]]] = None, print_func=print):
+        self.print_func = print_func
         self.pipeline = XanhSMRAGPipeline()
         if dataset and len(dataset) > 0:
             self.test_cases = dataset
@@ -136,8 +137,8 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         nlu_fast_path = bool(result.get("nlu_fast_path"))
         nlu_fast_path_reason = result.get("nlu_fast_path_reason")
         
-        print(f"   -> AI Answer: {answer[:100]}...")
-        print(f"   -> R@5: {recall_5:.2f} | MRR: {mrr:.2f} | Faithfulness: {faithfulness:.2f} | Correctness: {correctness:.2f}")
+        self.print_func(f"   -> AI Answer: {answer[:100]}...")
+        self.print_func(f"   -> R@5: {recall_5:.2f} | MRR: {mrr:.2f} | Faithfulness: {faithfulness:.2f} | Correctness: {correctness:.2f}")
         
         return {
             "id": case.get("id", query[:60]),
@@ -168,7 +169,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
         }
 
     def run_suite(self) -> Dict[str, Any]:
-        print("\n[*] Starting Automated Quality Evaluation Suite (RAGAS)...")
+        self.print_func("\n[*] Starting Automated Quality Evaluation Suite (RAGAS)...")
         results = []
         
         avg = {"recall_5": 0, "recall_10": 0, "source_recall_5": 0, "mrr": 0, "ndcg_5": 0, "faithfulness": 0, "correctness": 0, "relevancy": 0, "latency": 0, "num_chunks": 0, "context_len": 0}
@@ -178,7 +179,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 safe_query = case['query'].encode(sys.stdout.encoding or 'utf-8', errors='replace').decode(sys.stdout.encoding or 'utf-8')
             except:
                 safe_query = case['query']
-            print(f"[#] Test Case {idx + 1}/{len(self.test_cases)}: '{safe_query}'")
+            self.print_func(f"[#] Test Case {idx + 1}/{len(self.test_cases)}: '{safe_query}'")
             
             try:
                 res = self.evaluate_item(case)
@@ -217,7 +218,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
 
         self.save_run_snapshot(report)
             
-        print("[INFO] Evaluation results successfully saved to evaluation_report.json.")
+        self.print_func("[INFO] Evaluation results successfully saved to evaluation_report.json.")
         return report
 
     def save_run_snapshot(self, report: Dict[str, Any]) -> None:
@@ -255,7 +256,7 @@ Return ONLY a JSON object with keys: "faithfulness", "correctness", "relevancy",
                 )
                 db.add(row)
                 db.commit()
-                print(f"[INFO] Evaluation run snapshot saved to evaluation_runs: {run_name}")
+                self.print_func(f"[INFO] Evaluation run snapshot saved to evaluation_runs: {run_name}")
             finally:
                 db.close()
         except Exception as e:

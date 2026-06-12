@@ -187,55 +187,63 @@ def get_eval_runs(limit: int = 20, db: Session = Depends(get_db)):
 async def evaluate_rag(req: Optional[EvaluateRequest] = None):
     """
     Chạy đánh giá bằng RAGAS. Trả về stream SSE báo cáo tiến độ.
+    Sử dụng chung process để tránh OOM trên server yếu, và gửi ping để tránh proxy timeout.
     """
-    async def event_generator():
-        yield 'data: {"step": "Bắt đầu đánh giá RAGAS..."}\n\n'
-        await asyncio.sleep(1)
-        yield 'data: {"step": "Đang lấy tập dữ liệu Golden Dataset..."}\n\n'
+    import queue
+    import threading
+    
+    message_queue = queue.Queue()
+    
+    def queue_print(msg: str):
+        message_queue.put(msg)
         
+    def run_eval_thread():
         try:
-            import subprocess
-            import sys
-            import os
-            env = os.environ.copy()
-            env["PYTHONIOENCODING"] = "utf-8"
-            env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-            env["TQDM_DISABLE"] = "1"
+            from evaluation.ragas_eval import XanhSMEvaluation
             if req and req.description:
-                env["EVAL_DESCRIPTION"] = req.description
-            
-            process = subprocess.Popen(
-                [sys.executable, "-W", "ignore", "-u", "evaluation/ragas_eval.py"], 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT,
-                env=env
-            )
-            
-            loop = asyncio.get_event_loop()
-            
-            def read_line():
-                return process.stdout.readline()
-            
-            while True:
-                line = await loop.run_in_executor(None, read_line)
-                if not line:
-                    break
-                line_str = line.decode('utf-8', errors='replace').strip()
-                if line_str:
-                    data_json = json.dumps({"step": line_str}, ensure_ascii=False)
-                    yield f"data: {data_json}\n\n"
-                    await asyncio.sleep(0.1)
-                    
-            process.wait()
-            if process.returncode == 0:
-                yield 'data: {"step": "Đánh giá hoàn tất!"}\n\n'
-            else:
-                yield 'data: {"error": "Lỗi trong quá trình đánh giá."}\n\n'
+                os.environ["EVAL_DESCRIPTION"] = req.description
+            evaluator = XanhSMEvaluation(print_func=queue_print)
+            evaluator.run_suite()
+            message_queue.put(None)  # EOF marker
         except Exception as e:
             import traceback
             traceback.print_exc()
-            err_msg = json.dumps({"error": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False)
-            yield f"data: {err_msg}\n\n"
+            message_queue.put(f"ERROR_TRACE: {type(e).__name__}: {str(e)}")
+            message_queue.put(None)
+
+    async def event_generator():
+        yield 'data: {"step": "Bắt đầu đánh giá RAGAS..."}\n\n'
+        await asyncio.sleep(0.5)
+        yield 'data: {"step": "Đang khởi tạo hệ thống (tránh OOM)..."}\n\n'
+        
+        loop = asyncio.get_event_loop()
+        thread = threading.Thread(target=run_eval_thread)
+        thread.start()
+        
+        while True:
+            # Get message from queue without blocking the event loop
+            try:
+                # Use run_in_executor to not block the event loop if queue is empty
+                # But actually, we can just use queue.get_nowait() and asyncio.sleep
+                msg = message_queue.get_nowait()
+                if msg is None:
+                    yield 'data: {"step": "Đánh giá hoàn tất!"}\n\n'
+                    break
+                
+                if msg.startswith("ERROR_TRACE: "):
+                    err_msg = json.dumps({"error": msg[13:]}, ensure_ascii=False)
+                    yield f"data: {err_msg}\n\n"
+                    break
+                    
+                line_str = msg.strip()
+                if line_str:
+                    data_json = json.dumps({"step": line_str}, ensure_ascii=False)
+                    yield f"data: {data_json}\n\n"
+                    
+            except queue.Empty:
+                # If no message for 2 seconds, yield a ping to keep connection alive
+                yield 'data: {"step": "Đang xử lý... (vui lòng đợi)"}\n\n'
+                await asyncio.sleep(2.0)
             
         yield "data: [DONE]\n\n"
 
