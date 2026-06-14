@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "GreenSM AI",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/bot.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/bot.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#020617"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#020617",
+        "foregroundImage": "./assets/bot.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/bot.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để NLU đọc hiểu lỗi xe.",
+          "cameraPermission": "Ứng dụng cần quyền truy cập camera để chụp ảnh báo lỗi trực tiếp."
+        }
+      ],
+      "expo-web-browser"
+    ]
+  }
+}

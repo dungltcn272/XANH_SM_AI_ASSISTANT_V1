@@ -100,7 +100,7 @@
 
   /* SLIDES CHUNG */
   .slide-content-wrapper { position: relative; z-index: 10; display: flex; flex-direction: column; flex: 1; padding-top: 100px; }
-  .slide-header { font-size: 64px; font-weight: 800; color: #fff; margin-bottom: 60px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; display: inline-block; }
+  .slide-header { font-size: 64px; font-weight: 800; color: #fff; margin-bottom: 50px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; display: inline-block; }
   .slide-header span { color: var(--xanh-sm-green); }
   
   .card-container { display: flex; gap: 50px; flex: 1; }
@@ -265,7 +265,7 @@
                 <br><span class="nlu-pill">Hiệu quả: Giảm trễ từ 1.5s -> 0.8s, tiết kiệm 60% Token tiêu thụ.</span>
               </li>
               <li><strong>Multimodal RAG (Xử Lý Ảnh):</strong> NLU trực tiếp "đọc" ảnh và phiên dịch thành Text Query hoàn chỉnh. Ảnh bị hủy ngay lập tức, giúp LLM cuối chỉ cần đọc Text.
-                <br><span class="nlu-pill" style="background: rgba(99,102,241,0.1); color: #818cf8; border-color: rgba(99,102,241,0.2);">Hiệu quả: Ngăn chặn lỗi định dạng, tiết kiệm hàng ngàn Token chi phí ảnh.</span>
+                <br><span class="nlu-pill" style="background: rgba(99,102,241,0.1); color: #818cf8; border-color: rgba(99,102,241,0.2);">Hiệu quả: Lý giải hình ảnh kết hợp với query để sinh ra query hoàn chỉnh phục vụ cho truy xuất tài liệu</span>
               </li>
             </ul>
           </div>
@@ -318,7 +318,7 @@
             <tr>
               <td>Tối ưu giá thành Model LLM</td>
               <td>Phải dùng Model siêu lớn (GPT-4o) để không bịa.<br><span class="bad-cell">Chi phí Rất Cao</span></td>
-              <td class="our-rag-cell">Dùng Cohere Reranker kết hợp GPT-4o-mini.<br><span class="highlight-cell">Tiết kiệm >80% tiền API (Vẫn đạt 99% Trung thực)</span></td>
+              <td class="our-rag-cell">Reranker + GPT-4o-mini + Fast-path + Cache.<br><span class="highlight-cell">Siêu Tiết Kiệm: Ước tính ~0.5$ / 1000 lượt giải đáp</span></td>
             </tr>
 
           </tbody>

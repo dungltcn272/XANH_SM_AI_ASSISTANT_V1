@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { Check, Mic, BookOpen, Lightbulb } from 'lucide-react';
+import { Check, Camera, Search, Lightbulb } from 'lucide-react';
 
 const NotificationDropdown = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
@@ -83,13 +83,12 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-            {/* Notification Item */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                 <span style={{ padding: '3px 10px', backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', fontSize: '10px', fontWeight: 900, borderRadius: '6px', flexShrink: 0, marginTop: '2px' }}>MỚI</span>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 900, lineHeight: 1.4 }}>
-                    🚀 Cập nhật Voice & Mở rộng kho tri thức Xanh SM
+                    🚀 Cập nhật Nhận diện Hình ảnh & Tìm kiếm Deep-Search
                   </h4>
                 </div>
               </div>
@@ -98,32 +97,33 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
                 <p style={{ margin: '0 0 20px 0' }}>Chúng tôi vừa nâng cấp hệ thống AI nhằm mang đến trải nghiệm hỗ trợ nhanh chóng và chính xác hơn:</p>
                 
                 <div style={{ marginBottom: '20px' }}>
-                  <div className="text-primary dark:text-[#00c897]" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 900, marginBottom: '10px' }}>
-                    <Mic size={16} />
-                    <span>Bỏ sung tính năng Voice Chat</span>
+                  <div className="text-primary dark:text-[#FFCA00]" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 900, marginBottom: '10px' }}>
+                    <Camera size={16} />
+                    <span>Bổ sung tính năng thêm hình ảnh</span>
                   </div>
+                  <p style={{ margin: '0 0 10px 0' }}>AI hiện có thể đọc hiểu hình ảnh bằng công nghệ Vision NLU để:</p>
+                  <ul style={{ margin: 0, paddingLeft: '24px', listStyleType: 'disc' }}>
+                    <li>Nhận diện chính xác lỗi xe điện, mã lỗi trên màn hình.</li>
+                    <li>Phân tích chi tiết tình trạng xe từ ảnh chụp trực tiếp.</li>
+                  </ul>
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
                   <div className="text-primary dark:text-[#00c897]" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 900, marginBottom: '10px' }}>
-                    <BookOpen size={16} />
-                    <span>Mở rộng kho tri thức Xanh SM</span>
+                    <Search size={16} />
+                    <span>Trải nghiệm tính năng Deep-Search</span>
                   </div>
-                  <p style={{ margin: '0 0 10px 0' }}>AI hiện có thể hỗ trợ nhiều nội dung hơn về:</p>
+                  <p style={{ margin: '0 0 10px 0' }}>Nghiên cứu chuyên sâu tài liệu phức tạp với sức mạnh vượt trội:</p>
                   <ul style={{ margin: 0, paddingLeft: '24px', listStyleType: 'disc' }}>
-                    <li>Chính sách và quy định dịch vụ</li>
-                    <li>Hướng dẫn sử dụng ứng dụng</li>
-                    <li>Hỗ trợ tài khoản và thanh toán</li>
-                    <li>Các dòng xe và dịch vụ Xanh SM</li>
-                    <li>Bảng giá, ưu đãi và khuyến mãi</li>
-                    <li>Tin tức và cập nhật mới nhất từ Xanh SM</li>
+                    <li>Mở rộng vùng quét lên hàng trăm trang tài liệu cùng lúc.</li>
+                    <li>Tổng hợp dữ liệu đa chiều, chuyên sâu hơn.</li>
                   </ul>
                 </div>
 
                 <div className="bg-amber-500/10 dark:bg-amber-500/5" style={{ padding: '16px', borderRadius: '20px', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', gap: '14px' }}>
                   <Lightbulb size={18} style={{ color: '#f59e0b', flexShrink: 0 }} />
                   <p style={{ margin: 0, fontStyle: 'italic', fontWeight: 700 }}>
-                    Hãy thử đặt câu hỏi bằng văn bản hoặc giọng nói để trải nghiệm các tính năng mới.
+                    Hãy thử tải lên một hình ảnh hoặc bật công tắc Deep-Search để trải nghiệm ngay sức mạnh mới của AI.
                   </p>
                 </div>
               </div>

@@ -75,9 +75,14 @@ RAG_XANH_SM/
 │
 ├── data/                     # Thư mục chứa tài liệu Markdown thô (Crawler tạo ra)
 │
-├── frontend/                 # React + Vite Frontend UI (Stitch Architecture)
+├── frontend/                 # React + Vite Frontend UI (Web Browser)
 │   ├── src/components/       # Component UI module hóa (ChatLayout, Dashboard...)
 │   └── src/api.js            # Xử lý REST API và đọc luồng SSE theo thời gian thực
+│
+├── mobile/                   # 📱 React Native + Expo App (iOS & Android)
+│   ├── App.js                # Entry point chính của Mobile App với UI/UX tương đồng bản Web
+│   ├── app.json              # Cấu hình dự án Expo (GreenSM AI)
+│   └── assets/               # Chứa hình ảnh, logo SVG và bot animation
 │
 ├── evaluation/               # Hệ thống Benchmark Ragas tự động đánh giá RAG
 │   ├── golden_dataset.py     # Bộ dữ liệu câu hỏi và câu trả lời chuẩn (Ground Truth)
@@ -258,6 +263,19 @@ Chiến thuật chunking mới được tối ưu cho truy hồi, không chỉ c
 - **Docker & Docker Compose** (Chạy Qdrant và PostgreSQL)
 
 ### 📦 B. Khởi Động Databases Bằng Docker
+
+*(Lưu ý: Bạn phải bật Docker Desktop trước khi thực hiện bước này)*
+
+### 📦 C. Khởi Động Ứng Dụng Mobile (React Native / Expo)
+Dự án cung cấp một ứng dụng di động gốc (Mobile App) dành cho tài xế và nhân viên Xanh SM:
+1. Cài đặt ứng dụng **Expo Go** trên thiết bị di động iOS/Android của bạn.
+2. Mở terminal mới, di chuyển vào thư mục mobile và chạy máy chủ:
+   ```bash
+   cd mobile
+   npm install
+   npm start
+   ```
+3. Dùng ứng dụng Expo Go (trên Android) hoặc ứng dụng Camera (trên iOS) để quét mã QR hiện ra trên màn hình Terminal.
 ```bash
 # Trong thư mục dự án, chạy lệnh:
 docker-compose up -d
