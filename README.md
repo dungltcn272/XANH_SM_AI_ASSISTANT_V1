@@ -258,6 +258,19 @@ Chiến thuật chunking mới được tối ưu cho truy hồi, không chỉ c
 - **Docker & Docker Compose** (Chạy Qdrant và PostgreSQL)
 
 ### 📦 B. Khởi Động Databases Bằng Docker
+
+*(Lưu ý: Bạn phải bật Docker Desktop trước khi thực hiện bước này)*
+
+### 📦 C. Khởi Động Ứng Dụng Mobile (React Native / Expo)
+Dự án cung cấp một ứng dụng di động gốc (Mobile App) dành cho tài xế và nhân viên Xanh SM:
+1. Cài đặt ứng dụng **Expo Go** trên thiết bị di động iOS/Android của bạn.
+2. Mở terminal mới, di chuyển vào thư mục mobile và chạy máy chủ:
+   ```bash
+   cd mobile
+   npm install
+   npm start
+   ```
+3. Dùng ứng dụng Expo Go (trên Android) hoặc ứng dụng Camera (trên iOS) để quét mã QR hiện ra trên màn hình Terminal.
 ```bash
 # Trong thư mục dự án, chạy lệnh:
 docker-compose up -d

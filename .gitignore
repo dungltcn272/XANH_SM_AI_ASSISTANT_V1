@@ -57,3 +57,8 @@ PLAN.md
 # Evaluation results
 evaluation_report.json
 
+# Mobile App
+/mobile/node_modules/
+/mobile/.expo/
+/mobile/ios/
+/mobile/android/
