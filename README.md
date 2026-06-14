@@ -75,9 +75,14 @@ RAG_XANH_SM/
 │
 ├── data/                     # Thư mục chứa tài liệu Markdown thô (Crawler tạo ra)
 │
-├── frontend/                 # React + Vite Frontend UI (Stitch Architecture)
+├── frontend/                 # React + Vite Frontend UI (Web Browser)
 │   ├── src/components/       # Component UI module hóa (ChatLayout, Dashboard...)
 │   └── src/api.js            # Xử lý REST API và đọc luồng SSE theo thời gian thực
+│
+├── mobile/                   # 📱 React Native + Expo App (iOS & Android)
+│   ├── App.js                # Entry point chính của Mobile App với UI/UX tương đồng bản Web
+│   ├── app.json              # Cấu hình dự án Expo (GreenSM AI)
+│   └── assets/               # Chứa hình ảnh, logo SVG và bot animation
 │
 ├── evaluation/               # Hệ thống Benchmark Ragas tự động đánh giá RAG
 │   ├── golden_dataset.py     # Bộ dữ liệu câu hỏi và câu trả lời chuẩn (Ground Truth)

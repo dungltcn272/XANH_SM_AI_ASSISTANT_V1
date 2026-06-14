@@ -685,13 +685,13 @@ export default function App() {
             <TouchableWithoutFeedback>
               <View style={[styles.notifModal, { backgroundColor: cardColor, borderColor }]}>
                 <Text style={[styles.notifModalTitle, { color: textColor }]}>Thông báo hệ thống</Text>
-                <View style={styles.notifItem}>
-                  <View style={styles.notifDot} />
-                  <Text style={[styles.notifItemText, { color: textColor }]}>🎉 Giảm 50% chuyến Xanh SM Bike đầu tiên!</Text>
+                <View style={[styles.notifItem, { borderBottomColor: borderColor }]}>
+                  <View style={[styles.notifDot, { backgroundColor: '#FFCA00' }]} />
+                  <Text style={[styles.notifItemText, { color: textColor }]}>📸 Bổ sung tính năng thêm hình ảnh (Đọc lỗi xe tự động bằng NLU/Vision).</Text>
                 </View>
                 <View style={styles.notifItem}>
-                  <View style={styles.notifDot} />
-                  <Text style={[styles.notifItemText, { color: textColor }]}>🎁 Chào mừng bạn đến với AI Assistant</Text>
+                  <View style={[styles.notifDot, { backgroundColor: '#00E6A8' }]} />
+                  <Text style={[styles.notifItemText, { color: textColor }]}>🔍 Trải nghiệm tính năng Deep-Search: Nghiên cứu chuyên sâu tài liệu phức tạp.</Text>
                 </View>
               </View>
             </TouchableWithoutFeedback>
