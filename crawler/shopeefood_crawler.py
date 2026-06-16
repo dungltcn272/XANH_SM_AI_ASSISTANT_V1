@@ -375,18 +375,47 @@ class ShopeeFoodCrawler:
             self._collect_dom_cards(page, raw_ref)
 
     def _search(self, page: Page, query: str) -> None:
-        input_box = page.locator(
-            "input[placeholder*='Tìm'], input[placeholder*='tìm'], input[type='search'], input[type='text']"
-        ).first
+        input_box = self._find_search_input(page)
+        if not input_box:
+            LOGGER.debug("Search input missing on %s; returning to home page", page.url)
+            page.goto(self.start_url, wait_until="domcontentloaded", timeout=60000)
+            self._settle(page)
+            input_box = self._find_search_input(page)
+        if not input_box:
+            LOGGER.warning("Search input not found")
+            return
+
         try:
-            input_box.wait_for(timeout=7000)
             input_box.fill(query)
             input_box.press("Enter")
+            search_button = page.locator("button.btn-search, [class*='btn-search']").first
+            if search_button.count() > 0:
+                search_button.click(timeout=3000)
         except PlaywrightTimeoutError:
-            LOGGER.warning("Search input not found")
+            LOGGER.warning("Search input found but could not be used")
+            return
+        except Exception as exc:
+            LOGGER.warning("Search failed for %s: %s", query, exc)
             return
         self._settle(page)
         self._click_text_if_visible(page, query)
+
+    def _find_search_input(self, page: Page):
+        selectors = [
+            "input[placeholder*='Tìm địa điểm']",
+            "input[placeholder*='món ăn']",
+            "input[placeholder*='địa chỉ']",
+            "input.search-input",
+            "input[type='search']",
+        ]
+        for selector in selectors:
+            locator = page.locator(selector).first
+            try:
+                locator.wait_for(timeout=1500, state="visible")
+                return locator
+            except PlaywrightTimeoutError:
+                continue
+        return None
 
     def _click_text_if_visible(self, page: Page, text: str) -> bool:
         locator = page.get_by_text(text, exact=False).first
