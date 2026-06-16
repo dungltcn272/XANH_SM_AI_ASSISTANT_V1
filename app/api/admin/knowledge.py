@@ -10,6 +10,8 @@ from sqlalchemy import String, Text, case, or_
 from app.db.database import get_db, Base
 from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource, EvaluationRun, FoodCatalog
 from app.core.config import settings
+from app.tools.food_recommendation.schemas import FoodRecommendationRequest
+from app.tools.food_recommendation.tool import recommend_food
 from fastapi.responses import StreamingResponse
 import asyncio
 from typing import Optional
@@ -389,6 +391,24 @@ def import_food_catalog(req: FoodCatalogImportRequest = None, db: Session = Depe
         "sources": sorted(seen_sources),
         "errors": errors[:20],
     }
+
+
+@router.post("/food-catalog/recommend")
+def test_food_recommendation(req: FoodRecommendationRequest, db: Session = Depends(get_db)):
+    items = recommend_food(
+        lat=req.lat,
+        lng=req.lng,
+        category=req.category,
+        taste_tags=req.taste_tags,
+        budget_min=req.budget_min,
+        budget_max=req.budget_max,
+        meal_time=req.meal_time,
+        max_distance_km=req.max_distance_km,
+        user_id=req.user_id,
+        limit=req.limit,
+        db=db,
+    )
+    return {"success": True, "items": [item.model_dump() for item in items]}
 
 @router.post("/ingest/crawl")
 async def run_crawler(max_urls: int = 0):

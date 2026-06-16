@@ -658,12 +658,12 @@ Admin/dev UI:
 
 ### Level 2: Food Tool MVP
 
-- [ ] Tạo `app/tools/food_recommendation/`.
-- [ ] Viết schema input/output.
-- [ ] Viết loader catalog.
-- [ ] Viết filter theo vị trí/bán kính/category/budget.
-- [ ] Viết rule ranker.
-- [ ] Trả reason rõ ràng.
+- [x] Tạo `app/tools/food_recommendation/`.
+- [x] Viết schema input/output.
+- [x] Viết loader catalog.
+- [x] Viết filter theo vị trí/bán kính/category/budget.
+- [x] Viết rule ranker.
+- [x] Trả reason rõ ràng.
 
 ### Level 3: Chatbot Integration
 
