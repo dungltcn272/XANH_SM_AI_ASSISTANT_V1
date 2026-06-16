@@ -1,0 +1,12 @@
+{
+  "source": "shopeefood",
+  "start_url": "https://shopeefood.vn/",
+  "items": 5,
+  "network_snapshots": 7,
+  "created_at": "2026-06-16T10:15:30.972302+00:00",
+  "notes": [
+    "Public unauthenticated crawl only.",
+    "No CAPTCHA/login bypass.",
+    "Robots.txt checked before crawl."
+  ]
+}

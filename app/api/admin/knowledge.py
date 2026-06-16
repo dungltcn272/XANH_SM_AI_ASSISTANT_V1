@@ -1,19 +1,23 @@
 import os
 import json
 from datetime import datetime
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import String, Text, case, or_
 from app.db.database import get_db, Base
-from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource, EvaluationRun
+from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource, EvaluationRun, FoodCatalog
 from app.core.config import settings
 from fastapi.responses import StreamingResponse
 import asyncio
 from typing import Optional
 
 router = APIRouter()
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+DEFAULT_FOOD_CATALOG_PATH = ROOT_DIR / "data" / "food_catalog" / "shopeefood_catalog.jsonl"
 
 class CrawlSourceRequest(BaseModel):
     url: str
@@ -27,6 +31,42 @@ class CrawlSourceRequest(BaseModel):
     enabled: bool = True
     priority: int = 100
     notes: Optional[str] = ""
+
+
+class FoodCatalogImportRequest(BaseModel):
+    path: Optional[str] = None
+    clear_existing: bool = False
+
+
+def parse_optional_datetime(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            normalized = value.replace("Z", "+00:00")
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+    return None
+
+
+def json_text(value) -> str:
+    if value is None:
+        return "[]"
+    return json.dumps(value, ensure_ascii=False)
+
+
+def resolve_repo_data_path(path_value: str | None) -> Path:
+    candidate = Path(path_value) if path_value else DEFAULT_FOOD_CATALOG_PATH
+    if not candidate.is_absolute():
+        candidate = ROOT_DIR / candidate
+    resolved = candidate.resolve()
+    data_root = (ROOT_DIR / "data").resolve()
+    if data_root not in resolved.parents and resolved != data_root:
+        raise HTTPException(status_code=400, detail="Import path must stay inside data/")
+    return resolved
 
 
 def serialize_crawl_source(row: CrawlSource) -> dict:
@@ -256,6 +296,99 @@ def ingest_all_knowledge():
         raise HTTPException(status_code=404, detail=f"Data directory not found: {data_dir}")
     summary = ingest_data(data_dir, reset_collection=False)
     return {"success": True, **summary}
+
+
+@router.post("/food-catalog/import")
+def import_food_catalog(req: FoodCatalogImportRequest = None, db: Session = Depends(get_db)):
+    req = req or FoodCatalogImportRequest()
+    catalog_path = resolve_repo_data_path(req.path)
+    if not catalog_path.exists():
+        raise HTTPException(status_code=404, detail=f"Food catalog JSONL not found: {catalog_path}")
+
+    if req.clear_existing:
+        db.query(FoodCatalog).delete()
+        db.commit()
+
+    inserted = 0
+    updated = 0
+    skipped = 0
+    errors = []
+    seen_sources = set()
+
+    with catalog_path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError as exc:
+                skipped += 1
+                errors.append({"line": line_number, "error": str(exc)})
+                continue
+
+            item_id = (row.get("item_id") or "").strip()
+            name = (row.get("name") or row.get("merchant_name") or "").strip()
+            if not item_id or not name:
+                skipped += 1
+                errors.append({"line": line_number, "error": "Missing item_id or name"})
+                continue
+
+            payload = {
+                "item_id": item_id,
+                "name": name,
+                "description": row.get("description"),
+                "category": row.get("category"),
+                "cuisine": row.get("cuisine"),
+                "taste_tags_json": json_text(row.get("taste_tags")),
+                "diet_tags_json": json_text(row.get("diet_tags")),
+                "ingredient_tags_json": json_text(row.get("ingredient_tags")),
+                "price": row.get("price"),
+                "discount_percent": row.get("discount_percent"),
+                "final_price": row.get("final_price"),
+                "currency": row.get("currency") or "VND",
+                "image_url": row.get("image_url"),
+                "merchant_id": row.get("merchant_id"),
+                "merchant_name": row.get("merchant_name") or name,
+                "merchant_rating": row.get("merchant_rating"),
+                "merchant_review_count": row.get("merchant_review_count"),
+                "merchant_address": row.get("merchant_address"),
+                "merchant_lat": row.get("merchant_lat"),
+                "merchant_lng": row.get("merchant_lng"),
+                "merchant_open_hours_json": json_text(row.get("merchant_open_hours")),
+                "avg_prep_minutes": row.get("avg_prep_minutes"),
+                "base_delivery_fee": row.get("base_delivery_fee"),
+                "fee_per_km": row.get("fee_per_km"),
+                "service_radius_km": row.get("service_radius_km"),
+                "source": row.get("source") or "shopeefood",
+                "source_url": row.get("source_url"),
+                "raw_ref": row.get("raw_ref"),
+                "raw_json": json.dumps(row, ensure_ascii=False),
+                "last_seen_at": parse_optional_datetime(row.get("last_seen_at")),
+            }
+            seen_sources.add(payload["source"])
+
+            existing = db.query(FoodCatalog).filter(FoodCatalog.item_id == item_id).first()
+            if existing:
+                for key, value in payload.items():
+                    setattr(existing, key, value)
+                updated += 1
+            else:
+                db.add(FoodCatalog(**payload))
+                inserted += 1
+
+    db.commit()
+    total = db.query(FoodCatalog).count()
+    return {
+        "success": True,
+        "path": str(catalog_path.relative_to(ROOT_DIR)),
+        "inserted": inserted,
+        "updated": updated,
+        "skipped": skipped,
+        "total_food_catalog_rows": total,
+        "sources": sorted(seen_sources),
+        "errors": errors[:20],
+    }
 
 @router.post("/ingest/crawl")
 async def run_crawler(max_urls: int = 0):

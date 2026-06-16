@@ -459,6 +459,10 @@ export default function KnowledgeBuilder() {
             {busy === 'clear' ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
             Clear ALL Knowledge
           </button>
+          <button onClick={() => runJsonAction('food-import', 'Import Food Catalog JSON to DB', () => api.importFoodCatalog({ path: 'data/food_catalog/shopeefood_catalog.jsonl' }))} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-amber-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50 shadow-lg shadow-amber-500/20 active:scale-95 transition-all">
+            {busy === 'food-import' ? <Loader2 size={18} className="animate-spin" /> : <DatabaseZap size={18} />}
+            Import Food Catalog JSON
+          </button>
           <button onClick={() => runStreamAction('ingest-all', 'Ingest ALL From data/', api.runIngestion)} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
             {busy === 'ingest-all' ? <Loader2 size={18} className="animate-spin" /> : <DatabaseZap size={18} />}
             Ingest ALL From data/

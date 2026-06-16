@@ -650,11 +650,11 @@ Admin/dev UI:
 
 ### Level 1: Data MVP
 
-- [ ] Thiết kế `food_catalog` dạng bảng rộng hoặc JSON index.
-- [ ] Có món, quán, giá, ảnh, rating, địa chỉ.
-- [ ] Có lat/lng cho merchant.
-- [ ] Có tag khẩu vị/category.
-- [ ] Có source/source_url.
+- [x] Thiết kế `food_catalog` dạng bảng rộng hoặc JSON index. Đã có bảng DB `food_catalog` và JSONL `data/food_catalog/shopeefood_catalog.jsonl`.
+- [ ] Có món, quán, giá, ảnh, rating, địa chỉ. Đã có quán/ảnh/rating/địa chỉ; giá món chi tiết còn thiếu vì nguồn public hiện mới trả merchant/card.
+- [x] Có lat/lng cho merchant.
+- [x] Có tag khẩu vị/category. Hiện đã có category/cuisine; taste tag chi tiết sẽ enrich sau.
+- [x] Có source/source_url.
 
 ### Level 2: Food Tool MVP
 
@@ -691,9 +691,9 @@ Admin/dev UI:
 
 ### Level 6: Data Collection
 
-- [ ] Script tạo mock catalog.
-- [ ] Script import CSV/JSON.
-- [ ] Nếu crawl ShopeeFood/public source: có rate limit, cache, source_url.
+- [x] Script tạo/crawl catalog JSON public: `crawler/shopeefood_crawler.py`.
+- [x] Script/API import JSON vào DB: `POST /api/admin/food-catalog/import` và nút Admin trong Knowledge Builder.
+- [x] Nếu crawl ShopeeFood/public source: có rate limit, cache, source_url. Playwright chỉ dùng local để sinh JSON, không đưa vào deploy runtime.
 - [ ] Geocode địa chỉ thiếu lat/lng.
 
 ### Level 7: Personalization Nhẹ

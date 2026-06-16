@@ -49,7 +49,11 @@ qdrant_data/
 .idea/
 .vscode/
 
-/data
+/data/*
+!/data/food_catalog/
+data/food_catalog/*
+!/data/food_catalog/shopeefood_catalog.jsonl
+!/data/food_catalog/shopeefood_crawl_metadata.json
 /logs/
 # Plan
 PLAN.md 

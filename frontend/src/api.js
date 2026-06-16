@@ -170,6 +170,16 @@ export const api = {
     return res.json();
   },
 
+  importFoodCatalog: async (payload = {}) => {
+    const res = await api._fetch(`${API_BASE}/admin/food-catalog/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getEvalResults: async () => {
     const res = await api._fetch(`${API_BASE}/admin/eval`);
     if (!res.ok) throw new Error('API Error');
