@@ -662,42 +662,86 @@ class XanhSMRAGPipeline:
 
     def _food_missing_location_answer(self) -> str:
         return (
-            "Dạ, để gợi ý món ăn gần anh/chị chính xác, em cần vị trí cụ thể trước ạ.\n\n"
-            "Anh/chị có thể gửi tọa độ theo dạng `10.7769,106.7009`, hoặc chia sẻ vị trí hiện tại rồi nhắn lại. "
-            "Nếu chỉ nhập tên khu vực như Quận 1/Hà Nội thì em chưa dùng để rank khoảng cách chính xác được."
+            "Dạ, em cần vị trí giao món để sắp xếp các quán gần anh/chị chính xác hơn. "
+            "Anh/chị có thể dùng vị trí hiện tại hoặc nhập địa chỉ giao hàng bên dưới."
         )
 
     def _format_food_answer(self, items, category: str | None = None) -> str:
         if not items:
             return (
-                "Dạ, em chưa tìm được món phù hợp trong bán kính và bộ lọc hiện tại. "
-                "Anh/chị có thể thử tăng bán kính, đổi loại món hoặc gửi vị trí gần khu trung tâm hơn ạ."
+                "Dạ, em chưa tìm được quán phù hợp trong bán kính và bộ lọc hiện tại. "
+                "Anh/chị có thể thử mở rộng khu vực hoặc đổi sang nhóm món khác."
             )
 
-        intro = "Dạ, em gợi ý vài lựa chọn"
+        intro = "Dạ, em đã sắp xếp một vài lựa chọn"
         if category:
             intro += f" cho món {category}"
-        intro += " gần vị trí của anh/chị. Các món/quán dưới đây lấy từ catalog, em không tự bịa giá hoặc địa điểm:\n\n"
+        return intro + " gần anh/chị. Em ưu tiên khoảng cách, thời gian giao và mức độ phù hợp với nhu cầu."
 
-        cards = []
-        for item in items:
-            price_text = ""
-            if item.final_price:
-                price_text = f" · khoảng {item.final_price:,}đ".replace(",", ".")
-            elif item.price:
-                price_text = f" · khoảng {item.price:,}đ".replace(",", ".")
-            desc = (
-                f"{item.distance_km:.1f} km · ETA {item.eta_minutes or '?'} phút · "
-                f"phí ship ước tính {(item.delivery_fee or 0):,}đ{price_text}. {item.reason}"
-            ).replace(",", ".")
-            title = item.name.replace("]", ")")
-            desc = desc.replace("]", ")")
-            image = item.image_url or ""
-            link = item.order_url or ""
-            cards.append(
-                f":::card [icon: info] [title: {title}] [desc: {desc}] [image: {image}] [link: {link}] :::"
-            )
-        return intro + "\n\n".join(cards)
+    def _format_vnd(self, value: int | None) -> str:
+        if value is None:
+            return "Đang cập nhật"
+        return f"{int(value):,}đ".replace(",", ".")
+
+    def _display_rating(self, value: float | None) -> float | None:
+        if value is None:
+            return None
+        if value > 10:
+            return round(min(value / 20, 5), 1)
+        if value > 5:
+            return round(min(value / 2, 5), 1)
+        return round(min(value, 5), 1)
+
+    def _distance_text(self, distance_km: float | None) -> str:
+        if distance_km is None:
+            return "Đang cập nhật"
+        if distance_km < 1:
+            return f"{int(round(distance_km * 1000))} m"
+        return f"{distance_km:.1f} km"
+
+    def _food_location_payload(self, query: str) -> Dict[str, Any]:
+        return {
+            "title": "Bạn muốn giao đến đâu?",
+            "query": query,
+            "address_placeholder": "Nhập địa chỉ giao hàng",
+            "current_location_label": "Dùng vị trí hiện tại",
+            "submit_label": "Tìm quán gần đây",
+        }
+
+    def _food_recommendations_payload(self, items, category: str | None = None) -> Dict[str, Any]:
+        title = "Một vài quán phù hợp gần bạn"
+        if category:
+            title = f"Một vài quán {category} phù hợp gần bạn"
+
+        def to_payload(item, index: int) -> Dict[str, Any]:
+            price = item.final_price or item.price
+            return {
+                "item_id": item.item_id,
+                "name": item.merchant_name or item.name,
+                "dish_name": item.name,
+                "address": item.address,
+                "image_url": item.image_url,
+                "order_url": item.order_url,
+                "rating": self._display_rating(item.rating),
+                "review_count": item.review_count,
+                "distance_km": item.distance_km,
+                "distance_text": self._distance_text(item.distance_km),
+                "eta_minutes": item.eta_minutes,
+                "eta_text": f"{item.eta_minutes} phút" if item.eta_minutes else "Đang cập nhật",
+                "delivery_fee": item.delivery_fee,
+                "delivery_fee_text": self._format_vnd(item.delivery_fee),
+                "price": price,
+                "price_text": self._format_vnd(price) if price else "",
+                "reason": item.reason,
+                "is_best": index == 0,
+            }
+
+        return {
+            "title": title,
+            "subtitle": "Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.",
+            "items": [to_payload(item, index) for index, item in enumerate(items[:4])],
+            "more_items": [to_payload(item, index + 4) for index, item in enumerate(items[4:8])],
+        }
 
     def _handle_food_recommendation_stream(self, query: str, chat_history: List[Dict[str, str]], metrics: Dict[str, Any], t_start: float):
         slots = extract_food_slots(query, chat_history)
@@ -716,6 +760,7 @@ class XanhSMRAGPipeline:
             answer = self._food_missing_location_answer()
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
             yield from self._stream_plain_answer(answer)
+            yield f'data: {json.dumps({"food_location_request": self._food_location_payload(query)}, ensure_ascii=False)}\n\n'
             yield f'data: {json.dumps({"metrics": metrics, "step": "food-missing-location"}, ensure_ascii=False)}\n\n'
             yield "data: [DONE]\n\n"
             return
@@ -734,7 +779,7 @@ class XanhSMRAGPipeline:
                 budget_max=slots.budget_max,
                 meal_time=slots.meal_time,
                 max_distance_km=slots.max_distance_km,
-                limit=5,
+                limit=8,
                 db=db,
             )
         finally:
@@ -745,6 +790,8 @@ class XanhSMRAGPipeline:
         metrics["food_result_count"] = len(items)
         answer = self._format_food_answer(items, slots.category)
         yield from self._stream_plain_answer(answer)
+        if items:
+            yield f'data: {json.dumps({"food_recommendations": self._food_recommendations_payload(items, slots.category)}, ensure_ascii=False)}\n\n'
         yield f'data: {json.dumps({"metrics": metrics, "step": "food-recommendation"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
 

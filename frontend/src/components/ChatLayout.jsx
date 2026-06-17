@@ -4,7 +4,7 @@ import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognitio
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown, Search } from 'lucide-react';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown, Search, MapPin, Navigation, Clock3, Star, Utensils, Heart, DollarSign, ChevronRight, LocateFixed } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -67,6 +67,233 @@ const MessageCard = ({ icon, title, desc, image, link, index }) => {
         </div>
       )}
     </CardWrapper>
+  );
+};
+
+const FoodMetric = ({ icon: Icon, label, value }) => (
+  <div className="flex items-center gap-2 min-w-0">
+    <div className="w-8 h-8 rounded-full bg-surface-container-high/70 dark:bg-white/10 flex items-center justify-center text-on-surface shrink-0">
+      <Icon size={16} />
+    </div>
+    <div className="min-w-0 leading-tight">
+      <div className="text-[11px] text-on-surface-variant/80 truncate">{label}</div>
+      <div className="text-sm font-black text-[#009e79] truncate">{value}</div>
+    </div>
+  </div>
+);
+
+const FoodRecommendationRow = ({ item, index }) => {
+  const Wrapper = item.order_url ? 'a' : 'div';
+  const wrapperProps = item.order_url ? {
+    href: item.order_url,
+    target: "_blank",
+    rel: "noopener noreferrer"
+  } : {};
+  const isBest = item.is_best || index === 0;
+
+  return (
+    <Wrapper
+      {...wrapperProps}
+      className={`relative grid grid-cols-[96px_1fr] md:grid-cols-[170px_1fr_auto] gap-4 p-3 md:p-4 rounded-2xl border bg-white/75 dark:bg-white/[0.04] transition-all group ${
+        isBest
+          ? 'border-[#00c897]/40 shadow-[0_8px_24px_rgba(0,200,151,0.10)]'
+          : 'border-outline-variant/20 hover:border-[#00c897]/30'
+      }`}
+    >
+      {isBest && (
+        <div className="absolute left-3 top-3 z-10 rounded-full bg-[#00a884] px-2.5 py-1 text-[11px] font-black text-white shadow-sm">
+          Gợi ý phù hợp nhất
+        </div>
+      )}
+
+      <img
+        src={item.image_url || '/Bot.png'}
+        alt={item.name || 'Món ăn'}
+        className="w-full h-[92px] md:h-[122px] rounded-xl object-cover border border-outline-variant/10 bg-surface-container-high"
+        loading="lazy"
+      />
+
+      <div className="min-w-0 flex flex-col justify-center gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-base md:text-lg font-black text-on-surface leading-snug line-clamp-1">
+              {item.name}
+            </h4>
+            {item.rating && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#00c897]/10 px-2 py-0.5 text-sm font-black text-[#008f6f]">
+                <Star size={14} fill="currentColor" />
+                {item.rating}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-on-surface-variant/85 leading-relaxed line-clamp-2">
+            {item.reason || item.dish_name || item.address || 'Phù hợp với nhu cầu món ăn của bạn.'}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <FoodMetric icon={Clock3} label="Giao khoảng" value={item.eta_text || 'Đang cập nhật'} />
+          <FoodMetric icon={MapPin} label="Cách bạn" value={item.distance_text || 'Đang cập nhật'} />
+          <FoodMetric icon={DollarSign} label="Phí giao từ" value={item.delivery_fee_text || 'Đang cập nhật'} />
+        </div>
+      </div>
+
+      <div className="col-span-2 md:col-span-1 flex md:flex-col items-center justify-between md:justify-center gap-3">
+        <span
+          role="button"
+          tabIndex={0}
+          className="w-10 h-10 rounded-full bg-surface-container-high/70 dark:bg-white/10 text-[#00a884] flex items-center justify-center group-hover:bg-[#00c897] group-hover:text-white transition-colors"
+          title="Lưu lựa chọn"
+          onClick={(event) => event.preventDefault()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') event.preventDefault();
+          }}
+        >
+          <Heart size={18} />
+        </span>
+        <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#00a884] px-4 py-2 text-sm font-black text-[#008f6f] group-hover:bg-[#00c897] group-hover:text-white transition-colors whitespace-nowrap">
+          Xem thực đơn
+          <ChevronRight size={16} />
+        </span>
+      </div>
+    </Wrapper>
+  );
+};
+
+const FoodRecommendationList = ({ data }) => {
+  const items = data?.items || [];
+  const moreItems = data?.more_items || [];
+  if (!items.length) return null;
+
+  return (
+    <div className="w-full rounded-3xl border border-white/50 dark:border-white/10 bg-white/72 dark:bg-white/[0.03] p-4 md:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-12 h-12 rounded-full bg-[#00c897]/12 text-[#009e79] flex items-center justify-center shrink-0">
+          <Utensils size={22} />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-xl md:text-2xl font-black text-on-surface leading-tight">
+            {data.title || 'Một vài quán phù hợp gần bạn'}
+          </h3>
+          <p className="mt-1 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
+            {data.subtitle || 'Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.'}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {items.map((item, index) => (
+          <FoodRecommendationRow key={item.item_id || index} item={item} index={index} />
+        ))}
+      </div>
+
+      {moreItems.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-white/50 dark:bg-white/[0.03] p-3">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="text-sm font-black text-on-surface">Thêm lựa chọn gần bạn</div>
+            <ChevronRight size={18} className="text-[#00a884]" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            {moreItems.map((item, index) => (
+              <a
+                key={item.item_id || index}
+                href={item.order_url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="grid grid-cols-[64px_1fr] gap-3 rounded-xl border border-outline-variant/20 bg-white/70 dark:bg-white/[0.04] p-2 hover:border-[#00c897]/40 transition-colors"
+              >
+                <img src={item.image_url || '/Bot.png'} alt={item.name || 'Món ăn'} className="w-16 h-16 rounded-lg object-cover bg-surface-container-high" loading="lazy" />
+                <div className="min-w-0 text-xs leading-snug">
+                  <div className="font-black text-on-surface truncate">{item.name}</div>
+                  <div className="mt-1 flex items-center gap-1 text-[#009e79] font-black">
+                    <Star size={12} fill="currentColor" />
+                    {item.rating || '4.5'}
+                  </div>
+                  <div className="mt-1 text-on-surface-variant/80 truncate">{item.distance_text} · {item.eta_text}</div>
+                  <div className="text-on-surface-variant/80 truncate">Phí giao từ {item.delivery_fee_text}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddress }) => {
+  const [address, setAddress] = useState('');
+
+  const submitAddress = (event) => {
+    event.preventDefault();
+    const trimmed = address.trim();
+    if (!trimmed) return;
+    onSubmitAddress(trimmed);
+  };
+
+  return (
+    <div className="w-full overflow-hidden rounded-3xl border border-outline-variant/20 bg-white/78 dark:bg-white/[0.04] shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
+      <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-outline-variant/15 bg-surface-container-high/45 dark:bg-white/[0.03]">
+        <div className="flex items-center gap-2 min-w-0">
+          <MapPin size={20} className="text-[#00a884] shrink-0" />
+          <h3 className="text-base md:text-lg font-black text-on-surface truncate">
+            {request?.title || 'Bạn muốn giao đến đâu?'}
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={onUseCurrentLocation}
+          className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-[#00c897] px-3 py-2 text-xs font-black text-white hover:bg-[#00a884] transition-colors whitespace-nowrap"
+        >
+          <LocateFixed size={15} />
+          {request?.current_location_label || 'Dùng vị trí hiện tại'}
+        </button>
+      </div>
+
+      <form onSubmit={submitAddress} className="p-4 md:p-5">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <label className="relative flex-1">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50" />
+            <input
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              placeholder={request?.address_placeholder || 'Nhập địa chỉ giao hàng'}
+              className="w-full h-12 rounded-xl border border-outline-variant/30 bg-white/85 dark:bg-white/5 pl-10 pr-3 text-sm font-semibold text-on-surface outline-none focus:border-[#00c897] focus:ring-2 focus:ring-[#00c897]/15 transition-all"
+            />
+          </label>
+          <button
+            type="submit"
+            className="h-12 rounded-xl border border-[#00a884] px-4 text-sm font-black text-[#008f6f] hover:bg-[#00c897] hover:text-white transition-colors whitespace-nowrap"
+          >
+            {request?.submit_label || 'Tìm quán gần đây'}
+          </button>
+          <button
+            type="button"
+            onClick={onUseCurrentLocation}
+            className="sm:hidden h-12 rounded-xl bg-[#00c897] px-4 text-sm font-black text-white hover:bg-[#00a884] transition-colors"
+          >
+            Dùng vị trí hiện tại
+          </button>
+        </div>
+
+        <div className="relative mt-4 h-48 overflow-hidden rounded-2xl border border-outline-variant/15 bg-[linear-gradient(90deg,rgba(0,200,151,0.08)_1px,transparent_1px),linear-gradient(rgba(0,200,151,0.08)_1px,transparent_1px)] bg-[size:28px_28px]">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-transparent to-[#00c897]/10 dark:from-white/[0.04]" />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full">
+            <div className="w-12 h-12 rounded-full bg-red-500 text-white shadow-lg flex items-center justify-center">
+              <MapPin size={26} fill="currentColor" />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onUseCurrentLocation}
+            className="absolute right-3 top-3 w-10 h-10 rounded-full bg-white/90 dark:bg-surface-container-high text-[#00a884] shadow-md flex items-center justify-center hover:bg-[#00c897] hover:text-white transition-colors"
+            title="Dùng vị trí hiện tại"
+          >
+            <Navigation size={18} />
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 
@@ -279,6 +506,8 @@ export default function ChatLayout() {
       let buffer = '';
       let sourcesObj = null;
       let metricsObj = null;
+      let foodRecommendationsObj = null;
+      let foodLocationRequestObj = null;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -333,6 +562,14 @@ export default function ChatLayout() {
                     sourcesObj = parsed.sources;
                     handledAsMetadata = true;
                   } 
+                  if (parsed.food_recommendations) {
+                    foodRecommendationsObj = parsed.food_recommendations;
+                    handledAsMetadata = true;
+                  }
+                  if (parsed.food_location_request) {
+                    foodLocationRequestObj = parsed.food_location_request;
+                    handledAsMetadata = true;
+                  }
                   if (parsed.message_id) {
                     setMessages(prev => {
                       const newMsgs = [...prev];
@@ -371,6 +608,12 @@ export default function ChatLayout() {
             if (metricsObj) {
               newMsgs[newMsgs.length - 1].metrics = metricsObj;
               newMsgs[newMsgs.length - 1].latency_ms = metricsObj.total_latency_ms;
+            }
+            if (foodRecommendationsObj) {
+              newMsgs[newMsgs.length - 1].foodRecommendations = foodRecommendationsObj;
+            }
+            if (foodLocationRequestObj) {
+              newMsgs[newMsgs.length - 1].foodLocationRequest = foodLocationRequestObj;
             }
             return newMsgs;
           });
@@ -448,6 +691,34 @@ export default function ChatLayout() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  const buildFoodLocationQuery = (request, locationText) => {
+    const baseQuery = request?.query || 'Gợi ý món ăn gần tôi';
+    return `${baseQuery} ở ${locationText}`;
+  };
+
+  const handleUseCurrentFoodLocation = (request) => {
+    if (!navigator.geolocation) {
+      alert('Trình duyệt chưa hỗ trợ lấy vị trí hiện tại.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+        handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`));
+      },
+      () => {
+        alert('Chưa lấy được vị trí hiện tại. Bạn có thể nhập địa chỉ giao hàng hoặc thử cấp quyền vị trí lại.');
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+    );
+  };
+
+  const handleSubmitFoodAddress = (request, address) => {
+    handleSubmit(null, buildFoodLocationQuery(request, address));
   };
 
   const renderContent = (content) => {
@@ -649,8 +920,22 @@ export default function ChatLayout() {
                             <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
                           </div>
                         ) : (
-                          <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-                            {renderContent(msg.content)}
+                          <div className="flex flex-col gap-4">
+                            {msg.content && (
+                              <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
+                                {renderContent(msg.content)}
+                              </div>
+                            )}
+                            {msg.foodLocationRequest && (
+                              <FoodLocationRequestCard
+                                request={msg.foodLocationRequest}
+                                onUseCurrentLocation={() => handleUseCurrentFoodLocation(msg.foodLocationRequest)}
+                                onSubmitAddress={(address) => handleSubmitFoodAddress(msg.foodLocationRequest, address)}
+                              />
+                            )}
+                            {msg.foodRecommendations && (
+                              <FoodRecommendationList data={msg.foodRecommendations} />
+                            )}
                           </div>
                         )}
                         {/* Citations / Sources */}

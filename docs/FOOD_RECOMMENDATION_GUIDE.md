@@ -672,6 +672,8 @@ Admin/dev UI:
 - [x] Hỏi lại nếu thiếu lat/lng.
 - [x] Call `recommend_food`.
 - [x] Render card.
+- [x] Render structured food recommendation list: ảnh, rating, thời gian giao, khoảng cách, phí giao, CTA xem thực đơn.
+- [x] Missing location message dùng UI nhập địa chỉ/dùng vị trí hiện tại thay vì yêu cầu user tự gõ tọa độ.
 - [x] Không để LLM bịa món ngoài tool.
 
 ### Level 4: Interaction Logging
@@ -686,7 +688,8 @@ Admin/dev UI:
 
 - [ ] Lưu nhà/công ty/current location.
 - [ ] Cho user xác nhận vị trí.
-- [ ] Cho chọn map/current location.
+- [x] Cho chọn current location trong message thiếu vị trí.
+- [ ] Cho chọn map đầy đủ và xác nhận pin.
 - [ ] Dùng lat/lng chính xác để rank.
 
 ### Level 6: Data Collection
