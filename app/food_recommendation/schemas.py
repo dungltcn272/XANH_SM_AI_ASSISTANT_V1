@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class FoodRecommendationRequest(BaseModel):
     lat: float
     lng: float
+    query_text: str | None = None
     category: str | None = None
     taste_tags: list[str] | None = None
     budget_min: int | None = None
@@ -50,6 +51,7 @@ class FoodCatalogEntry(BaseModel):
 
 
 class ScoreBreakdown(BaseModel):
+    recall_score: float = 0.0
     nearby_score: float
     delivery_fee_score: float
     eta_score: float

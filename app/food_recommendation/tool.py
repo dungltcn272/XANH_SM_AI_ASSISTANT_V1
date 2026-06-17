@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.food_recommendation.catalog import load_catalog
 from app.food_recommendation.ranker import rank_catalog
+from app.food_recommendation.retrieval import generate_candidates
 from app.food_recommendation.schemas import FoodRecommendation, FoodRecommendationRequest
 
 
@@ -19,10 +20,13 @@ def recommend_food(
     user_id: str | None = None,
     limit: int = 5,
     db: Session | None = None,
+    query_text: str | None = None,
+    metrics: dict | None = None,
 ) -> list[FoodRecommendation]:
     request = FoodRecommendationRequest(
         lat=lat,
         lng=lng,
+        query_text=query_text,
         category=category,
         taste_tags=taste_tags or [],
         budget_min=budget_min,
@@ -33,4 +37,7 @@ def recommend_food(
         limit=limit,
     )
     catalog = load_catalog(db=db)
-    return rank_catalog(catalog, request)
+    candidates = generate_candidates(catalog, request, candidate_limit=max(200, limit * 50))
+    if metrics is not None:
+        metrics["food_retrieval"] = candidates.meta
+    return rank_catalog(candidates.items, request, recall_scores=candidates.recall_scores)

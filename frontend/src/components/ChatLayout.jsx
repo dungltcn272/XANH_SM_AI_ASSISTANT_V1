@@ -4,7 +4,10 @@ import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognitio
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown, Search, MapPin, Navigation, Clock3, Star, Utensils, Heart, DollarSign, ChevronRight, LocateFixed } from 'lucide-react';
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown, Search, MapPin, Clock3, Star, Utensils, Heart, DollarSign, ChevronRight, LocateFixed } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -70,6 +73,70 @@ const MessageCard = ({ icon, title, desc, image, link, index }) => {
   );
 };
 
+const foodPinIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:28px;height:28px;border-radius:9999px;background:#00a884;border:3px solid white;box-shadow:0 8px 24px rgba(0,168,132,.35);"></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
+const FoodMapClickHandler = ({ onPick }) => {
+  useMapEvents({
+    click(event) {
+      onPick({ lat: event.latlng.lat, lng: event.latlng.lng, label: 'V9 trí ã chọn trên bản ' });
+    },
+  });
+  return null;
+};
+
+const FoodMapRecenter = ({ center }) => {
+  const map = useMap();
+  const [lat, lng] = center;
+
+  useEffect(() => {
+    map.setView([lat, lng], map.getZoom(), { animate: true });
+  }, [map, lat, lng]);
+
+  return null;
+};
+
+const FoodMapPicker = ({ selectedPin, onPick, onConfirm, interactive = true, heightClass = 'h-56 md:h-64' }) => {
+  const center = [
+    Number(selectedPin?.lat) || 10.7769,
+    Number(selectedPin?.lng) || 106.7009,
+  ];
+
+  return (
+    <div className={`relative ${heightClass} overflow-hidden rounded-2xl border border-outline-variant/15 bg-surface-container-high`}>
+      <MapContainer
+        center={center}
+        zoom={15}
+        scrollWheelZoom={interactive}
+        dragging={interactive}
+        doubleClickZoom={interactive}
+        className="h-full w-full z-0"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <FoodMapRecenter center={center} />
+        {interactive && <FoodMapClickHandler onPick={onPick} />}
+        <Marker position={center} icon={foodPinIcon} />
+      </MapContainer>
+      {interactive && (
+        <button
+          type="button"
+          onClick={() => onConfirm?.(selectedPin)}
+          className="absolute bottom-3 left-3 right-3 z-[500] h-11 rounded-xl bg-[#00a884] text-sm font-black text-white shadow-lg hover:bg-[#008f73] transition-colors"
+        >
+          Xác nhận v9 trí ã chọn
+        </button>
+      )}
+    </div>
+  );
+};
+
 const FoodMetric = ({ icon: Icon, label, value }) => (
   <div className="flex items-center gap-2 min-w-0">
     <div className="w-8 h-8 rounded-full bg-surface-container-high/70 dark:bg-white/10 flex items-center justify-center text-on-surface shrink-0">
@@ -109,7 +176,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
 
       <img
         src={item.image_url || '/Bot.png'}
-        alt={item.name || 'Món ăn'}
+        alt={item.name || 'Món Ēn'}
         className="w-full h-[92px] md:h-[122px] rounded-xl object-cover border border-outline-variant/10 bg-surface-container-high"
         loading="lazy"
       />
@@ -128,7 +195,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
             )}
           </div>
           <p className="mt-1 text-sm text-on-surface-variant/85 leading-relaxed line-clamp-2">
-            {item.reason || item.dish_name || item.address || 'Phù hợp với nhu cầu món ăn của bạn.'}
+            {item.reason || item.dish_name || item.address || 'Phù hợp v:i nhu cầu món Ēn của bạn.'}
           </p>
         </div>
 
@@ -162,7 +229,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
           ))}
         </div>
         <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#00a884] px-4 py-2 text-sm font-black text-[#008f6f] group-hover:bg-[#00c897] group-hover:text-white transition-colors whitespace-nowrap">
-          Xem thực đơn
+          Xem thực ơn
           <ChevronRight size={16} />
         </span>
       </div>
@@ -183,10 +250,10 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
         </div>
         <div className="min-w-0">
           <h3 className="text-xl md:text-2xl font-black text-on-surface leading-tight">
-            {data.title || 'Một vài quán phù hợp gần bạn'}
+            {data.title || 'M"t vài quán phù hợp gần bạn'}
           </h3>
           <p className="mt-1 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
-            {data.subtitle || 'Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.'}
+            {data.subtitle || 'Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức " phù hợp v:i nhu cầu của bạn.'}
           </p>
         </div>
       </div>
@@ -221,7 +288,7 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
                 onClick={() => onOpenMenu?.(item, index + items.length)}
                 className="grid grid-cols-[64px_1fr] gap-3 rounded-xl border border-outline-variant/20 bg-white/70 dark:bg-white/[0.04] p-2 hover:border-[#00c897]/40 transition-colors"
               >
-                <img src={item.image_url || '/Bot.png'} alt={item.name || 'Món ăn'} className="w-16 h-16 rounded-lg object-cover bg-surface-container-high" loading="lazy" />
+                <img src={item.image_url || '/Bot.png'} alt={item.name || 'Món Ēn'} className="w-16 h-16 rounded-lg object-cover bg-surface-container-high" loading="lazy" />
                 <div className="min-w-0 text-xs leading-snug">
                   <div className="font-black text-on-surface truncate">{item.name}</div>
                   <div className="mt-1 flex items-center gap-1 text-[#009e79] font-black">
@@ -243,7 +310,7 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
 const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddress, onSelectMapLocation, savedLocations = [] }) => {
   const [address, setAddress] = useState('');
   const [mapMode, setMapMode] = useState(false);
-  const [selectedPin, setSelectedPin] = useState({ x: 52, y: 52, lat: 10.7769, lng: 106.7009 });
+  const [selectedPin, setSelectedPin] = useState({ lat: 10.7769, lng: 106.7009, label: 'V tr  chn trn bn ' });
 
   const submitAddress = (event) => {
     event.preventDefault();
@@ -252,14 +319,6 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
     onSubmitAddress(trimmed);
   };
 
-  const handleMapClick = (event) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = Math.max(6, Math.min(94, ((event.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(10, Math.min(90, ((event.clientY - rect.top) / rect.height) * 100));
-    const lat = 10.7769 + ((50 - y) / 100) * 0.08;
-    const lng = 106.7009 + ((x - 50) / 100) * 0.10;
-    setSelectedPin({ x, y, lat, lng });
-  };
 
   return (
     <div className="w-full grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4">
@@ -268,10 +327,10 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
           <div className="flex flex-col justify-between gap-4">
             <div>
               <h3 className="text-lg md:text-xl font-black text-on-surface leading-snug">
-                Để gợi ý món ăn gần bạn chính xác hơn, em cần biết vị trí hiện tại của bạn nhé!
+                ĐỒ gợi ý món Ēn gần bạn chính xác hơn, em cần biết v9 trí hi!n tại của bạn nhé!
               </h3>
               <p className="mt-3 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
-                Em sẽ giúp bạn tìm quán gần nhất, ước tính thời gian giao hàng và tính phí ship chính xác.
+                Em sẽ giúp bạn tìm quán gần nhất, ư:c tính thời gian giao hàng và tính phí ship chính xác.
               </p>
             </div>
 
@@ -282,7 +341,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
                 className="h-12 rounded-xl bg-[#00a884] px-4 text-sm md:text-base font-black text-white hover:bg-[#008f73] transition-colors inline-flex items-center justify-center gap-2"
               >
                 <LocateFixed size={18} />
-                {request?.current_location_label || 'Chia sẻ vị trí hiện tại'}
+                {request?.current_location_label || 'Chia sẻ v9 trí hi!n tại'}
               </button>
               <button
                 type="button"
@@ -290,44 +349,20 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
                 className="h-12 rounded-xl border border-[#00a884] px-4 text-sm md:text-base font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors inline-flex items-center justify-center gap-2"
               >
                 <MapPin size={18} />
-                Chọn trên bản đồ
+                Chọn trên bản 
               </button>
             </div>
           </div>
 
           <div>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={mapMode ? handleMapClick : undefined}
-              className="relative h-56 md:h-64 overflow-hidden rounded-2xl border border-outline-variant/15 bg-[linear-gradient(32deg,rgba(245,238,224,0.9),rgba(227,247,241,0.95)),linear-gradient(90deg,rgba(31,83,78,0.13)_1px,transparent_1px),linear-gradient(rgba(31,83,78,0.13)_1px,transparent_1px)] bg-[size:auto,34px_34px,34px_34px] cursor-crosshair"
-            >
-              <div className="absolute left-[8%] top-[23%] h-2 w-[86%] rotate-[-18deg] rounded-full bg-white/75 shadow-sm" />
-              <div className="absolute left-[10%] top-[62%] h-2 w-[82%] rotate-[16deg] rounded-full bg-white/75 shadow-sm" />
-              <div className="absolute left-[52%] top-[-10%] h-[120%] w-3 rotate-[38deg] rounded-full bg-white/70 shadow-sm" />
-              <div className="absolute right-[6%] top-0 h-full w-8 bg-blue-300/20" />
-              <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#00c897]/15 border border-[#00c897]/20" />
-              <div className="absolute rounded-full bg-[#00a884] text-white shadow-lg ring-8 ring-[#00c897]/20 flex items-center justify-center"
-                style={{ left: `${selectedPin.x}%`, top: `${selectedPin.y}%`, transform: 'translate(-50%, -50%)', width: 28, height: 28 }}
-              />
-              <div className="absolute left-[18%] top-[18%] rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-on-surface shadow-md">
-                Chúng tôi cần vị trí của bạn để tìm quán gần nhất
-              </div>
-              {mapMode && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSelectMapLocation(selectedPin);
-                  }}
-                  className="absolute bottom-3 left-3 right-3 h-11 rounded-xl bg-[#00a884] text-sm font-black text-white shadow-lg hover:bg-[#008f73] transition-colors"
-                >
-                  Xác nhận vị trí đã chọn
-                </button>
-              )}
-            </div>
+            <FoodMapPicker
+              selectedPin={selectedPin}
+              onPick={setSelectedPin}
+              onConfirm={onSelectMapLocation}
+              interactive={mapMode}
+            />
             <div className="mt-2 text-xs text-on-surface-variant/75">
-              Bạn có thể chia sẻ vị trí hiện tại hoặc chọn pin trên bản đồ
+              Bạn có thỒ chia sẻ v9 trí hi!n tại hoặc chọn pin trên bản 
             </div>
           </div>
         </div>
@@ -339,7 +374,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
               <input
                 value={address}
                 onChange={(event) => setAddress(event.target.value)}
-                placeholder={request?.address_placeholder || 'Nhập địa chỉ giao hàng'}
+                placeholder={request?.address_placeholder || 'Nhập 9a ch0 giao hàng'}
                 className="w-full h-12 rounded-xl border border-outline-variant/30 bg-white/85 dark:bg-white/5 pl-10 pr-3 text-sm font-semibold text-on-surface outline-none focus:border-[#00c897] focus:ring-2 focus:ring-[#00c897]/15 transition-all"
               />
             </label>
@@ -347,7 +382,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
               type="submit"
               className="h-12 rounded-xl border border-[#00a884] px-4 text-sm font-black text-[#008f6f] hover:bg-[#00c897] hover:text-white transition-colors whitespace-nowrap"
             >
-              {request?.submit_label || 'Tìm quán gần đây'}
+              {request?.submit_label || 'Tìm quán gần ây'}
             </button>
           </div>
           {savedLocations.length > 0 && (
@@ -370,15 +405,15 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
       <div className="rounded-3xl border border-[#00c897]/20 bg-[#00c897]/8 dark:bg-white/[0.04] p-5 shadow-[0_12px_40px_rgba(0,200,151,0.08)]">
         <h3 className="flex items-center gap-2 text-base font-black text-on-surface">
           <LocateFixed size={20} className="text-[#00a884]" />
-          Vì sao cần vị trí của bạn?
+          Vì sao cần v9 trí của bạn?
         </h3>
         <div className="mt-5 flex flex-col gap-4 text-sm font-semibold text-on-surface/90">
           <div className="flex items-center gap-3"><MapPin size={19} className="text-[#00a884]" />Sắp xếp quán gần nhất</div>
-          <div className="flex items-center gap-3"><Clock3 size={19} className="text-[#00a884]" />Ước tính thời gian giao hàng</div>
+          <div className="flex items-center gap-3"><Clock3 size={19} className="text-[#00a884]" />Ư:c tính thời gian giao hàng</div>
           <div className="flex items-center gap-3"><DollarSign size={19} className="text-[#00a884]" />Tính phí giao hàng chính xác</div>
           <div className="flex items-start gap-3 pt-2 text-xs leading-relaxed text-on-surface-variant/85">
             <ShieldCheck size={19} className="text-[#00a884] shrink-0" />
-            Thông tin vị trí chỉ dùng để gợi ý quán gần bạn trong phiên chat.
+            Thông tin v9 trí ch0 dùng Ồ gợi ý quán gần bạn trong phiên chat.
           </div>
         </div>
       </div>
@@ -395,34 +430,33 @@ const FoodLocationConfirmedCard = ({ location, onSaveNamedLocation }) => {
           <span className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center">
             <CheckCheck size={18} />
           </span>
-          Vị trí hiện tại của bạn
+          V9 trí hi!n tại của bạn
         </div>
         <div className="text-sm leading-relaxed text-on-surface-variant/90">
-          {location.label || location.address || 'Đã cập nhật vị trí giao hàng'}
+          {location.label || location.address || 'Đã cập nhật v9 trí giao hàng'}
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => onSaveNamedLocation?.('home', 'Nhà', location)}
+            onClick={() => onSaveNamedLocation?.('home', 'Nh', location)}
             className="rounded-full border border-[#00a884]/30 px-3 py-1.5 text-xs font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors"
           >
             Lưu là Nhà
           </button>
           <button
             type="button"
-            onClick={() => onSaveNamedLocation?.('work', 'Công ty', location)}
+            onClick={() => onSaveNamedLocation?.('work', 'Cng ty', location)}
             className="rounded-full border border-[#00a884]/30 px-3 py-1.5 text-xs font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors"
           >
             Lưu là Công ty
           </button>
         </div>
       </div>
-      <div className="relative h-40 overflow-hidden rounded-2xl border border-outline-variant/15 bg-[linear-gradient(32deg,rgba(245,238,224,0.9),rgba(227,247,241,0.95)),linear-gradient(90deg,rgba(31,83,78,0.13)_1px,transparent_1px),linear-gradient(rgba(31,83,78,0.13)_1px,transparent_1px)] bg-[size:auto,34px_34px,34px_34px]">
-        <div className="absolute left-[8%] top-[24%] h-2 w-[86%] rotate-[-18deg] rounded-full bg-white/75 shadow-sm" />
-        <div className="absolute left-[12%] top-[64%] h-2 w-[82%] rotate-[16deg] rounded-full bg-white/75 shadow-sm" />
-        <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/15 border border-blue-400/25" />
-        <div className="absolute left-1/2 top-1/2 w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500 ring-8 ring-blue-400/20 shadow-lg" />
-      </div>
+      <FoodMapPicker
+        selectedPin={{ lat: location.lat, lng: location.lng }}
+        interactive={false}
+        heightClass="h-40"
+      />
     </div>
   );
 };
@@ -441,7 +475,6 @@ export default function ChatLayout() {
   // Feedback States
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [feedbackMessageId, setFeedbackMessageId] = useState(null);
-  const [feedbackRating, setFeedbackRating] = useState(null);
   const [feedbackTags, setFeedbackTags] = useState([]);
   const [feedbackComment, setFeedbackComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
@@ -465,7 +498,6 @@ export default function ChatLayout() {
       }
     } else {
       setFeedbackMessageId(messageId);
-      setFeedbackRating('down');
       setFeedbackTags([]);
       setFeedbackComment('');
       setFeedbackModalOpen(true);
@@ -486,7 +518,7 @@ export default function ChatLayout() {
       setFeedbackModalOpen(false);
     } catch(e) {
       console.error(e);
-      alert('Gửi đánh giá thất bại');
+      alert('Gửi ánh giá thất bại');
     } finally {
       setSubmittingReview(false);
     }
@@ -642,24 +674,25 @@ export default function ChatLayout() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let currentReply = '';
-      let buffer = '';
-      let sourcesObj = null;
-      let metricsObj = null;
-      let foodRecommendationsObj = null;
-      let foodLocationRequestObj = null;
+      /* eslint-disable react-hooks/immutability */
+      let streamReply = '';
+      let streamBuffer = '';
+      let streamSources = null;
+      let streamMetrics = null;
+      let streamFoodRecommendations = null;
+      let streamFoodLocationRequest = null;
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         
-        buffer += decoder.decode(value, { stream: true });
+        streamBuffer += decoder.decode(value, { stream: true });
         
         // SSE messages are separated by double newlines
-        let boundary = buffer.indexOf('\n\n');
+        let boundary = streamBuffer.indexOf('\n\n');
         while (boundary !== -1) {
-          const chunk = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
+          const chunk = streamBuffer.slice(0, boundary);
+          streamBuffer = streamBuffer.slice(boundary + 2);
           
           const lines = chunk.split('\n');
           let textDataParts = [];
@@ -694,20 +727,20 @@ export default function ChatLayout() {
                     handledAsMetadata = true;
                   } 
                   if (parsed.metrics) {
-                    metricsObj = parsed.metrics;
+                    streamMetrics = parsed.metrics;
                     isMetrics = true;
                     handledAsMetadata = true;
                   } 
                   if (parsed.sources) {
-                    sourcesObj = parsed.sources;
+                    streamSources = parsed.sources;
                     handledAsMetadata = true;
                   } 
                   if (parsed.food_recommendations) {
-                    foodRecommendationsObj = parsed.food_recommendations;
+                    streamFoodRecommendations = parsed.food_recommendations;
                     handledAsMetadata = true;
                   }
                   if (parsed.food_location_request) {
-                    foodLocationRequestObj = parsed.food_location_request;
+                    streamFoodLocationRequest = parsed.food_location_request;
                     handledAsMetadata = true;
                   }
                   if (parsed.message_id) {
@@ -734,36 +767,37 @@ export default function ChatLayout() {
           const textData = textDataParts.join('\n');
           
           if (!isStep && !isMetrics && textData.length > 0) {
-             currentReply += textData;
+             streamReply += textData;
              setPipelineStep(null);
           }
           
           setMessages(prev => {
             const newMsgs = [...prev];
-            newMsgs[newMsgs.length - 1].content = currentReply;
-            if (sourcesObj) {
-              newMsgs[newMsgs.length - 1].sources = sourcesObj;
+            newMsgs[newMsgs.length - 1].content = streamReply;
+            if (streamSources) {
+              newMsgs[newMsgs.length - 1].sources = streamSources;
             }
             // Store metrics if received
-            if (metricsObj) {
-              newMsgs[newMsgs.length - 1].metrics = metricsObj;
-              newMsgs[newMsgs.length - 1].latency_ms = metricsObj.total_latency_ms;
+            if (streamMetrics) {
+              newMsgs[newMsgs.length - 1].metrics = streamMetrics;
+              newMsgs[newMsgs.length - 1].latency_ms = streamMetrics.total_latency_ms;
             }
-            if (foodRecommendationsObj) {
-              newMsgs[newMsgs.length - 1].foodRecommendations = foodRecommendationsObj;
+            if (streamFoodRecommendations) {
+              newMsgs[newMsgs.length - 1].foodRecommendations = streamFoodRecommendations;
             }
-            if (foodLocationRequestObj) {
-              newMsgs[newMsgs.length - 1].foodLocationRequest = foodLocationRequestObj;
+            if (streamFoodLocationRequest) {
+              newMsgs[newMsgs.length - 1].foodLocationRequest = streamFoodLocationRequest;
             }
             return newMsgs;
           });
 
           
-          boundary = buffer.indexOf('\n\n');
+          boundary = streamBuffer.indexOf('\n\n');
         }
       }
       
       // Mark loading complete when stream finishes
+      /* eslint-enable react-hooks/immutability */
       setLoading(false);
       setPipelineStep(null);
       window.dispatchEvent(new Event('refresh-conversations'));
@@ -773,9 +807,9 @@ export default function ChatLayout() {
         const newMsgs = [...prev];
         const lastMsg = newMsgs.length > 0 ? newMsgs[newMsgs.length - 1] : null;
         if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content === '') {
-          lastMsg.content = 'Xin lỗi, hệ thống AI đang bận hoặc mất kết nối tới cơ sở dữ liệu. Vui lòng thử lại sau ít phút.';
+          lastMsg.content = 'Xin li, h! thng AI ang bận hoặc mất kết ni t:i cơ sx dữ li!u. Vui lòng thử lại sau ít phút.';
         } else if (!lastMsg || lastMsg.role === 'user') {
-          newMsgs.push({ role: 'assistant', content: 'Xin lỗi, hệ thống AI đang bận hoặc mất kết nối tới cơ sở dữ liệu. Vui lòng thử lại sau ít phút.', latency_ms: null, created_at: new Date().toISOString() });
+          newMsgs.push({ role: 'assistant', content: 'Xin li, h! thng AI ang bận hoặc mất kết ni t:i cơ sx dữ li!u. Vui lòng thử lại sau ít phút.', latency_ms: null, created_at: new Date().toISOString() });
         }
         return newMsgs;
       });
@@ -802,7 +836,7 @@ export default function ChatLayout() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Kích thước ảnh tối đa là 5MB.");
+        alert("Kích thư:c ảnh ti a là 5MB.");
         return;
       }
       const reader = new FileReader();
@@ -870,8 +904,8 @@ export default function ChatLayout() {
   }, [messages, logFoodInteraction]);
 
   const buildFoodLocationQuery = (request, locationText) => {
-    const baseQuery = request?.query || 'Gợi ý món ăn gần tôi';
-    return `${baseQuery} ở ${locationText}`;
+    const baseQuery = request?.query || 'Gợi ý món Ēn gần tôi';
+    return `${baseQuery} x ${locationText}`;
   };
 
   const isVietnamCoordinate = (lat, lng) => {
@@ -883,8 +917,8 @@ export default function ChatLayout() {
   const saveFoodLocation = useCallback((location) => {
     const nextLocation = {
       id: location.id || `loc_${Date.now()}`,
-      label: location.label || 'Vị trí hiện tại',
-      address: location.address || location.label || 'Vị trí hiện tại',
+      label: location.label || 'V9 trí hi!n tại',
+      address: location.address || location.label || 'V9 trí hi!n tại',
       lat: Number(location.lat),
       lng: Number(location.lng),
       saved_at: new Date().toISOString(),
@@ -912,7 +946,7 @@ export default function ChatLayout() {
 
   const handleUseCurrentFoodLocation = (request) => {
     if (!navigator.geolocation) {
-      alert('Trình duyệt chưa hỗ trợ lấy vị trí hiện tại.');
+      alert('Trình duy!t chưa h trợ lấy v9 trí hi!n tại.');
       return;
     }
 
@@ -921,15 +955,15 @@ export default function ChatLayout() {
         const lat = position.coords.latitude.toFixed(6);
         const lng = position.coords.longitude.toFixed(6);
         if (!isVietnamCoordinate(lat, lng)) {
-          alert('Vị trí hiện tại chưa nằm trong khu vực Việt Nam mà catalog món ăn đang hỗ trợ. Bạn thử nhập địa chỉ ở Việt Nam hoặc chọn pin trên bản đồ nhé.');
+          alert('V9 trí hi!n tại chưa nằm trong khu vực Vi!t Nam mà catalog món Ēn ang h trợ. Bạn thử nhập 9a ch0 x Vi!t Nam hoặc chọn pin trên bản  nhé.');
           return;
         }
-        const location = saveFoodLocation({ id: 'current', label: 'Vị trí hiện tại', lat, lng });
+        const location = saveFoodLocation({ id: 'current', label: 'V9 trí hi!n tại', lat, lng });
         markFoodLocationConfirmed(location);
-        handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), 'Đã chia sẻ vị trí hiện tại');
+        handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), 'Đã chia sẻ v9 trí hi!n tại');
       },
       () => {
-        alert('Chưa lấy được vị trí hiện tại. Bạn có thể nhập địa chỉ giao hàng hoặc thử cấp quyền vị trí lại.');
+        alert('Chưa lấy ược v9 trí hi!n tại. Bạn có thỒ nhập 9a ch0 giao hàng hoặc thử cấp quyền v9 trí lại.');
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
@@ -940,13 +974,13 @@ export default function ChatLayout() {
       const result = await api.geocodeFoodAddress(address);
       const lat = Number(result.lat).toFixed(6);
       const lng = Number(result.lng).toFixed(6);
-      const label = address || result.display_name || 'Địa chỉ giao hàng';
+      const label = address || result.display_name || 'Đ9a ch0 giao hàng';
       const location = saveFoodLocation({ label, address: result.display_name || address, lat, lng });
       markFoodLocationConfirmed(location);
       handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), label);
     } catch (error) {
       console.warn('Geocode failed', error);
-      alert('Em chưa tìm được tọa độ cho địa chỉ này. Bạn thử nhập rõ hơn hoặc dùng vị trí hiện tại nhé.');
+      alert('Em chưa tìm ược tọa " cho 9a ch0 này. Bạn thử nhập rõ hơn hoặc dùng v9 trí hi!n tại nhé.');
     }
   };
 
@@ -954,10 +988,10 @@ export default function ChatLayout() {
     const lat = Number(pin.lat).toFixed(6);
     const lng = Number(pin.lng).toFixed(6);
     if (!isVietnamCoordinate(lat, lng)) {
-      alert('Vị trí đã chọn chưa nằm trong khu vực Việt Nam.');
+      alert('V9 trí ã chọn chưa nằm trong khu vực Vi!t Nam.');
       return;
     }
-    const location = saveFoodLocation({ label: pin.label || 'Vị trí đã chọn trên bản đồ', lat, lng });
+    const location = saveFoodLocation({ label: pin.label || 'V9 trí ã chọn trên bản ', lat, lng });
     markFoodLocationConfirmed(location);
     handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), location.label);
   };
@@ -1104,11 +1138,11 @@ export default function ChatLayout() {
                   Xanh SM AI Assistant
                 </div>
                 <h1 className="text-2xl md:text-4xl font-extrabold text-on-surface leading-tight">
-                  Xin chào {user?.name ? (user.name.includes(' - ') ? user.name.split(' - ')[0].split(' ').pop() : user.name.split(' ').pop()) : 'bạn'} 👋 <br />
-                  <span className="text-[#00c897]">Tôi có thể giúp gì cho bạn?</span>
+                  Xin chào {user?.name ? (user.name.includes(' - ') ? user.name.split(' - ')[0].split(' ').pop() : user.name.split(' ').pop()) : 'bạn'} x9 <br />
+                  <span className="text-[#00c897]">Tôi có thỒ giúp gì cho bạn?</span>
                 </h1>
                 <p className="text-xs md:text-sm text-on-surface-variant/80 mt-2 max-w-lg leading-relaxed font-medium">
-                  Tôi có thể giúp bạn tìm hiểu dịch vụ, giá cước, xe điện, ưu đãi và chính sách của Xanh SM.
+                  Tôi có thỒ giúp bạn tìm hiỒu d9ch vụ, giá cư:c, xe i!n, ưu ãi và chính sách của Xanh SM.
                 </p>
               </div>
               
@@ -1143,14 +1177,14 @@ export default function ChatLayout() {
                     {msg.role === 'user' ? (
                       <>
                         <span>Bạn</span>
-                        <span>•</span>
+                        <span>⬢</span>
                         <span>{formatTime(msg.created_at)}</span>
                       </>
                     ) : (
                       <>
                         <span className="text-[#00c897]">Xanh SM</span>
                         <div className="px-1.5 py-0.5 rounded-md border border-[#00c897]/30 text-[#00c897] scale-75 origin-left flex items-center justify-center font-black">AI</div>
-                        <span>•</span>
+                        <span>⬢</span>
                         <span>{formatTime(msg.created_at)}</span>
                       </>
                     )}
@@ -1230,7 +1264,7 @@ export default function ChatLayout() {
                                    className="flex items-center gap-1 text-[10px] font-bold bg-surface-container-high/50 text-primary px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary hover:text-white transition-all max-w-[240px]">
                                   <Link2 size={10} className="shrink-0" />
                                   <span className="truncate">
-                                    {src.source ? src.source.replace(/\.(md|html|txt)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Tài liệu Xanh SM'}
+                                    {src.source ? src.source.replace(/\.(md|html|txt)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Tài li!u Xanh SM'}
                                   </span>
                                 </a>
                               ))}
@@ -1243,7 +1277,7 @@ export default function ChatLayout() {
                           <div className="mt-2 pt-3 border-t border-outline-variant/10 flex items-center justify-between text-[10px] font-bold text-on-surface-variant/40">
                             <div className="flex items-center gap-1.5">
                               <span className="scale-110">⏱️</span>
-                              <span>Tổng thời gian: {msg.latency_ms ? `${Math.round(msg.latency_ms)}ms` : 'N/A'}</span>
+                              <span>T"ng thời gian: {msg.latency_ms ? `${Math.round(msg.latency_ms)}ms` : 'N/A'}</span>
                             </div>
                             <div className="flex items-center gap-3">
                               {msg.id && (
@@ -1267,7 +1301,7 @@ export default function ChatLayout() {
                                 </div>
                               )}
                               <div className="flex items-center gap-1.5">
-                                <span>Nguồn: Xanh SM Official</span>
+                                <span>Ngun: Xanh SM Official</span>
                                 <ShieldCheck size={12} className="text-[#00c897]" />
                               </div>
                             </div>
@@ -1312,7 +1346,7 @@ export default function ChatLayout() {
               <Loader2 className="animate-spin text-[#00c897]" size={20} />
               <div className="flex flex-col gap-2">
                 <span className="text-on-surface-variant/60 italic text-sm font-medium">
-                  {pipelineStep ? pipelineStep : 'Đang phân tích dữ liệu...'}
+                  {pipelineStep ? pipelineStep : 'Đang phân tích dữ li!u...'}
                 </span>
               </div>
             </div>
@@ -1329,53 +1363,53 @@ export default function ChatLayout() {
         {messages.length === 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-5xl relative z-10 pointer-events-auto mb-1">
             {/* Card 1 */}
-            <button 
-              onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")} 
+            <button
+              onClick={(e) => handleSubmit(e, "Giá cư:c Xanh Car và Xanh Bike x các khu vực")}
               className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-[#00c897]/40 dark:hover:border-[#00c897]/40 hover:bg-[#00c897]/5 dark:hover:bg-[#00c897]/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-[#00c897]/10 flex items-center justify-center text-[#00c897] group-hover:bg-[#00c897] group-hover:text-white transition-colors shrink-0">
                 <Car size={16} />
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Giá cước dịch vụ</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Xem bảng giá chi tiết cho từng loại dịch vụ</p>
+                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Giá cư:c d9ch vụ</h3>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Xem bảng giá chi tiết cho từng loại d9ch vụ</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-[#00c897] mt-0.5 block select-none">Khám phá &rarr;</span>
             </button>
 
             {/* Card 2 */}
-            <button 
-              onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")} 
+            <button
+              onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy d9ch vụ trên Green SM Platform")}
               className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:bg-blue-500/5 dark:hover:bg-blue-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
                 <Key size={16} />
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Thuê xe chạy dịch vụ</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Thông tin chi tiết về chính sách thuê xe điện VinFast</p>
+                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Thuê xe chạy d9ch vụ</h3>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Thông tin chi tiết về chính sách thuê xe i!n VinFast</p>
               </div>
-              <span className="text-[10px] md:text-xs font-extrabold text-blue-500 mt-0.5 block select-none">Tìm hiểu &rarr;</span>
+              <span className="text-[10px] md:text-xs font-extrabold text-blue-500 mt-0.5 block select-none">Tìm hiỒu &rarr;</span>
             </button>
 
             {/* Card 3 */}
-            <button 
-              onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")} 
+            <button
+              onClick={(e) => handleSubmit(e, "Chính sách ưu ãi và khuyến mãi sạc pin trạm V-GREEN")}
               className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-amber-500/40 dark:hover:border-amber-500/40 hover:bg-amber-500/5 dark:hover:bg-amber-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
                 <Tag size={16} />
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Ưu đãi & khuyến mãi</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Các chương trình ưu đãi mới nhất hiện nay</p>
+                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Ưu ãi & khuyến mãi</h3>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Các chương trình ưu ãi m:i nhất hi!n nay</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-amber-500 mt-0.5 block select-none">Xem ngay &rarr;</span>
             </button>
 
             {/* Card 4 */}
-            <button 
-              onClick={(e) => handleSubmit(e, "Cập nhật các tin tức và sự kiện mới nhất từ Xanh SM")} 
+            <button
+              onClick={(e) => handleSubmit(e, "Cập nhật các tin tức và sự ki!n m:i nhất từ Xanh SM")}
               className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-purple-500/40 dark:hover:border-purple-500/40 hover:bg-purple-500/5 dark:hover:bg-purple-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors shrink-0">
@@ -1383,7 +1417,7 @@ export default function ChatLayout() {
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
                 <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Tin tức Xanh SM</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Cập nhật tin tức, sự kiện và thông báo mới nhất</p>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Cập nhật tin tức, sự ki!n và thông báo m:i nhất</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-purple-500 mt-0.5 block select-none">Đọc ngay &rarr;</span>
             </button>
@@ -1413,7 +1447,7 @@ export default function ChatLayout() {
               <div className="flex-1 flex flex-col gap-2 md:gap-3 w-full">
                 <div className="flex items-center justify-center md:justify-start gap-2 text-[#00c897] text-[10px] md:text-xs font-bold">
                   <Sparkles size={14} fill="currentColor" className="animate-pulse" />
-                  <span>Đang chuyển giọng nói thành văn bản...</span>
+                  <span>Đang chuyỒn giọng nói thành vĒn bản...</span>
                 </div>
                 
                 <div className="min-h-[50px] md:min-h-[60px] w-full">
@@ -1427,7 +1461,7 @@ export default function ChatLayout() {
                     />
                   ) : (
                     <p className="text-lg md:text-2xl font-bold text-on-surface leading-snug break-words text-center md:text-left">
-                      {input || <span className="opacity-20 italic font-medium text-lg">Hãy nói điều gì đó...</span>}
+                      {input || <span className="opacity-20 italic font-medium text-lg">Hãy nói iều gì ó...</span>}
                       {listening && <span className="inline-block w-0.5 h-5 md:w-0.5 md:h-6 bg-[#00c897] ml-1 animate-pulse align-middle"></span>}
                     </p>
                   )}
@@ -1466,7 +1500,7 @@ export default function ChatLayout() {
                       : 'text-on-surface-variant hover:bg-surface-variant/50 border border-transparent'
                   }`}
                 >
-                  <PencilLine size={14} /> {isEditingVoiceText ? "Xong" : "Chỉnh sửa"}
+                  <PencilLine size={14} /> {isEditingVoiceText ? "Xong" : "Ch0nh sửa"}
                 </button>
                 <button 
                   onClick={cancelVoiceInput}
@@ -1497,13 +1531,13 @@ export default function ChatLayout() {
                 </button>
               </div>
             )}
-            <textarea 
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/60 font-bold px-2 py-1 resize-none max-h-32 min-h-[48px] outline-none text-sm" 
-              placeholder="Hỏi Xanh SM bất cứ điều gì..." 
+              className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/60 font-bold px-2 py-1 resize-none max-h-32 min-h-[48px] outline-none text-sm"
+              placeholder="Hỏi Xanh SM bất cứ iều gì..."
               rows={1}
             />
             
@@ -1528,7 +1562,7 @@ export default function ChatLayout() {
                 <button
                   onClick={() => {
                     if (user?.type === 'guest') {
-                      alert("Vui lòng đăng nhập để sử dụng tính năng Tìm kiếm chuyên sâu (Deep Search).");
+                      alert("Vui lòng Ēng nhập Ồ sử dụng tính nĒng Tìm kiếm chuyên sâu (Deep Search).");
                       return;
                     }
                     setIsDeepSearch(!isDeepSearch);
@@ -1538,38 +1572,38 @@ export default function ChatLayout() {
                       ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
                       : 'bg-transparent text-on-surface-variant/60 dark:text-white/40 border-transparent hover:bg-surface-variant/30 hover:text-on-surface-variant'
                   }`}
-                  title={isDeepSearch ? "Tắt Deep Search" : "Bật Deep Search (Tìm kiếm chuyên sâu)"}
+                  title={isDeepSearch ? "Tt Deep Search" : "Bt Deep Search (Tm kim chuyn su)"}
                 >
                   <Search size={12} className={isDeepSearch ? "text-indigo-500" : ""} />
-                  {isDeepSearch ? "Deep Search: Bật" : "Deep Search"}
+                  {isDeepSearch ? "Deep Search: Bt" : "Deep Search"}
                 </button>
 
                 {/* Horizontally scrollable suggestion pills */}
 
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 select-none">
                   <button 
-                    onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
+                    onClick={(e) => handleSubmit(e, "Giá cư:c Xanh Car và Xanh Bike x các khu vực")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
                   >
-                    <span>🚗</span> Giá cước
+                    <span>xa</span> Giá cư:c
                   </button>
                   <button 
-                    onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
+                    onClick={(e) => handleSubmit(e, "Chính sách ưu ãi và khuyến mãi sạc pin trạm V-GREEN")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
                   >
-                    <span>⚡</span> Ưu đãi
+                    <span>a</span> Ưu ãi
                   </button>
                   <button 
-                    onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")}
+                    onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy d9ch vụ trên Green SM Platform")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
                   >
-                    <span>🔑</span> Thuê xe
+                    <span>x</span> Thuê xe
                   </button>
                   <button 
-                    onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 đồng, thuê xe tự lái và ưu đãi sạc pin trạm V-GREEN cho xe VF 5, VF 6")}
+                    onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 ng, thuê xe tự lái và ưu ãi sạc pin trạm V-GREEN cho xe VF 5, VF 6")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
                   >
-                    <span>⚡</span> Xe điện
+                    <span>a</span> Xe i!n
                   </button>
                 </div>
               </div>
@@ -1583,7 +1617,7 @@ export default function ChatLayout() {
                         ? 'bg-red-500 text-white shadow-lg animate-pulse' 
                         : 'text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10'
                     }`}
-                    title={listening ? "Dừng ghi âm" : "Nhập liệu bằng giọng nói"}
+                    title={listening ? "Dừng ghi âm" : "Nhập li!u bằng giọng nói"}
                   >
                     {listening ? <MicOff size={16} /> : <Mic size={16} />}
                   </button>
@@ -1605,7 +1639,7 @@ export default function ChatLayout() {
         )}
         
         <span className="text-[10px] text-on-surface-variant/60 flex items-center gap-1 select-none font-bold">
-          <ShieldCheck size={12} /> Thông tin của bạn được bảo mật và chỉ sử dụng để hỗ trợ.
+          <ShieldCheck size={12} /> Thông tin của bạn ược bảo mật và ch0 sử dụng Ồ h trợ.
         </span>
       </div>
 
@@ -1624,10 +1658,10 @@ export default function ChatLayout() {
             </div>
             
             <div className="p-5 space-y-5">
-              <p className="text-sm text-on-surface-variant">Xin lỗi vì câu trả lời chưa đáp ứng mong đợi của bạn. Hãy cho chúng tôi biết lý do (chọn nhiều):</p>
+              <p className="text-sm text-on-surface-variant">Xin li vì câu trả lời chưa áp ứng mong ợi của bạn. Hãy cho chúng tôi biết lý do (chọn nhiều):</p>
               
               <div className="flex flex-wrap gap-2">
-                {['Không đúng thực tế', 'Thiếu thông tin', 'Sai ngữ cảnh', 'Lỗi hiển thị', 'Lạc đề', 'Lý do khác'].map(tag => (
+                {['Không úng thực tế', 'Thiếu thông tin', 'Sai ngữ cảnh', 'Li hiỒn th9', 'Lạc ề', 'Lý do khác'].map(tag => (
                   <button
                     key={tag}
                     onClick={() => {
@@ -1646,7 +1680,7 @@ export default function ChatLayout() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Bình luận thêm (không bắt buộc)</label>
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Bình luận thêm (không bắt bu"c)</label>
                 <textarea
                   value={feedbackComment}
                   onChange={e => setFeedbackComment(e.target.value)}

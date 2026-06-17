@@ -47,9 +47,15 @@ def save_food_recommendation_trace(
                 candidate_stats_json=json.dumps({
                     "result_count": len(items or []),
                     "fallback": metrics.get("food_fallback"),
+                    "retrieval": metrics.get("food_retrieval"),
                 }, ensure_ascii=False),
                 ranking_json=json.dumps({
-                    "ranker_version": "rule_v1_soft_profile_ready",
+                    "ranker_version": "food_weighted_ranker_v2_bm25_geo_profile_ready",
+                    "ml_ready_notes": [
+                        "BM25 geo recall creates the retrieval layer for later embedding/two-tower recall.",
+                        "Score breakdown is logged per item for offline learning-to-rank training.",
+                        "food_interactions can become labels for cross-encoder or bandit reranking.",
+                    ],
                     "top_item_ids": [item.item_id for item in (items or [])[:8]],
                     "top_scores": [round(float(item.score), 4) for item in (items or [])[:8]],
                     "score_breakdown": [

@@ -4,7 +4,7 @@ from langchain_core.documents import Document
 from app.db.database import SessionLocal
 from app.db.models import DocumentChunk
 from app.vectordb.qdrant_client import vectordb
-from app.retrieval.multi_query import XanhSMQueryExpansion
+from app.rag.multi_query import XanhSMQueryExpansion
 from app.core.config import settings as config
 from app.core.logger import log_info, log_warn, log_error
 

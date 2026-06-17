@@ -112,7 +112,9 @@ def hard_filter(item: FoodCatalogEntry, request: FoodRecommendationRequest, dist
 def rank_catalog(
     catalog: list[FoodCatalogEntry],
     request: FoodRecommendationRequest,
+    recall_scores: dict[str, float] | None = None,
 ) -> list[FoodRecommendation]:
+    recall_scores = recall_scores or {}
     ranked = []
     for item in catalog:
         if item.merchant_lat is None or item.merchant_lng is None:
@@ -125,6 +127,7 @@ def rank_catalog(
         eta_minutes = estimate_eta(item, distance)
         price = item.final_price or item.price
         breakdown = ScoreBreakdown(
+            recall_score=clamp(recall_scores.get(item.item_id, 0.0)),
             nearby_score=clamp(1 - (distance / max(request.max_distance_km, 0.1))),
             delivery_fee_score=clamp(1 - (delivery_fee / 50000)),
             eta_score=clamp(1 - (eta_minutes / 60)),
@@ -136,15 +139,16 @@ def rank_catalog(
             popularity_score=clamp(math.log10((item.merchant_review_count or 0) + 1) / 4),
         )
         score = (
-            0.22 * breakdown.nearby_score
-            + 0.14 * breakdown.delivery_fee_score
-            + 0.12 * breakdown.eta_score
-            + 0.14 * breakdown.budget_score
-            + 0.10 * breakdown.discount_score
-            + 0.10 * breakdown.category_score
-            + 0.08 * breakdown.taste_score
-            + 0.06 * breakdown.rating_score
-            + 0.04 * breakdown.popularity_score
+            0.16 * breakdown.recall_score
+            + 0.20 * breakdown.nearby_score
+            + 0.12 * breakdown.delivery_fee_score
+            + 0.10 * breakdown.eta_score
+            + 0.12 * breakdown.budget_score
+            + 0.08 * breakdown.discount_score
+            + 0.08 * breakdown.category_score
+            + 0.06 * breakdown.taste_score
+            + 0.05 * breakdown.rating_score
+            + 0.03 * breakdown.popularity_score
         )
         ranked.append(
             FoodRecommendation(

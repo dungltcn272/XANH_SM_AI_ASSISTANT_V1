@@ -332,6 +332,8 @@ Trace cần ghi:
 - candidate count/fallback
 - ranking model version
 - top item ids/scores/score breakdown
+- retrieval meta: `retrieval_version`, `geo_candidate_count`, `candidate_count`, `recall_mode`
+- ML-ready notes: cách dùng score breakdown + interaction log để train LTR/cross-encoder/bandit sau này
 - Food Answer LLM output
 - SSE steps
 - latency
@@ -379,17 +381,18 @@ Playwright chỉ dùng local để crawl JSON, không đưa vào runtime deploy.
 - [x] Tạo `app/assistant/orchestrator.py` làm tầng điều phối Assistant, không kế thừa RAG chain.
 - [x] Tách RAG chain sang `app/rag/chain.py`: hybrid search, rerank, parent-child expansion, answer LLM.
 - [x] Tách Food Recommendation chain sang `app/food_recommendation/chain.py`: geocode, recommend, fallback, Food Answer LLM, trace.
-- [x] Biến `app/rag/chain.py` thành compatibility wrapper mỏng cho import cũ.
 - [x] Backend free geocoding: OpenStreetMap Nominatim + Photon fallback, không cần Google Maps API key/Visa.
 - [x] Tài liệu hướng dẫn dùng Leaflet/OpenStreetMap miễn phí cho map/geocode.
+- [x] FE render đúng V2 form: map thật, chọn vị trí, nhập địa chỉ, hiển thị vị trí đã chọn.
+- [x] FE render map thật bằng Leaflet + OpenStreetMap tiles, không cần API key.
+- [x] Tách food service thành các module rõ: `geocode.py`, `retrieval.py`, `ranker.py`, `answer_llm.py`, `trace_store.py`.
+- [x] Thêm candidate generation bằng BM25 + geo recall, ghi `food_bm25_geo_recall_v1` vào metrics/trace.
+- [x] Ranker V2 ghi `food_weighted_ranker_v2_bm25_geo_profile_ready`, score breakdown và ML-ready notes vào trace.
 
 ### Còn lại
 
 - [ ] Chuẩn hóa toàn bộ message tiếng Việt trong source đang bị mojibake.
-- [ ] FE render đúng V2 form: map thật, chọn vị trí, nhập địa chỉ, hiển thị vị trí đã chọn.
-- [ ] FE render map thật bằng Leaflet + OpenStreetMap tiles, không cần API key.
-- [ ] Tách `recommend_food_v2` thành module service rõ: geocode, candidate generation, rank, answer.
-- [ ] Embedding recall cho food catalog.
+- [ ] Embedding/vector recall thật cho food catalog khi có vector store hoặc model embedding ổn định.
 - [ ] Learning-to-rank model khi đủ interaction log.
 - [ ] Neural reranker/cross encoder cho top candidates.
 - [ ] Two-tower retrieval khi có nhiều user/event.
@@ -399,11 +402,9 @@ Playwright chỉ dùng local để crawl JSON, không đưa vào runtime deploy.
 
 ## 12. Kế Hoạch Clean Code / Assistant Architecture
 
-Vấn đề hiện tại: `app/rag/chain.py` và `app/rag/pipeline.py` đang đóng vai trò orchestration cấp cao cho cả RAG và Food Recommendation, nhưng lại nằm trong package `rag`. Khi hệ thống có nhiều tính năng assistant hơn, cấu trúc này sẽ làm ownership bị lệch.
+Trạng thái hiện tại: orchestration cấp cao đã thuộc `app/assistant`, còn RAG và Food Recommendation là hai capability ngang hàng. RAG không sở hữu Food Recommendation nữa.
 
-Mục tiêu refactor: giữ nguyên chức năng, đổi tổ chức code để RAG chỉ là một capability trong AI Assistant.
-
-### Cấu trúc đề xuất
+### Cấu trúc hiện hành
 
 ```text
 app/assistant/
@@ -414,19 +415,20 @@ app/assistant/
   schemas.py                   # shared assistant payload schemas
 
 app/rag/
-  chain.py                     # retrieval + rerank + parent-child expansion + answer LLM
   chain.py                     # RAG retrieval/rerank/context expansion/answer chain
+  pipeline.py                  # wrapper tương thích, gọi app.assistant.pipeline
   cache.py
   classifier.py
   gateway.py
 
 app/food_recommendation/
-  chain.py                     # geocode + candidate search + rank + Food Answer LLM
+  chain.py                     # geocode + candidate retrieval + rank + Food Answer LLM
   answer_llm.py                # Food Answer LLM
   trace_store.py               # ghi food_recommendation_traces
   payloads.py                  # food_missing_info/result payload
   tool.py                      # recommend_food interface
   catalog.py
+  retrieval.py                 # BM25 + geo recall, thay được bằng embedding/two-tower sau này
   ranker.py
   geocode.py
   nlu.py
@@ -435,40 +437,32 @@ app/prompts/
   system_prompts.py            # system prompts dùng chung: NLU, RAG answer, Food answer, faithfulness
 ```
 
-Package cũ giữ vai trò compatibility trong giai đoạn chuyển:
+### Việc đã refactor
 
-```text
-app/rag/chain.py               # wrapper tạm, gọi assistant.orchestrator
-app/rag/pipeline.py            # wrapper tạm, gọi assistant.pipeline
-```
-
-### Thứ tự refactor an toàn
-
-1. Tách prompt rõ tên:
+1. Đã tách prompt rõ tên:
    - `RAG_ANSWER_SYSTEM_PROMPT`
    - `RAG_ANSWER_USER_PROMPT_TEMPLATE`
    - `FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT`
 
-2. Tách utility không đổi behavior:
+2. Đã tách utility không đổi behavior:
    - `_sse_pipeline_step` -> `app/assistant/events.py`
    - food payload builders -> `app/food_recommendation/payloads.py`
    - trace writer -> `trace_store.py`
    - Food Answer LLM -> `answer_llm.py`
 
-3. Tách RAG capability:
+3. Đã tách RAG capability:
    - retrieval/search/rerank/answer generation vào `app/rag/chain.py`
-   - legacy `app/rag/chain.py` chỉ còn wrapper tương thích.
 
-4. Tách Food capability:
-   - geocode, candidate generation, rank, answer, trace vào `app/food_recommendation/chain.py`
+4. Đã tách Food capability:
+   - geocode, candidate generation, rank, answer, trace vào `app/food_recommendation`
    - giữ payload cũ để FE không vỡ.
 
-5. Đổi owner orchestration:
-   - tạo `app/assistant/orchestrator.py`
+5. Đã đổi owner orchestration:
+   - `app/assistant/orchestrator.py` điều phối cache/gateway/NLU/route intent.
    - endpoint chat gọi assistant pipeline.
-   - `app/rag/pipeline.py` chỉ còn wrapper hoặc bị xóa khi endpoint đã chuyển.
+   - `app/rag/pipeline.py` chỉ còn wrapper tương thích.
 
-6. Dọn legacy:
-   - xóa food handler cũ trong `chain.py`.
-   - chuẩn hóa message tiếng Việt bị mojibake.
-   - cập nhật import path và test smoke.
+6. Còn dọn legacy:
+   - chuẩn hóa message tiếng Việt bị mojibake trong source.
+   - thêm dashboard admin cho `food_recommendation_traces`.
+   - mở rộng test end-to-end cho các kịch bản food.

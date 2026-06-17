@@ -4,6 +4,7 @@ import json
 import time
 from typing import Any
 
+from app.core.logger import log_info
 from app.food_recommendation.answer_llm import compose_food_answer_with_llm
 from app.food_recommendation.payloads import (
     food_location_payload,
@@ -96,6 +97,7 @@ class FoodRecommendationChain:
             items = recommend_food(
                 lat=slots.lat,
                 lng=slots.lng,
+                query_text=query,
                 category=slots.category,
                 taste_tags=slots.taste_tags,
                 budget_min=slots.budget_min,
@@ -104,6 +106,7 @@ class FoodRecommendationChain:
                 max_distance_km=slots.max_distance_km,
                 limit=8,
                 db=db,
+                metrics=metrics,
             )
             if not items:
                 metrics["food_fallback"] = "expanded_radius"
@@ -112,6 +115,7 @@ class FoodRecommendationChain:
                 items = recommend_food(
                     lat=slots.lat,
                     lng=slots.lng,
+                    query_text=query,
                     category=slots.category,
                     taste_tags=slots.taste_tags,
                     budget_min=slots.budget_min,
@@ -120,6 +124,7 @@ class FoodRecommendationChain:
                     max_distance_km=max(slots.max_distance_km, 25),
                     limit=8,
                     db=db,
+                    metrics=metrics,
                 )
             if not items and slots.category:
                 metrics["food_fallback"] = "expanded_radius_relaxed_category"
@@ -128,6 +133,7 @@ class FoodRecommendationChain:
                 items = recommend_food(
                     lat=slots.lat,
                     lng=slots.lng,
+                    query_text=query,
                     category=None,
                     taste_tags=slots.taste_tags,
                     budget_min=slots.budget_min,
@@ -136,12 +142,23 @@ class FoodRecommendationChain:
                     max_distance_km=max(slots.max_distance_km, 25),
                     limit=8,
                     db=db,
+                    metrics=metrics,
                 )
         finally:
             db.close()
 
         metrics["search_latency_ms"] = (time.time() - t_tool_start) * 1000
         metrics["food_result_count"] = len(items)
+        log_info(
+            "FOOD_RECOMMENDATION",
+            "Food retrieval and ranking completed",
+            {
+                "retrieval": metrics.get("food_retrieval"),
+                "ranker_version": "food_weighted_ranker_v2_bm25_geo_profile_ready",
+                "result_count": len(items),
+                "fallback": metrics.get("food_fallback"),
+            },
+        )
         if items:
             sse_steps.append("food_found")
             yield sse_pipeline_step("food_found", "Yeah, da tim duoc mon an phu hop, dang chuan bi len mon...", 0.78, result_count=len(items))
