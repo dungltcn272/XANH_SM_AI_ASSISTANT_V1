@@ -1,27 +1,61 @@
 # Kiến trúc RAG Pipeline hiện tại
 
-Tài liệu này mô tả pipeline đang chạy của Xanh SM RAG sau khi được nâng cấp lên Phase 9 với Unified NLU Orchestrator và ML-Ready Food Recommendation, và benchmark có lịch sử so sánh theo từng lần eval.
+Tài liệu này mô tả pipeline đang chạy của Xanh SM RAG & Food Recommendation (Phase 9) kết hợp đồng thời qua bộ định tuyến Unified NLU Orchestrator., và benchmark có lịch sử so sánh theo từng lần eval.
 
 ## Sơ đồ tổng quan
 
 ```mermaid
-flowchart TD
-    U[User message] --> C[Cache lookup]
-    C --> G[Gateway safety]
-    G --> N[Unified NLU LLM]
-    N --> I{Intent}
-    I -- small-talk --> ST[Return NLU suggested_answer]
-    I -- sensitive --> SE[Return NLU suggested_answer]
-    I -- rag --> RAG[RAG retrieval + rerank + answer LLM]
-    I -- food_recommendation --> FC[Load food context/profile]
+graph TD
+    A([User Input]) --> N[Normalize Input]
+    N --> B{Input Gateway Safety}
+    B -- "Prompt injection / secret leak" --> Block[Refusal Response]
+    B -- "Safe" --> C{Early Exact Cache}
+
+    C -- "Cache Hit (~5ms)" --> Out([Stream Answer + Citations])
+    C -- "Cache Miss" --> D[Unified LLM NLU Orchestrator]
+    
+    D --> E{Intent Classification}
+    E -- "small-talk" --> Stalk[Return NLU suggested_answer]
+    E -- "sensitive" --> Sen[Return NLU suggested_answer]
+    E -- "rag" --> F{Second Exact Cache}
+    E -- "food_recommendation" --> FC[Load food context/profile]
+
+    %% Luồng Food Recommendation
     FC --> M{Missing info?}
     M -- yes --> FORM[Answer + ui_form/map payload]
-    M -- no --> GEO[Geocode if address text only]
-    GEO --> REC[Food recommendation service]
-    REC --> RANK[Candidate ranker]
-    RANK --> FLLM[Food Answer LLM]
-    FLLM --> CARD[Food cards + advice]
+    M -- no --> FR1[Geocode & Target Coordinates]
+    FR1 --> FR2[Geo-BM25 Hybrid Retrieval]
+    FR2 --> FR3[ML-Ready Candidate Ranker]
+    FR3 --> FR4[Food Answer LLM]
+    FR4 --> CARD[Food cards UI + advice]
     CARD --> LOG[Interaction + trace log]
+    LOG --> Out
+
+    %% Luồng RAG
+    F -- "Cache Hit" --> Out
+    F -- "Cache Miss" --> G[Hybrid Retrieval: Dense + Sparse]
+    G --> H[Cohere Reranker]
+    H --> I[Parent / Section Context Expansion]
+    I --> K[LLM Synthesis & SSE Stream]
+    K --> CacheSave[Save Semantic Cache]
+    CacheSave --> Out
+
+    Block --> Out
+    Stalk --> Out
+    Sen --> Out
+    FORM --> Out
+
+    style A fill:#00A651,stroke:#fff,color:#fff
+    style Out fill:#00A651,stroke:#fff,color:#fff
+    style Block fill:#ff4444,stroke:#fff,color:#fff
+    style Stalk fill:#f59e0b,stroke:#fff,color:#fff
+    style Sen fill:#f43f5e,stroke:#fff,color:#fff
+    style B fill:#f43f5e,stroke:#fff,color:#fff
+    style FR1 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR2 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR3 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR4 fill:#0ea5e9,stroke:#fff,color:#fff
+    style CARD fill:#0ea5e9,stroke:#fff,color:#fff
 ```
 
 ## 1. Input Gateway Safety

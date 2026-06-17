@@ -1,4 +1,4 @@
-# 🚗 Xanh SM Enterprise Production RAG System (Phase 7)
+# 🚗 Xanh SM Enterprise Production RAG System & Food Recommendation (Phase 9)
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live-00A651?style=for-the-badge&logo=vercel&logoColor=white)](https://rag-xanh-sm-v1.vercel.app/)
 
@@ -116,27 +116,61 @@ RAG_XANH_SM/
 Hệ thống hoạt động qua các bước khép kín với các lớp bảo vệ và tối ưu hóa hiệu năng vượt trội:
 
 ```mermaid
-flowchart TD
-    U[User message] --> C[Cache lookup]
-    C --> G[Gateway safety]
-    G --> N[Unified NLU LLM]
-    N --> I{Intent}
-    I -- small-talk --> ST[Return NLU suggested_answer]
-    I -- sensitive --> SE[Return NLU suggested_answer]
-    I -- rag --> RAG[RAG retrieval + rerank + answer LLM]
-    I -- food_recommendation --> FC[Load food context/profile]
+graph TD
+    A([User Input]) --> N[Normalize Input]
+    N --> B{Input Gateway Safety}
+    B -- "Prompt injection / secret leak" --> Block[Refusal Response]
+    B -- "Safe" --> C{Early Exact Cache}
+
+    C -- "Cache Hit (~5ms)" --> Out([Stream Answer + Citations])
+    C -- "Cache Miss" --> D[Unified LLM NLU Orchestrator]
+    
+    D --> E{Intent Classification}
+    E -- "small-talk" --> Stalk[Return NLU suggested_answer]
+    E -- "sensitive" --> Sen[Return NLU suggested_answer]
+    E -- "rag" --> F{Second Exact Cache}
+    E -- "food_recommendation" --> FC[Load food context/profile]
+
+    %% Luồng Food Recommendation
     FC --> M{Missing info?}
     M -- yes --> FORM[Answer + ui_form/map payload]
-    M -- no --> GEO[Geocode if address text only]
-    GEO --> REC[Food recommendation service]
-    REC --> RANK[Candidate ranker]
-    RANK --> FLLM[Food Answer LLM]
-    FLLM --> CARD[Food cards + advice]
+    M -- no --> FR1[Geocode & Target Coordinates]
+    FR1 --> FR2[Geo-BM25 Hybrid Retrieval]
+    FR2 --> FR3[ML-Ready Candidate Ranker]
+    FR3 --> FR4[Food Answer LLM]
+    FR4 --> CARD[Food cards UI + advice]
     CARD --> LOG[Interaction + trace log]
+    LOG --> Out
+
+    %% Luồng RAG
+    F -- "Cache Hit" --> Out
+    F -- "Cache Miss" --> G[Hybrid Retrieval: Dense + Sparse]
+    G --> H[Cohere Reranker]
+    H --> I[Parent / Section Context Expansion]
+    I --> K[LLM Synthesis & SSE Stream]
+    K --> CacheSave[Save Semantic Cache]
+    CacheSave --> Out
+
+    Block --> Out
+    Stalk --> Out
+    Sen --> Out
+    FORM --> Out
+
+    style A fill:#00A651,stroke:#fff,color:#fff
+    style Out fill:#00A651,stroke:#fff,color:#fff
+    style Block fill:#ff4444,stroke:#fff,color:#fff
+    style Stalk fill:#f59e0b,stroke:#fff,color:#fff
+    style Sen fill:#f43f5e,stroke:#fff,color:#fff
+    style B fill:#f43f5e,stroke:#fff,color:#fff
+    style FR1 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR2 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR3 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR4 fill:#0ea5e9,stroke:#fff,color:#fff
+    style CARD fill:#0ea5e9,stroke:#fff,color:#fff
 ```
 
 ### Chi tiết các công nghệ và thông số kỹ thuật:
-Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 Node xử lý độc lập từ đầu vào đến đầu ra, kết hợp nhiều kỹ thuật nâng cao để tối ưu hóa độ trễ, tài nguyên và độ chính xác:
+Hệ thống được cấu trúc thành một chuỗi tuần tự gồm các Node xử lý độc lập từ đầu vào đến đầu ra, tự động rẽ nhánh giữa RAG và Food Recommendation, kết hợp nhiều kỹ thuật nâng cao để tối ưu hóa độ trễ, tài nguyên và độ chính xác:
 
 1. **NODE 1: API Gateway & Input Guardrail (Kiểm duyệt đầu vào)**
    - **Công nghệ áp dụng**: Thư viện biểu thức chính quy (`re` Python) kết hợp bộ quy tắc phân loại cục bộ.
@@ -148,17 +182,18 @@ Hệ thống RAG được cấu trúc thành một chuỗi tuần tự gồm 9 N
    - **Logic xử lý**: Thực hiện đối sánh chuỗi chính xác (Exact Match) giữa câu hỏi thô của người dùng với cơ sở dữ liệu `SemanticCache`.
    - **Thông số kỹ thuật**: Độ trễ **~5-10ms**. Nếu xảy ra Cache Hit (đã có câu trả lời hợp lệ và còn hiệu lực TTL), hệ thống trả kết quả ngay lập tức về client, bỏ qua toàn bộ các bước RAG sau đó.
 
-3. **NODE 3: NLU Gateway 3-in-1 + Domain Vocabulary (Xử lý ngôn ngữ tự nhiên tích hợp)**
-   - **Công nghệ áp dụng**: OpenAI API `chat/completions` với mô hình `gpt-4o-mini` kết hợp Rule-based Pipeline.
-   - **Logic xử lý**: Tích hợp gộp các tác vụ tiền RAG bằng kỹ thuật Few-Shot Prompting và Structured Outputs:
-     - *Intent Classification (Phân loại ý định)*: Xác định câu hỏi thuộc nhóm `rag` (cần tra cứu tài liệu), `small-talk` (chào hỏi, LLM trả lời trực tiếp), hay `sensitive` (nhạy cảm).
-     - *Query Rewrite (Viết lại câu hỏi)*: Khử tham chiếu, bổ sung ngữ cảnh từ lịch sử hội thoại gần nhất.
-     - *Domain Vocabulary (Từ điển miền Xanh SM)*: Chuẩn hóa alias/sai chính tả.
-     *(Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn để tối ưu hóa hiệu năng, giảm độ trễ và tránh quá tải cho backend/VectorDB).*
-   - **Thông số kỹ thuật**: Gộp API calls giúp giảm độ trễ NLU từ **~1.5s xuống còn ~0.8s**. Vocabulary rule-based chạy cục bộ để tăng recall kể cả khi LLM rewrite chưa đủ tốt.
-   - **Xử Lý Ảnh (Multimodal Vision)**: Ép luồng hình ảnh đi qua NLU LLM để "thị giác máy tính" phân tích ảnh và dịch sang `rewritten_query` dạng văn bản cực kỳ chi tiết. Nhờ đó:
-     - Khắc phục hoàn toàn việc mất ngữ cảnh khi người dùng gửi ảnh.
-     - Hình ảnh bị loại bỏ trước khi đến LLM Generator, giúp **tiết kiệm hàng ngàn token** và triệt tiêu lỗi định dạng `expected str instance`.
+3. **NODE 3: Unified NLU Orchestrator (Bộ não điều phối)**
+   - **Công nghệ áp dụng**: Mô hình LLM phân loại intent thông qua function calling / structured JSON output (Llama 3.3 70B hoặc GPT-4o-mini).
+   - **Logic xử lý**: Nhận câu hỏi thô và lịch sử trò chuyện để phân loại vào 1 trong 4 Intent chính:
+     - `small-talk`: Chào hỏi đời thường, lấy luôn `suggested_answer` để trả về cho người dùng nhanh chóng.
+     - `sensitive`: Phát hiện câu hỏi vi phạm nhạy cảm, sinh `suggested_answer` lịch sự từ chối thay vì chặn ngang.
+     - `rag`: Rẽ nhánh vào luồng tìm kiếm RAG chính sách/tài liệu Qdrant.
+     - `food_recommendation`: Bóc tách slot (budget, time, address, dish) và rẽ nhánh vào luồng gợi ý món ăn.
+   - Hệ thống không sử dụng fast-path rule-based cứng nhắc. Mọi truy vấn đều qua mô hình NLU này để đảm bảo độ chuẩn xác cao.
+   - Không yêu cầu khóa API Google Maps cho Geocode: Hệ thống sử dụng OpenStreetMap Nominatim/Photon miễn phí.
+
+### 📚 A. Nhánh RAG (Truy xuất tài liệu chính sách)
+Nếu tại **NODE 3**, hệ thống phân loại intent là `rag`, truy vấn sẽ tiếp tục đi vào luồng xử lý truy xuất tài liệu:
 
 4. **NODE 4: Second Cache Lookup (Kiểm tra Cache lần 2)**
    - **Công nghệ áp dụng**: PostgreSQL / SQLite SQL Query.
@@ -205,6 +240,28 @@ Các thay đổi mới nhất của pipeline dữ liệu:
 - **Markdown Quality Gate**: crawler và ingestion kiểm tra frontmatter, heading rỗng, CTA/form rác, text dính, và bảng Markdown trước khi đưa vào knowledge.
 - **Overview Catalogs**: hệ thống sinh deterministic `data/overview/service_catalog.md`, `pricing_catalog.md`, `platform_vehicle_catalog.md`, `policy_catalog.md`, `news_catalog.md` để trả lời câu hỏi tổng quát.
 - **Domain Vocabulary**: RAG có lớp vocabulary rule-based để map từ đời thường/sai chính tả sang thuật ngữ tài liệu, ví dụ `đền hàng` -> `bồi thường/bảo hiểm`, `ăn chia` -> `doanh thu/chiết khấu`, `green exress` -> `Green Express`.
+
+
+---
+
+### 🍔 B. Nhánh Food Recommendation (Gợi Ý Món Ăn)
+Nếu tại **NODE 3**, hệ thống phân loại intent là `food_recommendation`, truy vấn sẽ không đi vào luồng RAG truyền thống mà sẽ rẽ nhánh sang luồng sau:
+
+10. **NODE 4F: Geocode & Target Coordinates**
+    - **Logic xử lý**: Nếu người dùng cung cấp địa chỉ (VD: "ngõ 67 phùng khoang"), hệ thống gọi API Geocode (OpenStreetMap Nominatim/Photon) để chuyển đổi địa chỉ thành tọa độ `(lat, lng)`. Nếu NLU không bóc tách được vị trí và người dùng chưa cấp quyền GPS, backend trả về Payload UI Form để Frontend hiển thị bản đồ bắt người dùng ghim vị trí.
+
+11. **NODE 5F: Candidate Retrieval (Geo-BM25 Hybrid)**
+    - **Logic xử lý**: Lọc thô ứng viên (Candidate Generation) từ kho dữ liệu nhà hàng. Sử dụng kỹ thuật `Geo-Filtering` (chỉ lấy nhà hàng trong bán kính cho phép) kết hợp `BM25 Sparse Vector` (tìm theo tên món, category do NLU bóc tách).
+
+12. **NODE 6F: ML-Ready Candidate Ranker (Trí tuệ nhân tạo xếp hạng)**
+    - **Logic xử lý**: Chấm điểm và xếp hạng lại danh sách ứng viên thông qua module `XGBoostFoodRanker`, `CohereCrossEncoder` và `BanditExplorer`. Xếp hạng tổng hợp dựa trên: Khoảng cách địa lý, Thời gian giao dự kiến (ETA), Điểm đánh giá (Rating/Review Count), Độ khớp giá cả, và Điểm tương đồng ngữ nghĩa.
+    - **Sẵn sàng cho MLOps**: Kiến trúc tách bạch rõ ràng giữa Retrieval và Ranking, tạo bản lề để huấn luyện các mô hình cá nhân hóa (Personalization) dựa trên hành vi người dùng sau này.
+
+13. **NODE 7F: Food Answer LLM (Chuyên gia Ẩm thực)**
+    - **Logic xử lý**: Nhận danh sách các món ăn đã được Ranker chấm điểm cao nhất. Mô hình ngôn ngữ (GPT-4o-mini) sẽ đóng vai trò như một chuyên gia ẩm thực, đọc thông số (giá, khoảng cách, review) để sinh ra một lời khuyên tư vấn mượt mà, cá nhân hóa.
+
+14. **NODE 8F: Trace Logging & Analytics (Lưu vết đánh giá)**
+    - **Logic xử lý**: Lưu vết toàn bộ dữ liệu suy luận (lý do chọn món, các điểm số thành phần của Ranker, tọa độ) vào bảng `food_recommendation_traces`. Dữ liệu này được hiển thị trực quan trên Admin Dashboard, giúp các Kỹ sư AI theo dõi và tinh chỉnh trọng số thuật toán dễ dàng.
 
 Giải thích node mới trong Mermaid:
 
@@ -294,19 +351,27 @@ pip install -r requirements.txt
 2. **Cấu hình biến môi trường (`.env`):**
 Copy file `.env.example` thành `.env` và điền key OpenAI & Cohere của bạn:
 ```env
-OPENAI_API_KEY=sk-proj-xxxx...
-COHERE_API_KEY=nzDrVpZ...
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+
 EMBEDDING_PROVIDER=openai
 EMBEDDING_MODEL=text-embedding-3-small
-LLM_MODEL=gpt-4o-mini
-NLU_MODEL=gpt-4o-mini
+RAG_ANSWER_MODEL=gpt-4o-mini
+NLU_MODEL=llama-3.3-70b-versatile
+FOOD_ANSWER_MODEL=gpt-4o-mini
 AI_JUDGE_MODEL=gpt-4o-mini
-VLM_MODEL=gpt-4o
+VLM_MODEL=gpt-4o-mini
+
 RERANKER_PROVIDER=cohere
 RERANKER_MODEL=rerank-multilingual-v3.0
+COHERE_API_KEY=YOUR_COHERE_API_KEY
 
 DATABASE_URL=postgresql://postgres:password@localhost:5432/greensm_db
 QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=YOUR_QDRANT_API_KEY
+
+SECRET_KEY=super-secret-key-for-jwt-change-in-production
+# KHÔNG cần Google Maps API Key vì backend geocode bằng OpenStreetMap Nominatim
 ```
 *Lưu ý:* Lần đầu chạy, hệ thống chưa có dữ liệu vector. Hãy mở Dashboard và bấm **Crawl** -> **Ingestion** để nạp tri thức vào Qdrant!
 
