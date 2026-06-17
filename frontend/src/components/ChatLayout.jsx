@@ -240,8 +240,10 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
   );
 };
 
-const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddress }) => {
+const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddress, onSelectMapLocation, savedLocations = [] }) => {
   const [address, setAddress] = useState('');
+  const [mapMode, setMapMode] = useState(false);
+  const [selectedPin, setSelectedPin] = useState({ x: 52, y: 52, lat: 10.7769, lng: 106.7009 });
 
   const submitAddress = (event) => {
     event.preventDefault();
@@ -250,68 +252,177 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
     onSubmitAddress(trimmed);
   };
 
+  const handleMapClick = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(6, Math.min(94, ((event.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(10, Math.min(90, ((event.clientY - rect.top) / rect.height) * 100));
+    const lat = 10.7769 + ((50 - y) / 100) * 0.08;
+    const lng = 106.7009 + ((x - 50) / 100) * 0.10;
+    setSelectedPin({ x, y, lat, lng });
+  };
+
   return (
-    <div className="w-full overflow-hidden rounded-3xl border border-outline-variant/20 bg-white/78 dark:bg-white/[0.04] shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
-      <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-outline-variant/15 bg-surface-container-high/45 dark:bg-white/[0.03]">
-        <div className="flex items-center gap-2 min-w-0">
-          <MapPin size={20} className="text-[#00a884] shrink-0" />
-          <h3 className="text-base md:text-lg font-black text-on-surface truncate">
-            {request?.title || 'Bạn muốn giao đến đâu?'}
-          </h3>
-        </div>
-        <button
-          type="button"
-          onClick={onUseCurrentLocation}
-          className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-[#00c897] px-3 py-2 text-xs font-black text-white hover:bg-[#00a884] transition-colors whitespace-nowrap"
-        >
-          <LocateFixed size={15} />
-          {request?.current_location_label || 'Dùng vị trí hiện tại'}
-        </button>
-      </div>
+    <div className="w-full grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4">
+      <div className="overflow-hidden rounded-3xl border border-outline-variant/20 bg-white/82 dark:bg-white/[0.04] shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.95fr)_minmax(260px,1fr)] gap-4 p-4 md:p-5">
+          <div className="flex flex-col justify-between gap-4">
+            <div>
+              <h3 className="text-lg md:text-xl font-black text-on-surface leading-snug">
+                Để gợi ý món ăn gần bạn chính xác hơn, em cần biết vị trí hiện tại của bạn nhé!
+              </h3>
+              <p className="mt-3 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
+                Em sẽ giúp bạn tìm quán gần nhất, ước tính thời gian giao hàng và tính phí ship chính xác.
+              </p>
+            </div>
 
-      <form onSubmit={submitAddress} className="p-4 md:p-5">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <label className="relative flex-1">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50" />
-            <input
-              value={address}
-              onChange={(event) => setAddress(event.target.value)}
-              placeholder={request?.address_placeholder || 'Nhập địa chỉ giao hàng'}
-              className="w-full h-12 rounded-xl border border-outline-variant/30 bg-white/85 dark:bg-white/5 pl-10 pr-3 text-sm font-semibold text-on-surface outline-none focus:border-[#00c897] focus:ring-2 focus:ring-[#00c897]/15 transition-all"
-            />
-          </label>
-          <button
-            type="submit"
-            className="h-12 rounded-xl border border-[#00a884] px-4 text-sm font-black text-[#008f6f] hover:bg-[#00c897] hover:text-white transition-colors whitespace-nowrap"
-          >
-            {request?.submit_label || 'Tìm quán gần đây'}
-          </button>
-          <button
-            type="button"
-            onClick={onUseCurrentLocation}
-            className="sm:hidden h-12 rounded-xl bg-[#00c897] px-4 text-sm font-black text-white hover:bg-[#00a884] transition-colors"
-          >
-            Dùng vị trí hiện tại
-          </button>
-        </div>
-
-        <div className="relative mt-4 h-48 overflow-hidden rounded-2xl border border-outline-variant/15 bg-[linear-gradient(90deg,rgba(0,200,151,0.08)_1px,transparent_1px),linear-gradient(rgba(0,200,151,0.08)_1px,transparent_1px)] bg-[size:28px_28px]">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-transparent to-[#00c897]/10 dark:from-white/[0.04]" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full">
-            <div className="w-12 h-12 rounded-full bg-red-500 text-white shadow-lg flex items-center justify-center">
-              <MapPin size={26} fill="currentColor" />
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={onUseCurrentLocation}
+                className="h-12 rounded-xl bg-[#00a884] px-4 text-sm md:text-base font-black text-white hover:bg-[#008f73] transition-colors inline-flex items-center justify-center gap-2"
+              >
+                <LocateFixed size={18} />
+                {request?.current_location_label || 'Chia sẻ vị trí hiện tại'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMapMode(prev => !prev)}
+                className="h-12 rounded-xl border border-[#00a884] px-4 text-sm md:text-base font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors inline-flex items-center justify-center gap-2"
+              >
+                <MapPin size={18} />
+                Chọn trên bản đồ
+              </button>
             </div>
           </div>
+
+          <div>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={mapMode ? handleMapClick : undefined}
+              className="relative h-56 md:h-64 overflow-hidden rounded-2xl border border-outline-variant/15 bg-[linear-gradient(32deg,rgba(245,238,224,0.9),rgba(227,247,241,0.95)),linear-gradient(90deg,rgba(31,83,78,0.13)_1px,transparent_1px),linear-gradient(rgba(31,83,78,0.13)_1px,transparent_1px)] bg-[size:auto,34px_34px,34px_34px] cursor-crosshair"
+            >
+              <div className="absolute left-[8%] top-[23%] h-2 w-[86%] rotate-[-18deg] rounded-full bg-white/75 shadow-sm" />
+              <div className="absolute left-[10%] top-[62%] h-2 w-[82%] rotate-[16deg] rounded-full bg-white/75 shadow-sm" />
+              <div className="absolute left-[52%] top-[-10%] h-[120%] w-3 rotate-[38deg] rounded-full bg-white/70 shadow-sm" />
+              <div className="absolute right-[6%] top-0 h-full w-8 bg-blue-300/20" />
+              <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#00c897]/15 border border-[#00c897]/20" />
+              <div className="absolute rounded-full bg-[#00a884] text-white shadow-lg ring-8 ring-[#00c897]/20 flex items-center justify-center"
+                style={{ left: `${selectedPin.x}%`, top: `${selectedPin.y}%`, transform: 'translate(-50%, -50%)', width: 28, height: 28 }}
+              />
+              <div className="absolute left-[18%] top-[18%] rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-on-surface shadow-md">
+                Chúng tôi cần vị trí của bạn để tìm quán gần nhất
+              </div>
+              {mapMode && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSelectMapLocation(selectedPin);
+                  }}
+                  className="absolute bottom-3 left-3 right-3 h-11 rounded-xl bg-[#00a884] text-sm font-black text-white shadow-lg hover:bg-[#008f73] transition-colors"
+                >
+                  Xác nhận vị trí đã chọn
+                </button>
+              )}
+            </div>
+            <div className="mt-2 text-xs text-on-surface-variant/75">
+              Bạn có thể chia sẻ vị trí hiện tại hoặc chọn pin trên bản đồ
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={submitAddress} className="border-t border-outline-variant/15 p-4 md:p-5">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <label className="relative flex-1">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50" />
+              <input
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+                placeholder={request?.address_placeholder || 'Nhập địa chỉ giao hàng'}
+                className="w-full h-12 rounded-xl border border-outline-variant/30 bg-white/85 dark:bg-white/5 pl-10 pr-3 text-sm font-semibold text-on-surface outline-none focus:border-[#00c897] focus:ring-2 focus:ring-[#00c897]/15 transition-all"
+              />
+            </label>
+            <button
+              type="submit"
+              className="h-12 rounded-xl border border-[#00a884] px-4 text-sm font-black text-[#008f6f] hover:bg-[#00c897] hover:text-white transition-colors whitespace-nowrap"
+            >
+              {request?.submit_label || 'Tìm quán gần đây'}
+            </button>
+          </div>
+          {savedLocations.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {savedLocations.slice(0, 3).map((place) => (
+                <button
+                  key={place.id}
+                  type="button"
+                  onClick={() => onSelectMapLocation(place)}
+                  className="rounded-full border border-[#00a884]/30 bg-[#00c897]/8 px-3 py-1.5 text-xs font-bold text-[#008f6f] hover:bg-[#00c897]/15 transition-colors"
+                >
+                  {place.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </form>
+      </div>
+
+      <div className="rounded-3xl border border-[#00c897]/20 bg-[#00c897]/8 dark:bg-white/[0.04] p-5 shadow-[0_12px_40px_rgba(0,200,151,0.08)]">
+        <h3 className="flex items-center gap-2 text-base font-black text-on-surface">
+          <LocateFixed size={20} className="text-[#00a884]" />
+          Vì sao cần vị trí của bạn?
+        </h3>
+        <div className="mt-5 flex flex-col gap-4 text-sm font-semibold text-on-surface/90">
+          <div className="flex items-center gap-3"><MapPin size={19} className="text-[#00a884]" />Sắp xếp quán gần nhất</div>
+          <div className="flex items-center gap-3"><Clock3 size={19} className="text-[#00a884]" />Ước tính thời gian giao hàng</div>
+          <div className="flex items-center gap-3"><DollarSign size={19} className="text-[#00a884]" />Tính phí giao hàng chính xác</div>
+          <div className="flex items-start gap-3 pt-2 text-xs leading-relaxed text-on-surface-variant/85">
+            <ShieldCheck size={19} className="text-[#00a884] shrink-0" />
+            Thông tin vị trí chỉ dùng để gợi ý quán gần bạn trong phiên chat.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FoodLocationConfirmedCard = ({ location, onSaveNamedLocation }) => {
+  if (!location) return null;
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,0.8fr)_minmax(260px,1fr)] gap-4 rounded-3xl border border-[#00c897]/25 bg-white/82 dark:bg-white/[0.04] p-4 md:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
+      <div className="flex flex-col justify-center gap-3">
+        <div className="flex items-center gap-2 text-lg font-black text-on-surface">
+          <span className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center">
+            <CheckCheck size={18} />
+          </span>
+          Vị trí hiện tại của bạn
+        </div>
+        <div className="text-sm leading-relaxed text-on-surface-variant/90">
+          {location.label || location.address || 'Đã cập nhật vị trí giao hàng'}
+        </div>
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={onUseCurrentLocation}
-            className="absolute right-3 top-3 w-10 h-10 rounded-full bg-white/90 dark:bg-surface-container-high text-[#00a884] shadow-md flex items-center justify-center hover:bg-[#00c897] hover:text-white transition-colors"
-            title="Dùng vị trí hiện tại"
+            onClick={() => onSaveNamedLocation?.('home', 'Nhà', location)}
+            className="rounded-full border border-[#00a884]/30 px-3 py-1.5 text-xs font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors"
           >
-            <Navigation size={18} />
+            Lưu là Nhà
+          </button>
+          <button
+            type="button"
+            onClick={() => onSaveNamedLocation?.('work', 'Công ty', location)}
+            className="rounded-full border border-[#00a884]/30 px-3 py-1.5 text-xs font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors"
+          >
+            Lưu là Công ty
           </button>
         </div>
-      </form>
+      </div>
+      <div className="relative h-40 overflow-hidden rounded-2xl border border-outline-variant/15 bg-[linear-gradient(32deg,rgba(245,238,224,0.9),rgba(227,247,241,0.95)),linear-gradient(90deg,rgba(31,83,78,0.13)_1px,transparent_1px),linear-gradient(rgba(31,83,78,0.13)_1px,transparent_1px)] bg-[size:auto,34px_34px,34px_34px]">
+        <div className="absolute left-[8%] top-[24%] h-2 w-[86%] rotate-[-18deg] rounded-full bg-white/75 shadow-sm" />
+        <div className="absolute left-[12%] top-[64%] h-2 w-[82%] rotate-[16deg] rounded-full bg-white/75 shadow-sm" />
+        <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/15 border border-blue-400/25" />
+        <div className="absolute left-1/2 top-1/2 w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500 ring-8 ring-blue-400/20 shadow-lg" />
+      </div>
     </div>
   );
 };
@@ -335,6 +446,13 @@ export default function ChatLayout() {
   const [feedbackComment, setFeedbackComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [submittedReviews, setSubmittedReviews] = useState({});
+  const [savedFoodLocations, setSavedFoodLocations] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('xanhsm_food_locations') || '[]');
+    } catch {
+      return [];
+    }
+  });
 
   const handleReviewClick = async (messageId, rating) => {
     if (!messageId) return;
@@ -501,18 +619,19 @@ export default function ChatLayout() {
     }
   }, [activeConversationId]);
 
-  const handleSubmit = async (e, directQuery = null) => {
+  const handleSubmit = async (e, directQuery = null, displayQuery = null) => {
     e?.preventDefault();
     const query = (typeof directQuery === 'string' ? directQuery : input).trim();
     if (!query || loading) return;
 
     const userQuery = query;
+    const visibleUserQuery = (displayQuery || userQuery).trim();
     const currentImageBase64 = imageBase64;
     setInput('');
     setImageBase64(null);
     setImagePreview(null);
     const now = new Date().toISOString();
-    setMessages(prev => [...prev, { role: 'user', content: userQuery, image: imagePreview, created_at: now }]);
+    setMessages(prev => [...prev, { role: 'user', content: visibleUserQuery, image: imagePreview, created_at: now }]);
     setLoading(true);
 
     try {
@@ -755,6 +874,36 @@ export default function ChatLayout() {
     return `${baseQuery} ở ${locationText}`;
   };
 
+  const saveFoodLocation = useCallback((location) => {
+    const nextLocation = {
+      id: location.id || `loc_${Date.now()}`,
+      label: location.label || 'Vị trí hiện tại',
+      address: location.address || location.label || 'Vị trí hiện tại',
+      lat: Number(location.lat),
+      lng: Number(location.lng),
+      saved_at: new Date().toISOString(),
+    };
+    setSavedFoodLocations(prev => {
+      const next = [nextLocation, ...prev.filter(item => item.id !== nextLocation.id && item.label !== nextLocation.label)].slice(0, 5);
+      localStorage.setItem('xanhsm_food_locations', JSON.stringify(next));
+      return next;
+    });
+    return nextLocation;
+  }, []);
+
+  const markFoodLocationConfirmed = useCallback((location) => {
+    setMessages(prev => {
+      const next = [...prev];
+      for (let i = next.length - 1; i >= 0; i -= 1) {
+        if (next[i].role === 'assistant' && next[i].foodLocationRequest) {
+          next[i] = { ...next[i], foodLocationConfirmed: location };
+          break;
+        }
+      }
+      return next;
+    });
+  }, []);
+
   const handleUseCurrentFoodLocation = (request) => {
     if (!navigator.geolocation) {
       alert('Trình duyệt chưa hỗ trợ lấy vị trí hiện tại.');
@@ -765,7 +914,9 @@ export default function ChatLayout() {
       (position) => {
         const lat = position.coords.latitude.toFixed(6);
         const lng = position.coords.longitude.toFixed(6);
-        handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`));
+        const location = saveFoodLocation({ id: 'current', label: 'Vị trí hiện tại', lat, lng });
+        markFoodLocationConfirmed(location);
+        handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), 'Đã chia sẻ vị trí hiện tại');
       },
       () => {
         alert('Chưa lấy được vị trí hiện tại. Bạn có thể nhập địa chỉ giao hàng hoặc thử cấp quyền vị trí lại.');
@@ -774,8 +925,36 @@ export default function ChatLayout() {
     );
   };
 
-  const handleSubmitFoodAddress = (request, address) => {
-    handleSubmit(null, buildFoodLocationQuery(request, address));
+  const handleSubmitFoodAddress = async (request, address) => {
+    try {
+      const result = await api.geocodeFoodAddress(address);
+      const lat = Number(result.lat).toFixed(6);
+      const lng = Number(result.lng).toFixed(6);
+      const label = address || result.display_name || 'Địa chỉ giao hàng';
+      const location = saveFoodLocation({ label, address: result.display_name || address, lat, lng });
+      markFoodLocationConfirmed(location);
+      handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), label);
+    } catch (error) {
+      console.warn('Geocode failed', error);
+      alert('Em chưa tìm được tọa độ cho địa chỉ này. Bạn thử nhập rõ hơn hoặc dùng vị trí hiện tại nhé.');
+    }
+  };
+
+  const handleSelectMapFoodLocation = (request, pin) => {
+    const lat = Number(pin.lat).toFixed(6);
+    const lng = Number(pin.lng).toFixed(6);
+    const location = saveFoodLocation({ label: pin.label || 'Vị trí đã chọn trên bản đồ', lat, lng });
+    markFoodLocationConfirmed(location);
+    handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), location.label);
+  };
+
+  const handleSaveNamedFoodLocation = (id, label, location) => {
+    saveFoodLocation({
+      ...location,
+      id,
+      label,
+      address: location.address || location.label,
+    });
   };
 
   const renderContent = (content) => {
@@ -988,6 +1167,14 @@ export default function ChatLayout() {
                                 request={msg.foodLocationRequest}
                                 onUseCurrentLocation={() => handleUseCurrentFoodLocation(msg.foodLocationRequest)}
                                 onSubmitAddress={(address) => handleSubmitFoodAddress(msg.foodLocationRequest, address)}
+                                onSelectMapLocation={(pin) => handleSelectMapFoodLocation(msg.foodLocationRequest, pin)}
+                                savedLocations={savedFoodLocations}
+                              />
+                            )}
+                            {msg.foodLocationConfirmed && (
+                              <FoodLocationConfirmedCard
+                                location={msg.foodLocationConfirmed}
+                                onSaveNamedLocation={handleSaveNamedFoodLocation}
                               />
                             )}
                             {msg.foodRecommendations && (

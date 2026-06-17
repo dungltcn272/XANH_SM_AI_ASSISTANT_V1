@@ -17,6 +17,7 @@ from app.core.config import settings as config
 from app.core.logger import log_info, log_warn, log_error
 from app.tools.food_recommendation.nlu import extract_food_slots
 from app.tools.food_recommendation.tool import recommend_food
+from app.tools.food_recommendation.geocode import geocode_address
 
 class XanhSMRAGPipeline:
     """
@@ -744,6 +745,14 @@ class XanhSMRAGPipeline:
             "more_items": [to_payload(item, index + 4) for index, item in enumerate(items[4:8])],
         }
 
+    def _extract_geocode_target(self, query: str) -> str | None:
+        match = re.search(r"(?:\bở\b|\btại\b|\bgần\b)\s+(.+)$", query or "", flags=re.IGNORECASE)
+        if match:
+            target = match.group(1).strip(" .,!?:;")
+            if len(target) >= 3 and not re.search(r"\d{1,2}\.\d{3,}\s*[,;]\s*\d{1,3}\.\d{3,}", target):
+                return target
+        return None
+
     def _handle_food_recommendation_stream(self, query: str, chat_history: List[Dict[str, str]], metrics: Dict[str, Any], t_start: float):
         slots = extract_food_slots(query, chat_history)
         metrics["intent"] = "food_recommendation"
@@ -756,6 +765,19 @@ class XanhSMRAGPipeline:
             "meal_time": slots.meal_time,
             "max_distance_km": slots.max_distance_km,
         }
+
+        if slots.lat is None or slots.lng is None:
+            geocode_target = self._extract_geocode_target(query)
+            if geocode_target:
+                try:
+                    geocoded = geocode_address(geocode_target)
+                    if geocoded:
+                        slots.lat = float(geocoded["lat"])
+                        slots.lng = float(geocoded["lng"])
+                        metrics["food_geocoded_address"] = geocode_target
+                        metrics["food_geocode_source"] = geocoded.get("source")
+                except Exception as exc:
+                    metrics["food_geocode_error"] = str(exc)
 
         if slots.lat is None or slots.lng is None:
             answer = self._food_missing_location_answer()

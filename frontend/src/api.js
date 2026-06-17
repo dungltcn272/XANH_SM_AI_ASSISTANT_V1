@@ -206,6 +206,13 @@ export const api = {
     return res.json();
   },
 
+  geocodeFoodAddress: async (address) => {
+    const params = new URLSearchParams({ address });
+    const res = await api._fetch(`${API_BASE}/food/geocode?${params.toString()}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getEvalResults: async () => {
     const res = await api._fetch(`${API_BASE}/admin/eval`);
     if (!res.ok) throw new Error('API Error');

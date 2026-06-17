@@ -686,18 +686,18 @@ Admin/dev UI:
 
 ### Level 5: Location UX
 
-- [ ] Lưu nhà/công ty/current location.
-- [ ] Cho user xác nhận vị trí.
+- [x] Lưu nhà/công ty/current location.
+- [x] Cho user xác nhận vị trí.
 - [x] Cho chọn current location trong message thiếu vị trí.
-- [ ] Cho chọn map đầy đủ và xác nhận pin.
-- [ ] Dùng lat/lng chính xác để rank.
+- [x] Cho chọn map/pin MVP và xác nhận pin trong message.
+- [x] Dùng lat/lng chính xác để rank.
 
 ### Level 6: Data Collection
 
 - [x] Script tạo/crawl catalog JSON public: `crawler/shopeefood_crawler.py`.
 - [x] Script/API import JSON vào DB: `POST /api/admin/food-catalog/import` và nút Admin trong Knowledge Builder.
 - [x] Nếu crawl ShopeeFood/public source: có rate limit, cache, source_url. Playwright chỉ dùng local để sinh JSON, không đưa vào deploy runtime.
-- [ ] Geocode địa chỉ thiếu lat/lng.
+- [x] Geocode địa chỉ thiếu lat/lng: frontend gọi `GET /api/food/geocode`, backend RAG cũng fallback geocode nếu query có địa chỉ chữ.
 
 ### Level 7: Personalization Nhẹ
 

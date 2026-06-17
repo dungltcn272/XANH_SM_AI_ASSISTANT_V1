@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_entity
 from app.db.database import get_db
 from app.db.models import FoodCatalog, FoodInteraction
+from app.tools.food_recommendation.geocode import geocode_address
 
 router = APIRouter()
 
@@ -24,6 +25,17 @@ class FoodInteractionRequest(BaseModel):
     rank_position: Optional[int] = None
     query: Optional[str] = None
     request_context: Optional[Dict[str, Any]] = None
+
+
+@router.get("/geocode")
+def geocode_food_address(address: str = Query(..., min_length=3, max_length=240)):
+    try:
+        result = geocode_address(address)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Geocode provider unavailable: {exc}") from exc
+    if not result:
+        raise HTTPException(status_code=404, detail="Không tìm thấy vị trí phù hợp cho địa chỉ này")
+    return result
 
 
 @router.post("/interactions")
