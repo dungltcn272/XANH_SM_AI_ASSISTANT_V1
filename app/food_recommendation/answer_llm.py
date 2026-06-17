@@ -9,7 +9,7 @@ from openai import OpenAI
 from app.food_recommendation.payloads import display_rating, format_food_answer
 from app.core.config import settings as config
 from app.core.logger import log_warn
-from app.rag.prompt import FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT
+from app.prompts import FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT
 
 
 def compose_food_answer_with_llm(

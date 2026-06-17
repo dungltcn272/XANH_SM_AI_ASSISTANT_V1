@@ -1,4 +1,4 @@
-# Food Recommendation V2
+﻿# Food Recommendation V2
 
 Tài liệu này là bản thiết kế hiện hành cho luồng gợi ý món ăn trong Xanh SM Chatbot. Bản V2 thay thế các hướng MVP/fast-path cũ: không dùng keyword matching để tự rẽ nhánh food, không bỏ qua NLU LLM, và không trả lời food bằng markdown thô nếu có thể trả payload có cấu trúc cho FE render card đẹp.
 
@@ -121,11 +121,37 @@ FE cần render message đẹp:
 - Nếu đã có vị trí thì hiển thị bản đồ thật và cho đổi lại.
 - Không yêu cầu user nhập tọa độ thập phân.
 
-Map thật cần:
+Map thật không cần Google/Visa ở bản free:
 
-- `GOOGLE_MAPS_API_KEY` cho frontend map/places/autocomplete.
-- Backend geocoding có thể dùng Google Geocoding khi có key; hiện fallback geocode vẫn còn ở `geocode.py`.
+- Backend geocode dùng OpenStreetMap Nominatim trước, Photon fallback sau.
+- Không cần `GOOGLE_MAPS_API_KEY` cho backend.
+- Frontend map nên dùng Leaflet + OpenStreetMap tile layer để không cần API key.
+- Autocomplete địa chỉ có thể gọi backend `/api/food/geocode` hoặc sau này thêm endpoint search gợi ý từ Nominatim/Photon.
+- Lưu ý free providers có rate limit và độ chính xác không bằng Google; nên cache kết quả và hỏi user xác nhận pin nếu địa chỉ mơ hồ.
 
+### Cách dùng bản đồ/geocode miễn phí
+
+1. Backend hiện dùng `app/food_recommendation/geocode.py`:
+   - `Nominatim`: nguồn OpenStreetMap, ổn cho địa chỉ rõ.
+   - `Photon`: fallback miễn phí, fuzzy hơn cho hẻm/ngõ/khu vực.
+2. Frontend nên cài Leaflet nếu muốn map thật:
+
+```bash
+cd frontend
+npm install leaflet react-leaflet
+```
+
+3. FE render map bằng OpenStreetMap tile:
+
+```js
+<TileLayer
+  attribution='&copy; OpenStreetMap contributors'
+  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+/>
+```
+
+4. Khi user chọn pin, gửi `lat,lng` về chat như hiện tại hoặc qua structured form payload.
+5. Khi user nhập địa chỉ, gọi `GET /api/food/geocode?address=...` để lấy tọa độ gần đúng rồi cho user xác nhận trên map.
 ## 6. Food Recommendation Service V2
 
 Interface mục tiêu:
@@ -354,13 +380,14 @@ Playwright chỉ dùng local để crawl JSON, không đưa vào runtime deploy.
 - [x] Tách RAG chain sang `app/rag/chain.py`: hybrid search, rerank, parent-child expansion, answer LLM.
 - [x] Tách Food Recommendation chain sang `app/food_recommendation/chain.py`: geocode, recommend, fallback, Food Answer LLM, trace.
 - [x] Biến `app/rag/chain.py` thành compatibility wrapper mỏng cho import cũ.
+- [x] Backend free geocoding: OpenStreetMap Nominatim + Photon fallback, không cần Google Maps API key/Visa.
+- [x] Tài liệu hướng dẫn dùng Leaflet/OpenStreetMap miễn phí cho map/geocode.
 
 ### Còn lại
 
 - [ ] Chuẩn hóa toàn bộ message tiếng Việt trong source đang bị mojibake.
 - [ ] FE render đúng V2 form: map thật, chọn vị trí, nhập địa chỉ, hiển thị vị trí đã chọn.
-- [ ] Thêm `GOOGLE_MAPS_API_KEY` cho frontend map/places/autocomplete.
-- [ ] Backend Google Geocoding provider khi có API key.
+- [ ] FE render map thật bằng Leaflet + OpenStreetMap tiles, không cần API key.
 - [ ] Tách `recommend_food_v2` thành module service rõ: geocode, candidate generation, rank, answer.
 - [ ] Embedding recall cho food catalog.
 - [ ] Learning-to-rank model khi đủ interaction log.
@@ -388,7 +415,7 @@ app/assistant/
 
 app/rag/
   chain.py                     # retrieval + rerank + parent-child expansion + answer LLM
-  prompt.py                    # RAG answer prompt + NLU prompt
+  chain.py                     # RAG retrieval/rerank/context expansion/answer chain
   cache.py
   classifier.py
   gateway.py
@@ -403,6 +430,9 @@ app/food_recommendation/
   ranker.py
   geocode.py
   nlu.py
+
+app/prompts/
+  system_prompts.py            # system prompts dùng chung: NLU, RAG answer, Food answer, faithfulness
 ```
 
 Package cũ giữ vai trò compatibility trong giai đoạn chuyển:

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import re
@@ -10,7 +10,7 @@ from openai import OpenAI
 from app.assistant.events import sse_pipeline_step
 from app.core.config import settings as config
 from app.core.logger import log_warn, log_error
-from app.rag.prompt import RAG_ANSWER_SYSTEM_PROMPT, RAG_ANSWER_USER_PROMPT_TEMPLATE
+from app.prompts import RAG_ANSWER_SYSTEM_PROMPT, RAG_ANSWER_USER_PROMPT_TEMPLATE
 from app.retrieval.hybrid_search import XanhSMHybridSearch
 from app.retrieval.reranker import XanhSMReranker
 

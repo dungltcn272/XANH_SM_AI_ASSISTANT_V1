@@ -78,7 +78,6 @@ class Settings(BaseSettings):
     
     # Crawl / Data
     DATA_DIR: str = os.getenv("DATA_DIR", "./data")
-    GOOGLE_MAPS_API_KEY: str = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

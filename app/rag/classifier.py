@@ -1,9 +1,9 @@
-import json
+﻿import json
 import re
 from typing import Dict, Any, List
 from openai import OpenAI
 from app.core.config import settings as config
-from app.rag.prompt import UNIFIED_NLU_PROMPT
+from app.prompts import UNIFIED_NLU_PROMPT
 from app.core.logger import log_warn
 
 class XanhSMClassifier:
