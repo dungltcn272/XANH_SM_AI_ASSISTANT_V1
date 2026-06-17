@@ -74,7 +74,17 @@ class XanhSMClassifier:
                             content = content[:300] + "... [truncated]"
                         history_str += f"{role_tag}: {content}\n"
 
-                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+                model_to_use = config.NLU_MODEL
+                if config.GROQ_API_KEY and model_to_use != "gpt-4o-mini" and model_to_use != "gpt-4o":
+                    # Fallback to OpenAI if image is present but Groq model doesn't support vision
+                    if image_base64 and "vision" not in model_to_use.lower():
+                        client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+                        model_to_use = "gpt-4o-mini"
+                    else:
+                        client = OpenAI(api_key=config.GROQ_API_KEY, base_url="https://api.groq.com/openai/v1", timeout=config.OPENAI_TIMEOUT_SECONDS)
+                else:
+                    client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+                    
                 food_context_str = json.dumps(food_context or {}, ensure_ascii=False, indent=2)
                 user_prompt = (
                     f"Lịch sử hội thoại:\n{history_str}\n"
@@ -90,7 +100,7 @@ class XanhSMClassifier:
                     user_content = user_prompt
 
                 response = client.chat.completions.create(
-                    model=config.NLU_MODEL,
+                    model=model_to_use,
                     messages=[
                         {"role": "system", "content": UNIFIED_NLU_PROMPT},
                         {"role": "user", "content": user_content}
@@ -100,7 +110,6 @@ class XanhSMClassifier:
                     response_format={"type": "json_object"}
                 )
                 res_content = response.choices[0].message.content.strip()
-                # Cleanup potential markdown blocks
                 res_content = re.sub(r"```json|```", "", res_content).strip()
                 result = json.loads(res_content)
                 

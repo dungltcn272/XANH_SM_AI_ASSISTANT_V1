@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import re
@@ -29,7 +29,7 @@ def compose_food_answer_with_llm(
     }
     if not items:
         return fallback
-    if not config.OPENAI_API_KEY or config.EMBEDDING_PROVIDER == "mock" or "YOUR_OPENAI_API_KEY" in config.OPENAI_API_KEY:
+    if (not config.OPENAI_API_KEY and not config.GROQ_API_KEY) or config.EMBEDDING_PROVIDER == "mock" or ("YOUR_OPENAI_API_KEY" in config.OPENAI_API_KEY and not config.GROQ_API_KEY):
         return fallback
 
     recommended_items = []
@@ -62,15 +62,21 @@ def compose_food_answer_with_llm(
         "recommended_items": recommended_items,
     }
     try:
-        client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+        model_to_use = config.FOOD_ANSWER_MODEL
+        if config.GROQ_API_KEY and model_to_use != "gpt-4o-mini" and model_to_use != "gpt-4o":
+            client = OpenAI(api_key=config.GROQ_API_KEY, base_url="https://api.groq.com/openai/v1", timeout=config.OPENAI_TIMEOUT_SECONDS)
+        else:
+            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+
         response = client.chat.completions.create(
-            model=config.FOOD_ANSWER_MODEL,
+            model=model_to_use,
             messages=[
                 {"role": "system", "content": FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT},
                 {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
             ],
             temperature=0.25,
             max_tokens=520,
+            response_format={"type": "json_object"}
         )
         content = (response.choices[0].message.content or "").strip()
         content = re.sub(r"^```json|```$", "", content).strip()

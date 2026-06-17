@@ -50,7 +50,8 @@ class Settings(BaseSettings):
     
     # LLM & Embedding
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    RAG_ANSWER_MODEL: str = os.getenv("RAG_ANSWER_MODEL", "gpt-4o-mini")
     NLU_MODEL: str = os.getenv("NLU_MODEL", "gpt-4o-mini")
     FOOD_ANSWER_MODEL: str = os.getenv("FOOD_ANSWER_MODEL", "gpt-4o-mini")
     AI_JUDGE_MODEL: str = os.getenv("AI_JUDGE_MODEL", "gpt-4o-mini")

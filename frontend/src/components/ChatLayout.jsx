@@ -635,11 +635,22 @@ export default function ChatLayout() {
       if (activeConversationId) {
         // Load history
         api.getConversationMessages(activeConversationId).then(msgs => {
-          const formatted = msgs.map(m => ({ 
-            role: m.role, 
-            content: m.content,
-            created_at: m.created_at
-          }));
+          const formatted = msgs.map(m => {
+            let parsedTrace = null;
+            if (m.pipeline_trace) {
+              try {
+                parsedTrace = JSON.parse(m.pipeline_trace);
+              } catch {
+                // Ignore JSON parse errors for legacy data
+              }
+            }
+            return {
+              role: m.role, 
+              content: m.content,
+              created_at: m.created_at,
+              food_recommendations: parsedTrace?.food_recommendations
+            };
+          });
           setMessages(formatted);
         }).catch(console.error);
       } else {

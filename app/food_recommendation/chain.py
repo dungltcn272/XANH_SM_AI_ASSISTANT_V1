@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import time
@@ -52,7 +52,7 @@ class FoodRecommendationChain:
             if geocode_target:
                 try:
                     sse_steps.append("food_geocode")
-                    yield sse_pipeline_step("food_geocode", "Dang xac dinh vi tri tren ban do...", 0.32, address_text=geocode_target)
+                    yield sse_pipeline_step("food_geocode", "Đang xác định vị trí trên bản đồ...", 0.32, address_text=geocode_target)
                     geocoded = geocode_address(geocode_target)
                     if geocoded:
                         slots.lat = float(geocoded["lat"])
@@ -80,7 +80,7 @@ class FoodRecommendationChain:
             )
             metrics["food_trace_id"] = trace_id
             location_payload = food_location_payload(query)
-            yield sse_pipeline_step("food_missing_info", "Em can them mot chut thong tin de goi y chinh xac hon...", 0.42)
+            yield sse_pipeline_step("food_missing_info", "Em cần thêm một chút thông tin để gợi ý chính xác hơn...", 0.42)
             yield from stream_plain_answer(answer)
             yield f'data: {json.dumps({"type": "food_missing_info", "answer": answer, "ui_form": location_payload, "food_location_request": location_payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
             yield f'data: {json.dumps({"metrics": metrics, "step": "food-missing-location"}, ensure_ascii=False)}\n\n'
@@ -93,7 +93,7 @@ class FoodRecommendationChain:
         db = SessionLocal()
         try:
             sse_steps.append("food_candidate_search")
-            yield sse_pipeline_step("food_candidate_search", "Dang tim cac mon an phu hop...", 0.42)
+            yield sse_pipeline_step("food_candidate_search", "Đang tìm các món ăn phù hợp...", 0.42)
             items = recommend_food(
                 lat=slots.lat,
                 lng=slots.lng,
@@ -111,7 +111,7 @@ class FoodRecommendationChain:
             if not items:
                 metrics["food_fallback"] = "expanded_radius"
                 sse_steps.append("food_candidate_filter")
-                yield sse_pipeline_step("food_candidate_filter", "Dang loc quan theo vi tri, ngan sach va khau vi...", 0.52, radius_km=max(slots.max_distance_km, 25))
+                yield sse_pipeline_step("food_candidate_filter", "Đang lọc quán theo vị trí, ngân sách và khẩu vị...", 0.52, radius_km=max(slots.max_distance_km, 25))
                 items = recommend_food(
                     lat=slots.lat,
                     lng=slots.lng,
@@ -129,7 +129,7 @@ class FoodRecommendationChain:
             if not items and slots.category:
                 metrics["food_fallback"] = "expanded_radius_relaxed_category"
                 sse_steps.append("food_ml_rank")
-                yield sse_pipeline_step("food_ml_rank", "Dang xep hang mon an phu hop nhat...", 0.62, relaxed_category=True)
+                yield sse_pipeline_step("food_ml_rank", "Đang xếp hạng món ăn phù hợp nhất...", 0.62, relaxed_category=True)
                 items = recommend_food(
                     lat=slots.lat,
                     lng=slots.lng,
@@ -161,9 +161,9 @@ class FoodRecommendationChain:
         )
         if items:
             sse_steps.append("food_found")
-            yield sse_pipeline_step("food_found", "Yeah, da tim duoc mon an phu hop, dang chuan bi len mon...", 0.78, result_count=len(items))
+            yield sse_pipeline_step("food_found", "Yeah, đã tìm được quán ăn phù hợp, đang chuẩn bị lên món...", 0.78, result_count=len(items))
             sse_steps.append("food_answer_llm")
-            yield sse_pipeline_step("food_answer_llm", "Dang viet loi goi y de hieu hon cho ban...", 0.86)
+            yield sse_pipeline_step("food_answer_llm", "Đang viết lời gợi ý dễ hiểu hơn cho bạn...", 0.86)
 
         t_food_answer_start = time.time()
         answer_meta = compose_food_answer_with_llm(items, query, slots, food_context)
@@ -188,6 +188,7 @@ class FoodRecommendationChain:
         yield from stream_plain_answer(answer)
         if items:
             payload = food_recommendations_payload(items, slots.category, query, answer_meta=answer_meta, trace_id=trace_id)
+            metrics["food_recommendations"] = payload
             yield f'data: {json.dumps({"type": "food_recommendation_result", "answer": answer, "food_recommendations": payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
         else:
             location_payload = food_location_payload(query)

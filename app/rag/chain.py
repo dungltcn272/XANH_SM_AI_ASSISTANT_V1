@@ -158,7 +158,7 @@ class RagAnswerChain:
             final_answer = ""
             client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
             response = client.chat.completions.create(
-                model=config.LLM_MODEL,
+                model=config.RAG_ANSWER_MODEL,
                 messages=messages,
                 temperature=0.3,
                 max_tokens=config.LLM_MAX_TOKENS,
@@ -183,7 +183,7 @@ class RagAnswerChain:
             if stream_failed and not final_answer:
                 log_warn("CHAT", "Retrying generation once without streaming.")
                 retry_response = client.chat.completions.create(
-                    model=config.LLM_MODEL,
+                    model=config.RAG_ANSWER_MODEL,
                     messages=messages,
                     temperature=0.3,
                     max_tokens=config.LLM_MAX_TOKENS,
