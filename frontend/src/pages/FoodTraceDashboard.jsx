@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Database, Search, Filter, Loader2, ChevronDown, ChevronRight, Activity, MapPin, Tag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Database, Search, Filter, Loader2, ChevronDown, ChevronRight, Activity, Tag } from 'lucide-react';
 import { api } from '../api';
 
 export default function FoodTraceDashboard() {
@@ -9,21 +9,21 @@ export default function FoodTraceDashboard() {
   const [expandedRow, setExpandedRow] = useState(null);
 
   useEffect(() => {
+    const fetchTraces = async () => {
+      try {
+        setLoading(true);
+        const data = await api.getFoodTraces(0, 50);
+        setTraces(data.items || []);
+        setTotal(data.total || 0);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchTraces();
   }, []);
-
-  const fetchTraces = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getFoodTraces(0, 50);
-      setTraces(data.items || []);
-      setTotal(data.total || 0);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -91,9 +91,9 @@ export default function FoodTraceDashboard() {
               ) : (
                 traces.map((t) => {
                   let loc = {};
-                  try { loc = JSON.parse(t.location_json); } catch(e) {}
+                  try { loc = JSON.parse(t.location_json); } catch { /* ignore */ }
                   let stats = {};
-                  try { stats = JSON.parse(t.candidate_stats_json); } catch(e) {}
+                  try { stats = JSON.parse(t.candidate_stats_json); } catch { /* ignore */ }
                   
                   return (
                     <React.Fragment key={t.trace_id}>
