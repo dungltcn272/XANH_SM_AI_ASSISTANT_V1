@@ -1,4 +1,4 @@
-﻿import json
+import json
 import re
 from typing import Dict, Any, List
 from openai import OpenAI
@@ -69,7 +69,10 @@ class XanhSMClassifier:
                     # Keep only last 3 turns to keep context compact and focus NLU
                     for turn in chat_history[-3:]:
                         role_tag = "User" if turn.get("role") == "user" else "Assistant"
-                        history_str += f"{role_tag}: {turn.get('content')}\n"
+                        content = turn.get("content", "")
+                        if len(content) > 300:
+                            content = content[:300] + "... [truncated]"
+                        history_str += f"{role_tag}: {content}\n"
 
                 client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
                 food_context_str = json.dumps(food_context or {}, ensure_ascii=False, indent=2)

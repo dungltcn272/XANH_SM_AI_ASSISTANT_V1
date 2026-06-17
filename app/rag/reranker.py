@@ -14,7 +14,7 @@ class XanhSMReranker:
     
     def __init__(self, provider: str = "cohere", model_name: str = None):
         self.provider = "cohere"
-        self.model_name = model_name or config.RERANKER_MODEL or "rerank-v3.0"
+        self.model_name = model_name or config.RERANKER_MODEL or "rerank-multilingual-v3.0"
         self.model = None
         
         cache_key = f"{self.provider}:{self.model_name}"

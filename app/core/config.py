@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     
     # Reranker
     RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "cohere")
-    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "rerank-v3.0")
+    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "rerank-multilingual-v3.0")
     COHERE_API_KEY: str = os.getenv("COHERE_API_KEY", "")
     
     # Crawl / Data

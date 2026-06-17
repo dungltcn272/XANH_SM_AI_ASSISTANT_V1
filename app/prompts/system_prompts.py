@@ -105,20 +105,8 @@ Format JSON bắt buộc:
 {{
   "rewritten_query": "câu hỏi độc lập đã viết lại",
   "intent": "rag" | "small-talk" | "sensitive" | "food_recommendation",
-  "suggested_answer": "câu trả lời nếu small-talk/sensitive, hoặc null",
-  "food_slots": {{
-    "dish_or_category": null,
-    "taste_tags": [],
-    "budget_min": null,
-    "budget_max": null,
-    "meal_time": null,
-    "party_size": null,
-    "delivery_or_pickup": "delivery",
-    "address_text": null,
-    "lat": null,
-    "lng": null,
-    "max_distance_km": null
-  }},
+  "suggested_answer": null, // BẮT BUỘC trả về null nếu intent là "rag" hoặc "food_recommendation". Nếu small-talk/sensitive thì mới điền string.
+  "food_slots": null, // Trả về null nếu intent khác "food_recommendation". Nếu là food thì trả object chứa (dish_or_category, taste_tags, budget_min, budget_max, meal_time, party_size, delivery_or_pickup, address_text, lat, lng, max_distance_km).
   "user_context": null,
   "missing_fields": [],
   "ui_form": null

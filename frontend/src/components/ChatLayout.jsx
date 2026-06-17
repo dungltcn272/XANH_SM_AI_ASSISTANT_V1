@@ -83,7 +83,7 @@ const foodPinIcon = L.divIcon({
 const FoodMapClickHandler = ({ onPick }) => {
   useMapEvents({
     click(event) {
-      onPick({ lat: event.latlng.lat, lng: event.latlng.lng, label: 'V9 trí ã chọn trên bản ' });
+      onPick({ lat: event.latlng.lat, lng: event.latlng.lng, label: 'Vị trí đã chọn trên bản đồ' });
     },
   });
   return null;
@@ -130,7 +130,7 @@ const FoodMapPicker = ({ selectedPin, onPick, onConfirm, interactive = true, hei
           onClick={() => onConfirm?.(selectedPin)}
           className="absolute bottom-3 left-3 right-3 z-[500] h-11 rounded-xl bg-[#00a884] text-sm font-black text-white shadow-lg hover:bg-[#008f73] transition-colors"
         >
-          Xác nhận v9 trí ã chọn
+          Xác nhận vị trí đã chọn
         </button>
       )}
     </div>
@@ -229,7 +229,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
           ))}
         </div>
         <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#00a884] px-4 py-2 text-sm font-black text-[#008f6f] group-hover:bg-[#00c897] group-hover:text-white transition-colors whitespace-nowrap">
-          Xem thực ơn
+          Xem thực đơn
           <ChevronRight size={16} />
         </span>
       </div>
@@ -253,7 +253,7 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
             {data.title || 'M"t vài quán phù hợp gần bạn'}
           </h3>
           <p className="mt-1 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
-            {data.subtitle || 'Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức " phù hợp v:i nhu cầu của bạn.'}
+            {data.subtitle || 'Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.'}
           </p>
         </div>
       </div>
@@ -310,7 +310,7 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
 const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddress, onSelectMapLocation, savedLocations = [] }) => {
   const [address, setAddress] = useState('');
   const [mapMode, setMapMode] = useState(false);
-  const [selectedPin, setSelectedPin] = useState({ lat: 10.7769, lng: 106.7009, label: 'V tr  chn trn bn ' });
+  const [selectedPin, setSelectedPin] = useState({ lat: 10.7769, lng: 106.7009, label: 'Vị trí đã chọn trên bản đồ' });
 
   const submitAddress = (event) => {
     event.preventDefault();
@@ -349,7 +349,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
                 className="h-12 rounded-xl border border-[#00a884] px-4 text-sm md:text-base font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors inline-flex items-center justify-center gap-2"
               >
                 <MapPin size={18} />
-                Chọn trên bản 
+                Chọn trên bản đồ
               </button>
             </div>
           </div>
@@ -362,7 +362,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
               interactive={mapMode}
             />
             <div className="mt-2 text-xs text-on-surface-variant/75">
-              Bạn có thỒ chia sẻ v9 trí hi!n tại hoặc chọn pin trên bản 
+              Bạn có thể chia sẻ vị trí hiện tại hoặc chọn pin trên bản đồ
             </div>
           </div>
         </div>
@@ -374,7 +374,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
               <input
                 value={address}
                 onChange={(event) => setAddress(event.target.value)}
-                placeholder={request?.address_placeholder || 'Nhập 9a ch0 giao hàng'}
+                placeholder={request?.address_placeholder || 'Nhập địa chỉ giao hàng'}
                 className="w-full h-12 rounded-xl border border-outline-variant/30 bg-white/85 dark:bg-white/5 pl-10 pr-3 text-sm font-semibold text-on-surface outline-none focus:border-[#00c897] focus:ring-2 focus:ring-[#00c897]/15 transition-all"
               />
             </label>
@@ -382,7 +382,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
               type="submit"
               className="h-12 rounded-xl border border-[#00a884] px-4 text-sm font-black text-[#008f6f] hover:bg-[#00c897] hover:text-white transition-colors whitespace-nowrap"
             >
-              {request?.submit_label || 'Tìm quán gần ây'}
+              {request?.submit_label || 'Tìm quán gần đây'}
             </button>
           </div>
           {savedLocations.length > 0 && (
@@ -413,7 +413,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
           <div className="flex items-center gap-3"><DollarSign size={19} className="text-[#00a884]" />Tính phí giao hàng chính xác</div>
           <div className="flex items-start gap-3 pt-2 text-xs leading-relaxed text-on-surface-variant/85">
             <ShieldCheck size={19} className="text-[#00a884] shrink-0" />
-            Thông tin v9 trí ch0 dùng Ồ gợi ý quán gần bạn trong phiên chat.
+            Thông tin vị trí chỉ dùng để gợi ý quán gần bạn trong phiên chat.
           </div>
         </div>
       </div>
@@ -518,7 +518,7 @@ export default function ChatLayout() {
       setFeedbackModalOpen(false);
     } catch(e) {
       console.error(e);
-      alert('Gửi ánh giá thất bại');
+      alert('Gửi đánh giá thất bại');
     } finally {
       setSubmittingReview(false);
     }
@@ -807,9 +807,9 @@ export default function ChatLayout() {
         const newMsgs = [...prev];
         const lastMsg = newMsgs.length > 0 ? newMsgs[newMsgs.length - 1] : null;
         if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content === '') {
-          lastMsg.content = 'Xin li, h! thng AI ang bận hoặc mất kết ni t:i cơ sx dữ li!u. Vui lòng thử lại sau ít phút.';
+          lastMsg.content = 'Xin lỗi, hệ thống AI đang bận hoặc mất kết nối tới cơ sở dữ liệu. Vui lòng thử lại sau ít phút.';
         } else if (!lastMsg || lastMsg.role === 'user') {
-          newMsgs.push({ role: 'assistant', content: 'Xin li, h! thng AI ang bận hoặc mất kết ni t:i cơ sx dữ li!u. Vui lòng thử lại sau ít phút.', latency_ms: null, created_at: new Date().toISOString() });
+          newMsgs.push({ role: 'assistant', content: 'Xin lỗi, hệ thống AI đang bận hoặc mất kết nối tới cơ sở dữ liệu. Vui lòng thử lại sau ít phút.', latency_ms: null, created_at: new Date().toISOString() });
         }
         return newMsgs;
       });
@@ -836,7 +836,7 @@ export default function ChatLayout() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Kích thư:c ảnh ti a là 5MB.");
+        alert("Kích thước ảnh tối đa là 5MB.");
         return;
       }
       const reader = new FileReader();
@@ -905,7 +905,7 @@ export default function ChatLayout() {
 
   const buildFoodLocationQuery = (request, locationText) => {
     const baseQuery = request?.query || 'Gợi ý món Ēn gần tôi';
-    return `${baseQuery} x ${locationText}`;
+    return `${baseQuery} ở ${locationText}`;
   };
 
   const isVietnamCoordinate = (lat, lng) => {
@@ -946,7 +946,7 @@ export default function ChatLayout() {
 
   const handleUseCurrentFoodLocation = (request) => {
     if (!navigator.geolocation) {
-      alert('Trình duy!t chưa h trợ lấy v9 trí hi!n tại.');
+      alert('Trình duyệt chưa hỗ trợ lấy vị trí hiện tại.');
       return;
     }
 
@@ -955,7 +955,7 @@ export default function ChatLayout() {
         const lat = position.coords.latitude.toFixed(6);
         const lng = position.coords.longitude.toFixed(6);
         if (!isVietnamCoordinate(lat, lng)) {
-          alert('V9 trí hi!n tại chưa nằm trong khu vực Vi!t Nam mà catalog món Ēn ang h trợ. Bạn thử nhập 9a ch0 x Vi!t Nam hoặc chọn pin trên bản  nhé.');
+          alert('Vị trí hiện tại chưa nằm trong khu vực Việt Nam mà catalog món ăn đang hỗ trợ. Bạn thử nhập địa chỉ ở Việt Nam hoặc chọn pin trên bản đồ nhé.');
           return;
         }
         const location = saveFoodLocation({ id: 'current', label: 'V9 trí hi!n tại', lat, lng });
@@ -963,7 +963,7 @@ export default function ChatLayout() {
         handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), 'Đã chia sẻ v9 trí hi!n tại');
       },
       () => {
-        alert('Chưa lấy ược v9 trí hi!n tại. Bạn có thỒ nhập 9a ch0 giao hàng hoặc thử cấp quyền v9 trí lại.');
+        alert('Chưa lấy được vị trí hiện tại. Bạn có thể nhập địa chỉ giao hàng hoặc thử cấp quyền vị trí lại.');
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
@@ -980,7 +980,7 @@ export default function ChatLayout() {
       handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), label);
     } catch (error) {
       console.warn('Geocode failed', error);
-      alert('Em chưa tìm ược tọa " cho 9a ch0 này. Bạn thử nhập rõ hơn hoặc dùng v9 trí hi!n tại nhé.');
+      alert('Em chưa tìm được tọa độ cho địa chỉ này. Bạn thử nhập rõ hơn hoặc dùng vị trí hiện tại nhé.');
     }
   };
 
@@ -988,10 +988,10 @@ export default function ChatLayout() {
     const lat = Number(pin.lat).toFixed(6);
     const lng = Number(pin.lng).toFixed(6);
     if (!isVietnamCoordinate(lat, lng)) {
-      alert('V9 trí ã chọn chưa nằm trong khu vực Vi!t Nam.');
+      alert('Vị trí đã chọn chưa nằm trong khu vực Việt Nam.');
       return;
     }
-    const location = saveFoodLocation({ label: pin.label || 'V9 trí ã chọn trên bản ', lat, lng });
+    const location = saveFoodLocation({ label: pin.label || 'Vị trí đã chọn trên bản đồ', lat, lng });
     markFoodLocationConfirmed(location);
     handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), location.label);
   };
@@ -1138,11 +1138,11 @@ export default function ChatLayout() {
                   Xanh SM AI Assistant
                 </div>
                 <h1 className="text-2xl md:text-4xl font-extrabold text-on-surface leading-tight">
-                  Xin chào {user?.name ? (user.name.includes(' - ') ? user.name.split(' - ')[0].split(' ').pop() : user.name.split(' ').pop()) : 'bạn'} x9 <br />
-                  <span className="text-[#00c897]">Tôi có thỒ giúp gì cho bạn?</span>
+                  Xin chào {user?.name ? (user.name.includes(' - ') ? user.name.split(' - ')[0].split(' ').pop() : user.name.split(' ').pop()) : 'bạn'} 👋 <br />
+                  <span className="text-[#00c897]">Tôi có thể giúp gì cho bạn?</span>
                 </h1>
                 <p className="text-xs md:text-sm text-on-surface-variant/80 mt-2 max-w-lg leading-relaxed font-medium">
-                  Tôi có thỒ giúp bạn tìm hiỒu d9ch vụ, giá cư:c, xe i!n, ưu ãi và chính sách của Xanh SM.
+                  Tôi có thể giúp bạn tìm hiểu dịch vụ, giá cước, xe điện, ưu đãi và chính sách của Xanh SM.
                 </p>
               </div>
               
@@ -1277,7 +1277,7 @@ export default function ChatLayout() {
                           <div className="mt-2 pt-3 border-t border-outline-variant/10 flex items-center justify-between text-[10px] font-bold text-on-surface-variant/40">
                             <div className="flex items-center gap-1.5">
                               <span className="scale-110">⏱️</span>
-                              <span>T"ng thời gian: {msg.latency_ms ? `${Math.round(msg.latency_ms)}ms` : 'N/A'}</span>
+                              <span>Tổng thời gian: {msg.latency_ms ? `${Math.round(msg.latency_ms)}ms` : 'N/A'}</span>
                             </div>
                             <div className="flex items-center gap-3">
                               {msg.id && (
@@ -1301,7 +1301,7 @@ export default function ChatLayout() {
                                 </div>
                               )}
                               <div className="flex items-center gap-1.5">
-                                <span>Ngun: Xanh SM Official</span>
+                                <span>Nguồn: Xanh SM Official</span>
                                 <ShieldCheck size={12} className="text-[#00c897]" />
                               </div>
                             </div>
@@ -1364,45 +1364,45 @@ export default function ChatLayout() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-5xl relative z-10 pointer-events-auto mb-1">
             {/* Card 1 */}
             <button
-              onClick={(e) => handleSubmit(e, "Giá cư:c Xanh Car và Xanh Bike x các khu vực")}
+              onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
               className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-[#00c897]/40 dark:hover:border-[#00c897]/40 hover:bg-[#00c897]/5 dark:hover:bg-[#00c897]/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-[#00c897]/10 flex items-center justify-center text-[#00c897] group-hover:bg-[#00c897] group-hover:text-white transition-colors shrink-0">
                 <Car size={16} />
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Giá cư:c d9ch vụ</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Xem bảng giá chi tiết cho từng loại d9ch vụ</p>
+                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Giá cước dịch vụ</h3>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Xem bảng giá chi tiết cho từng loại dịch vụ</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-[#00c897] mt-0.5 block select-none">Khám phá &rarr;</span>
             </button>
 
             {/* Card 2 */}
             <button
-              onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy d9ch vụ trên Green SM Platform")}
+              onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")}
               className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:bg-blue-500/5 dark:hover:bg-blue-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
                 <Key size={16} />
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Thuê xe chạy d9ch vụ</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Thông tin chi tiết về chính sách thuê xe i!n VinFast</p>
+                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Thuê xe chạy dịch vụ</h3>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Thông tin chi tiết về chính sách thuê xe điện VinFast</p>
               </div>
-              <span className="text-[10px] md:text-xs font-extrabold text-blue-500 mt-0.5 block select-none">Tìm hiỒu &rarr;</span>
+              <span className="text-[10px] md:text-xs font-extrabold text-blue-500 mt-0.5 block select-none">Tìm hiểu &rarr;</span>
             </button>
 
             {/* Card 3 */}
             <button
-              onClick={(e) => handleSubmit(e, "Chính sách ưu ãi và khuyến mãi sạc pin trạm V-GREEN")}
+              onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
               className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-amber-500/40 dark:hover:border-amber-500/40 hover:bg-amber-500/5 dark:hover:bg-amber-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
             >
               <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
                 <Tag size={16} />
               </div>
               <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Ưu ãi & khuyến mãi</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Các chương trình ưu ãi m:i nhất hi!n nay</p>
+                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Ưu đãi & khuyến mãi</h3>
+                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Các chương trình ưu đãi mới nhất hiện nay</p>
               </div>
               <span className="text-[10px] md:text-xs font-extrabold text-amber-500 mt-0.5 block select-none">Xem ngay &rarr;</span>
             </button>
@@ -1461,7 +1461,7 @@ export default function ChatLayout() {
                     />
                   ) : (
                     <p className="text-lg md:text-2xl font-bold text-on-surface leading-snug break-words text-center md:text-left">
-                      {input || <span className="opacity-20 italic font-medium text-lg">Hãy nói iều gì ó...</span>}
+                      {input || <span className="opacity-20 italic font-medium text-lg">Hãy nói điều gì đó...</span>}
                       {listening && <span className="inline-block w-0.5 h-5 md:w-0.5 md:h-6 bg-[#00c897] ml-1 animate-pulse align-middle"></span>}
                     </p>
                   )}
@@ -1537,7 +1537,7 @@ export default function ChatLayout() {
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/60 font-bold px-2 py-1 resize-none max-h-32 min-h-[48px] outline-none text-sm"
-              placeholder="Hỏi Xanh SM bất cứ iều gì..."
+              placeholder="Hỏi Xanh SM bất cứ điều gì..."
               rows={1}
             />
             
@@ -1562,7 +1562,7 @@ export default function ChatLayout() {
                 <button
                   onClick={() => {
                     if (user?.type === 'guest') {
-                      alert("Vui lòng Ēng nhập Ồ sử dụng tính nĒng Tìm kiếm chuyên sâu (Deep Search).");
+                      alert("Vui lòng đăng nhập để sử dụng tính năng Tìm kiếm chuyên sâu (Deep Search).");
                       return;
                     }
                     setIsDeepSearch(!isDeepSearch);
@@ -1582,28 +1582,28 @@ export default function ChatLayout() {
 
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 select-none">
                   <button 
-                    onClick={(e) => handleSubmit(e, "Giá cư:c Xanh Car và Xanh Bike x các khu vực")}
+                    onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
                   >
-                    <span>xa</span> Giá cư:c
+                    <span>🚗</span> Giá cước
                   </button>
                   <button 
-                    onClick={(e) => handleSubmit(e, "Chính sách ưu ãi và khuyến mãi sạc pin trạm V-GREEN")}
+                    onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
                   >
-                    <span>a</span> Ưu ãi
+                    <span>🎁</span> Ưu đãi
                   </button>
                   <button 
-                    onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy d9ch vụ trên Green SM Platform")}
+                    onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
                   >
-                    <span>x</span> Thuê xe
+                    <span>🔑</span> Thuê xe
                   </button>
                   <button 
-                    onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 ng, thuê xe tự lái và ưu ãi sạc pin trạm V-GREEN cho xe VF 5, VF 6")}
+                    onClick={(e) => handleSubmit(e, "Chính sách mua xe 0 đồng, thuê xe tự lái và ưu đãi sạc pin trạm V-GREEN cho xe VF 5, VF 6")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
                   >
-                    <span>a</span> Xe i!n
+                    <span>⚡</span> Xe điện
                   </button>
                 </div>
               </div>
@@ -1639,7 +1639,7 @@ export default function ChatLayout() {
         )}
         
         <span className="text-[10px] text-on-surface-variant/60 flex items-center gap-1 select-none font-bold">
-          <ShieldCheck size={12} /> Thông tin của bạn ược bảo mật và ch0 sử dụng Ồ h trợ.
+          <ShieldCheck size={12} /> Thông tin của bạn được bảo mật và chỉ sử dụng để hỗ trợ.
         </span>
       </div>
 
@@ -1658,10 +1658,10 @@ export default function ChatLayout() {
             </div>
             
             <div className="p-5 space-y-5">
-              <p className="text-sm text-on-surface-variant">Xin li vì câu trả lời chưa áp ứng mong ợi của bạn. Hãy cho chúng tôi biết lý do (chọn nhiều):</p>
+              <p className="text-sm text-on-surface-variant">Xin lỗi vì câu trả lời chưa đáp ứng mong đợi của bạn. Hãy cho chúng tôi biết lý do (chọn nhiều):</p>
               
               <div className="flex flex-wrap gap-2">
-                {['Không úng thực tế', 'Thiếu thông tin', 'Sai ngữ cảnh', 'Li hiỒn th9', 'Lạc ề', 'Lý do khác'].map(tag => (
+                {['Không đúng thực tế', 'Thiếu thông tin', 'Sai ngữ cảnh', 'Lỗi hiển thị', 'Lạc đề', 'Lý do khác'].map(tag => (
                   <button
                     key={tag}
                     onClick={() => {
