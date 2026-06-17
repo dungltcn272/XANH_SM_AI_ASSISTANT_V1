@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
     NLU_MODEL: str = os.getenv("NLU_MODEL", "gpt-4o-mini")
+    FOOD_ANSWER_MODEL: str = os.getenv("FOOD_ANSWER_MODEL", "gpt-4o-mini")
     AI_JUDGE_MODEL: str = os.getenv("AI_JUDGE_MODEL", "gpt-4o-mini")
     OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "900"))
@@ -77,6 +78,7 @@ class Settings(BaseSettings):
     
     # Crawl / Data
     DATA_DIR: str = os.getenv("DATA_DIR", "./data")
+    GOOGLE_MAPS_API_KEY: str = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -9,12 +9,18 @@ from typing import List, Dict, Any, Tuple
 from openai import OpenAI
 from app.retrieval.hybrid_search import XanhSMHybridSearch
 from app.retrieval.reranker import XanhSMReranker
-from app.rag.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, FAITHFULNESS_CHECK_PROMPT
+from app.rag.prompt import (
+    RAG_ANSWER_SYSTEM_PROMPT,
+    RAG_ANSWER_USER_PROMPT_TEMPLATE,
+    FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT,
+    FAITHFULNESS_CHECK_PROMPT,
+)
 from app.rag.gateway import XanhSMGateway
 from app.rag.classifier import XanhSMClassifier
 from app.rag.guardrail import OutputGuardrail
 from app.core.config import settings as config
 from app.core.logger import log_info, log_warn, log_error
+from app.db.models import FoodRecommendationTrace
 from app.tools.food_recommendation.nlu import slots_from_nlu
 from app.tools.food_recommendation.tool import recommend_food
 from app.tools.food_recommendation.geocode import geocode_address
@@ -124,8 +130,8 @@ class XanhSMRAGPipeline:
 
     def _build_prompt_messages(self, query: str, context_docs: List[Any], chat_history: List[Dict[str, str]] = None):
         compressed_context = self._compress_context(context_docs)
-        system_msg = SYSTEM_PROMPT.format(context=compressed_context)
-        user_msg = USER_PROMPT_TEMPLATE.format(query=query)
+        system_msg = RAG_ANSWER_SYSTEM_PROMPT.format(context=compressed_context)
+        user_msg = RAG_ANSWER_USER_PROMPT_TEMPLATE.format(query=query)
 
         messages = [{"role": "system", "content": system_msg}]
         if chat_history and len(chat_history) > 0:
@@ -626,11 +632,32 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
 
-    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False, food_context: Dict[str, Any] | None = None):
+    def stream_run(
+        self,
+        query: str,
+        chat_history: List[Dict[str, str]] = None,
+        bypass_cache: bool = False,
+        image_base64: str = None,
+        is_deep_search: bool = False,
+        food_context: Dict[str, Any] | None = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        guest_id: str | None = None,
+    ):
         """
         Stream version of the NLU-Gateway RAG chain.
         """
-        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache, image_base64=image_base64, is_deep_search=is_deep_search, food_context=food_context)
+        return self._stream_run_raw(
+            query=query,
+            chat_history=chat_history,
+            bypass_cache=bypass_cache,
+            image_base64=image_base64,
+            is_deep_search=is_deep_search,
+            food_context=food_context,
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+        )
 
     def _sse_pipeline_step(self, step: str, message: str, progress: float | None = None, **debug):
         payload = {
@@ -699,10 +726,182 @@ class XanhSMRAGPipeline:
             "submit_label": "Tìm quán gần đây",
         }
 
-    def _food_recommendations_payload(self, items, category: str | None = None, query: str | None = None) -> Dict[str, Any]:
+    def _food_answer_with_llm(
+        self,
+        items,
+        query: str,
+        slots,
+        food_context: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        fallback_answer = self._format_food_answer(items, slots.category)
+        fallback = {
+            "answer": fallback_answer,
+            "cards_title": None,
+            "cards_subtitle": None,
+            "item_notes": [],
+            "llm_used": False,
+            "error": None,
+        }
+        if not items:
+            return fallback
+        if not config.OPENAI_API_KEY or config.EMBEDDING_PROVIDER == "mock" or "YOUR_OPENAI_API_KEY" in config.OPENAI_API_KEY:
+            return fallback
+
+        recommended_items = []
+        for item in items[:8]:
+            recommended_items.append({
+                "item_id": item.item_id,
+                "dish_name": item.name,
+                "merchant_name": item.merchant_name,
+                "address": item.address,
+                "distance_km": item.distance_km,
+                "eta_minutes": item.eta_minutes,
+                "delivery_fee": item.delivery_fee,
+                "price": item.final_price or item.price,
+                "rating": self._display_rating(item.rating),
+                "reason": item.reason,
+                "score": round(float(item.score), 4),
+            })
+
+        user = {
+            "query": query,
+            "food_slots": {
+                "category": slots.category,
+                "taste_tags": slots.taste_tags,
+                "budget_min": slots.budget_min,
+                "budget_max": slots.budget_max,
+                "meal_time": slots.meal_time,
+                "max_distance_km": slots.max_distance_km,
+            },
+            "user_context": food_context or {},
+            "recommended_items": recommended_items,
+            "output_schema": {
+                "answer": "1-3 cau mo dau",
+                "cards_title": "tieu de ngan cho danh sach card",
+                "cards_subtitle": "mot cau giai thich cach sap xep",
+                "item_notes": [{"item_id": "id trong recommended_items", "advice": "ly do goi y ngan"}],
+            },
+        }
+        try:
+            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+            response = client.chat.completions.create(
+                model=config.FOOD_ANSWER_MODEL,
+                messages=[
+                    {"role": "system", "content": FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT},
+                    {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+                ],
+                temperature=0.25,
+                max_tokens=520,
+            )
+            content = (response.choices[0].message.content or "").strip()
+            content = re.sub(r"^```json|```$", "", content).strip()
+            parsed = json.loads(content)
+            if not isinstance(parsed, dict):
+                return fallback
+            allowed_ids = {item.item_id for item in items[:8]}
+            notes = []
+            for note in parsed.get("item_notes") or []:
+                if isinstance(note, dict) and note.get("item_id") in allowed_ids:
+                    notes.append({
+                        "item_id": note.get("item_id"),
+                        "advice": str(note.get("advice") or "").strip()[:240],
+                    })
+            answer = str(parsed.get("answer") or "").strip() or fallback_answer
+            return {
+                "answer": answer,
+                "cards_title": str(parsed.get("cards_title") or "").strip() or None,
+                "cards_subtitle": str(parsed.get("cards_subtitle") or "").strip() or None,
+                "item_notes": notes,
+                "llm_used": True,
+                "error": None,
+            }
+        except Exception as exc:
+            log_warn("FOOD", f"Food answer LLM failed: {exc}")
+            fallback["error"] = str(exc)
+            return fallback
+
+    def _save_food_recommendation_trace(
+        self,
+        *,
+        conversation_id: str | None,
+        user_id: str | None,
+        guest_id: str | None,
+        query: str,
+        metrics: Dict[str, Any],
+        food_context: Dict[str, Any] | None,
+        slots,
+        items,
+        answer_meta: Dict[str, Any] | None,
+        sse_steps: List[str],
+    ) -> str | None:
+        try:
+            from app.db.database import SessionLocal
+
+            db = SessionLocal()
+            try:
+                trace = FoodRecommendationTrace(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    guest_id=guest_id,
+                    original_query=query,
+                    rewritten_query=metrics.get("rewritten_query") or query,
+                    intent="food_recommendation",
+                    nlu_json=json.dumps({
+                        "food_slots": metrics.get("food_slots"),
+                        "missing_fields": metrics.get("nlu_missing_fields", []),
+                    }, ensure_ascii=False),
+                    user_context_json=json.dumps(food_context or {}, ensure_ascii=False),
+                    location_json=json.dumps({
+                        "lat": slots.lat,
+                        "lng": slots.lng,
+                        "address_text": slots.address_text,
+                        "geocoded_address": metrics.get("food_geocoded_address"),
+                        "geocode_source": metrics.get("food_geocode_source"),
+                    }, ensure_ascii=False),
+                    candidate_stats_json=json.dumps({
+                        "result_count": len(items or []),
+                        "fallback": metrics.get("food_fallback"),
+                    }, ensure_ascii=False),
+                    ranking_json=json.dumps({
+                        "ranker_version": "rule_v1_soft_profile_ready",
+                        "top_item_ids": [item.item_id for item in (items or [])[:8]],
+                        "top_scores": [round(float(item.score), 4) for item in (items or [])[:8]],
+                        "score_breakdown": [
+                            {
+                                "item_id": item.item_id,
+                                "score_breakdown": item.score_breakdown.model_dump(),
+                            }
+                            for item in (items or [])[:8]
+                        ],
+                    }, ensure_ascii=False),
+                    answer_llm_json=json.dumps(answer_meta or {}, ensure_ascii=False),
+                    sse_events_json=json.dumps(sse_steps, ensure_ascii=False),
+                    latency_json=json.dumps({
+                        "search_latency_ms": metrics.get("search_latency_ms", 0),
+                        "generation_latency_ms": metrics.get("generation_latency_ms", 0),
+                        "total_latency_ms": metrics.get("total_latency_ms", 0),
+                    }, ensure_ascii=False),
+                )
+                db.add(trace)
+                db.commit()
+                db.refresh(trace)
+                return trace.trace_id
+            finally:
+                db.close()
+        except Exception as exc:
+            log_warn("FOOD", f"Failed to save recommendation trace: {exc}")
+            return None
+
+    def _food_recommendations_payload(self, items, category: str | None = None, query: str | None = None, answer_meta: Dict[str, Any] | None = None, trace_id: str | None = None) -> Dict[str, Any]:
         title = "Một vài quán phù hợp gần bạn"
         if category:
             title = f"Một vài quán {category} phù hợp gần bạn"
+
+        note_by_id = {
+            note.get("item_id"): note.get("advice")
+            for note in (answer_meta or {}).get("item_notes", [])
+            if isinstance(note, dict)
+        }
 
         def to_payload(item, index: int) -> Dict[str, Any]:
             price = item.final_price or item.price
@@ -723,20 +922,33 @@ class XanhSMRAGPipeline:
                 "delivery_fee_text": self._format_vnd(item.delivery_fee),
                 "price": price,
                 "price_text": self._format_vnd(price) if price else "",
-                "reason": item.reason,
+                "reason": note_by_id.get(item.item_id) or item.reason,
                 "is_best": index == 0,
             }
 
         return {
-            "title": title,
+            "title": (answer_meta or {}).get("cards_title") or title,
             "subtitle": "Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.",
             "query": query,
+            "trace_id": trace_id,
             "items": [to_payload(item, index) for index, item in enumerate(items[:4])],
             "more_items": [to_payload(item, index + 4) for index, item in enumerate(items[4:8])],
         }
 
-    def _handle_food_recommendation_stream(self, query: str, chat_history: List[Dict[str, str]], metrics: Dict[str, Any], t_start: float, nlu_food_slots: Dict[str, Any] | None = None):
+    def _handle_food_recommendation_stream(
+        self,
+        query: str,
+        chat_history: List[Dict[str, str]],
+        metrics: Dict[str, Any],
+        t_start: float,
+        nlu_food_slots: Dict[str, Any] | None = None,
+        food_context: Dict[str, Any] | None = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        guest_id: str | None = None,
+    ):
         slots = slots_from_nlu(nlu_food_slots, raw_query=query)
+        sse_steps: List[str] = []
         metrics["intent"] = "food_recommendation"
         metrics["food_slots"] = {
             "has_location": slots.lat is not None and slots.lng is not None,
@@ -838,7 +1050,176 @@ class XanhSMRAGPipeline:
         yield f'data: {json.dumps({"metrics": metrics, "step": "food-recommendation"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
 
-    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False, food_context: Dict[str, Any] | None = None):
+    def _handle_food_recommendation_stream_v2(
+        self,
+        query: str,
+        chat_history: List[Dict[str, str]],
+        metrics: Dict[str, Any],
+        t_start: float,
+        nlu_food_slots: Dict[str, Any] | None = None,
+        food_context: Dict[str, Any] | None = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        guest_id: str | None = None,
+    ):
+        slots = slots_from_nlu(nlu_food_slots, raw_query=query)
+        sse_steps: List[str] = []
+        metrics["intent"] = "food_recommendation"
+        metrics["food_slots"] = {
+            "has_location": slots.lat is not None and slots.lng is not None,
+            "category": slots.category,
+            "taste_tags": slots.taste_tags,
+            "budget_min": slots.budget_min,
+            "budget_max": slots.budget_max,
+            "meal_time": slots.meal_time,
+            "max_distance_km": slots.max_distance_km,
+            "address_text": slots.address_text,
+        }
+
+        if slots.lat is None or slots.lng is None:
+            geocode_target = slots.address_text
+            if geocode_target:
+                try:
+                    sse_steps.append("food_geocode")
+                    yield self._sse_pipeline_step("food_geocode", "Dang xac dinh vi tri tren ban do...", 0.32, address_text=geocode_target)
+                    geocoded = geocode_address(geocode_target)
+                    if geocoded:
+                        slots.lat = float(geocoded["lat"])
+                        slots.lng = float(geocoded["lng"])
+                        metrics["food_geocoded_address"] = geocode_target
+                        metrics["food_geocode_source"] = geocoded.get("source")
+                except Exception as exc:
+                    metrics["food_geocode_error"] = str(exc)
+
+        if slots.lat is None or slots.lng is None:
+            answer = self._food_missing_location_answer()
+            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+            sse_steps.append("food_missing_info")
+            trace_id = self._save_food_recommendation_trace(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=query,
+                metrics=metrics,
+                food_context=food_context,
+                slots=slots,
+                items=[],
+                answer_meta={"answer": answer, "missing_fields": ["location"]},
+                sse_steps=sse_steps,
+            )
+            metrics["food_trace_id"] = trace_id
+            location_payload = self._food_location_payload(query)
+            yield self._sse_pipeline_step("food_missing_info", "Em can them mot chut thong tin de goi y chinh xac hon...", 0.42)
+            yield from self._stream_plain_answer(answer)
+            yield f'data: {json.dumps({"type": "food_missing_info", "answer": answer, "ui_form": location_payload, "food_location_request": location_payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
+            yield f'data: {json.dumps({"metrics": metrics, "step": "food-missing-location"}, ensure_ascii=False)}\n\n'
+            yield "data: [DONE]\n\n"
+            return
+
+        from app.db.database import SessionLocal
+
+        t_tool_start = time.time()
+        db = SessionLocal()
+        try:
+            sse_steps.append("food_candidate_search")
+            yield self._sse_pipeline_step("food_candidate_search", "Dang tim cac mon an phu hop...", 0.42)
+            items = recommend_food(
+                lat=slots.lat,
+                lng=slots.lng,
+                category=slots.category,
+                taste_tags=slots.taste_tags,
+                budget_min=slots.budget_min,
+                budget_max=slots.budget_max,
+                meal_time=slots.meal_time,
+                max_distance_km=slots.max_distance_km,
+                limit=8,
+                db=db,
+            )
+            if not items:
+                metrics["food_fallback"] = "expanded_radius"
+                sse_steps.append("food_candidate_filter")
+                yield self._sse_pipeline_step("food_candidate_filter", "Dang loc quan theo vi tri, ngan sach va khau vi...", 0.52, radius_km=max(slots.max_distance_km, 25))
+                items = recommend_food(
+                    lat=slots.lat,
+                    lng=slots.lng,
+                    category=slots.category,
+                    taste_tags=slots.taste_tags,
+                    budget_min=slots.budget_min,
+                    budget_max=slots.budget_max,
+                    meal_time=slots.meal_time,
+                    max_distance_km=max(slots.max_distance_km, 25),
+                    limit=8,
+                    db=db,
+                )
+            if not items and slots.category:
+                metrics["food_fallback"] = "expanded_radius_relaxed_category"
+                sse_steps.append("food_ml_rank")
+                yield self._sse_pipeline_step("food_ml_rank", "Dang xep hang mon an phu hop nhat...", 0.62, relaxed_category=True)
+                items = recommend_food(
+                    lat=slots.lat,
+                    lng=slots.lng,
+                    category=None,
+                    taste_tags=slots.taste_tags,
+                    budget_min=slots.budget_min,
+                    budget_max=slots.budget_max,
+                    meal_time=slots.meal_time,
+                    max_distance_km=max(slots.max_distance_km, 25),
+                    limit=8,
+                    db=db,
+                )
+        finally:
+            db.close()
+
+        metrics["search_latency_ms"] = (time.time() - t_tool_start) * 1000
+        metrics["food_result_count"] = len(items)
+        if items:
+            sse_steps.append("food_found")
+            yield self._sse_pipeline_step("food_found", "Yeah, da tim duoc mon an phu hop, dang chuan bi len mon...", 0.78, result_count=len(items))
+            sse_steps.append("food_answer_llm")
+            yield self._sse_pipeline_step("food_answer_llm", "Dang viet loi goi y de hieu hon cho ban...", 0.86)
+
+        t_food_answer_start = time.time()
+        answer_meta = self._food_answer_with_llm(items, query, slots, food_context)
+        metrics["generation_latency_ms"] = (time.time() - t_food_answer_start) * 1000
+        metrics["food_answer_llm_used"] = bool(answer_meta.get("llm_used"))
+        metrics["food_answer_llm_error"] = answer_meta.get("error")
+        metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+        trace_id = self._save_food_recommendation_trace(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=query,
+            metrics=metrics,
+            food_context=food_context,
+            slots=slots,
+            items=items,
+            answer_meta=answer_meta,
+            sse_steps=sse_steps,
+        )
+        metrics["food_trace_id"] = trace_id
+        answer = answer_meta.get("answer") or self._format_food_answer(items, slots.category)
+        yield from self._stream_plain_answer(answer)
+        if items:
+            payload = self._food_recommendations_payload(items, slots.category, query, answer_meta=answer_meta, trace_id=trace_id)
+            yield f'data: {json.dumps({"type": "food_recommendation_result", "answer": answer, "food_recommendations": payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
+        else:
+            location_payload = self._food_location_payload(query)
+            yield f'data: {json.dumps({"type": "food_no_result", "answer": answer, "ui_form": location_payload, "food_location_request": location_payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
+        yield f'data: {json.dumps({"metrics": metrics, "step": "food-recommendation"}, ensure_ascii=False)}\n\n'
+        yield "data: [DONE]\n\n"
+
+    def _stream_run_raw(
+        self,
+        query: str,
+        chat_history: List[Dict[str, str]] = None,
+        bypass_cache: bool = False,
+        image_base64: str = None,
+        is_deep_search: bool = False,
+        food_context: Dict[str, Any] | None = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        guest_id: str | None = None,
+    ):
         """
         Internal raw streaming implementation of the RAG chain.
         """
@@ -933,7 +1314,17 @@ class XanhSMRAGPipeline:
 
         if intent == "food_recommendation":
             yield from yield_msg(self._sse_pipeline_step("food_context_load", "Đang xem lại khẩu vị và vị trí của bạn...", 0.24))
-            yield from self._handle_food_recommendation_stream(query, chat_history, metrics, t_start, nlu_food_slots=nlu_res.get("food_slots"))
+            yield from self._handle_food_recommendation_stream_v2(
+                query,
+                chat_history,
+                metrics,
+                t_start,
+                nlu_food_slots=nlu_res.get("food_slots"),
+                food_context=food_context,
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+            )
             return
 
         # 4. Handle Sensitive / Safety Block
