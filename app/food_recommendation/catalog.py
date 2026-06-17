@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.models import FoodCatalog
-from app.tools.food_recommendation.schemas import FoodCatalogEntry
+from app.food_recommendation.schemas import FoodCatalogEntry
 
 
 def parse_json_value(value, default):

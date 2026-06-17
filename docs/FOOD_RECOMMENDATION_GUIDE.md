@@ -344,10 +344,19 @@ Playwright chỉ dùng local để crawl JSON, không đưa vào runtime deploy.
 - [x] Backend food branch có payload `food_missing_info`, `food_recommendation_result`, `trace_id`.
 - [x] Backend ghi recommendation trace cho missing-info và result.
 - [x] Thêm Food Answer LLM bước đầu, có fallback khi thiếu API key/mock.
+- [x] Tách `app/assistant/events.py` cho SSE pipeline steps và stream text.
+- [x] Tách Food Answer LLM sang `app/food_recommendation/answer_llm.py`.
+- [x] Tách food payload builders sang `app/food_recommendation/payloads.py`.
+- [x] Tách recommendation trace writer sang `app/food_recommendation/trace_store.py`.
+- [x] Dọn function food handler cũ khỏi `chain.py`; chỉ còn handler V2 đang được route tới.
+- [x] Chuyển chat stream owner lên `app/assistant/pipeline.py`; `app/rag/pipeline.py` chỉ còn wrapper tương thích.
+- [x] Tạo `app/assistant/orchestrator.py` làm tầng điều phối Assistant, không kế thừa RAG chain.
+- [x] Tách RAG chain sang `app/rag/chain.py`: hybrid search, rerank, parent-child expansion, answer LLM.
+- [x] Tách Food Recommendation chain sang `app/food_recommendation/chain.py`: geocode, recommend, fallback, Food Answer LLM, trace.
+- [x] Biến `app/rag/chain.py` thành compatibility wrapper mỏng cho import cũ.
 
 ### Còn lại
 
-- [ ] Dọn bỏ hẳn function food handler cũ sau khi FE/backend test ổn.
 - [ ] Chuẩn hóa toàn bộ message tiếng Việt trong source đang bị mojibake.
 - [ ] FE render đúng V2 form: map thật, chọn vị trí, nhập địa chỉ, hiển thị vị trí đã chọn.
 - [ ] Thêm `GOOGLE_MAPS_API_KEY` cho frontend map/places/autocomplete.
@@ -377,20 +386,23 @@ app/assistant/
   metrics.py                   # metrics/trace helpers
   schemas.py                   # shared assistant payload schemas
 
-app/assistant/capabilities/
-  rag/
-    service.py                 # retrieval + rerank + answer LLM
-    prompts.py                 # import/alias RAG answer prompt nếu cần
-    citations.py
-    cache_adapter.py
+app/rag/
+  chain.py                     # retrieval + rerank + parent-child expansion + answer LLM
+  prompt.py                    # RAG answer prompt + NLU prompt
+  cache.py
+  classifier.py
+  gateway.py
 
-  food_recommendation/
-    service.py                 # recommend_food_v2 orchestration
-    answer_llm.py              # Food Answer LLM
-    trace_store.py             # ghi food_recommendation_traces
-    payloads.py                # food_missing_info/result payload
-    location.py                # geocode/resolve location
-    ranking.py                 # wrapper rule/embedding/LTR rankers
+app/food_recommendation/
+  chain.py                     # geocode + candidate search + rank + Food Answer LLM
+  answer_llm.py                # Food Answer LLM
+  trace_store.py               # ghi food_recommendation_traces
+  payloads.py                  # food_missing_info/result payload
+  tool.py                      # recommend_food interface
+  catalog.py
+  ranker.py
+  geocode.py
+  nlu.py
 ```
 
 Package cũ giữ vai trò compatibility trong giai đoạn chuyển:
@@ -409,16 +421,16 @@ app/rag/pipeline.py            # wrapper tạm, gọi assistant.pipeline
 
 2. Tách utility không đổi behavior:
    - `_sse_pipeline_step` -> `app/assistant/events.py`
-   - food payload builders -> `app/assistant/capabilities/food_recommendation/payloads.py`
+   - food payload builders -> `app/food_recommendation/payloads.py`
    - trace writer -> `trace_store.py`
    - Food Answer LLM -> `answer_llm.py`
 
 3. Tách RAG capability:
-   - retrieval/search/rerank/answer generation vào `capabilities/rag/service.py`
-   - `chain.py` chỉ còn gọi service.
+   - retrieval/search/rerank/answer generation vào `app/rag/chain.py`
+   - legacy `app/rag/chain.py` chỉ còn wrapper tương thích.
 
 4. Tách Food capability:
-   - geocode, candidate generation, rank, answer, trace vào `capabilities/food_recommendation/service.py`
+   - geocode, candidate generation, rank, answer, trace vào `app/food_recommendation/chain.py`
    - giữ payload cũ để FE không vỡ.
 
 5. Đổi owner orchestration:

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import Conversation
 from app.core.security import get_current_entity
-from app.rag.pipeline import stream_chat_pipeline
+from app.assistant.pipeline import stream_chat_pipeline
 from app.core.logger import log_error
 from typing import Optional, AsyncGenerator
 import asyncio

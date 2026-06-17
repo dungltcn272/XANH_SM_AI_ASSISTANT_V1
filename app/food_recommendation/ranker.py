@@ -1,9 +1,9 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import math
 
-from app.tools.food_recommendation.profile import normalize_text
-from app.tools.food_recommendation.schemas import (
+from app.food_recommendation.profile import normalize_text
+from app.food_recommendation.schemas import (
     FoodCatalogEntry,
     FoodRecommendation,
     FoodRecommendationRequest,

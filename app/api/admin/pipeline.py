@@ -21,8 +21,8 @@ class PipelineTestRequest(BaseModel):
 
 @router.post("/pipeline/test")
 def test_pipeline(req: PipelineTestRequest):
-    from app.rag.chain import XanhSMRAGPipeline
-    pipeline = XanhSMRAGPipeline()
+    from app.assistant.orchestrator import XanhSMAssistantOrchestrator
+    pipeline = XanhSMAssistantOrchestrator()
     try:
         res = pipeline.run_debug(query=req.query)
         return res

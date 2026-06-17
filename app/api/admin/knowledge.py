@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 from datetime import datetime
 from pathlib import Path
@@ -10,8 +10,8 @@ from sqlalchemy import String, Text, case, or_
 from app.db.database import get_db, Base
 from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource, EvaluationRun, FoodCatalog
 from app.core.config import settings
-from app.tools.food_recommendation.schemas import FoodRecommendationRequest
-from app.tools.food_recommendation.tool import recommend_food
+from app.food_recommendation.schemas import FoodRecommendationRequest
+from app.food_recommendation.tool import recommend_food
 from fastapi.responses import StreamingResponse
 import asyncio
 from typing import Optional
