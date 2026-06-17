@@ -22,6 +22,8 @@ def run_auto_migrations():
         
         # Bảng: evaluation_runs
         "ALTER TABLE evaluation_runs ADD COLUMN description TEXT;",
+        "ALTER TABLE food_catalog ADD COLUMN city VARCHAR;",
+        "ALTER TABLE food_catalog ADD COLUMN city_slug VARCHAR;",
     ]
     
     with engine.connect() as conn:

@@ -364,6 +364,8 @@ def import_food_catalog(req: FoodCatalogImportRequest = None, db: Session = Depe
                 "service_radius_km": row.get("service_radius_km"),
                 "source": row.get("source") or "shopeefood",
                 "source_url": row.get("source_url"),
+                "city": row.get("city"),
+                "city_slug": row.get("city_slug"),
                 "raw_ref": row.get("raw_ref"),
                 "raw_json": json.dumps(row, ensure_ascii=False),
                 "last_seen_at": parse_optional_datetime(row.get("last_seen_at")),

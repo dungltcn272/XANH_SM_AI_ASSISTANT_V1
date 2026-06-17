@@ -147,6 +147,8 @@ class FoodCatalog(Base):
     service_radius_km = Column(Float, nullable=True)
     source = Column(String, default="shopeefood", index=True)
     source_url = Column(Text, nullable=True)
+    city = Column(String, nullable=True, index=True)
+    city_slug = Column(String, nullable=True, index=True)
     raw_ref = Column(String, nullable=True)
     raw_json = Column(Text, nullable=True)
     last_seen_at = Column(DateTime(timezone=True), nullable=True)

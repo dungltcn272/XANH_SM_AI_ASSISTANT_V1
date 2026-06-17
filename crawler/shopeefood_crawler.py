@@ -19,6 +19,7 @@ import json
 import logging
 import re
 import time
+import unicodedata
 import urllib.parse
 import urllib.robotparser
 from dataclasses import asdict, dataclass
@@ -34,6 +35,28 @@ LOGGER = logging.getLogger("shopeefood_crawler")
 
 START_URL = "https://shopeefood.vn/"
 OUTPUT_DIR = Path(__file__).parent.parent / "data" / "food_catalog"
+DEFAULT_CITIES = [
+    "TP. HCM",
+    "Hà Nội",
+    "Đà Nẵng",
+    "Cần Thơ",
+    "Hải Phòng",
+    "Huế",
+    "Khánh Hoà",
+    "Đồng Nai",
+    "Vũng Tàu",
+]
+CITY_MATCHERS = {
+    "TP. HCM": ["tp. hcm", "hcm", "ho chi minh", "hồ chí minh", "ho-chi-minh"],
+    "Hà Nội": ["hà nội", "ha noi", "ha-noi"],
+    "Đà Nẵng": ["đà nẵng", "da nang", "da-nang"],
+    "Cần Thơ": ["cần thơ", "can tho", "can-tho"],
+    "Hải Phòng": ["hải phòng", "hai phong", "hai-phong"],
+    "Huế": ["huế", "hue"],
+    "Khánh Hoà": ["khánh hoà", "khánh hòa", "khanh hoa", "khanh-hoa"],
+    "Đồng Nai": ["đồng nai", "dong nai", "dong-nai"],
+    "Vũng Tàu": ["vũng tàu", "vung tau", "vung-tau"],
+}
 
 
 @dataclass
@@ -67,6 +90,8 @@ class FoodCatalogItem:
     source_url: str | None = None
     last_seen_at: str | None = None
     raw_ref: str | None = None
+    city: str | None = None
+    city_slug: str | None = None
 
 
 def configure_logging(verbose: bool = False) -> None:
@@ -115,6 +140,14 @@ def clean_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: clean_value(item) for key, item in value.items()}
     return value
+
+
+def slugify(value: str) -> str:
+    normalized = unicodedata.normalize("NFD", value)
+    ascii_text = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    ascii_text = ascii_text.replace("đ", "d").replace("Đ", "D").lower()
+    ascii_text = re.sub(r"[^a-z0-9]+", "_", ascii_text)
+    return ascii_text.strip("_") or "unknown"
 
 
 def first_present(data: dict[str, Any], keys: list[str]) -> Any:
@@ -275,18 +308,23 @@ class ShopeeFoodCrawler:
         start_url: str = START_URL,
         output_dir: Path = OUTPUT_DIR,
         max_items: int = 50,
+        max_items_per_city: int = 0,
         delay_seconds: float = 1.5,
         headful: bool = False,
     ) -> None:
         self.start_url = start_url
         self.output_dir = output_dir
         self.max_items = max_items
+        self.max_items_per_city = max_items_per_city
         self.delay_seconds = delay_seconds
         self.headful = headful
         self.raw_network: list[dict[str, Any]] = []
         self.items: dict[str, FoodCatalogItem] = {}
+        self.current_city: str | None = None
+        self.current_city_slug: str | None = None
+        self.city_start_count = 0
 
-    def crawl(self, queries: list[str], categories: list[str]) -> Path:
+    def crawl(self, queries: list[str], categories: list[str], cities: list[str]) -> Path:
         if not robots_allows(self.start_url):
             raise RuntimeError(f"robots.txt does not allow crawling {self.start_url}")
 
@@ -305,34 +343,48 @@ class ShopeeFoodCrawler:
             page = context.new_page()
             page.on("response", self._capture_response)
 
-            LOGGER.info("Opening %s", self.start_url)
-            page.goto(self.start_url, wait_until="domcontentloaded", timeout=60000)
-            self._settle(page)
-            self._collect_dom_cards(page, "home")
-
-            self._click_text_if_visible(page, "Xem tất cả")
-            self._scroll_collect(page, "home_view_all")
-
-            for category in categories:
+            for city in cities:
                 if len(self.items) >= self.max_items:
                     break
-                LOGGER.info("Trying category: %s", category)
-                if self._click_text_if_visible(page, category):
-                    self._scroll_collect(page, f"category:{category}")
-                time.sleep(self.delay_seconds)
-
-            for query in queries:
-                if len(self.items) >= self.max_items:
-                    break
-                LOGGER.info("Searching: %s", query)
-                self._search(page, query)
-                self._scroll_collect(page, f"search:{query}")
-                time.sleep(self.delay_seconds)
+                self.current_city = city
+                self.current_city_slug = slugify(city)
+                self.city_start_count = len(self.items)
+                LOGGER.info("Opening %s for city: %s", self.start_url, city)
+                page.goto(self.start_url, wait_until="domcontentloaded", timeout=60000)
+                self._settle(page)
+                self._select_city(page, city)
+                self._crawl_current_city(page, queries, categories)
 
             context.close()
             browser.close()
 
         return self._save()
+
+    def _crawl_current_city(self, page: Page, queries: list[str], categories: list[str]) -> None:
+        city_ref = self.current_city_slug or "unknown"
+        self._collect_dom_cards(page, f"{city_ref}:home")
+
+        self._click_text_if_visible(page, "Xem tất cả")
+        self._scroll_collect(page, f"{city_ref}:home_view_all")
+
+        for category in categories:
+            if self._limit_reached():
+                break
+            LOGGER.info("[%s] Trying category: %s", self.current_city, category)
+            page.goto(self.start_url, wait_until="domcontentloaded", timeout=60000)
+            self._settle(page)
+            self._select_city(page, self.current_city or "")
+            if self._click_text_if_visible(page, category):
+                self._scroll_collect(page, f"{city_ref}:category:{category}")
+            time.sleep(self.delay_seconds)
+
+        for query in queries:
+            if self._limit_reached():
+                break
+            LOGGER.info("[%s] Searching: %s", self.current_city, query)
+            self._search(page, query)
+            self._scroll_collect(page, f"{city_ref}:search:{query}")
+            time.sleep(self.delay_seconds)
 
     def _capture_response(self, response: Any) -> None:
         url = response.url
@@ -355,9 +407,47 @@ class ShopeeFoodCrawler:
         for raw in iter_restaurant_objects(payload):
             item = normalize_restaurant(raw, raw_ref)
             if item:
-                self.items[item.item_id] = item
-                if len(self.items) >= self.max_items:
+                self._store_item(item)
+                if self._limit_reached():
                     break
+
+    def _limit_reached(self) -> bool:
+        if len(self.items) >= self.max_items:
+            return True
+        if self.max_items_per_city <= 0:
+            return False
+        return (len(self.items) - self.city_start_count) >= self.max_items_per_city
+
+    def _store_item(self, item: FoodCatalogItem) -> None:
+        if not self._item_matches_current_city(item):
+            LOGGER.debug(
+                "Skipping stale item for %s: %s | %s",
+                self.current_city,
+                item.name,
+                item.merchant_address,
+            )
+            return
+        item.city = self.current_city
+        item.city_slug = self.current_city_slug
+        if item.city_slug and not item.item_id.startswith(f"shopeefood_{item.city_slug}_"):
+            item.item_id = item.item_id.replace("shopeefood_", f"shopeefood_{item.city_slug}_", 1)
+        self.items[item.item_id] = item
+
+    def _item_matches_current_city(self, item: FoodCatalogItem) -> bool:
+        if not self.current_city:
+            return True
+        markers = CITY_MATCHERS.get(self.current_city, [self.current_city])
+        haystack = " ".join(
+            filter(
+                None,
+                [
+                    item.merchant_address,
+                    item.source_url,
+                    item.name,
+                ],
+            )
+        ).casefold()
+        return any(marker.casefold() in haystack for marker in markers)
 
     def _settle(self, page: Page) -> None:
         try:
@@ -366,9 +456,45 @@ class ShopeeFoodCrawler:
             LOGGER.debug("networkidle timeout; continuing")
         time.sleep(self.delay_seconds)
 
+    def _select_city(self, page: Page, city: str) -> bool:
+        if not city:
+            return False
+        current = page.locator(".select-local .dropdown-toggle").first
+        try:
+            current.wait_for(timeout=7000, state="visible")
+            if city.casefold() in (current.inner_text(timeout=2000) or "").casefold():
+                return True
+            current.click(timeout=5000)
+            clicked = page.evaluate(
+                """
+                (city) => {
+                  const normalize = (text) => (text || '').trim().toLocaleLowerCase('vi-VN');
+                  const target = normalize(city);
+                  const items = Array.from(document.querySelectorAll('.select-local .dropdown-menu .dropdown-item'));
+                  const item = items.find((el) => normalize(el.querySelector('.name')?.textContent) === target);
+                  if (!item) return false;
+                  item.click();
+                  return true;
+                }
+                """,
+                city,
+            )
+            if not clicked:
+                raise RuntimeError(f"City option not found: {city}")
+            self._settle(page)
+            current.wait_for(timeout=7000, state="visible")
+            selected_text = current.inner_text(timeout=3000) or ""
+            if city.casefold() not in selected_text.casefold():
+                raise RuntimeError(f"City did not switch, current selector shows: {selected_text}")
+            LOGGER.info("Selected city: %s", city)
+            return True
+        except Exception as exc:
+            LOGGER.warning("Could not select city %s: %s", city, exc)
+            return False
+
     def _scroll_collect(self, page: Page, raw_ref: str) -> None:
         for _ in range(8):
-            if len(self.items) >= self.max_items:
+            if self._limit_reached():
                 return
             page.mouse.wheel(0, 900)
             self._settle(page)
@@ -380,6 +506,7 @@ class ShopeeFoodCrawler:
             LOGGER.debug("Search input missing on %s; returning to home page", page.url)
             page.goto(self.start_url, wait_until="domcontentloaded", timeout=60000)
             self._settle(page)
+            self._select_city(page, self.current_city or "")
             input_box = self._find_search_input(page)
         if not input_box:
             LOGGER.warning("Search input not found")
@@ -480,8 +607,8 @@ class ShopeeFoodCrawler:
                 f"dom:{raw_ref}",
             )
             if normalized:
-                self.items[normalized.item_id] = normalized
-                if len(self.items) >= self.max_items:
+                self._store_item(normalized)
+                if self._limit_reached():
                     break
 
     def _save(self) -> Path:
@@ -500,6 +627,7 @@ class ShopeeFoodCrawler:
                     "start_url": self.start_url,
                     "items": len(rows),
                     "network_snapshots": len(self.raw_network),
+                    "cities": sorted({row.get("city") for row in rows if row.get("city")}),
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "notes": [
                         "Public unauthenticated crawl only.",
@@ -521,8 +649,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-url", default=START_URL)
     parser.add_argument("--output-dir", default=str(OUTPUT_DIR))
     parser.add_argument("--max-items", type=int, default=50)
+    parser.add_argument("--max-items-per-city", type=int, default=0, help="Per-city cap; 0 means no per-city cap.")
     parser.add_argument("--delay", type=float, default=1.5)
     parser.add_argument("--headful", action="store_true", help="Show browser window for selector/event debugging")
+    parser.add_argument(
+        "--cities",
+        default=",".join(DEFAULT_CITIES),
+        help="Comma-separated city names to crawl, e.g. 'TP. HCM,Hà Nội,Đà Nẵng'.",
+    )
     parser.add_argument(
         "--queries",
         default="cơm,bún,phở,bánh mì,trà sữa",
@@ -542,14 +676,16 @@ def main() -> None:
     configure_logging(args.verbose)
     queries = [item.strip() for item in args.queries.split(",") if item.strip()]
     categories = [item.strip() for item in args.categories.split(",") if item.strip()]
+    cities = [item.strip() for item in args.cities.split(",") if item.strip()]
     crawler = ShopeeFoodCrawler(
         start_url=args.start_url,
         output_dir=Path(args.output_dir),
         max_items=max(1, args.max_items),
+        max_items_per_city=max(0, args.max_items_per_city),
         delay_seconds=max(0.5, args.delay),
         headful=args.headful,
     )
-    crawler.crawl(queries=queries, categories=categories)
+    crawler.crawl(queries=queries, categories=categories, cities=cities or DEFAULT_CITIES)
 
 
 if __name__ == "__main__":

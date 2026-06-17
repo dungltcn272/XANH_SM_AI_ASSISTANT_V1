@@ -79,6 +79,8 @@ def entry_from_db(row: FoodCatalog) -> FoodCatalogEntry:
         service_radius_km=row.service_radius_km,
         source=row.source or "shopeefood",
         source_url=row.source_url,
+        city=row.city,
+        city_slug=row.city_slug,
         last_seen_at=row.last_seen_at.isoformat() if row.last_seen_at else None,
     )
 
@@ -112,6 +114,8 @@ def entry_from_mapping(row: dict) -> FoodCatalogEntry:
         service_radius_km=row.get("service_radius_km"),
         source=row.get("source") or "shopeefood",
         source_url=row.get("source_url"),
+        city=row.get("city"),
+        city_slug=row.get("city_slug"),
         last_seen_at=row.get("last_seen_at"),
     )
 

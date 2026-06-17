@@ -44,6 +44,8 @@ class FoodCatalogEntry(BaseModel):
     service_radius_km: float | None = None
     source: str = "shopeefood"
     source_url: str | None = None
+    city: str | None = None
+    city_slug: str | None = None
     last_seen_at: str | None = None
 
 

@@ -1,9 +1,20 @@
 {
   "source": "shopeefood",
   "start_url": "https://shopeefood.vn/",
-  "items": 787,
-  "network_snapshots": 139,
-  "created_at": "2026-06-16T10:48:51.582402+00:00",
+  "items": 3277,
+  "network_snapshots": 1328,
+  "cities": [
+    "Cần Thơ",
+    "Huế",
+    "Hà Nội",
+    "Hải Phòng",
+    "Khánh Hoà",
+    "TP. HCM",
+    "Vũng Tàu",
+    "Đà Nẵng",
+    "Đồng Nai"
+  ],
+  "created_at": "2026-06-16T16:53:56.216979+00:00",
   "notes": [
     "Public unauthenticated crawl only.",
     "No CAPTCHA/login bypass.",
