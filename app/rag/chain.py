@@ -15,6 +15,8 @@ from app.rag.classifier import XanhSMClassifier
 from app.rag.guardrail import OutputGuardrail
 from app.core.config import settings as config
 from app.core.logger import log_info, log_warn, log_error
+from app.tools.food_recommendation.nlu import extract_food_slots
+from app.tools.food_recommendation.tool import recommend_food
 
 class XanhSMRAGPipeline:
     """
@@ -651,6 +653,101 @@ class XanhSMRAGPipeline:
         """
         return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache, image_base64=image_base64, is_deep_search=is_deep_search)
 
+    def _stream_plain_answer(self, answer: str):
+        import re
+        for token in re.split(r"(\s+)", answer):
+            if token:
+                safe_token = token.replace("\n", "\ndata: ")
+                yield f"data: {safe_token}\n\n"
+
+    def _food_missing_location_answer(self) -> str:
+        return (
+            "Dạ, để gợi ý món ăn gần anh/chị chính xác, em cần vị trí cụ thể trước ạ.\n\n"
+            "Anh/chị có thể gửi tọa độ theo dạng `10.7769,106.7009`, hoặc chia sẻ vị trí hiện tại rồi nhắn lại. "
+            "Nếu chỉ nhập tên khu vực như Quận 1/Hà Nội thì em chưa dùng để rank khoảng cách chính xác được."
+        )
+
+    def _format_food_answer(self, items, category: str | None = None) -> str:
+        if not items:
+            return (
+                "Dạ, em chưa tìm được món phù hợp trong bán kính và bộ lọc hiện tại. "
+                "Anh/chị có thể thử tăng bán kính, đổi loại món hoặc gửi vị trí gần khu trung tâm hơn ạ."
+            )
+
+        intro = "Dạ, em gợi ý vài lựa chọn"
+        if category:
+            intro += f" cho món {category}"
+        intro += " gần vị trí của anh/chị. Các món/quán dưới đây lấy từ catalog, em không tự bịa giá hoặc địa điểm:\n\n"
+
+        cards = []
+        for item in items:
+            price_text = ""
+            if item.final_price:
+                price_text = f" · khoảng {item.final_price:,}đ".replace(",", ".")
+            elif item.price:
+                price_text = f" · khoảng {item.price:,}đ".replace(",", ".")
+            desc = (
+                f"{item.distance_km:.1f} km · ETA {item.eta_minutes or '?'} phút · "
+                f"phí ship ước tính {(item.delivery_fee or 0):,}đ{price_text}. {item.reason}"
+            ).replace(",", ".")
+            title = item.name.replace("]", ")")
+            desc = desc.replace("]", ")")
+            image = item.image_url or ""
+            link = item.order_url or ""
+            cards.append(
+                f":::card [icon: info] [title: {title}] [desc: {desc}] [image: {image}] [link: {link}] :::"
+            )
+        return intro + "\n\n".join(cards)
+
+    def _handle_food_recommendation_stream(self, query: str, chat_history: List[Dict[str, str]], metrics: Dict[str, Any], t_start: float):
+        slots = extract_food_slots(query, chat_history)
+        metrics["intent"] = "food_recommendation"
+        metrics["food_slots"] = {
+            "has_location": slots.lat is not None and slots.lng is not None,
+            "category": slots.category,
+            "taste_tags": slots.taste_tags,
+            "budget_min": slots.budget_min,
+            "budget_max": slots.budget_max,
+            "meal_time": slots.meal_time,
+            "max_distance_km": slots.max_distance_km,
+        }
+
+        if slots.lat is None or slots.lng is None:
+            answer = self._food_missing_location_answer()
+            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+            yield from self._stream_plain_answer(answer)
+            yield f'data: {json.dumps({"metrics": metrics, "step": "food-missing-location"}, ensure_ascii=False)}\n\n'
+            yield "data: [DONE]\n\n"
+            return
+
+        from app.db.database import SessionLocal
+
+        t_tool_start = time.time()
+        db = SessionLocal()
+        try:
+            items = recommend_food(
+                lat=slots.lat,
+                lng=slots.lng,
+                category=slots.category,
+                taste_tags=slots.taste_tags,
+                budget_min=slots.budget_min,
+                budget_max=slots.budget_max,
+                meal_time=slots.meal_time,
+                max_distance_km=slots.max_distance_km,
+                limit=5,
+                db=db,
+            )
+        finally:
+            db.close()
+
+        metrics["search_latency_ms"] = (time.time() - t_tool_start) * 1000
+        metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+        metrics["food_result_count"] = len(items)
+        answer = self._format_food_answer(items, slots.category)
+        yield from self._stream_plain_answer(answer)
+        yield f'data: {json.dumps({"metrics": metrics, "step": "food-recommendation"}, ensure_ascii=False)}\n\n'
+        yield "data: [DONE]\n\n"
+
     def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False):
         """
         Internal raw streaming implementation of the RAG chain.
@@ -737,6 +834,11 @@ class XanhSMRAGPipeline:
         # Calculate NLU/Rewrite cost immediately so it is recorded even if generating fails/is interrupted
         nlu_cost = self._calculate_llm_cost(nlu_usage.get("prompt_tokens", 0), nlu_usage.get("completion_tokens", 0))
         metrics["cost_usd"] += nlu_cost["cost_usd"]
+
+        food_slots = extract_food_slots(query, chat_history)
+        if intent == "food_recommendation" or food_slots.is_food_intent:
+            yield from self._handle_food_recommendation_stream(query, chat_history, metrics, t_start)
+            return
 
         # 4. Handle Sensitive / Safety Block
         if intent == "sensitive":

@@ -28,9 +28,14 @@ def default_catalog_path() -> Path:
 
 def load_catalog(db: Session | None = None, json_path: str | Path | None = None) -> list[FoodCatalogEntry]:
     if db is not None:
-        rows = db.query(FoodCatalog).all()
-        if rows:
-            return [entry_from_db(row) for row in rows]
+        try:
+            rows = db.query(FoodCatalog).all()
+            if rows:
+                return [entry_from_db(row) for row in rows]
+        except Exception:
+            # Deploys can still serve food recommendations from the committed JSONL
+            # before the admin import has run or when the DB is temporarily unavailable.
+            pass
     return load_catalog_from_jsonl(Path(json_path) if json_path else default_catalog_path())
 
 

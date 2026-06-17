@@ -7,6 +7,7 @@ from app.core.config import settings as config
 from app.rag.prompt import UNIFIED_NLU_PROMPT
 from app.rag.domain_vocabulary import enrich_queries, understand_query
 from app.core.logger import log_warn
+from app.tools.food_recommendation.nlu import detect_food_intent
 
 class XanhSMClassifier:
     """
@@ -109,6 +110,17 @@ class XanhSMClassifier:
                 "fast_path_reason": "small_talk_rule"
             }
 
+        if detect_food_intent(query):
+            return {
+                "rewritten_query": query,
+                "intent": "food_recommendation",
+                "expanded_queries": [query],
+                "suggested_answer": None,
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+                "fast_path": True,
+                "fast_path_reason": "food_intent_rule"
+            }
+
         if (
             config.NLU_FAST_PATH_ENABLED
             and not image_base64
@@ -154,7 +166,7 @@ class XanhSMClassifier:
                 
                 # Normalize output to ensure schema matches
                 intent = result.get("intent", "rag")
-                if intent not in ["small-talk", "rag", "sensitive"]:
+                if intent not in ["small-talk", "rag", "sensitive", "food_recommendation"]:
                     intent = "rag"
                     
                 rewritten_query = result.get("rewritten_query", query)
@@ -182,6 +194,8 @@ class XanhSMClassifier:
         # Greetings check
         if any(w in query_lower for w in ["chào", "hi", "hello", "cảm ơn", "cảm ơn bạn", "tạm biệt", "bye"]):
             intent = "small-talk"
+        elif detect_food_intent(query):
+            intent = "food_recommendation"
             
         # 2. Query rewrite fallback (just return original query since we have no LLM)
         rewritten_query = query

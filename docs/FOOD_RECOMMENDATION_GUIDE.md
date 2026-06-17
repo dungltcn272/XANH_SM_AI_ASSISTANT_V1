@@ -667,12 +667,12 @@ Admin/dev UI:
 
 ### Level 3: Chatbot Integration
 
-- [ ] Detect food intent.
-- [ ] Extract slot: vị trí, giá, khẩu vị, category, time.
-- [ ] Hỏi lại nếu thiếu lat/lng.
-- [ ] Call `recommend_food`.
-- [ ] Render card.
-- [ ] Không để LLM bịa món ngoài tool.
+- [x] Detect food intent.
+- [x] Extract slot: vị trí, giá, khẩu vị, category, time.
+- [x] Hỏi lại nếu thiếu lat/lng.
+- [x] Call `recommend_food`.
+- [x] Render card.
+- [x] Không để LLM bịa món ngoài tool.
 
 ### Level 4: Interaction Logging
 
