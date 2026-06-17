@@ -48,6 +48,56 @@ def run_auto_migrations():
         "CREATE INDEX IF NOT EXISTS ix_food_interactions_item_id ON food_interactions(item_id);",
         "CREATE INDEX IF NOT EXISTS ix_food_interactions_merchant_id ON food_interactions(merchant_id);",
         "CREATE INDEX IF NOT EXISTS ix_food_interactions_created_at ON food_interactions(created_at);",
+        "ALTER TABLE food_interactions DROP CONSTRAINT IF EXISTS food_interactions_item_id_fkey;",
+        """
+        CREATE TABLE IF NOT EXISTS user_food_profiles (
+            id VARCHAR PRIMARY KEY,
+            user_id VARCHAR,
+            guest_id VARCHAR,
+            current_location_json TEXT,
+            saved_places_json TEXT,
+            liked_items_json TEXT,
+            disliked_items_json TEXT,
+            preferred_categories_json TEXT,
+            preferred_tags_json TEXT,
+            avoided_tags_json TEXT,
+            budget_profile_json TEXT,
+            allergies_json TEXT,
+            profile_stats_json TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_user_food_profiles_user_id ON user_food_profiles(user_id);",
+        "CREATE INDEX IF NOT EXISTS ix_user_food_profiles_guest_id ON user_food_profiles(guest_id);",
+        "CREATE INDEX IF NOT EXISTS ix_user_food_profiles_updated_at ON user_food_profiles(updated_at);",
+        """
+        CREATE TABLE IF NOT EXISTS food_recommendation_traces (
+            trace_id VARCHAR PRIMARY KEY,
+            conversation_id VARCHAR REFERENCES conversations(id),
+            message_id VARCHAR REFERENCES messages(id),
+            user_id VARCHAR,
+            guest_id VARCHAR,
+            original_query TEXT,
+            rewritten_query TEXT,
+            intent VARCHAR,
+            nlu_json TEXT,
+            user_context_json TEXT,
+            location_json TEXT,
+            candidate_stats_json TEXT,
+            ranking_json TEXT,
+            answer_llm_json TEXT,
+            sse_events_json TEXT,
+            latency_json TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_conversation_id ON food_recommendation_traces(conversation_id);",
+        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_message_id ON food_recommendation_traces(message_id);",
+        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_user_id ON food_recommendation_traces(user_id);",
+        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_guest_id ON food_recommendation_traces(guest_id);",
+        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_intent ON food_recommendation_traces(intent);",
+        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_created_at ON food_recommendation_traces(created_at);",
     ]
     
     with engine.connect() as conn:

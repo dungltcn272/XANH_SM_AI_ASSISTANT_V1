@@ -15,7 +15,7 @@ from app.rag.classifier import XanhSMClassifier
 from app.rag.guardrail import OutputGuardrail
 from app.core.config import settings as config
 from app.core.logger import log_info, log_warn, log_error
-from app.tools.food_recommendation.nlu import extract_food_slots
+from app.tools.food_recommendation.nlu import slots_from_nlu
 from app.tools.food_recommendation.tool import recommend_food
 from app.tools.food_recommendation.geocode import geocode_address
 
@@ -147,31 +147,9 @@ class XanhSMRAGPipeline:
 
     def select_retrieval_strategy(self, query: str) -> str:
         """
-        Strategy Selector: Dynamically decides the optimal search mechanism based on query properties.
-        - BM25: For queries seeking specific error codes, hotlines, bridge fees, numbers, exact rule clauses.
-        - Dense: For conceptual, abstract, semantic meaning queries.
-        - Hybrid (Default): Merges dense semantic & exact keyword search.
+        Keep retrieval selection free of keyword heuristics.
+        The retrieval layer already performs hybrid dense+sparse search internally.
         """
-        query_clean = query.lower()
-        
-        # Specific indicators for exact keywords/numbers
-        bm25_indicators = {
-            "1900", "2088", "hotline", "điều", "khoản", "mục", "phần", "chế tài", 
-            "vnđ", "đồng", "triệu", "phạt", "mã lỗi", "rùa vàng", "rùa", "cứu hộ"
-        }
-        
-        # Numeric or phone check
-        has_numbers = any(char.isdigit() for char in query_clean)
-        
-        if any(ind in query_clean for ind in bm25_indicators) or has_numbers:
-            # Contains high density of exact keywords or numbers
-            return "BM25 / Keyword"
-            
-        # Abstract queries like "tác phong chuẩn mực", "hỗ trợ khách hàng thế nào", "giúp tôi hiểu..."
-        dense_indicators = {"chuẩn mực", "thế nào", "nghĩa là gì", "giải thích", "tại sao", "lý do", "ý nghĩa", "hiểu thế nào"}
-        if any(ind in query_clean for ind in dense_indicators) and not has_numbers:
-            return "Dense Search"
-            
         return "Hybrid Search"
 
     def run_faithfulness_check(self, context: str, answer: str) -> Tuple[bool, float, str]:
@@ -648,11 +626,23 @@ class XanhSMRAGPipeline:
             "llm_cost_vnd": cost_info["cost_vnd"]
         }
 
-    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False):
+    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False, food_context: Dict[str, Any] | None = None):
         """
         Stream version of the NLU-Gateway RAG chain.
         """
-        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache, image_base64=image_base64, is_deep_search=is_deep_search)
+        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache, image_base64=image_base64, is_deep_search=is_deep_search, food_context=food_context)
+
+    def _sse_pipeline_step(self, step: str, message: str, progress: float | None = None, **debug):
+        payload = {
+            "type": "pipeline_step",
+            "step": step,
+            "message": message,
+        }
+        if progress is not None:
+            payload["progress"] = progress
+        if debug:
+            payload["debug"] = debug
+        return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     def _stream_plain_answer(self, answer: str):
         import re
@@ -670,8 +660,8 @@ class XanhSMRAGPipeline:
     def _format_food_answer(self, items, category: str | None = None) -> str:
         if not items:
             return (
-                "Dạ, em chưa tìm được quán phù hợp trong bán kính và bộ lọc hiện tại. "
-                "Anh/chị có thể thử mở rộng khu vực hoặc đổi sang nhóm món khác."
+                "Dạ, em chưa tìm được quán phù hợp quanh vị trí này trong catalog hiện tại. "
+                "Anh/chị có thể chọn lại vị trí ở khu vực trung tâm hoặc nhập địa chỉ cụ thể hơn để em tìm chính xác."
             )
 
         intro = "Dạ, em đã sắp xếp một vài lựa chọn"
@@ -745,16 +735,8 @@ class XanhSMRAGPipeline:
             "more_items": [to_payload(item, index + 4) for index, item in enumerate(items[4:8])],
         }
 
-    def _extract_geocode_target(self, query: str) -> str | None:
-        match = re.search(r"(?:\bở\b|\btại\b|\bgần\b)\s+(.+)$", query or "", flags=re.IGNORECASE)
-        if match:
-            target = match.group(1).strip(" .,!?:;")
-            if len(target) >= 3 and not re.search(r"\d{1,2}\.\d{3,}\s*[,;]\s*\d{1,3}\.\d{3,}", target):
-                return target
-        return None
-
-    def _handle_food_recommendation_stream(self, query: str, chat_history: List[Dict[str, str]], metrics: Dict[str, Any], t_start: float):
-        slots = extract_food_slots(query, chat_history)
+    def _handle_food_recommendation_stream(self, query: str, chat_history: List[Dict[str, str]], metrics: Dict[str, Any], t_start: float, nlu_food_slots: Dict[str, Any] | None = None):
+        slots = slots_from_nlu(nlu_food_slots, raw_query=query)
         metrics["intent"] = "food_recommendation"
         metrics["food_slots"] = {
             "has_location": slots.lat is not None and slots.lng is not None,
@@ -767,9 +749,10 @@ class XanhSMRAGPipeline:
         }
 
         if slots.lat is None or slots.lng is None:
-            geocode_target = self._extract_geocode_target(query)
+            geocode_target = slots.address_text
             if geocode_target:
                 try:
+                    yield self._sse_pipeline_step("food_geocode", "Đang xác định vị trí trên bản đồ...", 0.32, address_text=geocode_target)
                     geocoded = geocode_address(geocode_target)
                     if geocoded:
                         slots.lat = float(geocoded["lat"])
@@ -782,6 +765,7 @@ class XanhSMRAGPipeline:
         if slots.lat is None or slots.lng is None:
             answer = self._food_missing_location_answer()
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+            yield self._sse_pipeline_step("food_missing_info", "Em cần thêm một chút thông tin để gợi ý chính xác hơn...", 0.42)
             yield from self._stream_plain_answer(answer)
             yield f'data: {json.dumps({"food_location_request": self._food_location_payload(query)}, ensure_ascii=False)}\n\n'
             yield f'data: {json.dumps({"metrics": metrics, "step": "food-missing-location"}, ensure_ascii=False)}\n\n'
@@ -793,6 +777,7 @@ class XanhSMRAGPipeline:
         t_tool_start = time.time()
         db = SessionLocal()
         try:
+            yield self._sse_pipeline_step("food_candidate_search", "Đang tìm các món ăn phù hợp...", 0.42)
             items = recommend_food(
                 lat=slots.lat,
                 lng=slots.lng,
@@ -805,6 +790,36 @@ class XanhSMRAGPipeline:
                 limit=8,
                 db=db,
             )
+            if not items:
+                metrics["food_fallback"] = "expanded_radius"
+                yield self._sse_pipeline_step("food_candidate_filter", "Đang lọc quán theo vị trí, ngân sách và khẩu vị...", 0.52, radius_km=max(slots.max_distance_km, 25))
+                items = recommend_food(
+                    lat=slots.lat,
+                    lng=slots.lng,
+                    category=slots.category,
+                    taste_tags=slots.taste_tags,
+                    budget_min=slots.budget_min,
+                    budget_max=slots.budget_max,
+                    meal_time=slots.meal_time,
+                    max_distance_km=max(slots.max_distance_km, 25),
+                    limit=8,
+                    db=db,
+                )
+            if not items and slots.category:
+                metrics["food_fallback"] = "expanded_radius_relaxed_category"
+                yield self._sse_pipeline_step("food_ml_rank", "Đang xếp hạng món ăn phù hợp nhất...", 0.62, relaxed_category=True)
+                items = recommend_food(
+                    lat=slots.lat,
+                    lng=slots.lng,
+                    category=None,
+                    taste_tags=slots.taste_tags,
+                    budget_min=slots.budget_min,
+                    budget_max=slots.budget_max,
+                    meal_time=slots.meal_time,
+                    max_distance_km=max(slots.max_distance_km, 25),
+                    limit=8,
+                    db=db,
+                )
         finally:
             db.close()
 
@@ -812,13 +827,18 @@ class XanhSMRAGPipeline:
         metrics["total_latency_ms"] = (time.time() - t_start) * 1000
         metrics["food_result_count"] = len(items)
         answer = self._format_food_answer(items, slots.category)
+        if items:
+            yield self._sse_pipeline_step("food_found", "Yeah, đã tìm được món ăn phù hợp, đang chuẩn bị lên món...", 0.78, result_count=len(items))
+            yield self._sse_pipeline_step("food_answer_llm", "Đang viết lời gợi ý dễ hiểu hơn cho bạn...", 0.86)
         yield from self._stream_plain_answer(answer)
         if items:
             yield f'data: {json.dumps({"food_recommendations": self._food_recommendations_payload(items, slots.category, query)}, ensure_ascii=False)}\n\n'
+        else:
+            yield f'data: {json.dumps({"food_location_request": self._food_location_payload(query)}, ensure_ascii=False)}\n\n'
         yield f'data: {json.dumps({"metrics": metrics, "step": "food-recommendation"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
 
-    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False):
+    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False, food_context: Dict[str, Any] | None = None):
         """
         Internal raw streaming implementation of the RAG chain.
         """
@@ -854,7 +874,9 @@ class XanhSMRAGPipeline:
         if is_deep_search:
             bypass_cache = True
 
+        yield from yield_msg(self._sse_pipeline_step("received", "Chờ một chút...", 0.03))
         normalized_query = self.gateway.normalize_input(query)
+        yield from yield_msg(self._sse_pipeline_step("gateway_safety", "Đang kiểm tra an toàn nội dung...", 0.06))
         safety_res = self.gateway.safety_precheck(normalized_query)
         if not safety_res["safe"]:
             yield from yield_msg(f"data: {self._gateway_refusal_message(safety_res)}\n\n")
@@ -862,6 +884,7 @@ class XanhSMRAGPipeline:
             return
 
         # 2. Early Cache Lookup
+        yield from yield_msg(self._sse_pipeline_step("cache_lookup", "Đang kiểm tra câu trả lời đã có...", 0.1))
         if self.cache and not bypass_cache:
             is_hit, hit_res, hit_type = self.cache.get(normalized_query)
             if is_hit:
@@ -886,7 +909,8 @@ class XanhSMRAGPipeline:
         # 3. Unified NLU Call
         t_nlu_start = time.time()
         # For deep search, we could optionally tell NLU to expand more aggressively
-        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history, image_base64=image_base64)
+        yield from yield_msg(self._sse_pipeline_step("nlu_intent", "Đang phân tích ý định...", 0.18))
+        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history, image_base64=image_base64, food_context=food_context)
         metrics["rewrite_latency_ms"] = (time.time() - t_nlu_start) * 1000
         
         rewritten_query = nlu_res["rewritten_query"]
@@ -899,15 +923,17 @@ class XanhSMRAGPipeline:
         metrics["expanded_queries"] = expanded_queries
         metrics["nlu_fast_path"] = bool(nlu_res.get("fast_path"))
         metrics["nlu_fast_path_reason"] = nlu_res.get("fast_path_reason")
+        metrics["food_user_context"] = food_context
+        metrics["nlu_missing_fields"] = nlu_res.get("missing_fields", [])
         metrics["total_tokens"] += nlu_usage.get("prompt_tokens", 0) + nlu_usage.get("completion_tokens", 0)
         
         # Calculate NLU/Rewrite cost immediately so it is recorded even if generating fails/is interrupted
         nlu_cost = self._calculate_llm_cost(nlu_usage.get("prompt_tokens", 0), nlu_usage.get("completion_tokens", 0))
         metrics["cost_usd"] += nlu_cost["cost_usd"]
 
-        food_slots = extract_food_slots(query, chat_history)
-        if intent == "food_recommendation" or food_slots.is_food_intent:
-            yield from self._handle_food_recommendation_stream(query, chat_history, metrics, t_start)
+        if intent == "food_recommendation":
+            yield from yield_msg(self._sse_pipeline_step("food_context_load", "Đang xem lại khẩu vị và vị trí của bạn...", 0.24))
+            yield from self._handle_food_recommendation_stream(query, chat_history, metrics, t_start, nlu_food_slots=nlu_res.get("food_slots"))
             return
 
         # 4. Handle Sensitive / Safety Block
@@ -962,7 +988,7 @@ class XanhSMRAGPipeline:
 
         try:
             strategy = self.select_retrieval_strategy(rewritten_query)
-            yield from yield_msg('data: {"step": "Đang truy xuất dữ liệu (Hybrid)..."}\n\n')
+            yield from yield_msg(self._sse_pipeline_step("retrieval_search", "Đang tìm kiếm tài liệu...", 0.34, strategy=strategy))
             t_search_start = time.time()
             
             search_limit = config.DEEP_SEARCH_CANDIDATE_LIMIT if is_deep_search else config.RETRIEVAL_CANDIDATE_LIMIT
@@ -973,7 +999,7 @@ class XanhSMRAGPipeline:
             )
             metrics["search_latency_ms"] = (time.time() - t_search_start) * 1000
 
-            yield from yield_msg('data: {"step": "Đang chấm điểm & Reranking tài liệu..."}\n\n')
+            yield from yield_msg(self._sse_pipeline_step("rerank_documents", "Đang xếp hạng tài liệu...", 0.52))
             t_rerank_start = time.time()
             
             rerank_top_n = config.DEEP_SEARCH_RERANK_TOP_N if is_deep_search else config.RERANK_TOP_N
@@ -985,6 +1011,7 @@ class XanhSMRAGPipeline:
             metrics["rerank_latency_ms"] = (time.time() - t_rerank_start) * 1000
             metrics["num_chunks_before_expansion"] = len(top_docs)
             
+            yield from yield_msg(self._sse_pipeline_step("context_expansion", "Đang gọi thêm tài liệu đầy đủ...", 0.64, top_docs=len(top_docs)))
             top_docs = self.search_engine.expand_context(top_docs)
             messages, compressed_context, _ = self._build_prompt_messages(
                 query=rewritten_query,
@@ -995,7 +1022,7 @@ class XanhSMRAGPipeline:
             
             metrics["compressed_context_len"] = len(compressed_context)
 
-            yield from yield_msg('data: {"step": "Đang tổng hợp câu trả lời..."}\n\n')
+            yield from yield_msg(self._sse_pipeline_step("answer_prepare", "Đang chuẩn bị trả lời...", 0.78))
             t_gen_start = time.time()
 
             final_answer = ""

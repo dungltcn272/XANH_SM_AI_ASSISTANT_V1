@@ -10,6 +10,7 @@ from app.core.security import get_current_entity
 from app.db.database import get_db
 from app.db.models import FoodCatalog, FoodInteraction
 from app.tools.food_recommendation.geocode import geocode_address
+from app.tools.food_recommendation.profile_store import get_or_create_food_profile
 
 router = APIRouter()
 
@@ -25,6 +26,48 @@ class FoodInteractionRequest(BaseModel):
     rank_position: Optional[int] = None
     query: Optional[str] = None
     request_context: Optional[Dict[str, Any]] = None
+
+
+def _append_unique(items: list[dict[str, Any]], value: dict[str, Any], key: str = "item_id", limit: int = 80) -> list[dict[str, Any]]:
+    value_key = value.get(key)
+    filtered = [item for item in items if item.get(key) != value_key] if value_key else items
+    return [value, *filtered][:limit]
+
+
+def _update_food_profile_from_event(
+    db: Session,
+    user_id: str | None,
+    session_id: str | None,
+    req: FoodInteractionRequest,
+) -> None:
+    if req.event_type not in {"like", "dismiss", "dislike", "click_item", "click_out"}:
+        return
+
+    profile = get_or_create_food_profile(db, user_id=user_id, guest_id=session_id)
+    context = req.request_context or {}
+    snapshot = {
+        "item_id": req.item_id,
+        "merchant_id": req.merchant_id,
+        "name": context.get("item_name"),
+        "dish_name": context.get("dish_name"),
+        "category": context.get("category"),
+        "tags": context.get("tags") or [],
+        "event_type": req.event_type,
+    }
+
+    try:
+        liked = json.loads(profile.liked_items_json or "[]")
+    except json.JSONDecodeError:
+        liked = []
+    try:
+        disliked = json.loads(profile.disliked_items_json or "[]")
+    except json.JSONDecodeError:
+        disliked = []
+
+    if req.event_type in {"like", "click_item", "click_out"}:
+        profile.liked_items_json = json.dumps(_append_unique(liked, snapshot), ensure_ascii=False)
+    elif req.event_type in {"dismiss", "dislike"}:
+        profile.disliked_items_json = json.dumps(_append_unique(disliked, snapshot), ensure_ascii=False)
 
 
 @router.get("/geocode")
@@ -65,6 +108,7 @@ def log_food_interaction(
         request_context_json=json.dumps(req.request_context or {}, ensure_ascii=False),
     )
     db.add(row)
+    _update_food_profile_from_event(db, user_id, session_id, req)
     db.commit()
     db.refresh(row)
     return {"success": True, "event_id": row.event_id}

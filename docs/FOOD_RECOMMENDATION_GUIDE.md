@@ -2,6 +2,8 @@
 
 Tài liệu này là kế hoạch mới cho tính năng gợi ý món ăn trong Xanh SM Chatbot. Ta coi như **chưa triển khai code recommend trước đó**; phần code service recommend cũ có thể revert. Hướng mới là: chatbot/RAG hoạt động như một AI Assistant và **call tool** để lấy danh sách món phù hợp.
 
+> Update V2: bản cải biên bên dưới thay thế hướng vá nhanh trước đó. Không dùng fast-path rule để bỏ qua NLU LLM nữa. Tất cả câu hỏi vẫn đi qua cache, safety/gateway và NLU LLM để phân loại intent + trích xuất context. Food Recommendation trở thành một nhánh tool/service có slot filling, map/location UX, profile người dùng và một LLM tổng hợp câu trả lời riêng cho món ăn.
+
 ## 1. Quyết Định Mới
 
 Không xây một recommendation platform riêng ngay từ đầu.
@@ -639,7 +641,602 @@ Admin/dev UI:
 - xem click log;
 - xem món nào hay được click.
 
-## 12. Milestones Mới
+## 12. Phiên Bản Cải Biên V2
+
+Phiên bản này thay thế hướng vá nhanh trước đó. Không dùng fast-path food intent để bỏ qua NLU LLM nữa. Tất cả user message đi qua cache, sau đó qua NLU LLM để phân loại intent và trích xuất context.
+
+### 12.1. Luồng Chính
+
+```mermaid
+flowchart TD
+    U([User Message]) --> G[Gateway / Safety]
+    G -- hard block --> Safe[Gateway Safety Answer]
+    G -- safe --> Cache{Semantic Cache}
+    Cache -- hit --> Out([Stream Answer])
+    Cache -- miss --> NLU[NLU LLM: intent + slots + missing_fields + answer + ui_form]
+
+    NLU --> Intent{Intent}
+    Intent -- rag --> RAG[Normal RAG Pipeline]
+    Intent -- small-talk --> Small[Small-talk Answer]
+    Intent -- sensitive --> NluSafe[Use NLU assistant_answer directly]
+    Intent -- food-recommend --> Need{Missing Food Info?}
+
+    Need -- yes --> Ask[Answer + Food Form Payload]
+    Need -- no --> Rec[Food Recommendation Service]
+
+    Rec --> Geo{Has lat/lng?}
+    Geo -- no, has address_text --> Google[Google Places / Geocoding API]
+    Geo -- yes --> Candidates[Candidate Generation]
+    Google --> Candidates
+    Candidates --> Rank[Hybrid Ranking: Rule + ML/DL]
+    Rank --> FoodLLM[Food Answer LLM]
+    FoodLLM --> FoodCards[Beautiful Food Cards + Advice]
+
+    RAG --> Out
+    Small --> Out
+    NluSafe --> Out
+    Ask --> Out
+    FoodCards --> Out
+```
+
+Thứ tự bắt buộc:
+
+- Gateway/safety.
+- Semantic cache.
+- NLU LLM.
+- Route theo intent: `rag`, `small-talk`, `sensitive`, `food-recommend`.
+- Nếu NLU LLM trả `sensitive`, dùng luôn `assistant_answer` từ NLU để phản hồi. Không gọi thêm LLM lần nữa chỉ để từ chối.
+- Food thiếu thông tin: trả `assistant_answer` + `ui_form`.
+- Food đủ thông tin: gọi recommendation service.
+- Recommendation service trả top candidates có score/reason.
+- Food Answer LLM nhận top candidates + user context để viết câu trả lời hay, nhưng không bịa món ngoài candidates.
+
+### 12.2. NLU LLM Contract
+
+Không còn rule fast-path làm đường chính. NLU LLM là nơi quyết định intent:
+
+```json
+{
+  "intent": "food-recommend",
+  "confidence": 0.91,
+  "rewritten_query": "Tìm món ăn ngon gần Ngõ 67 Phùng Khoang",
+  "food_slots": {
+    "dish_or_category": "món ăn ngon",
+    "taste_tags": [],
+    "budget_min": null,
+    "budget_max": null,
+    "meal_time": null,
+    "party_size": null,
+    "delivery_or_pickup": "delivery",
+    "address_text": "Ngõ 67 Phùng Khoang",
+    "lat": null,
+    "lng": null,
+    "max_distance_km": null
+  },
+  "user_context": {
+    "current_location": null,
+    "saved_places": null,
+    "liked_foods": null,
+    "disliked_foods": null,
+    "preferred_categories": null,
+    "budget_profile": null,
+    "allergies": null
+  },
+  "missing_fields": ["lat_lng_confirmation"],
+  "assistant_answer": "Dạ, em có thể tìm món ngon gần Ngõ 67 Phùng Khoang. Em sẽ xác định vị trí gần đúng trước; anh/chị có muốn chỉnh lại vị trí trên bản đồ không ạ?",
+  "ui_form": {
+    "type": "food_missing_info",
+    "required_fields": ["location"],
+    "optional_fields": ["budget", "taste", "liked_foods", "disliked_foods"],
+    "map_required": true
+  }
+}
+```
+
+Nguyên tắc:
+
+- Nếu user nói “gần đây/gần tôi/quanh đây” mà không có `current_location`, NLU đánh dấu thiếu location.
+- Nếu user nói địa chỉ chữ như “Ngõ 67 Phùng Khoang”, NLU đưa vào `address_text`, không tự bịa lat/lng.
+- Field nào profile chưa có thì ghi `null` hoặc `[]`, không đoán.
+- Khi thiếu field, NLU vẫn trả lời tự nhiên giống small-talk/sensitive, đồng thời trả form schema cho FE.
+
+### 12.3. User Food Context / Memory
+
+Trước khi gọi NLU LLM, backend lấy food context từ DB và nhét vào prompt:
+
+```json
+{
+  "current_location": {
+    "lat": 10.7769,
+    "lng": 106.7009,
+    "label": "Vị trí hiện tại",
+    "accuracy_meters": 30,
+    "updated_at": "2026-06-17T10:30:00Z"
+  },
+  "saved_places": [
+    {"label": "Nhà", "lat": null, "lng": null, "address": null},
+    {"label": "Công ty", "lat": null, "lng": null, "address": null}
+  ],
+  "liked_foods": [
+    {"item_id": "shopeefood_123", "name": "Cơm gạo lứt", "category": "cơm", "tags": ["healthy"]}
+  ],
+  "disliked_foods": [
+    {"item_id": "shopeefood_456", "name": "Gà rán", "category": "fast_food", "tags": ["nhiều dầu"]}
+  ],
+  "preferred_categories": null,
+  "budget_profile": null,
+  "allergies": null
+}
+```
+
+DB nên bổ sung:
+
+```text
+user_food_profile
+  user_id / guest_id
+  current_location_json
+  saved_places_json
+  liked_items_json
+  disliked_items_json
+  preferred_categories_json
+  preferred_tags_json
+  avoided_tags_json
+  budget_profile_json
+  allergies_json
+  updated_at
+```
+
+`food_interactions` là event log thô. `user_food_profile` là bản tổng hợp để NLU và recommender dùng nhanh.
+
+### 12.4. Missing Info UX
+
+Backend trả cả answer và form payload:
+
+```json
+{
+  "answer": "Dạ, để gợi ý món gần anh/chị chính xác hơn, em cần vị trí giao món trước ạ.",
+  "ui_form": {
+    "type": "food_missing_info",
+    "required_fields": ["location"],
+    "optional_fields": ["budget", "taste", "liked_foods", "disliked_foods"],
+    "map": {
+      "provider": "google_maps",
+      "show_current_location": true,
+      "allow_pin_drag": true,
+      "allow_address_search": true
+    },
+    "preference_picker": {
+      "show_liked_foods": true,
+      "show_disliked_foods": true,
+      "allow_edit": true
+    }
+  }
+}
+```
+
+FE kỳ vọng:
+
+- Không yêu cầu user tự nhập tọa độ thập phân.
+- Map thật, hiển thị vị trí nếu có.
+- Nếu chưa có vị trí: cho bật current location, nhập địa chỉ, autocomplete địa chỉ hoặc kéo pin.
+- Nếu đã có vị trí: vẫn cho đổi lại.
+- Hiển thị món/quán user đã thích hoặc không thích để chỉnh preference.
+- Submit form gửi structured payload, không biến lat/lng thành message chính.
+
+Map production:
+
+```text
+VITE_GOOGLE_MAPS_API_KEY=...
+GOOGLE_MAPS_API_KEY=...
+```
+
+Cần Google Maps JavaScript API, Places Autocomplete và Geocoding API. Nếu chưa có key thì phải báo user cung cấp trước khi bật map thật.
+
+### 12.5. Food Recommendation Service V2
+
+Interface:
+
+```python
+recommend_food_v2(
+    query: str,
+    user_id: str | None,
+    slots: FoodSlots,
+    user_context: UserFoodContext,
+    limit: int = 10,
+) -> FoodRecommendationResult
+```
+
+Service chịu trách nhiệm:
+
+- Có `lat/lng` thì dùng trực tiếp.
+- Không có `lat/lng` nhưng có `address_text` thì gọi Google Geocoding/Places API.
+- Nếu geocode confidence thấp thì trả `needs_confirmation=true` để FE hiện map xác nhận.
+- Candidate generation từ DB food catalog.
+- Ranking bằng hybrid ranker.
+- Trả top items, score breakdown, reason, warnings.
+
+Output:
+
+```json
+{
+  "needs_confirmation": false,
+  "resolved_location": {
+    "lat": 20.9901,
+    "lng": 105.7923,
+    "address": "Ngõ 67 Phùng Khoang, Hà Nội",
+    "confidence": 0.82,
+    "source": "google_geocoding"
+  },
+  "items": [
+    {
+      "item_id": "shopeefood_abc",
+      "name": "Phở Cồ - Phở Xào & Cơm Rang",
+      "merchant_name": "Phở Cồ",
+      "image_url": "...",
+      "distance_km": 1.5,
+      "eta_minutes": 21,
+      "delivery_fee": 16543,
+      "rating": 5,
+      "score": 0.91,
+      "reason": "Gần vị trí đã chọn, phù hợp nhu cầu cơm/phở, đánh giá tốt."
+    }
+  ]
+}
+```
+
+### 12.6. Ranking ML/DL Được Phép Dùng
+
+V2 cho phép nâng cấp ranking bằng ML/DL, miễn là vẫn có fallback rule-based và không bịa item.
+
+```mermaid
+flowchart TD
+    Q[Query + Slots] --> CG[Candidate Generation]
+    P[User Food Profile] --> CG
+    C[(Food Catalog)] --> CG
+    CG --> F[Feature Builder]
+    F --> R1[Rule Ranker Fallback]
+    F --> R2[Learning-to-Rank]
+    F --> R3[Two-Tower / Embedding Retrieval]
+    F --> R4[Contextual Re-ranker]
+    R1 --> Blend[Score Blending]
+    R2 --> Blend
+    R3 --> Blend
+    R4 --> Blend
+    Blend --> Div[Diversity / Constraints]
+    Div --> TopK[Top K + Reasons]
+```
+
+Các tầng có thể dùng:
+
+- Rule-based fallback: distance, ETA, fee, rating, discount, category/taste match.
+- Content-based embedding: embed món/quán + query/user taste profile.
+- Learning-to-rank: LightGBM/XGBoost LambdaMART hoặc CatBoost ranking từ click/like/dismiss.
+- Two-tower retrieval: user tower + item tower khi data đủ lớn.
+- Contextual re-ranker: cross-encoder hoặc LLM/reranker nhỏ chấm lại top 50.
+- Multi-armed bandit nhẹ để exploration/exploitation.
+
+Model chỉ được re-rank item có thật trong catalog.
+
+#### 12.6.1. Stack ML/DL Cụ Thể Đề Xuất
+
+Vì recommendation là bài toán nhiều tầng, không nên nhảy thẳng vào deep learning nếu chưa có event thật. Nhưng thiết kế V2 phải chừa đường cho các tầng sau:
+
+| Tầng | Mục tiêu | Công nghệ cụ thể | Khi nào bật |
+|---|---|---|---|
+| Rule Ranker | Fallback chắc chắn, dễ debug | Python scoring + SQL/Postgres | Luôn bật |
+| Content Embedding | Tìm món/quán tương tự query và taste profile | `sentence-transformers`/`BAAI/bge-m3` hoặc `intfloat/multilingual-e5-base`; index bằng `pgvector`, Qdrant hoặc FAISS | Khi catalog ổn định |
+| Learning-to-Rank | Học từ click/like/dismiss để xếp hạng tốt hơn | LightGBM `lambdarank`, XGBoost `rank:ndcg`, CatBoostRanker | Khi có tối thiểu vài nghìn interaction |
+| Contextual Re-ranker | Chấm lại top 30-50 theo query cụ thể | Cross-encoder `BAAI/bge-reranker-v2-m3`, Cohere Rerank, hoặc LLM judge nhỏ | Khi latency cho phép |
+| Two-Tower Retrieval | Candidate generation cá nhân hóa ở scale lớn | PyTorch/TensorFlow: user tower + item tower, negative sampling từ impression/click | Khi có nhiều user/event |
+| Bandit | Exploration/exploitation, tránh lặp món quá mức | Thompson Sampling hoặc LinUCB | Khi có traffic thật |
+
+Stack MVP nên đi theo thứ tự:
+
+```text
+Rule Ranker
+  -> Rule + Embedding Recall
+  -> Rule + Embedding + Cross-Encoder Rerank
+  -> Learning-to-Rank từ interaction
+  -> Two-Tower nếu data đủ lớn
+```
+
+Không bật ML/DL khi chưa có dữ liệu:
+
+- Dưới 1.000 interaction: chỉ rule + manual score.
+- 1.000-10.000 interaction: có thể thử embedding recall và re-ranker.
+- 10.000+ interaction: bắt đầu train LightGBM/CatBoost ranking.
+- 100.000+ interaction: cân nhắc two-tower/deep retrieval.
+
+#### 12.6.2. Feature Set Cho Ranker
+
+Feature nên log và build rõ ràng để ML học được:
+
+```text
+Query/User features
+  intent_confidence
+  dish_or_category
+  taste_tags
+  budget_min / budget_max
+  meal_time
+  current_city
+  preferred_categories
+  preferred_tags
+  avoided_tags
+
+Item features
+  category
+  cuisine
+  price / final_price
+  discount_percent
+  merchant_rating
+  merchant_review_count
+  historical_ctr
+  historical_like_rate
+  historical_dismiss_rate
+
+Context features
+  distance_km
+  eta_minutes
+  delivery_fee
+  is_open_now
+  query_item_text_similarity
+  user_item_embedding_similarity
+  category_match
+  taste_match
+  budget_match
+```
+
+Score blend ban đầu:
+
+```text
+final_score =
+  0.25 * rule_score
+  + 0.20 * embedding_similarity
+  + 0.20 * ltr_score
+  + 0.15 * contextual_rerank_score
+  + 0.10 * profile_match
+  + 0.10 * exploration_bonus
+```
+
+Nếu model nào chưa bật thì trọng số của nó phân bổ lại cho `rule_score` và `embedding_similarity`.
+
+#### 12.6.3. Log/Telemetry Bắt Buộc Cho Recommendation
+
+Mỗi request food phải ghi trace để debug vì sao hệ thống chọn món đó:
+
+```json
+{
+  "trace_id": "food_trace_xxx",
+  "conversation_id": "conv_xxx",
+  "message_id": "msg_xxx",
+  "intent": "food-recommend",
+  "nlu": {
+    "confidence": 0.91,
+    "slots": {},
+    "missing_fields": []
+  },
+  "location": {
+    "input_type": "address_text|current_location|saved_place|map_pin",
+    "address_text": "Ngõ 67 Phùng Khoang",
+    "lat": 20.9901,
+    "lng": 105.7923,
+    "geocode_provider": "google",
+    "geocode_confidence": 0.82
+  },
+  "candidate_generation": {
+    "catalog_size": 3277,
+    "geo_filtered_count": 120,
+    "category_filtered_count": 48,
+    "candidate_count": 50
+  },
+  "ranking": {
+    "ranker_version": "rule_v1+embedding_v1",
+    "models_used": ["rule_ranker", "embedding_recall", "cross_encoder"],
+    "top_item_ids": ["shopeefood_1", "shopeefood_2"],
+    "score_breakdown_available": true
+  },
+  "answer_llm": {
+    "model": "gpt-4o-mini",
+    "used": true,
+    "grounded_item_count": 5
+  },
+  "latency_ms": {
+    "nlu": 420,
+    "geocode": 180,
+    "candidate_generation": 60,
+    "ranking": 90,
+    "answer_llm": 850,
+    "total": 1600
+  }
+}
+```
+
+Log interaction vẫn cần event thô:
+
+```text
+food_form_shown
+food_location_confirmed
+food_recommendation_impression
+food_item_click
+food_item_click_out
+food_item_like
+food_item_dismiss
+food_item_dislike
+food_answer_regenerated
+```
+
+Không xóa log khi catalog import lại. Log nên lưu `item_id`, `merchant_name`, `item_snapshot_json` để vẫn phân tích được nếu item sau này bị đổi/xóa.
+
+### 12.7. SSE Events / User-Facing Progress
+
+Streaming không chỉ gửi token text. Backend cần phát event tiến trình cụ thể để FE hiển thị trạng thái dễ hiểu.
+
+Chuẩn SSE payload:
+
+```text
+event: pipeline_step
+data: {"step":"nlu_intent","message":"Đang phân tích ý định...","trace_id":"trace_xxx"}
+```
+
+Hoặc nếu hệ thống đang dùng `data: {...}` một kênh, vẫn giữ schema:
+
+```json
+{
+  "type": "pipeline_step",
+  "step": "nlu_intent",
+  "message": "Đang phân tích ý định...",
+  "trace_id": "trace_xxx",
+  "progress": 0.2
+}
+```
+
+#### 12.7.1. SSE Cho Luồng Chung / RAG
+
+| Step | Message hiển thị |
+|---|---|
+| `received` | `Chờ một chút...` |
+| `cache_lookup` | `Đang kiểm tra câu trả lời đã có...` |
+| `gateway_safety` | `Đang kiểm tra an toàn nội dung...` |
+| `nlu_intent` | `Đang phân tích ý định...` |
+| `query_rewrite` | `Đang hiểu lại câu hỏi của bạn...` |
+| `retrieval_search` | `Đang tìm kiếm tài liệu...` |
+| `rerank_documents` | `Đang xếp hạng tài liệu...` |
+| `context_expansion` | `Đang gọi thêm tài liệu đầy đủ...` |
+| `answer_prepare` | `Đang chuẩn bị trả lời...` |
+| `answer_stream` | `Đang viết câu trả lời...` |
+| `done` | `Hoàn tất.` |
+
+`context_expansion` chỉ phát nếu thật sự có bước lấy chunk cha/con/lân cận. Không phát giả.
+
+#### 12.7.2. SSE Cho Luồng Food Recommendation
+
+| Step | Message hiển thị |
+|---|---|
+| `food_context_load` | `Đang xem lại khẩu vị và vị trí của bạn...` |
+| `food_missing_info` | `Em cần thêm một chút thông tin để gợi ý chính xác hơn...` |
+| `food_geocode` | `Đang xác định vị trí trên bản đồ...` |
+| `food_candidate_search` | `Đang tìm các món ăn phù hợp...` |
+| `food_candidate_filter` | `Đang lọc quán theo vị trí, ngân sách và khẩu vị...` |
+| `food_embedding_recall` | `Đang tìm các món có hương vị tương tự...` |
+| `food_ml_rank` | `Đang xếp hạng món ăn phù hợp nhất...` |
+| `food_rerank` | `Đang kiểm tra lại các lựa chọn tốt nhất...` |
+| `food_found` | `Yeah, đã tìm được món ăn phù hợp, đang chuẩn bị lên món...` |
+| `food_answer_llm` | `Đang viết lời gợi ý dễ hiểu hơn cho bạn...` |
+| `food_done` | `Đã lên món xong.` |
+
+SSE food payload nên có thêm metadata:
+
+```json
+{
+  "type": "pipeline_step",
+  "step": "food_candidate_search",
+  "message": "Đang tìm các món ăn phù hợp...",
+  "trace_id": "food_trace_xxx",
+  "progress": 0.45,
+  "debug": {
+    "city": "Hà Nội",
+    "radius_km": 4,
+    "candidate_count": 120
+  }
+}
+```
+
+Trong production có thể ẩn `debug`, nhưng backend vẫn nên log.
+
+#### 12.7.3. SSE Final Payloads
+
+Kết quả food không nên nhét hết vào markdown. Nên có payload riêng:
+
+```json
+{
+  "type": "food_recommendation_result",
+  "answer": "Dạ, em đã chọn vài quán hợp lý gần bạn...",
+  "cards_title": "Một vài quán cơm phù hợp gần bạn",
+  "cards_subtitle": "Sắp xếp theo khoảng cách, thời gian giao và khẩu vị của bạn.",
+  "resolved_location": {},
+  "items": [],
+  "trace_id": "food_trace_xxx"
+}
+```
+
+Thiếu thông tin:
+
+```json
+{
+  "type": "food_missing_info",
+  "answer": "Dạ, em cần vị trí giao món trước ạ.",
+  "ui_form": {},
+  "trace_id": "food_trace_xxx"
+}
+```
+
+### 12.8. Food Answer LLM
+
+Sau khi service trả top items, một LLM cuối đóng vai trò giống LLM synthesis trong RAG nhưng dành riêng cho món ăn.
+
+Input:
+
+```json
+{
+  "user_query": "Có món nào gần ngõ 67 Phùng Khoang không",
+  "resolved_location": "...",
+  "user_preferences": {
+    "liked_foods": [],
+    "disliked_foods": [],
+    "preferred_tags": [],
+    "avoided_tags": []
+  },
+  "recommended_items": [],
+  "constraints": {
+    "do_not_invent_items": true,
+    "must_use_only_recommended_items": true,
+    "tone": "friendly_vietnamese_assistant"
+  }
+}
+```
+
+Output:
+
+```json
+{
+  "answer": "Dạ, em đã chọn vài quán hợp lý quanh Ngõ 67 Phùng Khoang. Nếu anh/chị muốn ăn no nhanh thì ưu tiên quán đầu; còn muốn nhẹ bụng hơn thì chọn quán thứ ba.",
+  "cards_title": "Một vài quán cơm/phở phù hợp gần bạn",
+  "cards_subtitle": "Sắp xếp theo khoảng cách, thời gian giao, đánh giá và thói quen món bạn từng thích.",
+  "items": []
+}
+```
+
+Food Answer LLM được phép:
+
+- viết lời khuyên hay hơn;
+- nhóm lựa chọn theo nhu cầu;
+- nhắc món phù hợp với món user từng thích;
+- giải thích vì sao tránh món user từng dislike;
+- đề xuất chỉnh budget/khoảng cách nếu ít kết quả.
+
+Food Answer LLM không được:
+
+- thêm quán/món không có trong `recommended_items`;
+- bịa giá, phí giao, rating, địa chỉ;
+- nói đã đặt món hoặc xác nhận đơn.
+
+### 12.9. Checklist V2
+
+- [ ] Gỡ fast-path food intent khỏi classifier/pipeline; NLU LLM quyết định `food-recommend`.
+- [ ] Mở rộng NLU schema: `food_slots`, `user_context`, `missing_fields`, `assistant_answer`, `ui_form`.
+- [ ] Tạo `user_food_profile` DB/model/API.
+- [ ] FE gửi structured form payload cho food, không gửi lat/lng như message chính.
+- [ ] Tích hợp Google Maps thật: map, Places Autocomplete, draggable pin.
+- [ ] Backend geocode dùng Google Geocoding/Places API; confidence thấp thì yêu cầu confirm map.
+- [ ] Tách `recommend_food_v2`: geocode, candidate generation, ranking, personalization.
+- [ ] Thêm Food Answer LLM prompt và JSON output contract.
+- [ ] Card UI render từ Food Answer LLM output + item payload.
+- [ ] Log full funnel: form shown, location confirmed, impression, click, like, dismiss, dislike.
+- [ ] Log recommendation trace: NLU, geocode, candidate count, ranking model, score breakdown, latency.
+- [ ] Chuẩn hóa SSE `pipeline_step` cho RAG và Food theo bảng message ở mục 12.7.
+- [ ] ML/DL ranking chỉ bật khi có đủ interaction; luôn giữ rule fallback.
+
+## 13. Milestones Mới
 
 ### Level 0: Chốt Hướng
 
@@ -726,7 +1323,7 @@ Admin/dev UI:
 - [ ] Chatbot gọi qua HTTP.
 - [ ] Lúc đó mới chuẩn hóa schema nhiều bảng hơn.
 
-## 13. Kết Luận
+## 14. Kết Luận
 
 Hướng đúng cho hiện tại:
 

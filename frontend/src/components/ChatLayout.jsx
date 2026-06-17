@@ -689,7 +689,7 @@ export default function ChatLayout() {
                     handledAsMetadata = true;
                   } 
                   if (parsed.step) {
-                    setPipelineStep(parsed.step);
+                    setPipelineStep(parsed.message || parsed.step);
                     isStep = true;
                     handledAsMetadata = true;
                   } 
@@ -874,6 +874,12 @@ export default function ChatLayout() {
     return `${baseQuery} ở ${locationText}`;
   };
 
+  const isVietnamCoordinate = (lat, lng) => {
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
+    return latNum >= 8 && latNum <= 24 && lngNum >= 102 && lngNum <= 110;
+  };
+
   const saveFoodLocation = useCallback((location) => {
     const nextLocation = {
       id: location.id || `loc_${Date.now()}`,
@@ -914,6 +920,10 @@ export default function ChatLayout() {
       (position) => {
         const lat = position.coords.latitude.toFixed(6);
         const lng = position.coords.longitude.toFixed(6);
+        if (!isVietnamCoordinate(lat, lng)) {
+          alert('Vị trí hiện tại chưa nằm trong khu vực Việt Nam mà catalog món ăn đang hỗ trợ. Bạn thử nhập địa chỉ ở Việt Nam hoặc chọn pin trên bản đồ nhé.');
+          return;
+        }
         const location = saveFoodLocation({ id: 'current', label: 'Vị trí hiện tại', lat, lng });
         markFoodLocationConfirmed(location);
         handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), 'Đã chia sẻ vị trí hiện tại');
@@ -943,6 +953,10 @@ export default function ChatLayout() {
   const handleSelectMapFoodLocation = (request, pin) => {
     const lat = Number(pin.lat).toFixed(6);
     const lng = Number(pin.lng).toFixed(6);
+    if (!isVietnamCoordinate(lat, lng)) {
+      alert('Vị trí đã chọn chưa nằm trong khu vực Việt Nam.');
+      return;
+    }
     const location = saveFoodLocation({ label: pin.label || 'Vị trí đã chọn trên bản đồ', lat, lng });
     markFoodLocationConfirmed(location);
     handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), location.label);
@@ -1114,7 +1128,14 @@ export default function ChatLayout() {
         {messages.length > 0 && (
           <div className="w-full max-w-5xl flex flex-col gap-8">
             {messages.map((msg, idx) => {
-              if (msg.role === 'assistant' && !msg.content && loading) return null;
+              const hasAssistantPayload = Boolean(
+                msg.content ||
+                msg.foodLocationRequest ||
+                msg.foodLocationConfirmed ||
+                msg.foodRecommendations ||
+                (msg.sources && msg.sources.length > 0)
+              );
+              if (msg.role === 'assistant' && (!hasAssistantPayload || (!msg.content && loading))) return null;
               return (
                 <div key={idx} className={`flex flex-col w-full ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                   {/* Header info */}

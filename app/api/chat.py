@@ -106,6 +106,7 @@ async def chat_endpoint(
             stream_chat_pipeline,
             db=db,
             user_id=user_identifier,
+            entity_type=entity_type,
             conversation_id=conv_id,
             question=req.query,
             image_base64=req.image_base64,

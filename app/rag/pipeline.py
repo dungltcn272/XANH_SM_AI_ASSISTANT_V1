@@ -6,7 +6,7 @@ from app.rag.guardrail import OutputGuardrail
 from app.core.logger import log_info, log_warn
 import json
 
-def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, question: str, image_base64: str = None, is_deep_search: bool = False):
+def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, question: str, image_base64: str = None, is_deep_search: bool = False, entity_type: str = "anonymous"):
     """
     Kết nối Endpoint `/chat` với NLU-Gateway Pipeline (Phase 4).
     Sử dụng XanhSMRAGPipeline để stream text theo định dạng SSE.
@@ -23,6 +23,16 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
     memory_service = MemoryService(db)
     raw_history = memory_service.get_recent_messages(conversation_id, limit=12)  # Increased from 6 to 12
     chat_history = [{"role": msg.role, "content": msg.content} for msg in raw_history]
+    try:
+        from app.tools.food_recommendation.profile_store import food_profile_context
+        food_context = food_profile_context(
+            db=db,
+            user_id=user_id if entity_type == "user" else None,
+            guest_id=user_id if entity_type == "guest" else None,
+        )
+    except Exception as exc:
+        log_warn("CHAT", f"Failed to load food profile context: {exc}")
+        food_context = None
     
     # Close database session immediately to release PostgreSQL/SQLite connection,
     # preventing socket conflicts with Qdrant/OpenAI and connection hogging during RAG
@@ -52,7 +62,7 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
     yield f'data: {{"conversation_id": "{conversation_id}"}}\n\n'
     
     # Chạy streaming qua Guardrail
-    for event in guardrail.sanitize_stream(pipeline.stream_run(query=question, chat_history=chat_history, image_base64=image_base64, is_deep_search=is_deep_search)):
+    for event in guardrail.sanitize_stream(pipeline.stream_run(query=question, chat_history=chat_history, image_base64=image_base64, is_deep_search=is_deep_search, food_context=food_context)):
         if "Nội dung vi phạm" in event:
             is_blocked = True
             final_answer = "Dạ, em xin lỗi nhưng nội dung này có thể vi phạm chính sách an toàn của Xanh SM. Em có thể hỗ trợ anh/chị các vấn đề khác liên quan đến dịch vụ taxi điện được không ạ?"

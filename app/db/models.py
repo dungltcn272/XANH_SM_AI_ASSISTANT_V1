@@ -169,6 +169,44 @@ class FoodInteraction(Base):
     request_context_json = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
+class UserFoodProfile(Base):
+    __tablename__ = "user_food_profiles"
+    id = Column(String, primary_key=True, default=lambda: generate_id("foodprof"))
+    user_id = Column(String, nullable=True, index=True)
+    guest_id = Column(String, nullable=True, index=True)
+    current_location_json = Column(Text, nullable=True)
+    saved_places_json = Column(Text, nullable=True)
+    liked_items_json = Column(Text, nullable=True)
+    disliked_items_json = Column(Text, nullable=True)
+    preferred_categories_json = Column(Text, nullable=True)
+    preferred_tags_json = Column(Text, nullable=True)
+    avoided_tags_json = Column(Text, nullable=True)
+    budget_profile_json = Column(Text, nullable=True)
+    allergies_json = Column(Text, nullable=True)
+    profile_stats_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True)
+
+class FoodRecommendationTrace(Base):
+    __tablename__ = "food_recommendation_traces"
+    trace_id = Column(String, primary_key=True, default=lambda: generate_id("foodtrace"))
+    conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True, index=True)
+    message_id = Column(String, ForeignKey("messages.id"), nullable=True, index=True)
+    user_id = Column(String, nullable=True, index=True)
+    guest_id = Column(String, nullable=True, index=True)
+    original_query = Column(Text, nullable=True)
+    rewritten_query = Column(Text, nullable=True)
+    intent = Column(String, nullable=True, index=True)
+    nlu_json = Column(Text, nullable=True)
+    user_context_json = Column(Text, nullable=True)
+    location_json = Column(Text, nullable=True)
+    candidate_stats_json = Column(Text, nullable=True)
+    ranking_json = Column(Text, nullable=True)
+    answer_llm_json = Column(Text, nullable=True)
+    sse_events_json = Column(Text, nullable=True)
+    latency_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
 class SystemLog(Base):
     __tablename__ = "system_logs"
     id = Column(String, primary_key=True, default=lambda: generate_id("log"))

@@ -106,9 +106,6 @@ def hard_filter(item: FoodCatalogEntry, request: FoodRecommendationRequest, dist
     price = item.final_price or item.price
     if request.budget_max is not None and price is not None and price > request.budget_max * 1.25:
         return False
-    if request.category:
-        score = match_score(request.category, [item.name, item.category or "", item.cuisine or ""])
-        return score > 0
     return True
 
 
