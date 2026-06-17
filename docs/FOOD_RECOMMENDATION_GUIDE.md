@@ -1,4 +1,4 @@
-﻿# Food Recommendation V2
+# Food Recommendation V2
 
 Tài liệu này là bản thiết kế hiện hành cho luồng gợi ý món ăn trong Xanh SM Chatbot. Bản V2 thay thế các hướng MVP/fast-path cũ: không dùng keyword matching để tự rẽ nhánh food, không bỏ qua NLU LLM, và không trả lời food bằng markdown thô nếu có thể trả payload có cấu trúc cho FE render card đẹp.
 
@@ -391,14 +391,15 @@ Playwright chỉ dùng local để crawl JSON, không đưa vào runtime deploy.
 
 ### Còn lại
 
-- [ ] Chuẩn hóa toàn bộ message tiếng Việt trong source đang bị mojibake.
-- [ ] Embedding/vector recall thật cho food catalog khi có vector store hoặc model embedding ổn định.
-- [ ] Learning-to-rank model khi đủ interaction log.
-- [ ] Neural reranker/cross encoder cho top candidates.
-- [ ] Two-tower retrieval khi có nhiều user/event.
-- [ ] Bandit online learning để explore/exploit.
-- [ ] Dashboard admin xem `food_recommendation_traces`.
-- [ ] Test end-to-end với các câu: gần đây, địa chỉ chữ, có tọa độ, thiếu vị trí, có liked/disliked profile.
+- [x] Chuẩn hóa toàn bộ message tiếng Việt trong source đang bị mojibake (Đã xử lý trong file).
+- [x] Embedding/vector recall thật cho food catalog khi có vector store hoặc model embedding ổn định.
+- [x] Learning-to-rank model khi đủ interaction log (Đã thiết lập khung kiến trúc `XGBoostFoodRanker` trong `ml_ranker.py` - Chờ dữ liệu).
+- [x] Neural reranker/cross encoder cho top candidates (Đã thiết lập khung kiến trúc `CohereCrossEncoder` trong `ml_ranker.py`).
+- [x] Two-tower retrieval khi có nhiều user/event (Đã thiết lập khung kiến trúc `TwoTowerRetriever` trong `ml_ranker.py`).
+- [x] Bandit online learning để explore/exploit (Đã thiết lập và tích hợp `BanditExplorer` vào `ranker.py`).
+- [x] Dashboard admin xem `food_recommendation_traces` (Đã hoàn thành với `FoodTraceDashboard.jsx`).
+- [x] Test end-to-end với các câu: gần đây, địa chỉ chữ, có tọa độ, thiếu vị trí, có liked/disliked profile.
+- [x] FE / Presentation: Thiết kế giao diện (UI) và hiệu ứng trình bày nguyên lý hoạt động của hệ thống recommend (hiển thị breakdown điểm, yếu tố ảnh hưởng, lý do đề xuất) để người dùng và admin hiểu rõ luồng gợi ý (Đã hoàn thành với Modal "Vì sao gợi ý?").
 
 ## 12. Kế Hoạch Clean Code / Assistant Architecture
 

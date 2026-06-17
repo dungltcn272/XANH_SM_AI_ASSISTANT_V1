@@ -7,7 +7,17 @@ from typing import Optional, Any
 
 LOCK = threading.Lock()
 
+# Tùy chỉnh mức độ log từ biến môi trường, mặc định là INFO cho mọi thứ.
+# Nếu set RAG_LOG_LEVEL=WARN, các log_info của RAG sẽ bị bỏ qua.
+RAG_LOG_LEVEL = os.environ.get("RAG_LOG_LEVEL", "INFO").upper()
+# Danh sách các phase liên quan đến RAG
+RAG_PHASES = {"RAG", "RETRIEVAL", "NLU", "GATEWAY", "CLASSIFIER", "CACHE"}
+
 def log_event(level: str, phase: str, message: str, error_type: Optional[str] = None, details: Any = None):
+    # Lọc log INFO của RAG nếu cấu hình yêu cầu
+    if level.upper() == "INFO" and phase.upper() in RAG_PHASES and RAG_LOG_LEVEL in ("WARN", "ERROR"):
+        return
+
     timestamp = datetime.datetime.now().isoformat()
     
     # Auto-resolve error type if exception context exists

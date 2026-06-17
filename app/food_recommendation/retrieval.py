@@ -126,3 +126,63 @@ def generate_candidates(
             "recall_mode": "bm25_geo",
         },
     )
+
+
+def vector_search(
+    query: str,
+    catalog: list[FoodCatalogEntry],
+    limit: int = 50,
+) -> CandidateGenerationResult:
+    """
+    Giai đoạn 3: Embedding Recall cơ bản cho Food.
+    Sử dụng vector_search với qdrant_client để tìm kiếm food.
+    """
+    try:
+        from app.vectordb.qdrant_client import vectordb
+
+        # Tính toán dense vector cho query
+        dense_vector = vectordb.dense_embedder.embed_query(query)
+        
+        # Truy vấn vào collection food_catalog (cần đảm bảo dữ liệu đã được index vào Qdrant)
+        results = vectordb.client.search(
+            collection_name="food_catalog",
+            query_vector=dense_vector,
+            limit=limit,
+        )
+        
+        # Map điểm số trả về từ vector db theo item_id
+        found_ids = {hit.payload.get("item_id"): hit.score for hit in results if hit.payload and hit.payload.get("item_id")}
+        
+        selected = []
+        recall_scores = {}
+        for item in catalog:
+            if item.item_id in found_ids:
+                selected.append(item)
+                recall_scores[item.item_id] = float(found_ids[item.item_id])
+                
+        # Sắp xếp các item dựa trên điểm cosine similarity
+        selected.sort(key=lambda x: recall_scores.get(x.item_id, 0.0), reverse=True)
+        
+        return CandidateGenerationResult(
+            items=selected,
+            recall_scores=recall_scores,
+            meta={
+                "retrieval_version": "food_vector_recall_v1", 
+                "candidate_count": len(selected),
+                "recall_mode": "vector_search"
+            }
+        )
+    except Exception as e:
+        # Fallback về rỗng nếu chưa có collection hoặc lỗi kết nối
+        import logging
+        logging.getLogger(__name__).warning(f"Vector search failed: {e}")
+        return CandidateGenerationResult(
+            items=[], 
+            recall_scores={}, 
+            meta={
+                "retrieval_version": "food_vector_recall_v1", 
+                "error": str(e),
+                "recall_mode": "vector_search_failed"
+            }
+        )
+

@@ -250,6 +250,9 @@ def normalize_restaurant(raw: dict[str, Any], raw_ref: str) -> FoodCatalogItem |
     else:
         image_url = absolute_url(photos)
 
+    if image_url:
+        image_url = re.sub(r"@resize_.*?$", "", image_url)
+
     url = first_present(raw, ["url", "source_url", "link"])
     source_url = absolute_url(url)
     if not source_url:
@@ -600,7 +603,7 @@ class ShopeeFoodCrawler:
                     "id": card.get("id"),
                     "name": card.get("name"),
                     "address": card.get("address"),
-                    "image_url": card.get("image_url"),
+                    "image_url": re.sub(r"@resize_.*?$", "", card.get("image_url")) if card.get("image_url") else None,
                     "source_url": card.get("source_url"),
                     "description": card.get("promotion"),
                 },

@@ -14,6 +14,7 @@ export default function AdminLayout() {
     { path: '/admin/knowledge-builder', label: 'Knowledge Builder', icon: <Hammer size={20} /> },
     { path: '/admin/reviews', label: 'User Reviews', icon: <MessageSquareHeart size={20} /> },
     { path: '/admin/history', label: 'RAG History', icon: <History size={20} /> },
+    { path: '/admin/food-traces', label: 'Food Traces', icon: <Database size={20} /> },
     { path: '/admin/db', label: 'Raw Database', icon: <Database size={20} /> }
   ];
 

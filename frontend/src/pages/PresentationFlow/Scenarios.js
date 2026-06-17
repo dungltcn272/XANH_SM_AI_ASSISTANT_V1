@@ -110,6 +110,25 @@ export const SCENARIOS = [
       { edge: "e-intent-persona", source: "intent", target: "persona", latency: "0ms", payload: 'small-talk' },
       { edge: "e-persona-out", source: "persona", target: "out", latency: "800ms", payload: 'Streaming: "Chào bạn, chúc bạn ngày mới vui vẻ..."' },
     ]
+  },
+  {
+    id: "food_v2",
+    name: "8. FOOD RECOMMENDATION V2",
+    description: "Hệ thống gợi ý món ăn thông minh với ML-Ready Ranking.",
+    steps: [
+      { edge: "e-user-norm", source: "user", target: "normalize", latency: "2ms", payload: '{"query": "có quán cơm nào gần ngõ 67 phùng khoang"}' },
+      { edge: "e-norm-gate", source: "normalize", target: "gateway", latency: "10ms", payload: '{"normalized": "co quan com nao gan ngo 67 phung khoang"}' },
+      { edge: "e-gate-cache1", source: "gateway", target: "cache1", latency: "5ms", payload: 'Safe' },
+      { edge: "e-cache1-nlucheck", source: "cache1", target: "nlu_check", latency: "0ms", payload: 'Cache Miss' },
+      { edge: "e-nlucheck-llmnlu", source: "nlu_check", target: "llm_nlu", latency: "2ms", payload: 'No: context rewrite needed' },
+      { edge: "e-llmnlu-vocab", source: "llm_nlu", target: "vocab", latency: "800ms", payload: '{"intent": "food_recommendation", "address": "ngõ 67 phùng khoang"}' },
+      { edge: "e-vocab-intent", source: "vocab", target: "intent", latency: "1ms", payload: 'Bypass Vocab' },
+      { edge: "e-intent-food", source: "intent", target: "food_check", latency: "2ms", payload: 'food_recommendation' },
+      { edge: "e-food-geo", source: "food_check", target: "geocode", latency: "1ms", payload: 'Has address' },
+      { edge: "e-geo-rank", source: "geocode", target: "ml_rank", latency: "300ms", payload: 'Geocode -> BM25 + Geo Candidates' },
+      { edge: "e-rank-fllm", source: "ml_rank", target: "food_llm", latency: "50ms", payload: 'Top Ranked Items' },
+      { edge: "e-fllm-out", source: "food_llm", target: "out", latency: "1200ms", payload: 'Streaming: "Dạ, em đã tìm thấy..."' }
+    ]
   }
 ];
 
@@ -140,6 +159,10 @@ export const initialNodes = [
   { id: 'llm', type: 'process', position: { x: 100, y: 1940 }, data: { label: 'LLM Synthesis & SSE Stream', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
   { id: 'cachesave', type: 'process', position: { x: 100, y: 2070 }, data: { label: 'Save Semantic Cache', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
   
+  { id: 'food_check', type: 'decision', position: { x: 700, y: 1350 }, data: { label: 'Missing Info?', type: 'decision' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
+  { id: 'geocode', type: 'process', position: { x: 700, y: 1550 }, data: { label: 'Geocode & Retrieval', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
+  { id: 'ml_rank', type: 'process', position: { x: 700, y: 1750 }, data: { label: 'ML-Ready Ranking', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
+  { id: 'food_llm', type: 'process', position: { x: 700, y: 1950 }, data: { label: 'Food Answer LLM', type: 'process' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
   { id: 'out', type: 'output', position: { x: 300, y: 2250 }, data: { label: 'Stream Answer + Citations', type: 'output' }, className: '!bg-transparent !border-none !shadow-none !p-0' },
 ];
 

@@ -149,7 +149,63 @@ const FoodMetric = ({ icon: Icon, label, value }) => (
   </div>
 );
 
-const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onDislike }) => {
+const FoodExplanationModal = ({ item, onClose }) => {
+  if (!item) return null;
+  const bd = item.score_breakdown || {};
+  
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-surface-container-lowest w-full max-w-lg rounded-3xl shadow-2xl border border-outline-variant/30 overflow-hidden text-on-surface">
+        <div className="flex items-center justify-between p-5 border-b border-outline-variant/20 bg-surface-container-low">
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <Info size={20} className="text-primary" />
+            Vì sao gợi ý "{item.name}"?
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-surface-variant text-on-surface-variant">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-5 overflow-y-auto max-h-[60vh] space-y-4 text-sm">
+          <div className="bg-primary/5 p-4 rounded-xl border border-primary/20">
+            <div className="font-black text-3xl text-primary text-center">{(item.score * 100).toFixed(1)}%</div>
+            <div className="text-center text-xs font-semibold text-on-surface-variant uppercase mt-1">Độ phù hợp tổng thể</div>
+          </div>
+          
+          <div className="space-y-3">
+            {[
+              { label: 'Ngữ nghĩa (Vector Recall)', val: bd.recall_score },
+              { label: 'Khoảng cách (Nearby)', val: bd.nearby_score },
+              { label: 'Phí giao hàng', val: bd.delivery_fee_score },
+              { label: 'Thời gian giao (ETA)', val: bd.eta_score },
+              { label: 'Mức giá (Budget)', val: bd.budget_score },
+              { label: 'Khuyến mãi (Discount)', val: bd.discount_score },
+              { label: 'Khớp danh mục', val: bd.category_score },
+              { label: 'Khớp khẩu vị', val: bd.taste_score },
+              { label: 'Điểm đánh giá', val: bd.rating_score },
+              { label: 'Độ phổ biến', val: bd.popularity_score }
+            ].map(m => m.val !== undefined && (
+              <div key={m.label} className="flex items-center justify-between">
+                <span className="text-on-surface-variant font-medium">{m.label}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-24 h-2 bg-surface-variant rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${(m.val || 0) * 100}%` }} />
+                  </div>
+                  <span className="text-xs font-bold w-8 text-right">{(m.val * 10).toFixed(1)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="text-xs text-on-surface-variant/80 italic text-center mt-4 pt-4 border-t border-outline-variant/20">
+            Kết quả được chấm điểm tự động dựa trên học máy và thuật toán nội bộ của Xanh SM AI.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onDislike, onExplain }) => {
   const Wrapper = item.order_url ? 'a' : 'div';
   const wrapperProps = item.order_url ? {
     href: item.order_url,
@@ -210,6 +266,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
         <div className="flex items-center gap-1.5">
           {[
             { title: 'Lưu lựa chọn', icon: Heart, action: onLike },
+            { title: 'Giải thích', icon: Info, action: onExplain },
             { title: 'Bỏ qua', icon: X, action: onDismiss },
             { title: 'Không phù hợp', icon: ThumbsDown, action: onDislike },
           ].map(({ title, icon: ActionIcon, action }) => (
@@ -237,7 +294,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
   );
 };
 
-const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike }) => {
+const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike, onExplain }) => {
   const items = data?.items || [];
   const moreItems = data?.more_items || [];
   if (!items.length) return null;
@@ -268,6 +325,7 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
             onLike={onLike}
             onDismiss={onDismiss}
             onDislike={onDislike}
+            onExplain={onExplain}
           />
         ))}
       </div>
@@ -486,6 +544,7 @@ export default function ChatLayout() {
       return [];
     }
   });
+  const [explainingFood, setExplainingFood] = useState(null);
 
   const handleReviewClick = async (messageId, rating) => {
     if (!messageId) return;
@@ -648,7 +707,7 @@ export default function ChatLayout() {
               role: m.role, 
               content: m.content,
               created_at: m.created_at,
-              food_recommendations: parsedTrace?.food_recommendations
+              foodRecommendations: parsedTrace?.food_recommendations
             };
           });
           setMessages(formatted);
@@ -1244,16 +1303,17 @@ export default function ChatLayout() {
                               />
                             )}
                             {msg.foodRecommendations && (
-                              <FoodRecommendationList
-                                data={msg.foodRecommendations}
-                                onOpenMenu={(item, rankPosition) => {
-                                  logFoodInteraction('click_item', item, rankPosition, msg.foodRecommendations, msg);
-                                  logFoodInteraction('click_out', item, rankPosition, msg.foodRecommendations, msg);
-                                }}
-                                onLike={(item, rankPosition) => logFoodInteraction('like', item, rankPosition, msg.foodRecommendations, msg)}
-                                onDismiss={(item, rankPosition) => logFoodInteraction('dismiss', item, rankPosition, msg.foodRecommendations, msg)}
-                                onDislike={(item, rankPosition) => logFoodInteraction('dislike', item, rankPosition, msg.foodRecommendations, msg)}
-                              />
+                                <FoodRecommendationList
+                                  data={msg.foodRecommendations}
+                                  onOpenMenu={(item, rankPosition) => {
+                                    logFoodInteraction('click_item', item, rankPosition, msg.foodRecommendations, msg);
+                                    logFoodInteraction('click_out', item, rankPosition, msg.foodRecommendations, msg);
+                                  }}
+                                  onLike={(item, rankPosition) => logFoodInteraction('like', item, rankPosition, msg.foodRecommendations, msg)}
+                                  onDismiss={(item, rankPosition) => logFoodInteraction('dismiss', item, rankPosition, msg.foodRecommendations, msg)}
+                                  onDislike={(item, rankPosition) => logFoodInteraction('dislike', item, rankPosition, msg.foodRecommendations, msg)}
+                                  onExplain={(item) => setExplainingFood(item)}
+                                />
                             )}
                           </div>
                         )}
@@ -1653,6 +1713,11 @@ export default function ChatLayout() {
           <ShieldCheck size={12} /> Thông tin của bạn được bảo mật và chỉ sử dụng để hỗ trợ.
         </span>
       </div>
+
+      {/* Food Explanation Modal */}
+      {explainingFood && (
+        <FoodExplanationModal item={explainingFood} onClose={() => setExplainingFood(null)} />
+      )}
 
       {/* Feedback Modal */}
       {feedbackModalOpen && (

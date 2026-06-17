@@ -64,6 +64,12 @@ export const api = {
     return res.json();
   },
 
+  getFoodTraces: async (skip = 0, limit = 50) => {
+    const res = await api._fetch(`${API_BASE}/admin/food-traces?skip=${skip}&limit=${limit}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getAdminChunks: async () => {
     const res = await api._fetch(`${API_BASE}/admin/chunks`);
     if (!res.ok) throw new Error('API Error');

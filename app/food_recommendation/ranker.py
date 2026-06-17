@@ -1,6 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import math
+import random
 
 from app.food_recommendation.profile import normalize_text
 from app.food_recommendation.schemas import (
@@ -173,7 +174,31 @@ def rank_catalog(
                 score_breakdown=breakdown,
             )
         )
-    return sorted(ranked, key=lambda item: item.score, reverse=True)[: request.limit]
+    # Sắp xếp theo score từ Rule-based Ranker
+    ranked_sorted = sorted(ranked, key=lambda item: item.score, reverse=True)
+
+    # ML-Ready: LTR & Neural Reranker (Ví dụ tích hợp)
+    # from app.food_recommendation.ml_ranker import XGBoostFoodRanker, CohereCrossEncoder
+    # xgb_ranker = XGBoostFoodRanker()
+    # cross_encoder = CohereCrossEncoder()
+    # ranked_sorted = xgb_ranker.rank(ranked_sorted, request, recall_scores)
+    # ranked_sorted = cross_encoder.rank(ranked_sorted, request, recall_scores)
+
+    # ML-Ready: Bandit Explorer (Trộn lẫn kết quả khám phá)
+    from app.food_recommendation.ml_ranker import BanditExplorer
+    bandit = BanditExplorer(epsilon=0.1)
+    
+    # Ứng dụng thuật toán Bandit trên top N trước khi trả về
+    top_n = ranked_sorted[: request.limit * 2]
+    # Lấy FoodCatalogEntry từ FoodRecommendation để chạy bandit
+    # Tuy nhiên bandit được viết để nhận tuple[float, FoodCatalogEntry], ta sẽ sửa đổi ngắn gọn tại đây
+    # Hoặc áp dụng trực tiếp cho FoodRecommendation
+    if top_n and random.random() < bandit.epsilon:
+        idx = random.randint(0, min(len(top_n)-1, 10))
+        explored = top_n.pop(idx)
+        top_n.insert(0, explored)
+
+    return top_n[: request.limit]
 
 
 def build_reason(
