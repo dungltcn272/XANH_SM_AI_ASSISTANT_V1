@@ -708,7 +708,7 @@ class XanhSMRAGPipeline:
             "submit_label": "Tìm quán gần đây",
         }
 
-    def _food_recommendations_payload(self, items, category: str | None = None) -> Dict[str, Any]:
+    def _food_recommendations_payload(self, items, category: str | None = None, query: str | None = None) -> Dict[str, Any]:
         title = "Một vài quán phù hợp gần bạn"
         if category:
             title = f"Một vài quán {category} phù hợp gần bạn"
@@ -739,6 +739,7 @@ class XanhSMRAGPipeline:
         return {
             "title": title,
             "subtitle": "Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.",
+            "query": query,
             "items": [to_payload(item, index) for index, item in enumerate(items[:4])],
             "more_items": [to_payload(item, index + 4) for index, item in enumerate(items[4:8])],
         }
@@ -791,7 +792,7 @@ class XanhSMRAGPipeline:
         answer = self._format_food_answer(items, slots.category)
         yield from self._stream_plain_answer(answer)
         if items:
-            yield f'data: {json.dumps({"food_recommendations": self._food_recommendations_payload(items, slots.category)}, ensure_ascii=False)}\n\n'
+            yield f'data: {json.dumps({"food_recommendations": self._food_recommendations_payload(items, slots.category, query)}, ensure_ascii=False)}\n\n'
         yield f'data: {json.dumps({"metrics": metrics, "step": "food-recommendation"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
 

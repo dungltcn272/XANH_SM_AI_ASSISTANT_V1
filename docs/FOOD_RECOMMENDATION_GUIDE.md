@@ -678,11 +678,11 @@ Admin/dev UI:
 
 ### Level 4: Interaction Logging
 
-- [ ] Log impression.
-- [ ] Log click item.
-- [ ] Log click out.
-- [ ] Log like/dismiss/dislike.
-- [ ] Tạo dashboard/dev endpoint xem log.
+- [x] Log impression.
+- [x] Log click item.
+- [x] Log click out.
+- [x] Log like/dismiss/dislike.
+- [x] Tạo dashboard/dev endpoint xem log: `GET /api/food/interactions/stats` và bảng `food_interactions` trong DB viewer.
 
 ### Level 5: Location UX
 

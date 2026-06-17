@@ -190,6 +190,22 @@ export const api = {
     return res.json();
   },
 
+  logFoodInteraction: async (payload) => {
+    const res = await api._fetch(`${API_BASE}/food/interactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getFoodInteractionStats: async (limit = 20) => {
+    const res = await api._fetch(`${API_BASE}/food/interactions/stats?limit=${limit}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getEvalResults: async () => {
     const res = await api._fetch(`${API_BASE}/admin/eval`);
     if (!res.ok) throw new Error('API Error');

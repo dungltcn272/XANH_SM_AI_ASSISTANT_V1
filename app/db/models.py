@@ -154,6 +154,21 @@ class FoodCatalog(Base):
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
     imported_at = Column(DateTime(timezone=True), server_default=func.now())
 
+class FoodInteraction(Base):
+    __tablename__ = "food_interactions"
+    event_id = Column(String, primary_key=True, default=lambda: generate_id("foodevt"))
+    user_id = Column(String, nullable=True, index=True)
+    session_id = Column(String, nullable=True, index=True)
+    conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True, index=True)
+    message_id = Column(String, ForeignKey("messages.id"), nullable=True, index=True)
+    event_type = Column(String, nullable=False, index=True)
+    item_id = Column(String, nullable=True, index=True)
+    merchant_id = Column(String, nullable=True, index=True)
+    rank_position = Column(Integer, nullable=True)
+    query = Column(Text, nullable=True)
+    request_context_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
 class SystemLog(Base):
     __tablename__ = "system_logs"
     id = Column(String, primary_key=True, default=lambda: generate_id("log"))

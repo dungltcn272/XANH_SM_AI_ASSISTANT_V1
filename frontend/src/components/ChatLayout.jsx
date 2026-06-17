@@ -82,7 +82,7 @@ const FoodMetric = ({ icon: Icon, label, value }) => (
   </div>
 );
 
-const FoodRecommendationRow = ({ item, index }) => {
+const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onDislike }) => {
   const Wrapper = item.order_url ? 'a' : 'div';
   const wrapperProps = item.order_url ? {
     href: item.order_url,
@@ -94,6 +94,7 @@ const FoodRecommendationRow = ({ item, index }) => {
   return (
     <Wrapper
       {...wrapperProps}
+      onClick={() => onOpenMenu?.(item, index)}
       className={`relative grid grid-cols-[96px_1fr] md:grid-cols-[170px_1fr_auto] gap-4 p-3 md:p-4 rounded-2xl border bg-white/75 dark:bg-white/[0.04] transition-all group ${
         isBest
           ? 'border-[#00c897]/40 shadow-[0_8px_24px_rgba(0,200,151,0.10)]'
@@ -139,18 +140,27 @@ const FoodRecommendationRow = ({ item, index }) => {
       </div>
 
       <div className="col-span-2 md:col-span-1 flex md:flex-col items-center justify-between md:justify-center gap-3">
-        <span
-          role="button"
-          tabIndex={0}
-          className="w-10 h-10 rounded-full bg-surface-container-high/70 dark:bg-white/10 text-[#00a884] flex items-center justify-center group-hover:bg-[#00c897] group-hover:text-white transition-colors"
-          title="Lưu lựa chọn"
-          onClick={(event) => event.preventDefault()}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') event.preventDefault();
-          }}
-        >
-          <Heart size={18} />
-        </span>
+        <div className="flex items-center gap-1.5">
+          {[
+            { title: 'Lưu lựa chọn', icon: Heart, action: onLike },
+            { title: 'Bỏ qua', icon: X, action: onDismiss },
+            { title: 'Không phù hợp', icon: ThumbsDown, action: onDislike },
+          ].map(({ title, icon: ActionIcon, action }) => (
+            <button
+              key={title}
+              type="button"
+              className="w-9 h-9 rounded-full bg-surface-container-high/70 dark:bg-white/10 text-[#00a884] flex items-center justify-center hover:bg-[#00c897] hover:text-white transition-colors"
+              title={title}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                action?.(item, index);
+              }}
+            >
+              <ActionIcon size={16} />
+            </button>
+          ))}
+        </div>
         <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#00a884] px-4 py-2 text-sm font-black text-[#008f6f] group-hover:bg-[#00c897] group-hover:text-white transition-colors whitespace-nowrap">
           Xem thực đơn
           <ChevronRight size={16} />
@@ -160,7 +170,7 @@ const FoodRecommendationRow = ({ item, index }) => {
   );
 };
 
-const FoodRecommendationList = ({ data }) => {
+const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike }) => {
   const items = data?.items || [];
   const moreItems = data?.more_items || [];
   if (!items.length) return null;
@@ -183,7 +193,15 @@ const FoodRecommendationList = ({ data }) => {
 
       <div className="flex flex-col gap-3">
         {items.map((item, index) => (
-          <FoodRecommendationRow key={item.item_id || index} item={item} index={index} />
+          <FoodRecommendationRow
+            key={item.item_id || index}
+            item={item}
+            index={index}
+            onOpenMenu={onOpenMenu}
+            onLike={onLike}
+            onDismiss={onDismiss}
+            onDislike={onDislike}
+          />
         ))}
       </div>
 
@@ -200,6 +218,7 @@ const FoodRecommendationList = ({ data }) => {
                 href={item.order_url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => onOpenMenu?.(item, index + items.length)}
                 className="grid grid-cols-[64px_1fr] gap-3 rounded-xl border border-outline-variant/20 bg-white/70 dark:bg-white/[0.04] p-2 hover:border-[#00c897]/40 transition-colors"
               >
                 <img src={item.image_url || '/Bot.png'} alt={item.name || 'Món ăn'} className="w-16 h-16 rounded-lg object-cover bg-surface-container-high" loading="lazy" />
@@ -360,6 +379,7 @@ export default function ChatLayout() {
   const currentConvIdRef = useRef(activeConversationId);
   const lastProcessedActiveConvIdRef = useRef(undefined);
   const messagesEndRef = useRef(null);
+  const foodImpressionLoggedRef = useRef(new Set());
 
   const {
     transcript,
@@ -461,6 +481,7 @@ export default function ChatLayout() {
     if (activeConversationId !== lastProcessedActiveConvIdRef.current) {
       lastProcessedActiveConvIdRef.current = activeConversationId;
       currentConvIdRef.current = activeConversationId;
+      foodImpressionLoggedRef.current = new Set();
       if (activeConversationId) {
         // Load history
         api.getConversationMessages(activeConversationId).then(msgs => {
@@ -692,6 +713,42 @@ export default function ChatLayout() {
       fileInputRef.current.value = "";
     }
   };
+
+  const logFoodInteraction = useCallback(async (eventType, item, rankPosition, data, message) => {
+    try {
+      await api.logFoodInteraction({
+        event_type: eventType,
+        conversation_id: currentConvIdRef.current || null,
+        message_id: message?.id || null,
+        item_id: item?.item_id || null,
+        merchant_id: item?.merchant_id || null,
+        rank_position: typeof rankPosition === 'number' ? rankPosition + 1 : null,
+        query: data?.query || null,
+        request_context: {
+          title: data?.title,
+          item_name: item?.name,
+          dish_name: item?.dish_name,
+          order_url: item?.order_url,
+          distance_text: item?.distance_text,
+          eta_text: item?.eta_text,
+          delivery_fee_text: item?.delivery_fee_text,
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to log food interaction', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    messages.forEach((msg, index) => {
+      if (msg.role !== 'assistant' || !msg.foodRecommendations) return;
+      const key = `${currentConvIdRef.current || 'new'}:${index}`;
+      if (foodImpressionLoggedRef.current.has(key)) return;
+      foodImpressionLoggedRef.current.add(key);
+      const firstItem = msg.foodRecommendations.items?.[0] || null;
+      logFoodInteraction('impression', firstItem, 0, msg.foodRecommendations, msg);
+    });
+  }, [messages, logFoodInteraction]);
 
   const buildFoodLocationQuery = (request, locationText) => {
     const baseQuery = request?.query || 'Gợi ý món ăn gần tôi';
@@ -934,7 +991,16 @@ export default function ChatLayout() {
                               />
                             )}
                             {msg.foodRecommendations && (
-                              <FoodRecommendationList data={msg.foodRecommendations} />
+                              <FoodRecommendationList
+                                data={msg.foodRecommendations}
+                                onOpenMenu={(item, rankPosition) => {
+                                  logFoodInteraction('click_item', item, rankPosition, msg.foodRecommendations, msg);
+                                  logFoodInteraction('click_out', item, rankPosition, msg.foodRecommendations, msg);
+                                }}
+                                onLike={(item, rankPosition) => logFoodInteraction('like', item, rankPosition, msg.foodRecommendations, msg)}
+                                onDismiss={(item, rankPosition) => logFoodInteraction('dismiss', item, rankPosition, msg.foodRecommendations, msg)}
+                                onDislike={(item, rankPosition) => logFoodInteraction('dislike', item, rankPosition, msg.foodRecommendations, msg)}
+                              />
                             )}
                           </div>
                         )}
