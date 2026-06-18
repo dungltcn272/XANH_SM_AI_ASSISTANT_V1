@@ -14,6 +14,7 @@ import AgentCrawler from './pages/AgentCrawler';
 import KnowledgeBuilder from './pages/KnowledgeBuilder';
 import UserReviews from './pages/UserReviews';
 import AdminLogin from './pages/AdminLogin';
+import FoodTraceDashboard from './pages/FoodTraceDashboard';
 import { Moon, Sun, LogOut, Plus, User, HelpCircle, X, Menu, ChevronLeft, ChevronRight, MoreHorizontal, Bell, ChevronDown, MessageSquare, Search } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -641,6 +642,7 @@ function App() {
         <Route path="agent-crawler" element={<AgentCrawler />} />
         <Route path="history" element={<RAGHistory />} />
         <Route path="db" element={<DatabaseManager />} />
+        <Route path="food-traces" element={<FoodTraceDashboard />} />
       </Route>
       
       {/* Redirect all other paths to home */}

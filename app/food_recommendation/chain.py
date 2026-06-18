@@ -5,7 +5,7 @@ import time
 from typing import Any
 
 from app.core.logger import log_info
-from app.food_recommendation.answer_llm import compose_food_answer_with_llm
+from app.food_recommendation.answer_llm import stream_food_answer_with_llm
 from app.food_recommendation.payloads import (
     food_location_payload,
     food_recommendations_payload,
@@ -144,6 +144,11 @@ class FoodRecommendationChain:
                     db=db,
                     metrics=metrics,
                 )
+                if items:
+                    # Save the original category so LLM can explain the fallback
+                    slots.original_category = slots.category
+                    slots.category = None
+                    metrics["relaxed_category_triggered"] = True
         finally:
             db.close()
 
@@ -166,8 +171,24 @@ class FoodRecommendationChain:
             yield sse_pipeline_step("food_answer_llm", "Đang viết lời gợi ý dễ hiểu hơn cho bạn...", 0.86)
 
         t_food_answer_start = time.time()
-        answer_meta = compose_food_answer_with_llm(items, query, slots, food_context)
+        answer_generator = stream_food_answer_with_llm(items, query, slots, food_context)
+        first_token_received = False
+        answer_meta = None
+        for chunk in answer_generator:
+            if chunk["type"] == "chunk":
+                if not first_token_received:
+                    metrics["ttft_ms"] = (time.time() - t_food_answer_start) * 1000
+                    first_token_received = True
+                text = chunk["text"]
+                yield f"data: {text.replace('\n', '\ndata: ')}\n\n"
+            elif chunk["type"] == "done":
+                answer_meta = chunk["answer_meta"]
+                
         metrics["generation_latency_ms"] = (time.time() - t_food_answer_start) * 1000
+                
+        if not first_token_received:
+            metrics["generation_latency_ms"] = (time.time() - t_food_answer_start) * 1000
+
         metrics["food_answer_llm_used"] = bool(answer_meta.get("llm_used"))
         metrics["food_answer_llm_error"] = answer_meta.get("error")
         metrics["total_latency_ms"] = (time.time() - t_start) * 1000
@@ -185,7 +206,11 @@ class FoodRecommendationChain:
         )
         metrics["food_trace_id"] = trace_id
         answer = answer_meta.get("answer") or format_food_answer(items, slots.category)
-        yield from stream_plain_answer(answer)
+        
+        # We already streamed the text, but if it failed or returned empty we might need fallback
+        if not answer_meta.get("llm_used"):
+            yield from stream_plain_answer(answer)
+            
         if items:
             payload = food_recommendations_payload(items, slots.category, query, answer_meta=answer_meta, trace_id=trace_id)
             metrics["food_recommendations"] = payload

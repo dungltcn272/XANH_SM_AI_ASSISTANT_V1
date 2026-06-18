@@ -1,4 +1,4 @@
-﻿from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session
 from app.assistant.orchestrator import XanhSMAssistantOrchestrator
 from app.memory.memory_service import MemoryService
 from app.db.models import RagRequestLog
@@ -6,19 +6,7 @@ from app.rag.guardrail import OutputGuardrail
 from app.core.logger import log_info, log_warn
 import json
 
-def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, question: str, image_base64: str = None, is_deep_search: bool = False, entity_type: str = "anonymous"):
-    """
-    Kết nối endpoint `/chat` với assistant orchestrator.
-    Orchestrator sẽ phân luồng sang RAG chain hoặc Food Recommendation chain.
-    
-    Tracks và saves:
-    - rewritten_query: Câu hỏi được viết lại dựa trên context
-    - search_latency_ms: Thời gian tìm kiếm tài liệu
-    - generation_latency_ms: Thời gian LLM synthesis
-    - total_latency_ms: Tổng thời gian
-    - total_tokens: Tổng số tokens (estimated)
-    - cost_usd: Chi phí API
-    """
+def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, question: str, image_base64: str = None, is_deep_search: bool = False, entity_type: str = "anonymous", display_query: str = None):
     # Lấy lịch sử 3 lượt gần nhất
     memory_service = MemoryService(db)
     raw_history = memory_service.get_recent_messages(conversation_id, limit=12)  # Increased from 6 to 12
@@ -122,12 +110,12 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
     try:
         new_memory_service = MemoryService(new_db)
         # Save user message to DB
-        new_memory_service.save_message(conversation_id, "user", question)
+        new_memory_service.save_message(conversation_id, "user", display_query or question)
         
         # Tự động tạo tiêu đề cuộc hội thoại nếu chưa có
         conv = new_db.query(Conversation).filter(Conversation.id == conversation_id).first()
         if conv and (not conv.title or conv.title.strip() == "" or conv.title == "New Conversation"):
-            words = question.strip().split()
+            words = (display_query or question).strip().split()
             title_words = words[:6]
             title = " ".join(title_words)
             # Viết hoa chữ cái đầu của mỗi từ cho đẹp

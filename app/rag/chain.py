@@ -5,10 +5,9 @@ import re
 import time
 from typing import Any
 
-from openai import OpenAI
-
 from app.assistant.events import sse_pipeline_step
 from app.core.config import settings as config
+from app.core.llm import get_llm_client
 from app.core.logger import log_warn, log_error
 from app.prompts import RAG_ANSWER_SYSTEM_PROMPT, RAG_ANSWER_USER_PROMPT_TEMPLATE
 from app.rag.hybrid_search import XanhSMHybridSearch
@@ -156,7 +155,7 @@ class RagAnswerChain:
             yield sse_pipeline_step("answer_prepare", "Đang chuẩn bị trả lời...", 0.78)
             t_gen_start = time.time()
             final_answer = ""
-            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+            client = get_llm_client(config.RAG_ANSWER_MODEL)
             response = client.chat.completions.create(
                 model=config.RAG_ANSWER_MODEL,
                 messages=messages,
@@ -179,6 +178,11 @@ class RagAnswerChain:
             except Exception as stream_error:
                 stream_failed = True
                 log_warn("CHAT", f"Streaming generation interrupted: {stream_error}")
+                if final_answer:
+                    # Đã có nội dung nhưng bị gãy giữa chừng
+                    error_notice = "\n\n*(Hệ thống bị gián đoạn kết nối, câu trả lời có thể chưa hoàn chỉnh. Vui lòng thử lại)*"
+                    final_answer += error_notice
+                    yield f"data: {error_notice.replace('\n', '\ndata: ')}\n\n"
 
             if stream_failed and not final_answer:
                 log_warn("CHAT", "Retrying generation once without streaming.")

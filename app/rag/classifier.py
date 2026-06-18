@@ -1,8 +1,8 @@
 import json
 import re
 from typing import Dict, Any, List
-from openai import OpenAI
 from app.core.config import settings as config
+from app.core.llm import get_llm_client
 from app.prompts import UNIFIED_NLU_PROMPT
 from app.core.logger import log_warn
 
@@ -12,7 +12,7 @@ class XanhSMClassifier:
     """
     
     def __init__(self):
-        pass
+        self.fast_model = "gpt-4o-mini"
 
     def unified_nlu(
         self,
@@ -75,15 +75,7 @@ class XanhSMClassifier:
                         history_str += f"{role_tag}: {content}\n"
 
                 model_to_use = config.NLU_MODEL
-                if config.GROQ_API_KEY and model_to_use != "gpt-4o-mini" and model_to_use != "gpt-4o":
-                    # Fallback to OpenAI if image is present but Groq model doesn't support vision
-                    if image_base64 and "vision" not in model_to_use.lower():
-                        client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
-                        model_to_use = "gpt-4o-mini"
-                    else:
-                        client = OpenAI(api_key=config.GROQ_API_KEY, base_url="https://api.groq.com/openai/v1", timeout=config.OPENAI_TIMEOUT_SECONDS)
-                else:
-                    client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+                client = get_llm_client(model_to_use)
                     
                 food_context_str = json.dumps(food_context or {}, ensure_ascii=False, indent=2)
                 user_prompt = (

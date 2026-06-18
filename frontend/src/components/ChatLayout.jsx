@@ -232,7 +232,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
 
       <img
         src={item.image_url || '/Bot.png'}
-        alt={item.name || 'Món Ēn'}
+        alt={item.name || 'Món ăn'}
         className="w-full h-[92px] md:h-[122px] rounded-xl object-cover border border-outline-variant/10 bg-surface-container-high"
         loading="lazy"
       />
@@ -251,7 +251,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
             )}
           </div>
           <p className="mt-1 text-sm text-on-surface-variant/85 leading-relaxed line-clamp-2">
-            {item.reason || item.dish_name || item.address || 'Phù hợp v:i nhu cầu món Ēn của bạn.'}
+            {item.reason || item.dish_name || item.address || 'Phù hợp với nhu cầu món ăn của bạn.'}
           </p>
         </div>
 
@@ -273,7 +273,11 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
             <button
               key={title}
               type="button"
-              className="w-9 h-9 rounded-full bg-surface-container-high/70 dark:bg-white/10 text-[#00a884] flex items-center justify-center hover:bg-[#00c897] hover:text-white transition-colors"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                item.interaction === (title === 'Lưu lựa chọn' ? 'like' : title === 'Không phù hợp' ? 'dislike' : '')
+                  ? 'bg-[#00c897] text-white'
+                  : 'bg-surface-container-high/70 dark:bg-white/10 text-[#00a884] hover:bg-[#00c897] hover:text-white'
+              }`}
               title={title}
               onClick={(event) => {
                 event.preventDefault();
@@ -281,7 +285,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
                 action?.(item, index);
               }}
             >
-              <ActionIcon size={16} />
+              <ActionIcon size={16} fill={item.interaction === (title === 'Lưu lựa chọn' ? 'like' : title === 'Không phù hợp' ? 'dislike' : '') ? 'currentColor' : 'none'} />
             </button>
           ))}
         </div>
@@ -307,7 +311,7 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
         </div>
         <div className="min-w-0">
           <h3 className="text-xl md:text-2xl font-black text-on-surface leading-tight">
-            {data.title || 'M"t vài quán phù hợp gần bạn'}
+            {data.title || 'Một vài quán phù hợp gần bạn'}
           </h3>
           <p className="mt-1 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
             {data.subtitle || 'Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.'}
@@ -346,7 +350,7 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
                 onClick={() => onOpenMenu?.(item, index + items.length)}
                 className="grid grid-cols-[64px_1fr] gap-3 rounded-xl border border-outline-variant/20 bg-white/70 dark:bg-white/[0.04] p-2 hover:border-[#00c897]/40 transition-colors"
               >
-                <img src={item.image_url || '/Bot.png'} alt={item.name || 'Món Ēn'} className="w-16 h-16 rounded-lg object-cover bg-surface-container-high" loading="lazy" />
+                <img src={item.image_url || '/Bot.png'} alt={item.name || 'Món ăn'} className="w-16 h-16 rounded-lg object-cover bg-surface-container-high" loading="lazy" />
                 <div className="min-w-0 text-xs leading-snug">
                   <div className="font-black text-on-surface truncate">{item.name}</div>
                   <div className="mt-1 flex items-center gap-1 text-[#009e79] font-black">
@@ -379,16 +383,16 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
 
 
   return (
-    <div className="w-full grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4">
+    <div className="w-full">
       <div className="overflow-hidden rounded-3xl border border-outline-variant/20 bg-white/82 dark:bg-white/[0.04] shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.95fr)_minmax(260px,1fr)] gap-4 p-4 md:p-5">
           <div className="flex flex-col justify-between gap-4">
             <div>
               <h3 className="text-lg md:text-xl font-black text-on-surface leading-snug">
-                ĐỒ gợi ý món Ēn gần bạn chính xác hơn, em cần biết v9 trí hi!n tại của bạn nhé!
+                Để gợi ý món ăn gần bạn chính xác hơn, em cần biết vị trí hiện tại của bạn nhé!
               </h3>
               <p className="mt-3 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
-                Em sẽ giúp bạn tìm quán gần nhất, ư:c tính thời gian giao hàng và tính phí ship chính xác.
+                Em sẽ giúp bạn tìm quán gần nhất, ước tính thời gian giao hàng và tính phí ship chính xác.
               </p>
             </div>
 
@@ -399,7 +403,7 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
                 className="h-12 rounded-xl bg-[#00a884] px-4 text-sm md:text-base font-black text-white hover:bg-[#008f73] transition-colors inline-flex items-center justify-center gap-2"
               >
                 <LocateFixed size={18} />
-                {request?.current_location_label || 'Chia sẻ v9 trí hi!n tại'}
+                {request?.current_location_label || 'Chia sẻ vị trí hiện tại'}
               </button>
               <button
                 type="button"
@@ -459,22 +463,6 @@ const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddres
           )}
         </form>
       </div>
-
-      <div className="rounded-3xl border border-[#00c897]/20 bg-[#00c897]/8 dark:bg-white/[0.04] p-5 shadow-[0_12px_40px_rgba(0,200,151,0.08)]">
-        <h3 className="flex items-center gap-2 text-base font-black text-on-surface">
-          <LocateFixed size={20} className="text-[#00a884]" />
-          Vì sao cần v9 trí của bạn?
-        </h3>
-        <div className="mt-5 flex flex-col gap-4 text-sm font-semibold text-on-surface/90">
-          <div className="flex items-center gap-3"><MapPin size={19} className="text-[#00a884]" />Sắp xếp quán gần nhất</div>
-          <div className="flex items-center gap-3"><Clock3 size={19} className="text-[#00a884]" />Ư:c tính thời gian giao hàng</div>
-          <div className="flex items-center gap-3"><DollarSign size={19} className="text-[#00a884]" />Tính phí giao hàng chính xác</div>
-          <div className="flex items-start gap-3 pt-2 text-xs leading-relaxed text-on-surface-variant/85">
-            <ShieldCheck size={19} className="text-[#00a884] shrink-0" />
-            Thông tin vị trí chỉ dùng để gợi ý quán gần bạn trong phiên chat.
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
@@ -488,22 +476,22 @@ const FoodLocationConfirmedCard = ({ location, onSaveNamedLocation }) => {
           <span className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center">
             <CheckCheck size={18} />
           </span>
-          V9 trí hi!n tại của bạn
+          Vị trí hiện tại của bạn
         </div>
         <div className="text-sm leading-relaxed text-on-surface-variant/90">
-          {location.label || location.address || 'Đã cập nhật v9 trí giao hàng'}
+          {location.label || location.address || 'Đã cập nhật vị trí giao hàng'}
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => onSaveNamedLocation?.('home', 'Nh', location)}
+            onClick={() => onSaveNamedLocation?.('home', 'Nhà', location)}
             className="rounded-full border border-[#00a884]/30 px-3 py-1.5 text-xs font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors"
           >
             Lưu là Nhà
           </button>
           <button
             type="button"
-            onClick={() => onSaveNamedLocation?.('work', 'Cng ty', location)}
+            onClick={() => onSaveNamedLocation?.('work', 'Công ty', location)}
             className="rounded-full border border-[#00a884]/30 px-3 py-1.5 text-xs font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors"
           >
             Lưu là Công ty
@@ -539,7 +527,16 @@ export default function ChatLayout() {
   const [submittedReviews, setSubmittedReviews] = useState({});
   const [savedFoodLocations, setSavedFoodLocations] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('xanhsm_food_locations') || '[]');
+      const parsed = JSON.parse(localStorage.getItem('xanhsm_food_locations') || '[]');
+      // Fix broken encodings from older versions
+      let hasChanges = false;
+      const cleaned = parsed.map(item => {
+        if (item.label === 'Cng ty' || item.label === 'C\\u00f4ng ty') { item.label = 'Công ty'; hasChanges = true; }
+        if (item.label === 'Nh' || item.label === 'Nh\\u00e0') { item.label = 'Nhà'; hasChanges = true; }
+        return item;
+      });
+      if (hasChanges) localStorage.setItem('xanhsm_food_locations', JSON.stringify(cleaned));
+      return cleaned;
     } catch {
       return [];
     }
@@ -737,7 +734,7 @@ export default function ChatLayout() {
     setLoading(true);
 
     try {
-      const response = await api.chatStream(userQuery, currentConvIdRef.current, currentImageBase64, isDeepSearch);
+      const response = await api.chatStream(userQuery, currentConvIdRef.current, currentImageBase64, isDeepSearch, displayQuery !== userQuery ? displayQuery : null);
       if (!response.ok) throw new Error('API Error');
       
       setMessages(prev => [...prev, { role: 'assistant', content: '', latency_ms: null, metrics: null, created_at: new Date().toISOString() }]);
@@ -974,7 +971,7 @@ export default function ChatLayout() {
   }, [messages, logFoodInteraction]);
 
   const buildFoodLocationQuery = (request, locationText) => {
-    const baseQuery = request?.query || 'Gợi ý món Ēn gần tôi';
+    const baseQuery = request?.query || 'Gợi ý món ăn gần tôi';
     return `${baseQuery} ở ${locationText}`;
   };
 
@@ -987,8 +984,8 @@ export default function ChatLayout() {
   const saveFoodLocation = useCallback((location) => {
     const nextLocation = {
       id: location.id || `loc_${Date.now()}`,
-      label: location.label || 'V9 trí hi!n tại',
-      address: location.address || location.label || 'V9 trí hi!n tại',
+      label: location.label || 'Vị trí hiện tại',
+      address: location.address || location.label || 'Vị trí hiện tại',
       lat: Number(location.lat),
       lng: Number(location.lng),
       saved_at: new Date().toISOString(),
@@ -1028,9 +1025,9 @@ export default function ChatLayout() {
           alert('Vị trí hiện tại chưa nằm trong khu vực Việt Nam mà catalog món ăn đang hỗ trợ. Bạn thử nhập địa chỉ ở Việt Nam hoặc chọn pin trên bản đồ nhé.');
           return;
         }
-        const location = saveFoodLocation({ id: 'current', label: 'V9 trí hi!n tại', lat, lng });
+        const location = saveFoodLocation({ id: 'current', label: 'Vị trí hiện tại', lat, lng });
         markFoodLocationConfirmed(location);
-        handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), 'Đã chia sẻ v9 trí hi!n tại');
+        handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), 'Đã chia sẻ vị trí hiện tại');
       },
       () => {
         alert('Chưa lấy được vị trí hiện tại. Bạn có thể nhập địa chỉ giao hàng hoặc thử cấp quyền vị trí lại.');
@@ -1044,7 +1041,7 @@ export default function ChatLayout() {
       const result = await api.geocodeFoodAddress(address);
       const lat = Number(result.lat).toFixed(6);
       const lng = Number(result.lng).toFixed(6);
-      const label = address || result.display_name || 'Đ9a ch0 giao hàng';
+      const label = address || result.display_name || 'Địa chỉ giao hàng';
       const location = saveFoodLocation({ label, address: result.display_name || address, lat, lng });
       markFoodLocationConfirmed(location);
       handleSubmit(null, buildFoodLocationQuery(request, `${lat},${lng}`), label);
@@ -1309,9 +1306,36 @@ export default function ChatLayout() {
                                     logFoodInteraction('click_item', item, rankPosition, msg.foodRecommendations, msg);
                                     logFoodInteraction('click_out', item, rankPosition, msg.foodRecommendations, msg);
                                   }}
-                                  onLike={(item, rankPosition) => logFoodInteraction('like', item, rankPosition, msg.foodRecommendations, msg)}
-                                  onDismiss={(item, rankPosition) => logFoodInteraction('dismiss', item, rankPosition, msg.foodRecommendations, msg)}
-                                  onDislike={(item, rankPosition) => logFoodInteraction('dislike', item, rankPosition, msg.foodRecommendations, msg)}
+                                  onLike={(item, rankPosition) => {
+                                    setMessages(prev => prev.map(m => m.id === msg.id ? {
+                                      ...m,
+                                      foodRecommendations: {
+                                        ...m.foodRecommendations,
+                                        items: m.foodRecommendations.items.map(i => i.item_id === item.item_id ? { ...i, interaction: i.interaction === 'like' ? null : 'like' } : i)
+                                      }
+                                    } : m));
+                                    logFoodInteraction('like', item, rankPosition, msg.foodRecommendations, msg);
+                                  }}
+                                  onDismiss={(item, rankPosition) => {
+                                    setMessages(prev => prev.map(m => m.id === msg.id ? {
+                                      ...m,
+                                      foodRecommendations: {
+                                        ...m.foodRecommendations,
+                                        items: m.foodRecommendations.items.filter(i => i.item_id !== item.item_id)
+                                      }
+                                    } : m));
+                                    logFoodInteraction('dismiss', item, rankPosition, msg.foodRecommendations, msg);
+                                  }}
+                                  onDislike={(item, rankPosition) => {
+                                    setMessages(prev => prev.map(m => m.id === msg.id ? {
+                                      ...m,
+                                      foodRecommendations: {
+                                        ...m.foodRecommendations,
+                                        items: m.foodRecommendations.items.map(i => i.item_id === item.item_id ? { ...i, interaction: i.interaction === 'dislike' ? null : 'dislike' } : i)
+                                      }
+                                    } : m));
+                                    logFoodInteraction('dislike', item, rankPosition, msg.foodRecommendations, msg);
+                                  }}
                                   onExplain={(item) => setExplainingFood(item)}
                                 />
                             )}

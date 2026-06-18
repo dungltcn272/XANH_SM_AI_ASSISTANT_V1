@@ -139,6 +139,11 @@ def rank_catalog(
             rating_score=normalized_rating(item.merchant_rating),
             popularity_score=clamp(math.log10((item.merchant_review_count or 0) + 1) / 4),
         )
+        
+        # Hard filter if category is requested but match is extremely poor
+        if request.category and breakdown.category_score < 0.25:
+            continue
+            
         score = (
             0.16 * breakdown.recall_score
             + 0.20 * breakdown.nearby_score
@@ -151,6 +156,12 @@ def rank_catalog(
             + 0.05 * breakdown.rating_score
             + 0.03 * breakdown.popularity_score
         )
+        
+        # Nếu có request.category, category_score là yếu tố SỐNG CÒN. 
+        # Nhân score với bình phương category_score để trừng phạt nặng các quán không liên quan.
+        if request.category:
+            score = score * (breakdown.category_score ** 1.5)
+            
         ranked.append(
             FoodRecommendation(
                 item_id=item.item_id,
