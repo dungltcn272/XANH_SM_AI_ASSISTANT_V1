@@ -1671,7 +1671,7 @@ export default function ChatLayout() {
                   title={isDeepSearch ? "Tt Deep Search" : "Bt Deep Search (Tm kim chuyn su)"}
                 >
                   <Search size={12} className={isDeepSearch ? "text-indigo-500" : ""} />
-                  {isDeepSearch ? "Deep Search: Bt" : "Deep Search"}
+                  {isDeepSearch ? "Deep Search: Bật" : "Deep Search"}
                 </button>
 
                 {/* Horizontally scrollable suggestion pills */}

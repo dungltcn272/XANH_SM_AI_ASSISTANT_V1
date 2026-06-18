@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
     const savedEmail = localStorage.getItem('email');
     const savedName = localStorage.getItem('name');
     const savedRole = localStorage.getItem('user_role');
+    const savedAvatarUrl = localStorage.getItem('avatar_url');
 
     if (savedToken && savedType) {
       return {
@@ -21,7 +22,8 @@ export const AuthProvider = ({ children }) => {
         id: savedUserId,
         email: savedEmail,
         name: savedName,
-        role: savedRole
+        role: savedRole,
+        avatar_url: savedAvatarUrl
       };
     }
     return null;
@@ -48,13 +50,19 @@ export const AuthProvider = ({ children }) => {
         type: 'user',
         id: data.user_id,
         email: data.email,
-        name: data.name
+        name: data.name,
+        avatar_url: data.avatar_url
       });
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('auth_type', 'user');
       localStorage.setItem('user_id', data.user_id);
       localStorage.setItem('email', data.email);
       localStorage.setItem('name', data.name);
+      if (data.avatar_url) {
+        localStorage.setItem('avatar_url', data.avatar_url);
+      } else {
+        localStorage.removeItem('avatar_url');
+      }
       return true;
     } catch (e) {
       console.error(e);
@@ -101,7 +109,8 @@ export const AuthProvider = ({ children }) => {
         role: data.role,
         id: data.user_id,
         email: data.email,
-        name: data.name
+        name: data.name,
+        avatar_url: data.avatar_url
       });
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('auth_type', 'user');
@@ -109,6 +118,11 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user_id', data.user_id);
       localStorage.setItem('email', data.email);
       localStorage.setItem('name', data.name);
+      if (data.avatar_url) {
+        localStorage.setItem('avatar_url', data.avatar_url);
+      } else {
+        localStorage.removeItem('avatar_url');
+      }
       return true;
     } catch (e) {
       console.error(e);
