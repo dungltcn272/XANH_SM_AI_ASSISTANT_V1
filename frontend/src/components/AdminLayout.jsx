@@ -13,12 +13,6 @@ export default function AdminLayout() {
       ]
     },
     {
-      title: 'AI PIPELINE',
-      items: [
-        { path: '/admin/pipeline', label: 'Pipeline Debugger', icon: <Network size={18} /> },
-      ]
-    },
-    {
       title: 'KNOWLEDGE BASE',
       items: [
         { path: '/admin/knowledge-builder', label: 'Knowledge Hub', icon: <Database size={18} /> },

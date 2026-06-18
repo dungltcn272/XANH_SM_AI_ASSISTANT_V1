@@ -7,7 +7,6 @@ import AdminLayout from './components/AdminLayout';
 import NotificationDropdown from './components/NotificationDropdown';
 import CommandCenter from './pages/CommandCenter';
 import AIEvalLab from './pages/AIEvalLab';
-import PipelineManager from './pages/PipelineManager';
 import HistoryDashboard from './pages/HistoryDashboard';
 import DatabaseManager from './pages/DatabaseManager';
 import KnowledgeBuilder from './pages/KnowledgeBuilder';
@@ -635,7 +634,6 @@ function App() {
         <Route index element={<CommandCenter />} />
         <Route path="reviews" element={<UserReviews />} />
         <Route path="eval" element={<AIEvalLab />} />
-        <Route path="pipeline" element={<PipelineManager />} />
         <Route path="knowledge-builder" element={<KnowledgeBuilder />} />
         <Route path="history" element={<HistoryDashboard />} />
         <Route path="db" element={<DatabaseManager />} />

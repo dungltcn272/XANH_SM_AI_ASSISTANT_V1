@@ -1441,7 +1441,7 @@ export default function ChatLayout() {
               <Loader2 className="animate-spin text-[#00c897]" size={20} />
               <div className="flex flex-col gap-2">
                 <span className="text-on-surface-variant/60 italic text-sm font-medium">
-                  {pipelineStep ? pipelineStep : 'Đang phân tích dữ li!u...'}
+                  {pipelineStep ? pipelineStep : 'Đang phân tích dữ liệu...'}
                 </span>
               </div>
             </div>
