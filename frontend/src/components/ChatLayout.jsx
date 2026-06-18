@@ -952,6 +952,7 @@ export default function ChatLayout() {
           distance_text: item?.distance_text,
           eta_text: item?.eta_text,
           delivery_fee_text: item?.delivery_fee_text,
+          breakdown: item?.score_breakdown,
         }
       });
     } catch (error) {

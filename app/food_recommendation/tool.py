@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ def recommend_food(
     db: Session | None = None,
     query_text: str | None = None,
     metrics: dict | None = None,
+    food_context: dict | None = None,
 ) -> list[FoodRecommendation]:
     request = FoodRecommendationRequest(
         lat=lat,
@@ -35,6 +36,7 @@ def recommend_food(
         max_distance_km=max_distance_km,
         user_id=user_id,
         limit=limit,
+        food_context=food_context,
     )
     catalog = load_catalog(db=db)
     candidates = generate_candidates(catalog, request, candidate_limit=max(200, limit * 50))

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, ShieldCheck, Copy, Download, Play, ChevronDown, ChevronRight, Check, X, Box, Target, Activity, MapPin, Tag } from 'lucide-react';
+import { Search, Copy, Download, ChevronDown, ChevronRight, Check, X, Box, Target, Activity, MapPin, Tag } from 'lucide-react';
 import { api } from '../api';
 
 export default function FoodLogView() {
@@ -225,7 +225,7 @@ export default function FoodLogView() {
                   <Activity size={14} className="text-[#8b5cf6]" />
                 </div>
                 <div className="text-sm text-[#e2e8f0] mb-4 flex-1 overflow-y-auto max-h-32 custom-scrollbar">
-                  <pre className="text-xs font-mono whitespace-pre-wrap">{selectedLog.answer_llm_json || 'No LLM answer'}</pre>
+                  <pre className="text-xs font-mono whitespace-pre-wrap">{selectedLog.final_answer || selectedLog.answer_llm_json || 'No LLM answer'}</pre>
                 </div>
                 <div className="flex gap-6 text-xs text-[#94a3b8] mt-auto border-t border-[#8b5cf6]/20 pt-2">
                   <span>Model: <span className="text-[#cbd5e1] font-mono">Llama-3</span></span>

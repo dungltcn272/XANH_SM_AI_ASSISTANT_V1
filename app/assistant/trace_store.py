@@ -14,6 +14,8 @@ def save_basic_request_log(
     final_answer: str | None,
     nlu_latency_ms: float,
     total_latency_ms: float,
+    model_name: str | None = None,
+    cost_usd: float = 0.0,
 ):
     try:
         from app.db.database import SessionLocal
@@ -28,8 +30,10 @@ def save_basic_request_log(
                 rewritten_query=rewritten_query,
                 intent=intent,
                 final_answer=final_answer,
+                model_name=model_name,
                 nlu_latency_ms=nlu_latency_ms,
                 total_latency_ms=total_latency_ms,
+                cost_usd=cost_usd,
             )
             db.add(log_entry)
             db.commit()

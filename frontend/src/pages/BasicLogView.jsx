@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, ShieldAlert, ShieldCheck, Copy, Download, Play, ChevronDown, ChevronRight, Check, X, Box, Target, Clock, Activity, Cpu } from 'lucide-react';
+import { Search, Copy, Download, ChevronDown, ChevronRight, Check, X, Box, Target, Clock, Activity, Cpu } from 'lucide-react';
 import { api } from '../api';
 
 export default function BasicLogView() {
@@ -158,8 +158,6 @@ export default function BasicLogView() {
           ) : (
             filteredLogs.map(log => {
               const isSelected = selectedLog?.id === log.id;
-              const isBlocked = log.blocked_by_guardrail;
-              
               return (
                 <div 
                   key={log.id} 

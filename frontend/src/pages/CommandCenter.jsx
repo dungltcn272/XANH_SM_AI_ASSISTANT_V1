@@ -1,28 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Search, ChevronDown, Zap, Database, Activity, ArrowUpRight, ArrowDownRight, MessageSquare, ShieldAlert, ChevronRight } from 'lucide-react';
+import { ChevronDown, Zap, Database, Activity, ArrowUpRight, ArrowDownRight, MessageSquare, ShieldAlert, ChevronRight, Server, Cpu, Bot, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { api } from '../api';
 
-// Mock data for charts
-const generateSparkline = (points, min, max) => Array.from({ length: points }, (_, i) => ({ time: i, value: Math.floor(Math.random() * (max - min + 1)) + min }));
+const emptySeries = Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, '0')}:00`, value: 0 }));
 
-const sparklineData1 = generateSparkline(20, 60, 100);
-const sparklineData2 = generateSparkline(20, 40, 90);
-const sparklineData3 = generateSparkline(20, 10, 50);
-const sparklineData4 = generateSparkline(20, 20, 80);
-
-const intentDataMock = [
-  { name: 'RAG', value: 6243, color: '#00c897' },
-  { name: 'Food Recommendation', value: 3492, color: '#06b6d4' },
-  { name: 'FAQ', value: 1876, color: '#3b82f6' },
-  { name: 'Small Talk', value: 856, color: '#8b5cf6' },
-  { name: 'Sensitive / Other', value: 375, color: '#f97316' },
-];
+const intentDataMock = [];
 
 const safetyDataMock = [
-  { name: 'Passed', value: 11245, color: '#00c897' },
-  { name: 'Blocked', value: 1287, color: '#f59e0b' },
-  { name: 'Error', value: 310, color: '#ef4444' },
+  { name: 'Passed', value: 0, color: '#00c897' },
+  { name: 'Blocked', value: 0, color: '#f59e0b' },
+  { name: 'Error', value: 0, color: '#ef4444' },
 ];
 
 
@@ -41,12 +29,19 @@ export default function CommandCenter() {
   const [safetyData, setSafetyData] = useState(safetyDataMock);
   
   const [liveActivityFeed, setLiveActivityFeed] = useState([]);
+  const [timeseries, setTimeseries] = useState({
+    queries: emptySeries,
+    cache: emptySeries,
+    latency: emptySeries,
+    cost: emptySeries,
+  });
+  const [health, setHealth] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const s = await api.getDbStats();
-        if (s) {
+          if (s) {
           setStats({
             total_requests: s.total_requests || 0,
             avg_latency: s.avg_latency || 0,
@@ -57,9 +52,12 @@ export default function CommandCenter() {
           });
           if (s.intentData) setIntentData(s.intentData);
           if (s.safetyData) setSafetyData(s.safetyData);
+          if (s.timeseries) setTimeseries(s.timeseries);
         }
         const l = await api.getAdminLogs();
         if (l) setLiveActivityFeed(l.slice(0, 5)); // Take top 5 as per design
+        const h = await api.getSystemHealth();
+        if (h) setHealth(h);
       } catch (err) {
         console.error(err);
       }
@@ -78,34 +76,19 @@ export default function CommandCenter() {
         </div>
         
         <div className="flex flex-wrap items-center gap-6">
-          {/* Search Bar */}
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={16} className="text-[#64748b] group-focus-within:text-[#00c897] transition-colors" />
-            </div>
-            <input 
-              type="text" 
-              placeholder="Search anything... (logs, queries, docs...)" 
-              className="bg-[#0f1520] border border-[#1e293b] text-sm rounded-lg pl-10 pr-12 py-2 w-80 focus:outline-none focus:border-[#00c897]/50 focus:ring-1 focus:ring-[#00c897]/50 text-white placeholder-[#475569] transition-all"
-            />
-            <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-              <span className="text-[10px] bg-[#1e293b] text-[#94a3b8] px-1.5 py-0.5 rounded border border-[#334155]">⌘K</span>
-            </div>
-          </div>
-          
           {/* Health Stats */}
           <div className="flex items-center gap-6 text-sm border-l border-[#1e293b] pl-6">
             <div className="flex flex-col">
               <span className="text-[#94a3b8] text-xs">API Health</span>
-              <div className="flex items-center gap-1.5 font-medium text-[#00c897]">
-                <div className="w-2 h-2 rounded-full bg-[#00c897] animate-pulse"></div>
-                Healthy
+              <div className={`flex items-center gap-1.5 font-medium ${health?.status === 'operational' ? 'text-[#00c897]' : 'text-[#f59e0b]'}`}>
+                <div className={`w-2 h-2 rounded-full ${health?.status === 'operational' ? 'bg-[#00c897]' : 'bg-[#f59e0b]'} animate-pulse`}></div>
+                {health?.status === 'operational' ? 'Healthy' : 'Checking'}
               </div>
             </div>
             <div className="flex flex-col">
-              <span className="text-[#94a3b8] text-xs">System Uptime</span>
+              <span className="text-[#94a3b8] text-xs">System Health</span>
               <div className="flex items-center gap-1.5 font-medium text-[#00c897]">
-                <span className="text-[#00c897]">99.96%</span>
+                <span className="text-[#00c897]">{(health?.score ?? 0).toFixed(1)}%</span>
               </div>
             </div>
           </div>
@@ -133,7 +116,7 @@ export default function CommandCenter() {
               <MessageSquare size={16} />
             </div>
             <div>
-              <p className="text-sm font-medium text-[#e2e8f0]">Queries Today</p>
+              <p className="text-sm font-medium text-[#e2e8f0]">Total Queries</p>
               <h3 className="text-3xl font-bold text-white mt-1">{stats.total_requests.toLocaleString()}</h3>
             </div>
           </div>
@@ -144,7 +127,7 @@ export default function CommandCenter() {
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-16 opacity-50 z-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sparklineData1}>
+              <AreaChart data={timeseries.queries}>
                  <Area type="monotone" dataKey="value" stroke="#00c897" strokeWidth={2} fill="transparent" />
               </AreaChart>
             </ResponsiveContainer>
@@ -169,7 +152,7 @@ export default function CommandCenter() {
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-16 opacity-50 z-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sparklineData2}>
+              <AreaChart data={timeseries.cache}>
                  <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} fill="transparent" />
               </AreaChart>
             </ResponsiveContainer>
@@ -194,7 +177,7 @@ export default function CommandCenter() {
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-16 opacity-50 z-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sparklineData3}>
+              <AreaChart data={timeseries.latency}>
                  <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2} fill="transparent" />
               </AreaChart>
             </ResponsiveContainer>
@@ -219,10 +202,59 @@ export default function CommandCenter() {
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-16 opacity-50 z-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sparklineData4}>
+              <AreaChart data={timeseries.cost}>
                  <Area type="monotone" dataKey="value" stroke="#00c897" strokeWidth={2} fill="transparent" />
               </AreaChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* System Health */}
+      <div className="glass-panel rounded-xl border border-[#1e293b]/60 bg-[#0f1520]/80 mb-6 px-5 py-4">
+        <div className="flex flex-col xl:flex-row xl:items-center gap-5">
+          <div className="w-full xl:w-56 shrink-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748b]">System Health</p>
+            <div className="flex items-end gap-2 mt-1">
+              <span className="text-3xl font-bold text-[#00c897]">{(health?.score ?? 0).toFixed(1)}%</span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-[#94a3b8]">
+              <span className={`w-2 h-2 rounded-full ${(health?.status || 'degraded') === 'operational' ? 'bg-[#00c897]' : 'bg-[#f59e0b]'}`}></span>
+              {health?.status === 'operational' ? 'All systems operational' : 'Some services need attention'}
+            </div>
+          </div>
+
+          <div className="hidden xl:block flex-1 h-12">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={timeseries.latency}>
+                <Area type="monotone" dataKey="value" stroke="#00c897" strokeWidth={2} fill="transparent" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 w-full xl:w-auto">
+            {(health?.services || [
+              { name: 'LLM API', status: 'down', detail: 'loading' },
+              { name: 'Vector DB', status: 'down', detail: 'loading' },
+              { name: 'Database', status: 'down', detail: 'loading' },
+              { name: 'Semantic Cache', status: 'down', detail: 'loading' },
+              { name: 'Crawlers', status: 'down', detail: 'loading' },
+            ]).map((service) => {
+              const Icon = service.name === 'LLM API' ? Bot : service.name === 'Vector DB' ? Server : service.name === 'Database' ? Database : service.name === 'Crawlers' ? RefreshCw : Cpu;
+              const ok = service.status === 'healthy';
+              return (
+                <div key={service.name} className="rounded-lg border border-[#1e293b] bg-[#0b1220] px-3 py-2 min-w-32">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#cbd5e1]">
+                    <Icon size={14} className={ok ? 'text-[#00c897]' : 'text-[#f59e0b]'} />
+                    {service.name}
+                  </div>
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                    <span className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-[#00c897]' : 'bg-[#f59e0b]'}`}></span>
+                    <span className={ok ? 'text-[#00c897]' : 'text-[#f59e0b]'}>{ok ? 'Healthy' : 'Check'}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -237,9 +269,6 @@ export default function CommandCenter() {
               <h3 className="text-base font-bold text-white">Intent Distribution</h3>
               <p className="text-xs text-[#64748b]">Distribution of queries by intent</p>
             </div>
-            <button className="bg-[#0f1520] border border-[#1e293b] px-3 py-1.5 rounded-lg text-xs text-[#94a3b8] flex items-center gap-1 hover:text-white transition-colors">
-              All Intents <ChevronDown size={12} />
-            </button>
           </div>
           <div className="flex-1 flex flex-col gap-5 justify-center">
             {intentData.map((item, idx) => (

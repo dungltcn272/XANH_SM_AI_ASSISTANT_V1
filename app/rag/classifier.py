@@ -2,7 +2,7 @@ import json
 import re
 from typing import Dict, Any, List
 from app.core.config import settings as config
-from app.core.llm import get_llm_client
+from app.core.llm import get_llm_client, has_api_key_for_model, select_model_for_multimodal
 from app.prompts import UNIFIED_NLU_PROMPT
 from app.core.logger import log_warn
 
@@ -27,10 +27,17 @@ class XanhSMClassifier:
         2. Intent classification (rag, small-talk)
         3. Query expansion
         """
+        model_to_use = config.NLU_MODEL
+        include_image = False
+        if image_base64:
+            multimodal_model = select_model_for_multimodal(config.NLU_MODEL, config.VLM_MODEL)
+            if multimodal_model:
+                model_to_use = multimodal_model
+                include_image = True
+
         llm_available = (
-            config.OPENAI_API_KEY
+            has_api_key_for_model(model_to_use)
             and config.EMBEDDING_PROVIDER != "mock"
-            and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY
         )
         
         # Rule-based safety triggers (fast early exit for sensitive words)
@@ -74,7 +81,6 @@ class XanhSMClassifier:
                             content = content[:300] + "... [truncated]"
                         history_str += f"{role_tag}: {content}\n"
 
-                model_to_use = config.NLU_MODEL
                 client = get_llm_client(model_to_use)
                     
                 food_context_str = json.dumps(food_context or {}, ensure_ascii=False, indent=2)
@@ -83,7 +89,7 @@ class XanhSMClassifier:
                     f"Food user context từ DB (field chưa biết là null/[]):\n{food_context_str}\n"
                     f"Câu hỏi mới nhất: '{query}'\nJSON kết quả:"
                 )
-                if image_base64:
+                if image_base64 and include_image:
                     user_content = [
                         {"type": "text", "text": user_prompt},
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}

@@ -11,6 +11,7 @@ import HistoryDashboard from './pages/HistoryDashboard';
 import DatabaseManager from './pages/DatabaseManager';
 import KnowledgeBuilder from './pages/KnowledgeBuilder';
 import UserReviews from './pages/UserReviews';
+import MLControlCenter from './pages/MLControlCenter';
 import AdminLogin from './pages/AdminLogin';
 import { Moon, Sun, LogOut, Plus, User, HelpCircle, X, Menu, ChevronLeft, ChevronRight, MoreHorizontal, Bell, ChevronDown, MessageSquare, Search } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
@@ -634,6 +635,7 @@ function App() {
         <Route index element={<CommandCenter />} />
         <Route path="reviews" element={<UserReviews />} />
         <Route path="eval" element={<AIEvalLab />} />
+        <Route path="ml" element={<MLControlCenter />} />
         <Route path="knowledge-builder" element={<KnowledgeBuilder />} />
         <Route path="history" element={<HistoryDashboard />} />
         <Route path="db" element={<DatabaseManager />} />

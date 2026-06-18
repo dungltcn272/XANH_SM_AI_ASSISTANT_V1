@@ -4,6 +4,7 @@ import json
 import time
 from typing import Any
 
+from app.core.config import settings as config
 from app.core.logger import log_info
 from app.food_recommendation.answer_llm import stream_food_answer_with_llm
 from app.food_recommendation.payloads import (
@@ -107,6 +108,7 @@ class FoodRecommendationChain:
                 limit=8,
                 db=db,
                 metrics=metrics,
+                food_context=food_context,
             )
             if not items:
                 metrics["food_fallback"] = "expanded_radius"
@@ -125,6 +127,7 @@ class FoodRecommendationChain:
                     limit=8,
                     db=db,
                     metrics=metrics,
+                    food_context=food_context,
                 )
             if not items and slots.category:
                 metrics["food_fallback"] = "expanded_radius_relaxed_category"
@@ -143,6 +146,7 @@ class FoodRecommendationChain:
                     limit=8,
                     db=db,
                     metrics=metrics,
+                    food_context=food_context,
                 )
                 if items:
                     # Save the original category so LLM can explain the fallback
@@ -171,6 +175,7 @@ class FoodRecommendationChain:
             yield sse_pipeline_step("food_answer_llm", "Đang viết lời gợi ý dễ hiểu hơn cho bạn...", 0.86)
 
         t_food_answer_start = time.time()
+        metrics["answer_model"] = config.FOOD_ANSWER_MODEL
         answer_generator = stream_food_answer_with_llm(items, query, slots, food_context)
         first_token_received = False
         answer_meta = None

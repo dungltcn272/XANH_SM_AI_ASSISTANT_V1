@@ -175,6 +175,7 @@ class RagAnswerChain:
             yield sse_pipeline_step("answer_prepare", "Đang chuẩn bị trả lời...", 0.78)
             t_gen_start = time.time()
             final_answer = ""
+            metrics["answer_model"] = config.RAG_ANSWER_MODEL
             client = get_llm_client(config.RAG_ANSWER_MODEL)
             response = client.chat.completions.create(
                 model=config.RAG_ANSWER_MODEL,

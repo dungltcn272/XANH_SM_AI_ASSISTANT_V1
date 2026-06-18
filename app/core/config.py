@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     NLU_MODEL: str = os.getenv("NLU_MODEL", "gpt-4o-mini")
     FOOD_ANSWER_MODEL: str = os.getenv("FOOD_ANSWER_MODEL", "gpt-4o-mini")
     AI_JUDGE_MODEL: str = os.getenv("AI_JUDGE_MODEL", "gpt-4o-mini")
+    VLM_MODEL: str = os.getenv("VLM_MODEL", "gpt-4o-mini")
     OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "900"))
     EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "openai")

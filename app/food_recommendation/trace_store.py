@@ -55,6 +55,8 @@ def save_food_request_log(
                 }, ensure_ascii=False),
                 candidate_stats_json=json.dumps({
                     "result_count": len(items or []),
+                    "returned_count": len(items or []),
+                    "total_candidates": len(items or []),
                     "fallback": metrics.get("food_fallback"),
                     "retrieval": metrics.get("food_retrieval"),
                 }, ensure_ascii=False),
@@ -87,4 +89,3 @@ def save_food_request_log(
     except Exception as exc:
         log_warn("FOOD", f"Failed to save request log: {exc}")
         return None
-

@@ -101,8 +101,10 @@ class BasicRequestLog(Base):
     rewritten_query = Column(Text, nullable=True)
     intent = Column(String, nullable=True, index=True)
     final_answer = Column(Text, nullable=True)
+    model_name = Column(String, nullable=True)
     nlu_latency_ms = Column(Float, default=0)
     total_latency_ms = Column(Float, default=0)
+    cost_usd = Column(Float, default=0)
     created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
 
 class ErrorLog(Base):

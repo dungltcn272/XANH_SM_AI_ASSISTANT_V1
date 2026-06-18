@@ -1,19 +1,406 @@
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-from sqlalchemy import String, Text, case, or_
+from sqlalchemy import String, Text, case, or_, text
 from app.db.database import get_db, Base
-from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, ErrorLog, CrawlSource, EvaluationRun
+from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, ErrorLog, CrawlSource, EvaluationRun, BasicRequestLog, FoodInteraction, FoodRequestLog, SemanticCache
 from app.core.config import settings
 from fastapi.responses import StreamingResponse
 import asyncio
 from typing import Optional
 
 router = APIRouter()
+
+
+def _iso(value):
+    return value.isoformat() if value else None
+
+
+def serialize_rag_log(row: RagRequestLog) -> dict:
+    return {
+        "id": row.id,
+        "conversation_id": row.conversation_id,
+        "user_id": row.user_id,
+        "guest_id": row.guest_id,
+        "original_query": row.original_query,
+        "rewritten_query": row.rewritten_query,
+        "final_answer": row.final_answer,
+        "search_latency_ms": row.search_latency_ms or 0,
+        "generation_latency_ms": row.generation_latency_ms or 0,
+        "total_latency_ms": row.total_latency_ms or 0,
+        "rewrite_latency_ms": row.rewrite_latency_ms or 0,
+        "classification_latency_ms": row.classification_latency_ms or 0,
+        "expansion_latency_ms": row.expansion_latency_ms or 0,
+        "rerank_latency_ms": row.rerank_latency_ms or 0,
+        "total_tokens": row.total_tokens or 0,
+        "cost_usd": row.cost_usd or 0,
+        "blocked_by_guardrail": bool(row.blocked_by_guardrail),
+        "retrieval_result_json": row.retrieval_result_json,
+        "rerank_result_json": row.rerank_result_json,
+        "parent_child_result_json": row.parent_child_result_json,
+        "created_at": _iso(row.created_at),
+    }
+
+
+def serialize_basic_log(row: BasicRequestLog) -> dict:
+    return {
+        "id": row.id,
+        "conversation_id": row.conversation_id,
+        "user_id": row.user_id,
+        "guest_id": row.guest_id,
+        "original_query": row.original_query,
+        "rewritten_query": row.rewritten_query,
+        "intent": row.intent,
+        "final_answer": row.final_answer,
+        "model_name": row.model_name,
+        "nlu_latency_ms": row.nlu_latency_ms or 0,
+        "total_latency_ms": row.total_latency_ms or 0,
+        "cost_usd": row.cost_usd or 0,
+        "created_at": _iso(row.created_at),
+    }
+
+
+def serialize_food_interaction(row: FoodInteraction) -> dict:
+    return {
+        "event_id": row.event_id,
+        "id": row.event_id,
+        "user_id": row.user_id,
+        "session_id": row.session_id,
+        "conversation_id": row.conversation_id,
+        "message_id": row.message_id,
+        "event_type": row.event_type,
+        "item_id": row.item_id,
+        "merchant_id": row.merchant_id,
+        "rank_position": row.rank_position,
+        "query": row.query,
+        "request_context_json": row.request_context_json,
+        "created_at": _iso(row.created_at),
+    }
+
+
+def _json_text_with_defaults(value: str | None, defaults: dict) -> str:
+    try:
+        data = json.loads(value or "{}")
+        if not isinstance(data, dict):
+            data = {}
+    except json.JSONDecodeError:
+        data = {}
+    for key, fallback in defaults.items():
+        data.setdefault(key, fallback(data) if callable(fallback) else fallback)
+    return json.dumps(data, ensure_ascii=False)
+
+
+def serialize_food_request_log(row: FoodRequestLog) -> dict:
+    candidate_stats_json = _json_text_with_defaults(row.candidate_stats_json, {
+        "returned_count": lambda data: data.get("result_count", 0),
+        "total_candidates": lambda data: data.get("result_count", 0),
+    })
+    return {
+        "trace_id": row.trace_id,
+        "id": row.trace_id,
+        "conversation_id": row.conversation_id,
+        "user_id": row.user_id,
+        "guest_id": row.guest_id,
+        "original_query": row.original_query,
+        "rewritten_query": row.rewritten_query,
+        "final_answer": row.final_answer,
+        "intent": row.intent,
+        "search_latency_ms": row.search_latency_ms or 0,
+        "generation_latency_ms": row.generation_latency_ms or 0,
+        "total_latency_ms": row.total_latency_ms or 0,
+        "rewrite_latency_ms": row.rewrite_latency_ms or 0,
+        "classification_latency_ms": row.classification_latency_ms or 0,
+        "total_tokens": row.total_tokens or 0,
+        "cost_usd": row.cost_usd or 0,
+        "nlu_json": row.nlu_json,
+        "user_context_json": row.user_context_json,
+        "location_json": row.location_json,
+        "candidate_stats_json": candidate_stats_json,
+        "ranking_json": row.ranking_json,
+        "answer_llm_json": row.answer_llm_json,
+        "sse_events_json": row.sse_events_json,
+        "latency_json": json.dumps({
+            "search_latency_ms": row.search_latency_ms or 0,
+            "generation_latency_ms": row.generation_latency_ms or 0,
+            "total_latency_ms": row.total_latency_ms or 0,
+            "rewrite_latency_ms": row.rewrite_latency_ms or 0,
+            "classification_latency_ms": row.classification_latency_ms or 0,
+        }),
+        "created_at": _iso(row.created_at),
+    }
+
+
+def activity_row(raw: dict, intent: str, icon_type: str = "chat") -> dict:
+    created_at = raw.get("created_at")
+    latency_ms = raw.get("total_latency_ms") or 0
+    status = "Blocked" if raw.get("blocked_by_guardrail") else "Success"
+    raw_intent = (raw.get("intent") or "").lower()
+    fallback_model = settings.RAG_ANSWER_MODEL
+    if raw_intent == "food_recommendation":
+        fallback_model = settings.FOOD_ANSWER_MODEL
+    elif raw_intent in {"small-talk", "sensitive", "blocked_guardrail"}:
+        fallback_model = settings.NLU_MODEL
+    elif raw_intent == "faq":
+        fallback_model = "semantic_cache"
+    return {
+        **raw,
+        "time": created_at[11:19] if isinstance(created_at, str) and len(created_at) >= 19 else "",
+        "type": icon_type,
+        "query": raw.get("original_query") or raw.get("query") or raw.get("event_type") or "",
+        "intent": intent,
+        "status": status,
+        "latency": f"{latency_ms:.0f}ms" if latency_ms else "-",
+        "model": raw.get("model_name") or raw.get("answer_model") or fallback_model,
+        "source": raw.get("user_id") or raw.get("guest_id") or raw.get("session_id") or "unknown",
+    }
+
+
+def _hour_bucket(dt: datetime) -> datetime:
+    return dt.replace(minute=0, second=0, microsecond=0)
+
+
+def build_timeseries(db: Session) -> dict:
+    end = datetime.utcnow()
+    start = end - timedelta(hours=23)
+    buckets = [_hour_bucket(start + timedelta(hours=i)) for i in range(24)]
+    data = {
+        bucket.strftime("%H:00"): {"time": bucket.strftime("%H:00"), "queries": 0, "latency": 0.0, "cost": 0.0, "cache": 0}
+        for bucket in buckets
+    }
+    rows = (
+        db.query(BasicRequestLog)
+        .filter(BasicRequestLog.created_at >= start)
+        .order_by(BasicRequestLog.created_at.asc())
+        .all()
+    )
+    latency_counts = {key: 0 for key in data}
+    for row in rows:
+        if not row.created_at:
+            continue
+        key = _hour_bucket(row.created_at.replace(tzinfo=None)).strftime("%H:00")
+        if key not in data:
+            continue
+        data[key]["queries"] += 1
+        data[key]["latency"] += row.total_latency_ms or 0
+        data[key]["cost"] += row.cost_usd or 0
+        if row.intent == "faq" or row.model_name == "semantic_cache":
+            data[key]["cache"] += 1
+        latency_counts[key] += 1
+    for key, item in data.items():
+        if latency_counts[key]:
+            item["latency"] = item["latency"] / latency_counts[key]
+    points = list(data.values())
+    return {
+        "queries": [{"time": p["time"], "value": p["queries"]} for p in points],
+        "latency": [{"time": p["time"], "value": round(p["latency"], 2)} for p in points],
+        "cost": [{"time": p["time"], "value": round(p["cost"], 6)} for p in points],
+        "cache": [{"time": p["time"], "value": p["cache"]} for p in points],
+    }
+
+@router.get("/stats")
+def get_db_stats(db: Session = Depends(get_db)):
+    # Lấy tổng số request từ BasicRequestLog
+    total_requests = db.query(BasicRequestLog).count()
+    avg_latency = db.query(func.avg(BasicRequestLog.total_latency_ms)).scalar() or 0.0
+    total_cost = db.query(func.sum(BasicRequestLog.cost_usd)).scalar() or 0.0
+    cache_hits = (
+        db.query(BasicRequestLog)
+        .filter(or_(BasicRequestLog.intent == "faq", BasicRequestLog.model_name == "semantic_cache"))
+        .count()
+    )
+    cache_hit_rate = (cache_hits / total_requests * 100) if total_requests else 0.0
+    
+    # Gom nhóm theo intent
+    intent_counts = db.query(BasicRequestLog.intent, func.count(BasicRequestLog.id)).group_by(BasicRequestLog.intent).all()
+    
+    # Format intentData cho PieChart
+    intentData = []
+    # Map màu cho từng loại intent
+    color_map = {
+        "rag": "#00c897",
+        "food_recommendation": "#06b6d4",
+        "faq": "#3b82f6",
+        "small-talk": "#8b5cf6",
+        "sensitive": "#f97316",
+        "blocked_guardrail": "#ef4444",
+        "unknown": "#9ca3af"
+    }
+    
+    total_blocked = 0
+    for intent, count in intent_counts:
+        mapped_intent = intent or "unknown"
+        if mapped_intent == "blocked_guardrail" or mapped_intent == "sensitive":
+            total_blocked += count
+            
+        intentData.append({
+            "name": mapped_intent.upper() if mapped_intent == "rag" or mapped_intent == "faq" else mapped_intent.replace("_", " ").title(),
+            "value": count,
+            "color": color_map.get(mapped_intent, "#6b7280"),
+            "raw_intent": mapped_intent
+        })
+        
+    total_errors = db.query(ErrorLog).count()
+    safetyData = [
+        {"name": "Passed", "value": max(0, total_requests - total_blocked - total_errors), "color": "#00c897"},
+        {"name": "Blocked", "value": total_blocked, "color": "#f59e0b"},
+        {"name": "Error", "value": total_errors, "color": "#ef4444"}
+    ]
+        
+    return {
+        "total_requests": total_requests,
+        "avg_latency": avg_latency,
+        "total_cost": total_cost,
+        "cache_hit_rate": cache_hit_rate,
+        "total_blocked": total_blocked,
+        "total_errors": total_errors,
+        "intentData": intentData,
+        "safetyData": safetyData,
+        "timeseries": build_timeseries(db)
+    }
+
+
+@router.get("/logs")
+def get_admin_logs(
+    skip: int = 0,
+    limit: int = 50,
+    intent: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    normalized_intent = (intent or "").lower()
+    query = db.query(BasicRequestLog)
+    if normalized_intent not in ("", "all"):
+        query = query.filter(BasicRequestLog.intent == intent)
+
+    logs = (
+        query
+        .order_by(BasicRequestLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    rows = []
+    for row in logs:
+        raw_intent = row.intent or "unknown"
+        label = raw_intent.upper() if raw_intent in {"rag", "faq"} else raw_intent.replace("_", " ").title()
+        rows.append(activity_row(serialize_basic_log(row), label))
+    return rows
+
+
+@router.get("/logs/rag")
+def get_rag_logs(skip: int = 0, limit: int = 50, date: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(RagRequestLog)
+    if date:
+        # Giả định date format 'YYYY-MM-DD'
+        query = query.filter(func.date(RagRequestLog.created_at) == date)
+    logs = [serialize_rag_log(row) for row in query.order_by(RagRequestLog.created_at.desc()).offset(skip).limit(limit).all()]
+    total = query.count()
+    return {"logs": logs, "items": logs, "total": total}
+
+@router.get("/logs/basic")
+def get_basic_logs(skip: int = 0, limit: int = 50, intent: Optional[str] = None, date: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(BasicRequestLog)
+    if intent and intent != "all":
+        query = query.filter(BasicRequestLog.intent == intent)
+    if date:
+        query = query.filter(func.date(BasicRequestLog.created_at) == date)
+    logs = [serialize_basic_log(row) for row in query.order_by(BasicRequestLog.created_at.desc()).offset(skip).limit(limit).all()]
+    total = query.count()
+    return {"logs": logs, "items": logs, "total": total}
+
+@router.get("/logs/food")
+def get_food_logs(skip: int = 0, limit: int = 50, date: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(FoodRequestLog)
+    if date:
+        query = query.filter(func.date(FoodRequestLog.created_at) == date)
+    logs = [serialize_food_request_log(row) for row in query.order_by(FoodRequestLog.created_at.desc()).offset(skip).limit(limit).all()]
+    total = query.count()
+    return {"logs": logs, "items": logs, "total": total}
+
+
+@router.get("/users")
+def get_admin_users(db: Session = Depends(get_db)):
+    users = db.query(User).order_by(User.created_at.desc()).limit(500).all()
+    return [
+        {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "role": user.role.value if user.role else None,
+            "created_at": _iso(user.created_at),
+        }
+        for user in users
+    ]
+
+
+class PipelineTestRequest(BaseModel):
+    query: str
+
+
+@router.post("/pipeline/test")
+def test_pipeline(req: PipelineTestRequest):
+    from app.rag.classifier import XanhSMClassifier
+
+    if not req.query.strip():
+        raise HTTPException(status_code=400, detail="Query is required")
+
+    classifier = XanhSMClassifier()
+    result = classifier.unified_nlu(req.query)
+    return {"success": True, "query": req.query, "classification": result}
+
+
+@router.get("/health")
+def get_system_health(db: Session = Depends(get_db)):
+    services = []
+
+    def add_service(name: str, ok: bool, detail: str = ""):
+        services.append({
+            "name": name,
+            "status": "healthy" if ok else "down",
+            "detail": detail,
+        })
+
+    try:
+        db.execute(text("SELECT 1"))
+        add_service("Database", True)
+    except Exception as exc:
+        add_service("Database", False, str(exc))
+
+    try:
+        from app.vectordb.qdrant_client import COLLECTION_NAME, vectordb
+
+        info = vectordb.qdrant.get_collection(COLLECTION_NAME)
+        points_count = getattr(info, "points_count", None)
+        add_service("Vector DB", True, f"{points_count or 0} points")
+    except Exception as exc:
+        add_service("Vector DB", False, str(exc))
+
+    llm_ready = bool(settings.OPENAI_API_KEY or settings.GROQ_API_KEY)
+    add_service("LLM API", llm_ready, settings.RAG_ANSWER_MODEL if llm_ready else "No API key configured")
+
+    try:
+        cache_count = db.query(SemanticCache).count()
+        add_service("Semantic Cache", True, f"{cache_count} entries")
+    except Exception as exc:
+        add_service("Semantic Cache", False, str(exc))
+
+    try:
+        enabled_sources = db.query(CrawlSource).filter(CrawlSource.enabled == True).count()
+        add_service("Crawlers", enabled_sources > 0, f"{enabled_sources} enabled sources")
+    except Exception as exc:
+        add_service("Crawlers", False, str(exc))
+
+    healthy_count = sum(1 for service in services if service["status"] == "healthy")
+    score = round((healthy_count / len(services)) * 100, 1) if services else 0.0
+    return {
+        "score": score,
+        "status": "operational" if score >= 80 else "degraded",
+        "services": services,
+    }
+
 
 KEYWORD_COLUMN_WEIGHTS = {
     "content": 100,

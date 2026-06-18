@@ -10,6 +10,8 @@ from app.food_recommendation.schemas import (
     FoodRecommendationRequest,
     ScoreBreakdown,
 )
+from app.food_recommendation.ml_ranker import xgb_ranker
+from app.food_recommendation.features import extract_features_from_breakdown
 
 
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -107,7 +109,40 @@ def hard_filter(item: FoodCatalogEntry, request: FoodRecommendationRequest, dist
     price = item.final_price or item.price
     if request.budget_max is not None and price is not None and price > request.budget_max * 1.25:
         return False
+        
+    if request.food_context:
+        disliked_foods = request.food_context.get("disliked_foods", [])
+        if any(d.get("item_id") == item.item_id for d in disliked_foods):
+            return False
+            
     return True
+
+def calculate_personalization_score(item: FoodCatalogEntry, food_context: dict | None) -> float:
+    if not food_context:
+        return 0.0
+        
+    score = 0.0
+    liked_foods = food_context.get("liked_foods", [])
+    
+    # Direct match with previously liked items
+    if any(liked.get("item_id") == item.item_id for liked in liked_foods):
+        score += 1.0
+        
+    # Semantic match: if not directly liked, check if category or tags overlap
+    if score == 0.0 and liked_foods:
+        liked_categories = [f.get("category") for f in liked_foods if f.get("category")]
+        if item.category and item.category in liked_categories:
+            score += 0.5
+            
+        liked_tags = []
+        for f in liked_foods:
+            liked_tags.extend(f.get("tags", []))
+            
+        tag_overlap = set(item.taste_tags) & set(liked_tags)
+        if tag_overlap:
+            score += min(0.5, len(tag_overlap) * 0.1)
+            
+    return clamp(score)
 
 
 def rank_catalog(
@@ -138,6 +173,7 @@ def rank_catalog(
             taste_score=taste_score(request.taste_tags, item),
             rating_score=normalized_rating(item.merchant_rating),
             popularity_score=clamp(math.log10((item.merchant_review_count or 0) + 1) / 4),
+            personalization_score=calculate_personalization_score(item, request.food_context),
         )
         
         # Hard filter if category is requested but match is extremely poor
@@ -145,16 +181,17 @@ def rank_catalog(
             continue
             
         score = (
-            0.16 * breakdown.recall_score
-            + 0.20 * breakdown.nearby_score
-            + 0.12 * breakdown.delivery_fee_score
-            + 0.10 * breakdown.eta_score
-            + 0.12 * breakdown.budget_score
-            + 0.08 * breakdown.discount_score
+            0.15 * breakdown.recall_score
+            + 0.16 * breakdown.nearby_score
+            + 0.10 * breakdown.delivery_fee_score
+            + 0.08 * breakdown.eta_score
+            + 0.10 * breakdown.budget_score
+            + 0.06 * breakdown.discount_score
             + 0.08 * breakdown.category_score
-            + 0.06 * breakdown.taste_score
+            + 0.05 * breakdown.taste_score
             + 0.05 * breakdown.rating_score
-            + 0.03 * breakdown.popularity_score
+            + 0.02 * breakdown.popularity_score
+            + 0.15 * breakdown.personalization_score
         )
         
         # Nếu có request.category, category_score là yếu tố SỐNG CÒN. 
@@ -185,12 +222,26 @@ def rank_catalog(
                 score_breakdown=breakdown,
             )
         )
-    # Sắp xếp theo score từ Rule-based Ranker
+
+    # Nếu XGBoost đã được huấn luyện, dùng nó để xếp hạng lại
+    if xgb_ranker.is_loaded:
+        try:
+            features_list = [extract_features_from_breakdown(rec.score_breakdown) for rec in ranked]
+            xgb_scores = xgb_ranker.predict_scores(features_list)
+            if len(xgb_scores) == len(ranked):
+                for rec, xgb_score in zip(ranked, xgb_scores):
+                    # Thay thế heuristic score bằng xác suất của XGBoost
+                    rec.score = float(xgb_score)
+                    # Áp dụng trừng phạt category nếu cần
+                    if request.category:
+                        rec.score = rec.score * (rec.score_breakdown.category_score ** 1.5)
+        except Exception as e:
+            import logging
+            logging.error(f"XGBoost rank error, falling back to heuristic: {e}")
+
+    # Sắp xếp theo score từ Rule-based Ranker hoặc ML Ranker
     ranked_sorted = sorted(ranked, key=lambda item: item.score, reverse=True)
 
-    # ML-Ready: LTR & Neural Reranker (Ví dụ tích hợp)
-    # from app.food_recommendation.ml_ranker import XGBoostFoodRanker, CohereCrossEncoder
-    # xgb_ranker = XGBoostFoodRanker()
     # cross_encoder = CohereCrossEncoder()
     # ranked_sorted = xgb_ranker.rank(ranked_sorted, request, recall_scores)
     # ranked_sorted = cross_encoder.rank(ranked_sorted, request, recall_scores)

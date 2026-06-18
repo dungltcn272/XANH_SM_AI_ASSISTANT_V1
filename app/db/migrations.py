@@ -68,6 +68,8 @@ def run_auto_migrations():
         "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_intent ON basic_request_logs(intent);",
         "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_created_at ON basic_request_logs(created_at);",
         "ALTER TABLE basic_request_logs ADD COLUMN nlu_latency_ms FLOAT DEFAULT 0;",
+        "ALTER TABLE basic_request_logs ADD COLUMN model_name VARCHAR;",
+        "ALTER TABLE basic_request_logs ADD COLUMN cost_usd FLOAT DEFAULT 0;",
         
         # Đổi tên và sửa bảng food_recommendation_traces thành food_request_logs
         "ALTER TABLE food_recommendation_traces RENAME TO food_request_logs;",

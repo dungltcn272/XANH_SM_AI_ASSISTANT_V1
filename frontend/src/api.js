@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
 export const api = {
     _fetch: async (url, options = {}) => {
@@ -38,6 +38,12 @@ export const api = {
   
   getDbStats: async () => {
     const res = await api._fetch(`${API_BASE}/admin/stats`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getSystemHealth: async () => {
+    const res = await api._fetch(`${API_BASE}/admin/health`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },

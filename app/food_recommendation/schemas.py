@@ -15,6 +15,7 @@ class FoodRecommendationRequest(BaseModel):
     max_distance_km: float = 4
     user_id: str | None = None
     limit: int = Field(default=5, ge=1, le=20)
+    food_context: dict | None = None
 
 
 class FoodCatalogEntry(BaseModel):
@@ -61,6 +62,7 @@ class ScoreBreakdown(BaseModel):
     taste_score: float
     rating_score: float
     popularity_score: float
+    personalization_score: float = 0.0
 
 
 class FoodRecommendation(BaseModel):
@@ -82,4 +84,5 @@ class FoodRecommendation(BaseModel):
     order_url: str | None = None
     score: float
     reason: str
+    breakdown: dict | None = None
     score_breakdown: ScoreBreakdown

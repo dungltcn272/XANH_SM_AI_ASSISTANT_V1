@@ -134,8 +134,24 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
             # Gửi message_id về cho frontend
             yield f'data: {{"message_id": "{msg.id}"}}\n\n'
             
-            # The request logs (RAG, Food, Basic) are now saved locally by their respective chains.
-            log_info("CHAT", f"Finished pipeline execution for conversation: {conversation_id}, Intent: {metrics.get('intent', 'unknown')}")
+            # Centralized logging for ALL intents
+            intent_to_save = "blocked_guardrail" if is_blocked else metrics.get('intent', 'unknown')
+            from app.assistant.trace_store import save_basic_request_log
+            save_basic_request_log(
+                conversation_id=conversation_id,
+                user_id=user_id if entity_type == "user" else None,
+                guest_id=user_id if entity_type == "guest" else None,
+                original_query=display_query or question,
+                rewritten_query=rewritten_query or question,
+                intent=intent_to_save,
+                final_answer=final_answer.strip(),
+                nlu_latency_ms=metrics.get('rewrite_latency_ms', 0),
+                total_latency_ms=metrics.get('total_latency_ms', 0),
+                model_name=metrics.get('answer_model') or metrics.get('model_name'),
+                cost_usd=metrics.get('cost_usd', 0.0)
+            )
+            
+            log_info("CHAT", f"Finished pipeline execution for conversation: {conversation_id}, Intent: {intent_to_save}")
     finally:
         new_db.close()
         try:
