@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Search, Copy, Download, ChevronDown, ChevronRight, Check, X, Box, Target, Clock, Activity, Cpu } from 'lucide-react';
+import { Search, ShieldAlert, ShieldCheck, Copy, Download, Play, ChevronDown, ChevronRight, Check, X, Box, Target, Clock, Activity, Cpu } from 'lucide-react';
 import { api } from '../api';
 
-export default function RAGHistory() {
+export default function BasicLogView() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [date, setDate] = useState('');
+  const [pageInput, setPageInput] = useState('1');
+  const [intentFilter, setIntentFilter] = useState('all');
   const [expandedSections, setExpandedSections] = useState({
     nlu: true,
     context: false,
@@ -15,14 +21,33 @@ export default function RAGHistory() {
     trace: false
   });
 
+  const handlePageInputChange = (e) => {
+    setPageInput(e.target.value);
+  };
+
+  const handlePageInputSubmit = () => {
+    let targetPage = parseInt(pageInput, 10);
+    const totalPages = Math.ceil(totalLogs / pageSize) || 1;
+    if (isNaN(targetPage) || targetPage < 1) targetPage = 1;
+    else if (targetPage > totalPages) targetPage = totalPages;
+    setCurrentPage(targetPage);
+    setPageInput(targetPage.toString());
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handlePageInputSubmit();
+  };
+
   useEffect(() => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const data = await api.getAdminLogs();
-        setLogs(data || []);
-        if (data && data.length > 0) {
-          setSelectedLog(prev => prev || data[0]);
+        const skip = (currentPage - 1) * pageSize;
+        const data = await api.getBasicLogs(skip, pageSize, intentFilter, date);
+        setLogs(data?.items || []);
+        setTotalLogs(data?.total || 0);
+        if (data?.items && data.items.length > 0) {
+          setSelectedLog(prev => prev || data.items[0]);
         }
       } catch (err) {
         console.error(err);
@@ -30,7 +55,7 @@ export default function RAGHistory() {
       setLoading(false);
     };
     fetchLogs();
-  }, []);
+  }, [currentPage, intentFilter, date]);
 
   const filteredLogs = logs.filter(log => {
     const q = searchQuery.toLowerCase().trim();
@@ -54,18 +79,12 @@ export default function RAGHistory() {
 
   const renderLatencyBar = (log) => {
     const total = log.total_latency_ms || 1; // Prevent div by 0
-    const nlu = log.rewrite_latency_ms + log.classification_latency_ms || 0;
-    const expand = log.expansion_latency_ms || 0;
-    const retrieve = log.search_latency_ms || 0;
-    const rerank = log.rerank_latency_ms || 0;
-    const gen = log.generation_latency_ms || 0;
+    const nlu = log.nlu_latency_ms || 0;
+    const gen = Math.max(0, total - nlu);
 
     const parts = [
-      { label: 'NLU Processing', value: nlu, color: 'bg-[#00c897]' },
-      { label: 'Context Expansion', value: expand, color: 'bg-[#3b82f6]' },
-      { label: 'Retrieval', value: retrieve, color: 'bg-[#8b5cf6]' },
-      { label: 'Reranking', value: rerank, color: 'bg-[#f59e0b]' },
-      { label: 'LLM Generation', value: gen, color: 'bg-[#ef4444]' }
+      { label: 'NLU Processing', value: nlu, color: 'bg-[#3b82f6]' },
+      { label: 'Other/Generation', value: gen, color: 'bg-[#00c897]' }
     ];
 
     return (
@@ -96,26 +115,39 @@ export default function RAGHistory() {
       {/* Left Pane: Master List */}
       <div className="w-[380px] shrink-0 flex flex-col glass-panel rounded-2xl border border-[#1e293b]/60 overflow-hidden bg-[#0b0f19] shadow-xl">
         <div className="p-4 border-b border-[#1e293b]/60 shrink-0">
-          <h2 className="text-lg font-bold text-white mb-4">RAG History</h2>
+          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Target size={20} className="text-[#3b82f6]" /> Basic Logs</h2>
           
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b]" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search query..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#0f1520] border border-[#1e293b] focus:border-[#00c897]/50 focus:ring-1 focus:ring-[#00c897]/50 outline-none pl-9 pr-4 py-2 rounded-lg text-sm text-white placeholder:text-[#64748b] transition-all"
-            />
+          <div className="flex gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b]" size={16} />
+              <input 
+                type="text" 
+                placeholder="Search query..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#0f1520] border border-[#1e293b] focus:border-[#00c897]/50 focus:ring-1 focus:ring-[#00c897]/50 outline-none pl-9 pr-4 py-2 rounded-lg text-sm text-white placeholder:text-[#64748b] transition-all"
+              />
+            </div>
+            <select
+              value={intentFilter}
+              onChange={(e) => { setIntentFilter(e.target.value); setCurrentPage(1); }}
+              className="bg-[#0f1520] border border-[#1e293b] text-white text-sm rounded-lg px-3 py-2 outline-none cursor-pointer"
+            >
+              <option value="all">All</option>
+              <option value="rag">RAG</option>
+              <option value="faq">FAQ</option>
+              <option value="food_recommendation">Food</option>
+              <option value="small-talk">Small Talk</option>
+              <option value="sensitive">Sensitive</option>
+            </select>
           </div>
         </div>
 
         <div className="px-4 py-2 bg-[#0f1520]/50 border-b border-[#1e293b]/60 text-xs text-[#94a3b8] flex justify-between items-center shrink-0">
-          <span>{filteredLogs.length} logs found</span>
-          <select className="bg-transparent outline-none cursor-pointer text-[#cbd5e1]">
-            <option>Newest First</option>
-            <option>Oldest First</option>
-          </select>
+          <span>Showing {filteredLogs.length} of {totalLogs} logs</span>
+          <div className="flex items-center gap-2">
+            <input type="date" value={date} onChange={e => {setDate(e.target.value); setCurrentPage(1); setPageInput('1');}} className="bg-[#0f1520] border border-[#1e293b] text-[#94a3b8] rounded px-1.5 py-0.5 outline-none" />
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
@@ -126,6 +158,7 @@ export default function RAGHistory() {
           ) : (
             filteredLogs.map(log => {
               const isSelected = selectedLog?.id === log.id;
+              const isBlocked = log.blocked_by_guardrail;
               
               return (
                 <div 
@@ -141,8 +174,8 @@ export default function RAGHistory() {
                     <h4 className="font-bold text-[#e2e8f0] text-sm line-clamp-1 flex-1 pr-2">{log.original_query || 'Unknown query'}</h4>
                   </div>
                   <div className="flex justify-between items-end">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#1e293b] text-[#94a3b8] uppercase tracking-wider border border-[#334155]">
-                      LOG
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#1e293b] text-[#3b82f6] uppercase tracking-wider border border-[#334155]">
+                      {log.intent || 'GENERAL'}
                     </span>
                     <div className="flex flex-col items-end text-[10px] text-[#64748b]">
                       <span>{new Date(log.created_at).toLocaleTimeString('en-US', {hour12: false})}</span>
@@ -153,6 +186,38 @@ export default function RAGHistory() {
               );
             })
           )}
+        </div>
+        
+        <div className="p-4 border-t border-[#1e293b]/60 flex items-center justify-between text-xs shrink-0">
+          <span className="text-[#64748b]">Total: {totalLogs}</span>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => { setCurrentPage(p => p - 1); setPageInput(String(currentPage - 1)); }}
+              className="px-2 py-1 bg-[#1e293b] text-white rounded disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <div className="flex items-center gap-1.5 text-xs text-[#94a3b8]">
+              <span>Trang</span>
+              <input
+                type="number"
+                value={pageInput}
+                onChange={handlePageInputChange}
+                onBlur={handlePageInputSubmit}
+                onKeyDown={handleKeyDown}
+                className="w-12 px-1 py-0.5 text-center bg-[#0f1520] border border-[#1e293b] rounded focus:outline-none focus:border-[#00c897] text-white"
+              />
+              <span>/ {Math.ceil(totalLogs / pageSize) || 1}</span>
+            </div>
+            <button
+              disabled={currentPage >= Math.ceil(totalLogs / pageSize)}
+              onClick={() => { setCurrentPage(p => p + 1); setPageInput(String(currentPage + 1)); }}
+              className="px-2 py-1 bg-[#1e293b] text-white rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
@@ -248,27 +313,10 @@ export default function RAGHistory() {
                     <div className="px-4 pb-4 border-t border-[#1e293b] pt-3">
                       <pre className="text-[11px] text-[#00c897] font-mono overflow-x-auto">
 {JSON.stringify({
+  intent: selectedLog.intent,
   rewrite: selectedLog.rewritten_query,
-  latency_ms: selectedLog.rewrite_latency_ms + selectedLog.classification_latency_ms
+  nlu_latency_ms: selectedLog.nlu_latency_ms
 }, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-
-                {/* Context Expansion */}
-                <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] overflow-hidden">
-                  <button 
-                    onClick={() => toggleSection('context')}
-                    className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
-                  >
-                    <span className="text-xs font-bold text-[#e2e8f0]">Context Expansion</span>
-                    {expandedSections.context ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
-                  </button>
-                  {expandedSections.context && (
-                    <div className="px-4 pb-4 border-t border-[#1e293b] pt-3">
-                      <pre className="text-[11px] text-[#3b82f6] font-mono overflow-x-auto">
-                        {"{\n  \"status\": \"completed\",\n  \"latency_ms\": " + selectedLog.expansion_latency_ms + "\n}"}
                       </pre>
                     </div>
                   )}
@@ -307,19 +355,6 @@ export default function RAGHistory() {
                         </pre>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Cost Info */}
-                <div className="flex justify-between items-center px-2">
-                  <div className="text-xs text-[#64748b] flex gap-4">
-                    <span>Prompt: {selectedLog.total_tokens ? Math.floor(selectedLog.total_tokens*0.6) : 0}</span>
-                    <span>Completion: {selectedLog.total_tokens ? Math.ceil(selectedLog.total_tokens*0.4) : 0}</span>
-                    <span className="font-bold text-[#94a3b8]">Total: {selectedLog.total_tokens || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="p-1 rounded bg-[#10b981]/10 text-[#10b981] font-bold">$</span>
-                    <span className="text-[#10b981] font-mono">${(selectedLog.cost_usd || 0).toFixed(6)} USD</span>
                   </div>
                 </div>
 

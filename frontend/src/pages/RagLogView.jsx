@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Search, Copy, Download, ChevronDown, ChevronRight, Check, X, Box, Target, Clock, Activity, Cpu } from 'lucide-react';
+import { Search, ShieldAlert, ShieldCheck, Copy, Download, Play, ChevronDown, ChevronRight, Check, X, Box, Target, Clock, Activity, Cpu, Database } from 'lucide-react';
 import { api } from '../api';
 
-export default function RAGHistory() {
+export default function RagLogView() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [date, setDate] = useState('');
+  const [pageInput, setPageInput] = useState('1');
   const [expandedSections, setExpandedSections] = useState({
     nlu: true,
     context: false,
@@ -15,14 +20,33 @@ export default function RAGHistory() {
     trace: false
   });
 
+  const handlePageInputChange = (e) => {
+    setPageInput(e.target.value);
+  };
+
+  const handlePageInputSubmit = () => {
+    let targetPage = parseInt(pageInput, 10);
+    const totalPages = Math.ceil(totalLogs / pageSize) || 1;
+    if (isNaN(targetPage) || targetPage < 1) targetPage = 1;
+    else if (targetPage > totalPages) targetPage = totalPages;
+    setCurrentPage(targetPage);
+    setPageInput(targetPage.toString());
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handlePageInputSubmit();
+  };
+
   useEffect(() => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const data = await api.getAdminLogs();
-        setLogs(data || []);
-        if (data && data.length > 0) {
-          setSelectedLog(prev => prev || data[0]);
+        const skip = (currentPage - 1) * pageSize;
+        const data = await api.getRagLogs(skip, pageSize, date);
+        setLogs(data?.items || []);
+        setTotalLogs(data?.total || 0);
+        if (data?.items && data.items.length > 0) {
+          setSelectedLog(prev => prev || data.items[0]);
         }
       } catch (err) {
         console.error(err);
@@ -30,7 +54,7 @@ export default function RAGHistory() {
       setLoading(false);
     };
     fetchLogs();
-  }, []);
+  }, [currentPage, date]);
 
   const filteredLogs = logs.filter(log => {
     const q = searchQuery.toLowerCase().trim();
@@ -96,7 +120,7 @@ export default function RAGHistory() {
       {/* Left Pane: Master List */}
       <div className="w-[380px] shrink-0 flex flex-col glass-panel rounded-2xl border border-[#1e293b]/60 overflow-hidden bg-[#0b0f19] shadow-xl">
         <div className="p-4 border-b border-[#1e293b]/60 shrink-0">
-          <h2 className="text-lg font-bold text-white mb-4">RAG History</h2>
+          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Database size={20} className="text-[#00c897]" /> RAG Logs</h2>
           
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b]" size={16} />
@@ -111,11 +135,10 @@ export default function RAGHistory() {
         </div>
 
         <div className="px-4 py-2 bg-[#0f1520]/50 border-b border-[#1e293b]/60 text-xs text-[#94a3b8] flex justify-between items-center shrink-0">
-          <span>{filteredLogs.length} logs found</span>
-          <select className="bg-transparent outline-none cursor-pointer text-[#cbd5e1]">
-            <option>Newest First</option>
-            <option>Oldest First</option>
-          </select>
+          <span>Showing {filteredLogs.length} of {totalLogs} logs</span>
+          <div className="flex items-center gap-2">
+            <input type="date" value={date} onChange={e => {setDate(e.target.value); setCurrentPage(1); setPageInput('1');}} className="bg-[#0f1520] border border-[#1e293b] text-[#94a3b8] rounded px-1.5 py-0.5 outline-none" />
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
@@ -126,6 +149,7 @@ export default function RAGHistory() {
           ) : (
             filteredLogs.map(log => {
               const isSelected = selectedLog?.id === log.id;
+              const isBlocked = log.blocked_by_guardrail;
               
               return (
                 <div 
@@ -153,6 +177,38 @@ export default function RAGHistory() {
               );
             })
           )}
+        </div>
+
+        <div className="p-4 border-t border-[#1e293b]/60 flex items-center justify-between text-xs shrink-0">
+          <span className="text-[#64748b]">Total: {totalLogs}</span>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => { setCurrentPage(p => p - 1); setPageInput(String(currentPage - 1)); }}
+              className="px-2 py-1 bg-[#1e293b] text-white rounded disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <div className="flex items-center gap-1.5 text-xs text-[#94a3b8]">
+              <span>Trang</span>
+              <input
+                type="number"
+                value={pageInput}
+                onChange={handlePageInputChange}
+                onBlur={handlePageInputSubmit}
+                onKeyDown={handleKeyDown}
+                className="w-12 px-1 py-0.5 text-center bg-[#0f1520] border border-[#1e293b] rounded focus:outline-none focus:border-[#00c897] text-white"
+              />
+              <span>/ {Math.ceil(totalLogs / pageSize) || 1}</span>
+            </div>
+            <button
+              disabled={currentPage >= Math.ceil(totalLogs / pageSize)}
+              onClick={() => { setCurrentPage(p => p + 1); setPageInput(String(currentPage + 1)); }}
+              className="px-2 py-1 bg-[#1e293b] text-white rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 

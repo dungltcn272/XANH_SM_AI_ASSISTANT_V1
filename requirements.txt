@@ -27,3 +27,4 @@ google-auth-httplib2
 pydantic-settings
 fastembed
 cohere
+pytz

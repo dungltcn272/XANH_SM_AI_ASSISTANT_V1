@@ -54,7 +54,6 @@ def save_rag_request_log(
                 original_query=query,
                 rewritten_query=metrics.get("rewritten_query") or query,
                 final_answer=final_answer,
-                intent=metrics.get("intent", "rag"),
                 search_latency_ms=metrics.get("search_latency_ms", 0),
                 generation_latency_ms=metrics.get("generation_latency_ms", 0),
                 total_latency_ms=metrics.get("total_latency_ms", 0),

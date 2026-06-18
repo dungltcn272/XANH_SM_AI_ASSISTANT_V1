@@ -3,22 +3,14 @@ import {
   AlertTriangle,
   Brain,
   CheckCircle,
-  Code,
   Database,
-  FileCheck,
   GitBranch,
   Layers,
   MessageSquare,
-  Play,
-  PlayCircle,
-  RefreshCw,
   Search,
   Shield,
-  Sparkles,
-  X,
-  Zap
+  Sparkles
 } from 'lucide-react';
-import { api } from '../api';
 
 const FLOW_NODES = [
   {
@@ -52,54 +44,74 @@ const FLOW_NODES = [
     details: 'Nếu hit, hệ thống trả lời ngay qua SSE và bỏ qua NLU, retrieval, rerank, generation.'
   },
   {
-    id: 'nlu_fast_gate',
-    title: 'NLU Fast-path Eligible?',
-    subtitle: 'RAG rõ ràng?',
-    icon: GitBranch,
-    tone: 'indigo',
-    kind: 'decision',
-    desc: 'Quyết định câu hỏi có đủ tín hiệu domain để bỏ qua LLM NLU hay không.',
-    details: 'Fast-path chạy khi câu hỏi có keyword/domain rõ và không cần rewrite theo lịch sử hội thoại.'
-  },
-  {
-    id: 'domain_vocabulary',
-    title: 'Rule-based RAG NLU & Vocab',
-    subtitle: 'Regex alias local',
-    icon: Zap,
-    tone: 'amber',
-    kind: 'process',
-    desc: 'Làm giàu query bằng từ điển miền tốc độ cao (Regex alias local).',
-    details: 'Map các câu viết tắt/sai chính tả như xsm, gsm, vgreen, dk, platfom, tx, bn, sạc free, ăn chia, đền hàng sang thuật ngữ tài liệu.'
-  },
-  {
     id: 'llm_nlu',
-    title: 'Unified LLM NLU: Intent + rewrite',
-    subtitle: 'NLU_MODEL fallback',
+    title: 'Unified LLM NLU',
+    subtitle: 'Intent + Rewrite + Answer',
     icon: Brain,
     tone: 'violet',
     kind: 'process',
-    desc: 'Dùng model NLU để phân loại intent và rewrite query khi fast-path không đủ chắc.',
-    details: 'Model được cấu hình bằng NLU_MODEL, mặc định hiện là gpt-4o-mini. Nhánh này dành cho câu mơ hồ, cần lịch sử hội thoại hoặc cần rewrite.'
+    desc: 'Phân loại intent, rewrite query, và trực tiếp sinh câu trả lời nếu là small-talk/sensitive.',
+    details: 'Model NLU xử lý luôn câu trả lời cho các intent không cần RAG để tiết kiệm latency.'
   },
   {
     id: 'intent',
     title: 'Intent',
-    subtitle: 'rag / small-talk / sensitive',
+    subtitle: 'rag / food / small-talk / sensitive',
     icon: GitBranch,
     tone: 'cyan',
     kind: 'decision',
-    desc: 'Điều hướng theo intent sau fast-path hoặc LLM NLU.',
-    details: 'rag đi tiếp retrieval; small-talk trả nhanh; sensitive đi refusal.'
+    desc: 'Điều hướng theo intent sau LLM NLU.',
+    details: 'Phân luồng tới rag_chain, food_chain, small_talk, hoặc refusal.'
+  },
+  {
+    id: 'food_nlu',
+    title: 'Entity Extraction',
+    subtitle: 'Trích xuất món ăn, địa điểm',
+    icon: Brain,
+    tone: 'violet',
+    kind: 'process',
+    desc: 'Trích xuất thực thể đồ ăn, địa chỉ, khoảng cách từ câu người dùng.',
+    details: 'Dùng riêng cho intent food_recommendation.'
+  },
+  {
+    id: 'food_context',
+    title: 'User Context',
+    subtitle: 'Ngữ cảnh & Bộ lọc',
+    icon: Layers,
+    tone: 'sky',
+    kind: 'process',
+    desc: 'Áp dụng ngữ cảnh người dùng, vị trí hiện tại và các bộ lọc yêu cầu.',
+    details: 'Kết hợp sở thích cá nhân.'
+  },
+  {
+    id: 'food_retrieval',
+    title: 'Candidate Retrieval',
+    subtitle: 'Tìm quán ăn phù hợp',
+    icon: Search,
+    tone: 'teal',
+    kind: 'process',
+    desc: 'Truy xuất các món ăn/nhà hàng phù hợp với entities và context.',
+    details: 'Lọc qua database vector hoặc catalog SQL.'
+  },
+  {
+    id: 'food_llm',
+    title: 'Food LLM Synthesis',
+    subtitle: 'Đánh giá & Gợi ý',
+    icon: Sparkles,
+    tone: 'emerald',
+    kind: 'process',
+    desc: 'Tạo câu trả lời tự nhiên từ danh sách nhà hàng.',
+    details: 'Gợi ý món ăn tối ưu nhất.'
   },
   {
     id: 'small_talk',
-    title: 'Fast response',
-    subtitle: 'Trả nhanh small-talk',
+    title: 'NLU Fast Answer',
+    subtitle: 'NLU trực tiếp trả lời',
     icon: MessageSquare,
     tone: 'amber',
     kind: 'terminal',
-    desc: 'Trả lời nhanh cho chào hỏi hoặc câu không cần RAG.',
-    details: 'Không đi qua retriever/reranker/LLM synthesis đầy đủ.'
+    desc: 'Trả kết quả từ NLU cho các câu giao tiếp cơ bản.',
+    details: 'Không cần đi qua RAG Retriever hay mô hình LLM thứ hai.'
   },
   {
     id: 'second_cache',
@@ -118,12 +130,12 @@ const FLOW_NODES = [
     icon: AlertTriangle,
     tone: 'rose',
     kind: 'terminal',
-    desc: 'Trả thông báo từ chối khi câu hỏi không an toàn hoặc intent là sensitive.',
+    desc: 'Trả câu từ chối trực tiếp từ NLU (sensitive) hoặc Input Gateway (unsafe).',
     details: 'Áp dụng cho prompt injection, secret leakage, malicious defamation hoặc yêu cầu vượt chính sách.'
   },
   {
     id: 'hybrid_search',
-    title: 'Hybrid Retrieval: Dense + Sparse',
+    title: 'Hybrid Retrieval',
     subtitle: 'Dense + Sparse',
     icon: Search,
     tone: 'cyan',
@@ -143,7 +155,7 @@ const FLOW_NODES = [
   },
   {
     id: 'context_expansion',
-    title: 'Parent / Section Context Expansion',
+    title: 'Parent / Section Context',
     subtitle: 'Mở rộng context',
     icon: Layers,
     tone: 'teal',
@@ -153,8 +165,8 @@ const FLOW_NODES = [
   },
   {
     id: 'llm_gen',
-    title: 'LLM Synthesis & SSE Stream',
-    subtitle: 'LLM_MODEL synthesis',
+    title: 'LLM Synthesis',
+    subtitle: 'SSE Stream',
     icon: Sparkles,
     tone: 'violet',
     kind: 'process',
@@ -180,46 +192,14 @@ const FLOW_NODES = [
     kind: 'terminal',
     desc: 'Trả kết quả cuối cùng cho frontend qua Server-Sent Events.',
     details: 'Telemetry ghi nhận latency, token, sources, nlu_fast_path và các thông tin debug phục vụ quan sát chất lượng.'
-  },
-  {
-    id: 'evaluation',
-    title: 'Evaluation History',
-    subtitle: 'Báo cáo eval_runs',
-    icon: FileCheck,
-    tone: 'lime',
-    kind: 'subgraph',
-    desc: 'Benchmark ghi evaluation_report.json và snapshot vào bảng evaluation_runs.',
-    details: 'Admin UI dùng lịch sử này để xem recent runs, trend và delta so với lần eval trước.'
   }
 ];
 
 export default function PipelineManager() {
   const [selectedNode, setSelectedNode] = useState('nlu_fast_gate');
-  const [testQuery, setTestQuery] = useState('');
-  const [debugData, setDebugData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const nodeMap = useMemo(() => Object.fromEntries(FLOW_NODES.map(node => [node.id, node])), []);
-  const selected = nodeMap[selectedNode] || nodeMap.nlu_fast_gate;
-  const executed = useMemo(() => inferExecutedNodes(debugData), [debugData]);
-
-  const runDebug = async e => {
-    e.preventDefault();
-    if (!testQuery.trim() || loading) return;
-    setLoading(true);
-    setError('');
-    try {
-      const data = await api.testPipeline(testQuery.trim());
-      setDebugData(data);
-      const steps = inferExecutedNodes(data);
-      setSelectedNode(steps[steps.length - 1] || 'gateway');
-    } catch (err) {
-      setError(err.message || 'Không thể chạy debug pipeline.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const executed = useMemo(() => [], []);
 
   return (
     <div className="mx-auto w-full max-w-[1760px] pb-16">
@@ -231,144 +211,96 @@ export default function PipelineManager() {
         </p>
       </header>
 
-      <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-6">
-        <div className="order-3 rounded-2xl border border-outline-variant/40 bg-[#07111f] p-4 shadow-xl xl:col-span-2">
-          <div className="mb-3 flex items-center justify-between gap-3">
+      <section className="flex flex-col xl:flex-row gap-6 h-[calc(100vh-140px)]">
+        {/* Full Width Flowchart Workspace */}
+        <div className="w-full rounded-2xl border border-[#1e293b]/60 bg-[#0b0f19] p-4 shadow-xl overflow-hidden flex flex-col relative glass-panel">
+          <div className="mb-3 flex items-center justify-between gap-3 shrink-0 z-10">
             <div>
               <div className="text-sm font-semibold text-white">RAG Processing Pipeline Flowchart</div>
-              <div className="text-xs text-white/45">Click vào các hình khối để xem chi tiết nghiệp vụ; chạy debug để quan sát luồng chạy thực tế.</div>
+              <div className="text-xs text-[#94a3b8]">Flowchart Workspace</div>
             </div>
-            <div className="rounded-lg border border-cyan-400/25 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200">
-              NLU_MODEL: gpt-4o-mini
+            <div className="flex gap-2">
+              <div className="rounded-lg border border-[#00c897]/30 bg-[#00c897]/10 px-3 py-1.5 text-[11px] font-bold tracking-wider text-[#00c897]">
+                NLU_MODEL: GPT-4O-MINI
+              </div>
             </div>
           </div>
 
-          <ReadableFlow
-            nodeMap={nodeMap}
-            selectedNode={selectedNode}
-            executed={executed}
-            onSelect={setSelectedNode}
-          />
-        </div>
-
-        <aside className="contents">
-          <div className="order-2 rounded-2xl border border-outline-variant/40 bg-[#0d1527] p-5 shadow-xl">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl border p-3 border-cyan-500/30 text-cyan-300 bg-cyan-500/10">
-                {selected.icon && <selected.icon size={22} />}
-              </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-white/50">Chi tiết bước xử lý</div>
-                <h2 className="mt-1 text-xl font-bold text-white">{selected.title}</h2>
-                <p className="mt-1 text-sm text-white/50">{selected.subtitle}</p>
-              </div>
-            </div>
-            <div className="mt-5 space-y-4 text-sm leading-relaxed">
-              <p className="text-white/80">{selected.desc}</p>
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-white/75">{selected.details}</div>
-            </div>
-          </div>
-
-          <form onSubmit={runDebug} className="order-1 rounded-2xl border border-outline-variant/40 bg-[#0d1527] p-5 shadow-xl">
-            <div className="flex items-center gap-2 text-sm font-semibold text-white">
-              <Play size={16} className="text-emerald-300" />
-              Chạy thử pipeline
-            </div>
-            <textarea
-              value={testQuery}
-              onChange={e => setTestQuery(e.target.value)}
-              rows={5}
-              placeholder="Nhập câu hỏi để debug pipeline..."
-              className="mt-4 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-emerald-400"
+          <div className="flex-1 overflow-auto custom-scrollbar relative border border-[#1e293b]/30 rounded-xl bg-[#030914] background-grid">
+            <ReadableFlow
+              nodeMap={nodeMap}
+              selectedNode={selectedNode}
+              executed={executed}
+              onSelect={setSelectedNode}
             />
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="submit"
-                disabled={loading || !testQuery.trim()}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? <RefreshCw size={15} className="animate-spin" /> : <PlayCircle size={15} />}
-                Chạy debug
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setDebugData(null);
-                  setError('');
-                  setTestQuery('');
-                  setSelectedNode('nlu_fast_gate');
-                }}
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-white/70 hover:text-white"
-              >
-                <X size={15} />
-                Xóa
-              </button>
-            </div>
-            {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
-          </form>
-
-          {debugData && (
-            <div className="order-4 rounded-2xl border border-outline-variant/40 bg-[#0d1527] p-5 shadow-xl xl:col-span-2">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-                <Code size={16} className="text-sky-300" />
-                Runtime debug
-              </div>
-              <RuntimeSummary data={debugData} />
-              <pre className="mt-4 max-h-80 overflow-auto rounded-xl border border-white/10 bg-black/30 p-3 text-xs leading-relaxed text-white/80">
-                {JSON.stringify(debugData, null, 2)}
-              </pre>
-            </div>
-          )}
-        </aside>
+          </div>
+        </div>
       </section>
+      
+      {/* Background grid pattern for flowchart */}
+      <style>{`
+        .background-grid {
+          background-image: 
+            linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+      `}</style>
     </div>
   );
 }
 
 function ReadableFlow({ nodeMap, selectedNode, executed, onSelect }) {
   const nodes = {
-    gateway: { x: 400, y: 80 },
-    prompt_injection_warning: { x: 620, y: 200 },
-    early_cache: { x: 400, y: 220 },
-    nlu_fast_gate: { x: 400, y: 380 },
-    domain_vocabulary: { x: 180, y: 510 },
-    llm_nlu: { x: 620, y: 510 },
-    intent: { x: 400, y: 640 },
-    small_talk: { x: 180, y: 760 },
-    second_cache: { x: 400, y: 760 },
-    refusal: { x: 620, y: 760 },
-    hybrid_search: { x: 400, y: 900 },
-    reranker: { x: 400, y: 1000 },
-    context_expansion: { x: 400, y: 1090 },
-    llm_gen: { x: 400, y: 1180 },
-    semantic_cache: { x: 400, y: 1270 },
-    output: { x: 400, y: 1400 },
-    evaluation: { x: 640, y: 900 }
+    gateway: { x: 600, y: 80 },
+    prompt_injection_warning: { x: 200, y: 200 },
+    early_cache: { x: 600, y: 220 },
+    llm_nlu: { x: 600, y: 360 },
+    intent: { x: 600, y: 500 },
+    refusal: { x: 200, y: 640 },
+    small_talk: { x: 400, y: 640 },
+    second_cache: { x: 600, y: 640 },
+    food_nlu: { x: 850, y: 640 },
+    food_context: { x: 850, y: 760 },
+    food_retrieval: { x: 850, y: 860 },
+    food_llm: { x: 850, y: 960 },
+    hybrid_search: { x: 600, y: 760 },
+    reranker: { x: 600, y: 860 },
+    context_expansion: { x: 600, y: 960 },
+    llm_gen: { x: 600, y: 1060 },
+    semantic_cache: { x: 600, y: 1160 },
+    output: { x: 600, y: 1300 }
   };
 
   const edges = [
-    { from: 'gateway', to: 'early_cache', label: 'Safe', tone: 'sky', d: 'M 400 120 V 180', labelX: 400, labelY: 150 },
-    { from: 'gateway', to: 'prompt_injection_warning', label: 'Unsafe', tone: 'rose', d: 'M 480 80 H 620 V 170', labelX: 550, labelY: 80 },
-    { from: 'prompt_injection_warning', to: 'refusal', tone: 'rose', d: 'M 620 230 V 735' },
-    { from: 'early_cache', to: 'output', label: 'Cache Hit (~5ms)', tone: 'sky', d: 'M 320 220 H 60 V 1400 H 280', labelX: 150, labelY: 220 },
-    { from: 'early_cache', to: 'nlu_fast_gate', label: 'Cache Miss', tone: 'slate', d: 'M 400 260 V 340', labelX: 400, labelY: 300 },
-    { from: 'nlu_fast_gate', to: 'domain_vocabulary', label: 'Yes: clear RAG query', tone: 'amber', d: 'M 320 380 H 180 V 480', labelX: 240, labelY: 380 },
-    { from: 'domain_vocabulary', to: 'intent', tone: 'amber', d: 'M 180 540 V 570 H 400 V 600' },
-    { from: 'nlu_fast_gate', to: 'llm_nlu', label: 'No: context rewrite needed', tone: 'violet', d: 'M 480 380 H 620 V 480', labelX: 560, labelY: 380 },
-    { from: 'llm_nlu', to: 'intent', tone: 'violet', d: 'M 620 540 V 570 H 400 V 600' },
-    { from: 'intent', to: 'small_talk', label: 'small-talk', tone: 'amber', d: 'M 320 640 H 180 V 735', labelX: 240, labelY: 640 },
-    { from: 'intent', to: 'refusal', label: 'sensitive', tone: 'rose', d: 'M 480 640 H 620 V 735', labelX: 560, labelY: 640 },
-    { from: 'intent', to: 'second_cache', label: 'rag', tone: 'cyan', d: 'M 400 680 V 720', labelX: 400, labelY: 700 },
-    { from: 'second_cache', to: 'output', label: 'Cache Hit', tone: 'blue', d: 'M 320 760 H 85 V 1390 H 280', labelX: 170, labelY: 760 },
-    { from: 'second_cache', to: 'hybrid_search', label: 'Cache Miss', tone: 'cyan', d: 'M 400 800 V 870', labelX: 400, labelY: 835 },
-    { from: 'hybrid_search', to: 'reranker', tone: 'cyan', d: 'M 400 930 V 973' },
-    { from: 'reranker', to: 'context_expansion', tone: 'pink', d: 'M 400 1027 V 1063' },
-    { from: 'context_expansion', to: 'llm_gen', tone: 'teal', d: 'M 400 1117 V 1153' },
-    { from: 'llm_gen', to: 'semantic_cache', tone: 'violet', d: 'M 400 1207 V 1243' },
-    { from: 'semantic_cache', to: 'output', tone: 'emerald', d: 'M 400 1297 V 1370' },
-    { from: 'small_talk', to: 'output', tone: 'amber', d: 'M 180 785 V 1350 H 320 V 1370' },
-    { from: 'refusal', to: 'output', tone: 'rose', d: 'M 620 785 V 1350 H 480 V 1370' },
-    { from: 'hybrid_search', to: 'evaluation', label: 'Eval', tone: 'lime', d: 'M 520 900 H 560', labelX: 540, labelY: 900 }
+    { from: 'gateway', to: 'early_cache', label: 'Safe', tone: 'sky', d: 'M 600 112 V 180', labelX: 600, labelY: 150 },
+    { from: 'gateway', to: 'prompt_injection_warning', label: 'Unsafe', tone: 'rose', d: 'M 535 80 H 200 V 170', labelX: 360, labelY: 70 },
+    { from: 'prompt_injection_warning', to: 'refusal', tone: 'rose', d: 'M 200 227 V 615' },
+    { from: 'early_cache', to: 'output', label: 'Cache Hit (~5ms)', tone: 'sky', d: 'M 665 220 H 1100 V 1250 H 600 V 1273', labelX: 880, labelY: 210 },
+    { from: 'early_cache', to: 'llm_nlu', label: 'Cache Miss', tone: 'slate', d: 'M 600 252 V 333', labelX: 600, labelY: 290 },
+    { from: 'llm_nlu', to: 'intent', tone: 'violet', d: 'M 600 384 V 468' },
+    
+    { from: 'intent', to: 'refusal', label: 'sensitive', tone: 'rose', d: 'M 535 500 H 200 V 615', labelX: 280, labelY: 490 },
+    { from: 'intent', to: 'small_talk', label: 'small-talk', tone: 'amber', d: 'M 535 500 H 400 V 615', labelX: 460, labelY: 490 },
+    { from: 'intent', to: 'second_cache', label: 'rag', tone: 'cyan', d: 'M 600 532 V 608', labelX: 600, labelY: 570 },
+    { from: 'intent', to: 'food_nlu', label: 'food', tone: 'teal', d: 'M 665 500 H 850 V 613', labelX: 750, labelY: 490 },
+    
+    { from: 'food_nlu', to: 'food_context', tone: 'teal', d: 'M 850 664 V 733' },
+    { from: 'food_context', to: 'food_retrieval', tone: 'teal', d: 'M 850 784 V 833' },
+    { from: 'food_retrieval', to: 'food_llm', tone: 'teal', d: 'M 850 884 V 933' },
+    { from: 'food_llm', to: 'output', tone: 'emerald', d: 'M 850 984 V 1250 H 600 V 1273' },
+    
+    { from: 'small_talk', to: 'output', tone: 'amber', d: 'M 400 663 V 1250 H 600 V 1273' },
+    { from: 'refusal', to: 'output', tone: 'rose', d: 'M 200 663 V 1250 H 600 V 1273' },
+    
+    { from: 'second_cache', to: 'output', label: 'Cache Hit', tone: 'blue', d: 'M 665 640 H 1000 V 1250 H 600 V 1273', labelX: 830, labelY: 630 },
+    { from: 'second_cache', to: 'hybrid_search', label: 'Cache Miss', tone: 'cyan', d: 'M 600 672 V 730', labelX: 600, labelY: 700 },
+    
+    { from: 'hybrid_search', to: 'reranker', tone: 'cyan', d: 'M 600 787 V 833' },
+    { from: 'reranker', to: 'context_expansion', tone: 'pink', d: 'M 600 884 V 933' },
+    { from: 'context_expansion', to: 'llm_gen', tone: 'teal', d: 'M 600 984 V 1033' },
+    { from: 'llm_gen', to: 'semantic_cache', tone: 'violet', d: 'M 600 1084 V 1133' },
+    { from: 'semantic_cache', to: 'output', tone: 'emerald', d: 'M 600 1184 V 1273' }
   ];
 
   return (
@@ -390,9 +322,9 @@ function ReadableFlow({ nodeMap, selectedNode, executed, onSelect }) {
           }
         `}
       </style>
-      <div className="overflow-x-auto overflow-y-hidden">
-        <div className="relative h-[1480px] min-w-[800px] origin-top-left max-w-[900px] mx-auto">
-          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 800 1480" aria-hidden="true">
+      <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
+        <div className="relative h-[1480px] min-w-[1000px] origin-top-left max-w-[1200px] mx-auto">
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 1480" aria-hidden="true">
             <defs>
               <marker id="pipeline-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
                 <path d="M0,0 L0,6 L6,3 z" fill="currentColor" />
@@ -430,24 +362,24 @@ function PipelineBox({ node, x, y, selected, executed, onClick }) {
   const isSelected = selected;
   const isExecuted = executed;
 
-  let width = 200;
-  let height = 54;
+  let width = 160;
+  let height = 48;
   if (node.kind === 'decision') {
-    width = 160;
-    height = 80;
+    width = 130;
+    height = 64;
   } else if (node.kind === 'terminal') {
-    width = 180;
-    height = 50;
+    width = 150;
+    height = 46;
     if (node.id === 'output') {
-      width = 240;
-      height = 60;
+      width = 200;
+      height = 54;
     }
   } else if (node.id === 'hybrid_search') {
-    width = 240;
-    height = 60;
+    width = 190;
+    height = 54;
   } else if (node.id === 'prompt_injection_warning') {
-    width = 200;
-    height = 60;
+    width = 160;
+    height = 54;
   }
 
   const theme = {
@@ -696,68 +628,4 @@ function labelPoint(path) {
   };
 }
 
-function RuntimeSummary({ data }) {
-  const rows = [
-    ['Intent', data.intent || 'n/a'],
-    ['NLU fast-path', data.nlu_fast_path ? `${data.nlu_fast_path_reason || 'yes'}` : 'no / n/a'],
-    ['NLU latency', data.nlu_latency_ms != null ? `${data.nlu_latency_ms}ms` : 'n/a'],
-    ['Gateway', data.safety_res?.safe === false ? 'blocked' : 'safe / n/a'],
-    ['Rewritten query', data.rewritten_query || data.query || 'n/a'],
-    ['Answer preview', data.answer ? `${String(data.answer).slice(0, 140)}...` : 'n/a']
-  ];
 
-  return (
-    <div className="space-y-2">
-      {rows.map(([label, value]) => (
-        <div key={label} className="grid grid-cols-[110px_minmax(0,1fr)] gap-3 text-xs">
-          <span className="text-white/45">{label}</span>
-          <span className="truncate text-white/85">{value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function inferExecutedNodes(data) {
-  if (!data) return [];
-  const steps = ['gateway'];
-  const answer = String(data.answer || '').toLowerCase();
-  
-  if (data.safety_res?.safe === false) {
-    return [...steps, 'prompt_injection_warning', 'refusal', 'output'];
-  }
-
-  const blocked = answer.includes('vi phạm chính sách') || data.intent === 'sensitive';
-  if (blocked) {
-    return [
-      ...steps,
-      'early_cache',
-      'nlu_fast_gate',
-      data.nlu_fast_path ? 'domain_vocabulary' : 'llm_nlu',
-      'intent',
-      'refusal',
-      'output'
-    ];
-  }
-
-  if (data.cache_hit || data.cache_hit_stage === 'early') return [...steps, 'early_cache', 'output'];
-  steps.push('early_cache', 'nlu_fast_gate');
-
-  if (data.nlu_fast_path) steps.push('domain_vocabulary');
-  else steps.push('llm_nlu');
-
-  steps.push('intent');
-  if (data.intent === 'small-talk') return [...steps, 'small_talk', 'output'];
-  if (data.cache_hit_stage === 'second') return [...steps, 'second_cache', 'output'];
-
-  return [
-    ...steps,
-    'second_cache',
-    'hybrid_search',
-    'reranker',
-    'context_expansion',
-    'llm_gen',
-    'semantic_cache',
-    'output'
-  ];
-}

@@ -23,18 +23,18 @@
   }
 
   .dark {
-    --background: #091118;
+    --background: #070b14;
     --on-background: #f8f9ff;
-    --surface: #091118;
+    --surface: #0b111a;
     --on-surface: #f8f9ff;
-    --surface-container-lowest: #0b1015;
-    --surface-container-low: #111c20;
-    --surface-container: #162427;
-    --surface-container-high: #1c2e32;
-    --surface-container-highest: #243a3e;
-    --outline-variant: #2a3d35;
-    --on-surface-variant: #a2b5ab;
-    --outline: #4e6156;
+    --surface-container-lowest: #0a0f16;
+    --surface-container-low: #0f1520;
+    --surface-container: #141c28;
+    --surface-container-high: #192330;
+    --surface-container-highest: #1e2a3a;
+    --outline-variant: #1e293b;
+    --on-surface-variant: #94a3b8;
+    --outline: #334155;
   }
 
   body {
@@ -54,8 +54,10 @@
   }
 }
 
-.glass-panel {
-  @apply bg-white/40 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] transition-colors duration-200;
+@layer components {
+  .glass-panel {
+    @apply bg-[#ffffff]/80 dark:bg-[#0f1520]/80 backdrop-blur-md border border-black/10 dark:border-[#1e293b]/60 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] transition-colors duration-200;
+  }
 }
 
 /* Hide scrollbar utility */

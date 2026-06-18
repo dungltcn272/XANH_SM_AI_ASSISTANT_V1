@@ -12,6 +12,7 @@ def save_basic_request_log(
     rewritten_query: str | None,
     intent: str | None,
     final_answer: str | None,
+    nlu_latency_ms: float,
     total_latency_ms: float,
 ):
     try:
@@ -27,6 +28,7 @@ def save_basic_request_log(
                 rewritten_query=rewritten_query,
                 intent=intent,
                 final_answer=final_answer,
+                nlu_latency_ms=nlu_latency_ms,
                 total_latency_ms=total_latency_ms,
             )
             db.add(log_entry)

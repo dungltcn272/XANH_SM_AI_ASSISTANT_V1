@@ -2,6 +2,12 @@ import enum
 import uuid
 from sqlalchemy import Column, String, Text, DateTime, Float, ForeignKey, Integer, Enum, Boolean
 from sqlalchemy.sql import func
+from datetime import datetime
+import pytz
+
+def get_vn_time():
+    return datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
+
 from app.db.database import Base
 
 def generate_id(prefix: str) -> str:
@@ -17,13 +23,13 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String)
     role = Column(Enum(UserRole), default=UserRole.USER)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class GuestSession(Base):
     __tablename__ = "guest_sessions"
     id = Column(String, primary_key=True, default=lambda: generate_id("guest"))
     session_token = Column(String, unique=True, index=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -31,7 +37,7 @@ class Conversation(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
     guest_id = Column(String, ForeignKey("guest_sessions.id"), nullable=True)
     title = Column(String)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class Message(Base):
     __tablename__ = "messages"
@@ -40,7 +46,7 @@ class Message(Base):
     role = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     pipeline_trace = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class UserReview(Base):
     __tablename__ = "user_reviews"
@@ -52,7 +58,7 @@ class UserReview(Base):
     comment = Column(Text, nullable=True)
     status = Column(String, default="new", index=True) # 'new', 'reviewed', 'promoted', 'rejected'
     admin_note = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class RagRequestLog(Base):
     __tablename__ = "rag_request_logs"
@@ -63,7 +69,6 @@ class RagRequestLog(Base):
     original_query = Column(Text)
     rewritten_query = Column(Text, nullable=True)
     final_answer = Column(Text, nullable=True)
-    intent = Column(String, nullable=True)
     
     # Telemetry
     search_latency_ms = Column(Float, default=0)
@@ -84,7 +89,7 @@ class RagRequestLog(Base):
     rerank_result_json = Column(Text, nullable=True)
     parent_child_result_json = Column(Text, nullable=True)
     
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class BasicRequestLog(Base):
     __tablename__ = "basic_request_logs"
@@ -96,8 +101,9 @@ class BasicRequestLog(Base):
     rewritten_query = Column(Text, nullable=True)
     intent = Column(String, nullable=True, index=True)
     final_answer = Column(Text, nullable=True)
+    nlu_latency_ms = Column(Float, default=0)
     total_latency_ms = Column(Float, default=0)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
 
 class ErrorLog(Base):
     __tablename__ = "error_logs"
@@ -109,13 +115,13 @@ class ErrorLog(Base):
     error_stage = Column(String, nullable=True, index=True)
     error_cause = Column(Text, nullable=True)
     details_json = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
 class SemanticCache(Base):
     __tablename__ = "semantic_cache"
     id = Column(String, primary_key=True, default=lambda: generate_id("cache"))
     query = Column(String, unique=True, index=True)
     response = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
@@ -123,7 +129,7 @@ class DocumentChunk(Base):
     source = Column(String, index=True)
     section = Column(String)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class CrawlSource(Base):
     __tablename__ = "crawl_sources"
@@ -142,8 +148,8 @@ class CrawlSource(Base):
     last_crawled_at = Column(DateTime(timezone=True), nullable=True)
     last_status = Column(String, nullable=True)
     last_error = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
+    updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time)
 
 class FoodCatalog(Base):
     __tablename__ = "food_catalog"
@@ -179,7 +185,7 @@ class FoodCatalog(Base):
     raw_ref = Column(String, nullable=True)
     raw_json = Column(Text, nullable=True)
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
-    imported_at = Column(DateTime(timezone=True), server_default=func.now())
+    imported_at = Column(DateTime(timezone=True), default=get_vn_time)
 
 class FoodInteraction(Base):
     __tablename__ = "food_interactions"
@@ -194,7 +200,7 @@ class FoodInteraction(Base):
     rank_position = Column(Integer, nullable=True)
     query = Column(Text, nullable=True)
     request_context_json = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
 
 class UserFoodProfile(Base):
     __tablename__ = "user_food_profiles"
@@ -211,8 +217,8 @@ class UserFoodProfile(Base):
     budget_profile_json = Column(Text, nullable=True)
     allergies_json = Column(Text, nullable=True)
     profile_stats_json = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
+    updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time, index=True)
 
 class FoodRequestLog(Base):
     __tablename__ = "food_request_logs"
@@ -243,7 +249,7 @@ class FoodRequestLog(Base):
     answer_llm_json = Column(Text, nullable=True)
     sse_events_json = Column(Text, nullable=True)
     
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
 
 
 
@@ -266,4 +272,4 @@ class EvaluationRun(Base):
     relevancy = Column(Float, default=0)
     metrics_json = Column(Text, nullable=False)
     details_json = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)

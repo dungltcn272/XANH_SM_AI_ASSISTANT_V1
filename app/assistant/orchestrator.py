@@ -92,6 +92,7 @@ class XanhSMAssistantOrchestrator:
                 conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
                 original_query=query, rewritten_query=normalized_query,
                 intent="sensitive", final_answer=refusal_msg,
+                nlu_latency_ms=0,
                 total_latency_ms=(time.time() - t_start) * 1000
             )
             yield "data: [DONE]\n\n"
@@ -109,6 +110,7 @@ class XanhSMAssistantOrchestrator:
                     conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
                     original_query=query, rewritten_query=normalized_query,
                     intent="faq", final_answer=hit_res["answer"],
+                    nlu_latency_ms=0,
                     total_latency_ms=metrics["total_latency_ms"]
                 )
                 yield f'data: {json.dumps({"sources": hit_res.get("citations", [])})}\n\n'
@@ -174,6 +176,7 @@ class XanhSMAssistantOrchestrator:
                 conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
                 original_query=query, rewritten_query=rewritten_query,
                 intent=intent, final_answer=refusal_msg,
+                nlu_latency_ms=metrics["rewrite_latency_ms"],
                 total_latency_ms=metrics["total_latency_ms"]
             )
             yield f'data: {json.dumps({"metrics": metrics, "step": "sensitive"})}\n\n'
@@ -194,6 +197,7 @@ class XanhSMAssistantOrchestrator:
                 conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
                 original_query=query, rewritten_query=rewritten_query,
                 intent=intent, final_answer=answer,
+                nlu_latency_ms=metrics["rewrite_latency_ms"],
                 total_latency_ms=metrics["total_latency_ms"]
             )
             yield f'data: {json.dumps({"metrics": metrics, "step": "small-talk"})}\n\n'
@@ -211,6 +215,7 @@ class XanhSMAssistantOrchestrator:
                     conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
                     original_query=query, rewritten_query=rewritten_query,
                     intent="faq", final_answer=hit_res["answer"],
+                    nlu_latency_ms=metrics["rewrite_latency_ms"],
                     total_latency_ms=metrics["total_latency_ms"]
                 )
                 yield f'data: {json.dumps({"sources": hit_res.get("citations", [])})}\n\n'

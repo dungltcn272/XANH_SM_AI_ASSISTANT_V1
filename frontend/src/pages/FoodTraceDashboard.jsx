@@ -1,162 +1,291 @@
-import React, { useState, useEffect } from 'react';
-import { Database, Search, Filter, Loader2, ChevronDown, ChevronRight, Activity, Tag } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Copy, Download, ChevronDown, ChevronRight, Check, X, Box, Target, Activity, MapPin, Tag } from 'lucide-react';
 import { api } from '../api';
 
 export default function FoodTraceDashboard() {
-  const [traces, setTraces] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [expandedRow, setExpandedRow] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [copiedId, setCopiedId] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({
+    nlu: true,
+    context: false,
+    trace: false
+  });
 
   useEffect(() => {
-    const fetchTraces = async () => {
+    const fetchLogs = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
         const data = await api.getFoodTraces(0, 50);
-        setTraces(data.items || []);
-        setTotal(data.total || 0);
+        setLogs(data.items || []);
+        if (data.items && data.items.length > 0) {
+          setSelectedLog(prev => prev || data.items[0]);
+        }
       } catch (err) {
         console.error(err);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
-
-    fetchTraces();
+    fetchLogs();
   }, []);
 
-  const toggleRow = (id) => {
-    setExpandedRow(expandedRow === id ? null : id);
+  const filteredLogs = logs.filter(log => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (log.original_query || '').toLowerCase().includes(q)
+    );
+  });
+
+  const handleCopyId = (id) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const parseJsonSafe = (str, fallback = {}) => {
+    try {
+      return JSON.parse(str);
+    } catch {
+      return fallback;
+    }
   };
 
   return (
-    <div className="flex flex-col h-full space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-primary flex items-center gap-2">
-            <Database size={28} />
-            Food Recommendation Logs
-          </h1>
-          <p className="text-sm text-on-surface-variant mt-1">
-            Theo dõi chi tiết các lượt gợi ý món ăn, điểm số recall và ranking
-          </p>
-        </div>
-        <div className="bg-surface-container py-2 px-4 rounded-xl shadow-sm text-sm font-semibold border border-outline-variant/30 flex items-center gap-2">
-          <span>Tổng số lượt gợi ý:</span>
-          <span className="text-primary text-lg">{total}</span>
-        </div>
-      </div>
-
-      <div className="glass-panel p-6 rounded-3xl flex-1 flex flex-col border border-outline-variant/30 overflow-hidden shadow-sm">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" size={18} />
+    <div className="flex h-full gap-4 overflow-hidden p-4 md:p-6 bg-[#070b14]">
+      {/* Left Pane: Master List */}
+      <div className="w-[380px] shrink-0 flex flex-col glass-panel rounded-2xl border border-[#1e293b]/60 overflow-hidden bg-[#0b0f19] shadow-xl">
+        <div className="p-4 border-b border-[#1e293b]/60 shrink-0">
+          <h2 className="text-lg font-bold text-white mb-4">Food Recommendation Logs</h2>
+          
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b]" size={16} />
             <input 
               type="text" 
-              placeholder="Tìm kiếm theo truy vấn, intent..." 
-              className="w-full bg-surface-container pl-10 pr-4 py-2.5 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-on-surface border border-outline-variant/20 transition-all shadow-inner"
+              placeholder="Search query..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#0f1520] border border-[#1e293b] focus:border-[#f59e0b]/50 focus:ring-1 focus:ring-[#f59e0b]/50 outline-none pl-9 pr-4 py-2 rounded-lg text-sm text-white placeholder:text-[#64748b] transition-all"
             />
           </div>
-          <button className="p-2.5 rounded-full bg-surface-container hover:bg-surface-variant text-on-surface-variant border border-outline-variant/20 transition-all flex items-center gap-2 shadow-sm text-sm font-semibold">
-            <Filter size={18} />
-            <span>Lọc nâng cao</span>
-          </button>
         </div>
 
-        <div className="flex-1 overflow-auto rounded-2xl border border-outline-variant/20">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-surface-variant/50 sticky top-0 z-10 text-xs uppercase tracking-wider font-semibold text-on-surface-variant">
-              <tr>
-                <th className="px-4 py-3"></th>
-                <th className="px-4 py-3">Thời gian</th>
-                <th className="px-4 py-3">Truy vấn (Original)</th>
-                <th className="px-4 py-3">Intent</th>
-                <th className="px-4 py-3">Lat/Lng</th>
-                <th className="px-4 py-3">Ứng viên / Trả về</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/20 bg-surface">
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="text-center py-12">
-                    <Loader2 className="animate-spin mx-auto text-primary" size={24} />
-                  </td>
-                </tr>
-              ) : traces.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center py-12 text-on-surface-variant italic">
-                    Chưa có lịch sử gợi ý món ăn.
-                  </td>
-                </tr>
-              ) : (
-                traces.map((t) => {
-                  let loc = {};
-                  try { loc = JSON.parse(t.location_json); } catch { /* ignore */ }
-                  let stats = {};
-                  try { stats = JSON.parse(t.candidate_stats_json); } catch { /* ignore */ }
-                  
-                  return (
-                    <React.Fragment key={t.trace_id}>
-                      <tr 
-                        className={`hover:bg-surface-variant/30 cursor-pointer transition-colors ${expandedRow === t.trace_id ? 'bg-primary/5' : ''}`}
-                        onClick={() => toggleRow(t.trace_id)}
-                      >
-                        <td className="px-4 py-3 text-on-surface-variant">
-                          {expandedRow === t.trace_id ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                        </td>
-                        <td className="px-4 py-3">
-                          {new Date(t.created_at).toLocaleString('vi-VN')}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-primary truncate max-w-[200px]" title={t.original_query}>
-                          {t.original_query}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-1 bg-secondary/10 text-secondary rounded-lg text-xs font-bold">
-                            {t.intent}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-on-surface-variant text-xs">
-                          {loc.lat && loc.lng ? `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : 'N/A'}
-                        </td>
-                        <td className="px-4 py-3 text-xs">
-                          <span className="font-semibold">{stats.total_candidates || 0}</span> / {stats.returned_count || 0}
-                        </td>
-                      </tr>
-                      
-                      {expandedRow === t.trace_id && (
-                        <tr className="bg-surface-variant/10">
-                          <td colSpan="6" className="p-4 border-b border-outline-variant/30">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                              <div className="bg-surface p-4 rounded-xl border border-outline-variant/20 shadow-sm">
-                                <h4 className="font-bold mb-3 flex items-center gap-2 text-primary">
-                                  <Activity size={16} /> Chi tiết Pipeline
-                                </h4>
-                                <div className="space-y-2 text-xs">
-                                  <p><strong>Query Rewritten:</strong> {t.rewritten_query}</p>
-                                  <p><strong>NLU:</strong> <pre className="bg-surface-container p-2 rounded mt-1 overflow-x-auto">{t.nlu_json}</pre></p>
-                                  <p><strong>Context:</strong> <pre className="bg-surface-container p-2 rounded mt-1 overflow-x-auto">{t.user_context_json}</pre></p>
-                                </div>
-                              </div>
-                              <div className="bg-surface p-4 rounded-xl border border-outline-variant/20 shadow-sm">
-                                <h4 className="font-bold mb-3 flex items-center gap-2 text-secondary">
-                                  <Tag size={16} /> Kết quả LLM
-                                </h4>
-                                <div className="space-y-2 text-xs h-full">
-                                  <pre className="bg-surface-container p-2 rounded mt-1 overflow-x-auto h-full max-h-48 whitespace-pre-wrap">{t.answer_llm_json}</pre>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+        <div className="px-4 py-2 bg-[#0f1520]/50 border-b border-[#1e293b]/60 text-xs text-[#94a3b8] flex justify-between items-center shrink-0">
+          <span>{filteredLogs.length} logs found</span>
+          <select className="bg-transparent outline-none cursor-pointer text-[#cbd5e1]">
+            <option>Newest First</option>
+            <option>Oldest First</option>
+          </select>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+          {loading ? (
+            <div className="text-center p-8 text-[#64748b] animate-pulse">Loading logs...</div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="text-center p-8 text-[#64748b] italic">No logs found.</div>
+          ) : (
+            filteredLogs.map(log => {
+              const isSelected = selectedLog?.trace_id === log.trace_id;
+              const stats = parseJsonSafe(log.candidate_stats_json);
+              const loc = parseJsonSafe(log.location_json);
+              
+              return (
+                <div 
+                  key={log.trace_id} 
+                  onClick={() => setSelectedLog(log)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                    isSelected 
+                      ? 'bg-[#f59e0b]/10 border-[#f59e0b]/50 shadow-[0_0_15px_rgba(245,158,11,0.1)]' 
+                      : 'bg-[#0f1520] border-[#1e293b] hover:border-[#334155] hover:bg-[#151b2b]'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-[#e2e8f0] text-sm line-clamp-1 flex-1 pr-2">{log.original_query || 'Unknown query'}</h4>
+                    <span className="text-[10px] text-[#94a3b8] whitespace-nowrap">
+                      {new Date(log.created_at).toLocaleTimeString('en-US', {hour12: false})}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#1e293b] text-[#f59e0b] uppercase tracking-wider border border-[#334155]">
+                      LOG
+                    </span>
+                    <div className="flex flex-col items-end text-[10px] text-[#64748b]">
+                      <span>{loc.lat && loc.lng ? `${loc.lat.toFixed(3)}, ${loc.lng.toFixed(3)}` : 'No Location'}</span>
+                      <span className="font-mono mt-0.5">{stats.returned_count || 0} returned</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
+
+      {/* Right Pane: Detail View */}
+      {selectedLog ? (
+        <div className="flex-1 flex flex-col glass-panel rounded-2xl border border-[#1e293b]/60 overflow-hidden bg-[#0b0f19] shadow-xl">
+          {/* Detail Header */}
+          <div className="px-6 py-4 border-b border-[#1e293b]/60 flex justify-between items-center shrink-0">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-[#94a3b8]">Trace ID: <span className="font-mono text-[#cbd5e1]">{selectedLog.trace_id}</span></span>
+              <button onClick={() => handleCopyId(selectedLog.trace_id)} className="text-[#64748b] hover:text-white transition-colors" title="Copy ID">
+                {copiedId ? <Check size={14} className="text-[#00c897]" /> : <Copy size={14} />}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#334155] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                <Download size={14} /> Export JSON
+              </button>
+              <button className="p-1.5 rounded-lg hover:bg-[#ef4444]/20 text-[#64748b] hover:text-[#ef4444] transition-colors ml-2" onClick={() => setSelectedLog(null)}>
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Detail Scrollable Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+            
+            {/* Top Cards: Question & Answer */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Question Card */}
+              <div className="rounded-xl border border-[#00c897]/30 bg-[#00c897]/5 p-5 flex flex-col">
+                <span className="text-[10px] font-bold text-[#00c897] uppercase tracking-wider mb-2">Question</span>
+                <p className="text-lg font-bold text-white mb-4 flex-1">{selectedLog.original_query}</p>
+                <div className="flex gap-6 text-xs text-[#94a3b8] mt-auto">
+                  <span>Conversation ID: <span className="text-[#cbd5e1] font-mono">{selectedLog.conversation_id?.substring(0,8) || 'unknown'}</span></span>
+                  <span>Generated at: <span className="text-[#cbd5e1]">{new Date(selectedLog.created_at).toLocaleTimeString()}</span></span>
+                </div>
+              </div>
+
+              {/* Answer / Result Card */}
+              <div className="rounded-xl border border-[#8b5cf6]/30 bg-[#8b5cf6]/5 p-5 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold text-[#8b5cf6] uppercase tracking-wider">Recommendation Result</span>
+                  <Activity size={14} className="text-[#8b5cf6]" />
+                </div>
+                <div className="text-sm text-[#e2e8f0] mb-4 flex-1 overflow-y-auto max-h-32 custom-scrollbar">
+                  <pre className="text-xs font-mono whitespace-pre-wrap">{selectedLog.answer_llm_json || 'No LLM answer'}</pre>
+                </div>
+                <div className="flex gap-6 text-xs text-[#94a3b8] mt-auto border-t border-[#8b5cf6]/20 pt-2">
+                  <span>Model: <span className="text-[#cbd5e1] font-mono">Llama-3</span></span>
+                  <span>Candidates: <span className="text-[#cbd5e1]">{parseJsonSafe(selectedLog.candidate_stats_json).returned_count || 0}</span></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Metrics Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[#3b82f6]/10 text-[#3b82f6]"><MapPin size={18} /></div>
+                <div>
+                  <div className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold mb-0.5">Location</div>
+                  <div className="text-sm font-bold text-white">
+                    {parseJsonSafe(selectedLog.location_json).lat ? 'Detected' : 'None'}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[#8b5cf6]/10 text-[#8b5cf6]"><Tag size={18} /></div>
+                <div>
+                  <div className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold mb-0.5">Total Candidates</div>
+                  <div className="text-sm font-bold text-white">
+                    {parseJsonSafe(selectedLog.candidate_stats_json).total_candidates || 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Grid: NLU, Latency Breakdown, Raw Trace */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Left Col: Accordions */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Box size={16} className="text-[#f59e0b]" /> Extraction & Context
+                </h3>
+                
+                {/* NLU Result */}
+                <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] overflow-hidden">
+                  <button 
+                    onClick={() => toggleSection('nlu')}
+                    className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
+                  >
+                    <span className="text-xs font-bold text-[#e2e8f0]">NLU Extraction JSON</span>
+                    {expandedSections.nlu ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
+                  </button>
+                  {expandedSections.nlu && (
+                    <div className="px-4 pb-4 border-t border-[#1e293b] pt-3">
+                      <pre className="text-[11px] text-[#00c897] font-mono overflow-x-auto">
+{JSON.stringify(parseJsonSafe(selectedLog.nlu_json), null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+
+                {/* Context Expansion */}
+                <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] overflow-hidden">
+                  <button 
+                    onClick={() => toggleSection('context')}
+                    className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
+                  >
+                    <span className="text-xs font-bold text-[#e2e8f0]">User Context (Filters)</span>
+                    {expandedSections.context ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
+                  </button>
+                  {expandedSections.context && (
+                    <div className="px-4 pb-4 border-t border-[#1e293b] pt-3">
+                      <pre className="text-[11px] text-[#3b82f6] font-mono overflow-x-auto">
+{JSON.stringify(parseJsonSafe(selectedLog.user_context_json), null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Right Col: Latency & Raw Trace */}
+              <div className="space-y-6">
+
+                {/* Raw Trace */}
+                <div>
+                  <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] overflow-hidden">
+                    <button 
+                      onClick={() => toggleSection('trace')}
+                      className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
+                    >
+                      <span className="text-xs font-bold text-[#e2e8f0]">Raw Food Trace JSON</span>
+                      {expandedSections.trace ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
+                    </button>
+                    {expandedSections.trace && (
+                      <div className="px-4 pb-4 border-t border-[#1e293b] pt-3 relative">
+                        <button className="absolute top-4 right-4 text-[#64748b] hover:text-white" onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(selectedLog, null, 2));
+                        }}><Copy size={14}/></button>
+                        <pre className="text-[10px] text-[#94a3b8] font-mono overflow-x-auto max-h-[400px] custom-scrollbar">
+{JSON.stringify(selectedLog, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center glass-panel rounded-2xl border border-[#1e293b]/60 bg-[#0b0f19] shadow-xl">
+          <Target size={48} className="text-[#1e293b] mb-4" />
+          <h3 className="text-lg font-bold text-[#94a3b8]">Select a food trace to view details</h3>
+          <p className="text-sm text-[#64748b] mt-2 max-w-sm text-center">Click on any log entry in the left panel to explore its full execution trace.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -24,6 +24,7 @@ def run_auto_migrations():
         "ALTER TABLE rag_request_logs ADD COLUMN retrieval_result_json TEXT;",
         "ALTER TABLE rag_request_logs ADD COLUMN rerank_result_json TEXT;",
         "ALTER TABLE rag_request_logs ADD COLUMN parent_child_result_json TEXT;",
+        "ALTER TABLE rag_request_logs DROP COLUMN intent;",
         "CREATE INDEX IF NOT EXISTS ix_rag_request_logs_user_id ON rag_request_logs(user_id);",
         "CREATE INDEX IF NOT EXISTS ix_rag_request_logs_guest_id ON rag_request_logs(guest_id);",
         
@@ -56,6 +57,7 @@ def run_auto_migrations():
             rewritten_query TEXT,
             intent VARCHAR,
             final_answer TEXT,
+            nlu_latency_ms FLOAT DEFAULT 0,
             total_latency_ms FLOAT DEFAULT 0,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
@@ -65,6 +67,7 @@ def run_auto_migrations():
         "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_guest_id ON basic_request_logs(guest_id);",
         "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_intent ON basic_request_logs(intent);",
         "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_created_at ON basic_request_logs(created_at);",
+        "ALTER TABLE basic_request_logs ADD COLUMN nlu_latency_ms FLOAT DEFAULT 0;",
         
         # Đổi tên và sửa bảng food_recommendation_traces thành food_request_logs
         "ALTER TABLE food_recommendation_traces RENAME TO food_request_logs;",

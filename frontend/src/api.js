@@ -52,6 +52,33 @@ export const api = {
     return res.json();
   },
 
+  getRagLogs: async (skip = 0, limit = 50, date = '') => {
+    let url = `${API_BASE}/admin/logs/rag?skip=${skip}&limit=${limit}`;
+    if (date) url += `&date=${date}`;
+    const res = await api._fetch(url);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getFoodLogs: async (skip = 0, limit = 50, date = '') => {
+    let url = `${API_BASE}/admin/logs/food?skip=${skip}&limit=${limit}`;
+    if (date) url += `&date=${date}`;
+    const res = await api._fetch(url);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getBasicLogs: async (skip = 0, limit = 50, intent = '', date = '') => {
+    let url = `${API_BASE}/admin/logs/basic?skip=${skip}&limit=${limit}`;
+    if (intent && intent !== 'all') {
+      url += `&intent=${encodeURIComponent(intent)}`;
+    }
+    if (date) url += `&date=${date}`;
+    const res = await api._fetch(url);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getAdminUsers: async () => {
     const res = await api._fetch(`${API_BASE}/admin/users`);
     if (!res.ok) throw new Error('API Error');

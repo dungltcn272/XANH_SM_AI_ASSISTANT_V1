@@ -190,7 +190,7 @@ export default function DatabaseManager() {
   };
 
   if (loading) {
-    return <div className="p-8 text-on-surface-variant animate-pulse">Loading database manager...</div>;
+    return <div className="p-8 text-[#94a3b8] animate-pulse">Loading database manager...</div>;
   }
 
   const hasIdColumn = columns.includes('id');
@@ -200,11 +200,11 @@ export default function DatabaseManager() {
     <div className="max-w-[1600px] mx-auto w-full">
       <div className="mb-10 flex justify-between items-end">
         <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-on-surface flex items-center gap-3">
+          <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
             <Database className="text-primary w-8 h-8" />
             Database Manager
           </h2>
-          <p className="text-lg text-on-surface-variant mt-2 max-w-2xl">
+          <p className="text-lg text-[#94a3b8] mt-2 max-w-2xl">
             Direct access to raw SQL tables. Handle with care.
           </p>
         </div>
@@ -219,9 +219,9 @@ export default function DatabaseManager() {
 
       <div className="glass-panel rounded-3xl overflow-hidden border border-outline-variant/30 flex flex-col h-[70vh]">
         {/* Toolbar */}
-        <div className="p-4 border-b border-outline-variant/30 flex flex-wrap gap-4 justify-between items-center bg-white/40">
+        <div className="p-4 border-b border-outline-variant/30 flex flex-wrap gap-4 justify-between items-center bg-[#0f1520]">
           <div className="flex items-center gap-4">
-            <label className="text-sm font-semibold text-on-surface-variant">Select Table:</label>
+            <label className="text-sm font-semibold text-[#94a3b8]">Select Table:</label>
             <select 
               value={selectedTable}
               onChange={(e) => {
@@ -236,14 +236,14 @@ export default function DatabaseManager() {
                 setDebouncedKeyword('');
                 changePage(0);
               }}
-              className="bg-surface-variant border border-outline-variant/50 text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block py-2.5 pl-2.5 pr-10 cursor-pointer"
+              className="bg-[#022c22] border border-outline-variant/50 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block py-2.5 pl-2.5 pr-10 cursor-pointer"
             >
               {tables.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
             
-            <span className="text-xs text-on-surface-variant font-mono bg-surface-container-low px-2 py-1 rounded">
+            <span className="text-xs text-[#94a3b8] font-mono bg-[#0f1520]-container-low px-2 py-1 rounded">
               {total} records
             </span>
           </div>
@@ -268,7 +268,7 @@ export default function DatabaseManager() {
                   setSelectedIds(new Set());
                 }).catch(() => setError('Failed to refresh table')).finally(() => setDataLoading(false));
               }}
-              className="p-2 rounded-lg bg-surface-variant text-on-surface-variant hover:bg-surface-container-high transition-colors"
+              className="p-2 rounded-lg bg-[#022c22] text-[#94a3b8] hover:bg-[#0f1520]-container-high transition-colors"
               title="Refresh"
             >
               <RefreshCw size={18} className={dataLoading ? "animate-spin" : ""} />
@@ -280,7 +280,7 @@ export default function DatabaseManager() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all shadow-sm ${
                 selectedIds.size > 0 && hasIdColumn
                   ? 'bg-error text-white hover:bg-error/90 hover:shadow-md'
-                  : 'bg-surface-variant text-on-surface-variant opacity-50 cursor-not-allowed'
+                  : 'bg-[#022c22] text-[#94a3b8] opacity-50 cursor-not-allowed'
               }`}
             >
               {deleting ? <RefreshCw size={18} className="animate-spin" /> : <Trash2 size={18} />}
@@ -293,7 +293,7 @@ export default function DatabaseManager() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all shadow-sm ${
                 total > 0
                   ? 'bg-red-600 hover:bg-red-700 text-white hover:shadow-md'
-                  : 'bg-surface-variant text-on-surface-variant opacity-50 cursor-not-allowed'
+                  : 'bg-[#022c22] text-[#94a3b8] opacity-50 cursor-not-allowed'
               }`}
               title="Xóa toàn bộ bản ghi của bảng"
             >
@@ -304,18 +304,18 @@ export default function DatabaseManager() {
         </div>
 
         {/* Filter Panel (Dynamic based on selected table columns) */}
-        <div className="px-4 py-3 border-b border-outline-variant/20 bg-surface-container-lowest/50 flex flex-wrap gap-4 items-center">
+        <div className="px-4 py-3 border-b border-outline-variant/20 bg-[#0f1520]-container-lowest/50 flex flex-wrap gap-4 items-center">
           {/* Keyword Search */}
           <div className="flex items-center gap-2 min-w-[260px] flex-1 max-w-md">
-            <span className="text-xs font-semibold text-on-surface-variant">Từ khóa:</span>
+            <span className="text-xs font-semibold text-[#94a3b8]">Từ khóa:</span>
             <div className="relative flex-1">
-              <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
               <input
                 type="search"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 placeholder="Tìm trong content, description, message..."
-                className="w-full bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-8 pr-8 focus:ring-primary focus:border-primary"
+                className="w-full bg-[#022c22] border border-outline-variant/40 text-white text-xs rounded-lg py-2 pl-8 pr-8 focus:ring-primary focus:border-primary"
               />
               {keyword && (
                 <button
@@ -324,7 +324,7 @@ export default function DatabaseManager() {
                     setDebouncedKeyword('');
                     changePage(0);
                   }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-white"
                   title="XÃ³a tá»« khÃ³a"
                 >
                   <X size={15} />
@@ -335,11 +335,11 @@ export default function DatabaseManager() {
 
           {/* Sorting */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-on-surface-variant">Sắp xếp:</span>
+            <span className="text-xs font-semibold text-[#94a3b8]">Sắp xếp:</span>
             <select
               value={sortBy}
               onChange={(e) => { setSortBy(e.target.value); changePage(0); }}
-              className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
+              className="bg-[#022c22] border border-outline-variant/40 text-white text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
             >
               <option value="">-- Mặc định --</option>
               {columns.map(col => (
@@ -349,7 +349,7 @@ export default function DatabaseManager() {
             <select
               value={sortOrder}
               onChange={(e) => { setSortOrder(e.target.value); changePage(0); }}
-              className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
+              className="bg-[#022c22] border border-outline-variant/40 text-white text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
             >
               <option value="desc">Giảm dần (Mới nhất)</option>
               <option value="asc">Tăng dần (Cũ nhất)</option>
@@ -359,19 +359,19 @@ export default function DatabaseManager() {
           {/* Date range filter (conditional) */}
           {columns.some(c => ['created_at', 'timestamp', 'generated_at'].includes(c)) && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-on-surface-variant">Khoảng ngày:</span>
+              <span className="text-xs font-semibold text-[#94a3b8]">Khoảng ngày:</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); changePage(0); }}
-                className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg p-1.5 focus:ring-primary focus:border-primary text-center"
+                className="bg-[#022c22] border border-outline-variant/40 text-white text-xs rounded-lg p-1.5 focus:ring-primary focus:border-primary text-center"
               />
-              <span className="text-xs text-on-surface-variant">đến</span>
+              <span className="text-xs text-[#94a3b8]">đến</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); changePage(0); }}
-                className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg p-1.5 focus:ring-primary focus:border-primary text-center"
+                className="bg-[#022c22] border border-outline-variant/40 text-white text-xs rounded-lg p-1.5 focus:ring-primary focus:border-primary text-center"
               />
             </div>
           )}
@@ -379,11 +379,11 @@ export default function DatabaseManager() {
           {/* Level filter (conditional for logs) */}
           {columns.includes('level') && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-on-surface-variant">Level:</span>
+              <span className="text-xs font-semibold text-[#94a3b8]">Level:</span>
               <select
                 value={level}
                 onChange={(e) => { setLevel(e.target.value); changePage(0); }}
-                className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
+                className="bg-[#022c22] border border-outline-variant/40 text-white text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary cursor-pointer"
               >
                 <option value="">Tất cả</option>
                 {(metadata.levels || ['INFO', 'WARN', 'ERROR']).map(l => (
@@ -396,11 +396,11 @@ export default function DatabaseManager() {
           {/* Error Type filter (conditional for logs) */}
           {columns.includes('error_type') && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-on-surface-variant">Loại lỗi:</span>
+              <span className="text-xs font-semibold text-[#94a3b8]">Loại lỗi:</span>
               <select
                 value={errorType}
                 onChange={(e) => { setErrorType(e.target.value); changePage(0); }}
-                className="bg-surface-variant border border-outline-variant/40 text-on-surface text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary max-w-xs cursor-pointer"
+                className="bg-[#022c22] border border-outline-variant/40 text-white text-xs rounded-lg py-2 pl-2 pr-8 focus:ring-primary focus:border-primary max-w-xs cursor-pointer"
               >
                 <option value="">Tất cả</option>
                 {(metadata.error_types || []).map(et => (
@@ -434,16 +434,16 @@ export default function DatabaseManager() {
         {/* Data Table */}
         <div className="flex-1 overflow-auto">
           {dataLoading ? (
-            <div className="p-8 text-center text-on-surface-variant animate-pulse font-semibold">Loading table data...</div>
+            <div className="p-8 text-center text-[#94a3b8] animate-pulse font-semibold">Loading table data...</div>
           ) : data.length === 0 ? (
-            <div className="p-12 text-center text-on-surface-variant italic">Table is empty.</div>
+            <div className="p-12 text-center text-[#94a3b8] italic">Table is empty.</div>
           ) : (
             <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-surface z-10 shadow-sm">
-                <tr className="text-on-surface-variant text-xs uppercase tracking-wider">
+              <thead className="sticky top-0 bg-[#0f1520] z-10 shadow-sm">
+                <tr className="text-[#94a3b8] text-xs uppercase tracking-wider">
                   {hasIdColumn && (
                     <th className="px-4 py-3 border-b border-outline-variant/30 w-12 text-center">
-                      <button onClick={toggleSelectAll} className="text-on-surface-variant hover:text-primary transition-colors">
+                      <button onClick={toggleSelectAll} className="text-[#94a3b8] hover:text-primary transition-colors">
                         {selectedIds.size === data.length ? <CheckSquare size={18} /> : <Square size={18} />}
                       </button>
                     </th>
@@ -472,7 +472,7 @@ export default function DatabaseManager() {
                       </td>
                     )}
                     {columns.map(col => (
-                      <td key={col} className="px-4 py-3 text-sm text-on-surface max-w-xs truncate cursor-pointer" title={String(row[col])}>
+                      <td key={col} className="px-4 py-3 text-sm text-white max-w-xs truncate cursor-pointer" title={String(row[col])}>
                         {typeof row[col] === 'object' && row[col] !== null 
                           ? JSON.stringify(row[col]) 
                           : String(row[col] ?? '')}
@@ -486,7 +486,7 @@ export default function DatabaseManager() {
         </div>
         
         {/* Pagination Footer */}
-        <div className="p-3 border-t border-outline-variant/30 bg-surface-container-low flex justify-between items-center text-sm font-semibold text-on-surface-variant">
+        <div className="p-3 border-t border-outline-variant/30 bg-[#0f1520]-container-low flex justify-between items-center text-sm font-semibold text-[#94a3b8]">
           <div>
             Showing {page * limit + 1} to {Math.min((page + 1) * limit, total)} of {total} entries
           </div>
@@ -495,12 +495,12 @@ export default function DatabaseManager() {
             <button 
               onClick={() => changePage(Math.max(0, page - 1))}
               disabled={page === 0}
-              className="px-3 py-1 bg-surface rounded-md border border-outline-variant/50 hover:bg-surface-variant disabled:opacity-50"
+              className="px-3 py-1 bg-[#0f1520] rounded-md border border-outline-variant/50 hover:bg-[#022c22] disabled:opacity-50"
             >
               Prev
             </button>
 
-            <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
+            <div className="flex items-center gap-1.5 text-xs text-[#94a3b8] font-medium">
               <span>Trang</span>
               <input
                 type="number"
@@ -510,7 +510,7 @@ export default function DatabaseManager() {
                 onChange={handlePageInputChange}
                 onBlur={handlePageInputSubmit}
                 onKeyDown={handleKeyDown}
-                className="w-14 px-2 py-1 text-center bg-surface border border-outline-variant/60 rounded-md focus:outline-none focus:border-primary text-on-surface font-semibold"
+                className="w-14 px-2 py-1 text-center bg-[#0f1520] border border-outline-variant/60 rounded-md focus:outline-none focus:border-primary text-white font-semibold"
               />
               <span>/ {totalPages}</span>
             </div>
@@ -518,7 +518,7 @@ export default function DatabaseManager() {
             <button 
               onClick={() => changePage(page + 1)}
               disabled={(page + 1) * limit >= total}
-              className="px-3 py-1 bg-surface rounded-md border border-outline-variant/50 hover:bg-surface-variant disabled:opacity-50"
+              className="px-3 py-1 bg-[#0f1520] rounded-md border border-outline-variant/50 hover:bg-[#022c22] disabled:opacity-50"
             >
               Next
             </button>
