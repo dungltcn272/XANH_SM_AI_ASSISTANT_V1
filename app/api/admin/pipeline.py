@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import String, Text, case, or_
 from app.db.database import get_db, Base
-from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource, EvaluationRun
+from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, ErrorLog, CrawlSource, EvaluationRun
 from app.core.config import settings
 from fastapi.responses import StreamingResponse
 import asyncio
@@ -44,7 +44,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     total_cost = float(total_cost_res) if total_cost_res else 0.0
 
     # Count system errors
-    total_errors = db.query(SystemLog).filter(SystemLog.level == "ERROR").count()
+    total_errors = db.query(ErrorLog).count()
 
     return {
         "total_users": total_users,
@@ -66,7 +66,7 @@ def get_rag_logs(intent: str = None, limit: int = 50, db: Session = Depends(get_
 
 @router.get("/system-logs")
 def get_system_logs(limit: int = 100, db: Session = Depends(get_db)):
-    logs = db.query(SystemLog).order_by(SystemLog.timestamp.desc()).limit(limit).all()
+    logs = db.query(ErrorLog).order_by(ErrorLog.timestamp.desc()).limit(limit).all()
     return logs
 
 

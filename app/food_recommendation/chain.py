@@ -12,7 +12,7 @@ from app.food_recommendation.payloads import (
     format_food_answer,
     missing_location_answer,
 )
-from app.food_recommendation.trace_store import save_food_recommendation_trace
+from app.food_recommendation.trace_store import save_food_request_log
 from app.assistant.events import sse_pipeline_step, stream_plain_answer
 from app.food_recommendation.geocode import geocode_address
 from app.food_recommendation.nlu import slots_from_nlu
@@ -66,7 +66,7 @@ class FoodRecommendationChain:
             answer = missing_location_answer()
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
             sse_steps.append("food_missing_info")
-            trace_id = save_food_recommendation_trace(
+            trace_id = save_food_request_log(
                 conversation_id=conversation_id,
                 user_id=user_id,
                 guest_id=guest_id,
@@ -192,7 +192,7 @@ class FoodRecommendationChain:
         metrics["food_answer_llm_used"] = bool(answer_meta.get("llm_used"))
         metrics["food_answer_llm_error"] = answer_meta.get("error")
         metrics["total_latency_ms"] = (time.time() - t_start) * 1000
-        trace_id = save_food_recommendation_trace(
+        trace_id = save_food_request_log(
             conversation_id=conversation_id,
             user_id=user_id,
             guest_id=guest_id,

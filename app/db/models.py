@@ -47,6 +47,7 @@ class UserReview(Base):
     id = Column(String, primary_key=True, default=lambda: generate_id("review"))
     message_id = Column(String, ForeignKey("messages.id"), unique=True)
     rating = Column(String, nullable=False)  # 'up' or 'down'
+
     reason_tags = Column(String, nullable=True)  # JSON string of tags
     comment = Column(Text, nullable=True)
     status = Column(String, default="new", index=True) # 'new', 'reviewed', 'promoted', 'rejected'
@@ -55,8 +56,10 @@ class UserReview(Base):
 
 class RagRequestLog(Base):
     __tablename__ = "rag_request_logs"
-    id = Column(String, primary_key=True, default=lambda: generate_id("req"))
+    id = Column(String, primary_key=True, default=lambda: generate_id("ragreq"))
     conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True)
+    user_id = Column(String, nullable=True, index=True)
+    guest_id = Column(String, nullable=True, index=True)
     original_query = Column(Text)
     rewritten_query = Column(Text, nullable=True)
     final_answer = Column(Text, nullable=True)
@@ -75,14 +78,38 @@ class RagRequestLog(Base):
     
     # Thêm cờ đánh dấu nếu bị Guardrail chặn
     blocked_by_guardrail = Column(Boolean, default=False)
+    
+    # Kết quả RAG
+    retrieval_result_json = Column(Text, nullable=True)
+    rerank_result_json = Column(Text, nullable=True)
+    parent_child_result_json = Column(Text, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-class ConversationSummary(Base):
-    __tablename__ = "conversation_summaries"
-    id = Column(String, primary_key=True, default=lambda: generate_id("sum"))
-    conversation_id = Column(String, ForeignKey("conversations.id"))
-    summary = Column(Text, nullable=False)
-    generated_at = Column(DateTime(timezone=True), server_default=func.now())
+class BasicRequestLog(Base):
+    __tablename__ = "basic_request_logs"
+    id = Column(String, primary_key=True, default=lambda: generate_id("basicreq"))
+    conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True, index=True)
+    user_id = Column(String, nullable=True, index=True)
+    guest_id = Column(String, nullable=True, index=True)
+    original_query = Column(Text, nullable=True)
+    rewritten_query = Column(Text, nullable=True)
+    intent = Column(String, nullable=True, index=True)
+    final_answer = Column(Text, nullable=True)
+    total_latency_ms = Column(Float, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class ErrorLog(Base):
+    __tablename__ = "error_logs"
+    id = Column(String, primary_key=True, default=lambda: generate_id("err"))
+    conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True, index=True)
+    user_id = Column(String, nullable=True, index=True)
+    query = Column(Text, nullable=True)
+    intent = Column(String, nullable=True)
+    error_stage = Column(String, nullable=True, index=True)
+    error_cause = Column(Text, nullable=True)
+    details_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 class SemanticCache(Base):
     __tablename__ = "semantic_cache"
     id = Column(String, primary_key=True, default=lambda: generate_id("cache"))
@@ -187,16 +214,27 @@ class UserFoodProfile(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True)
 
-class FoodRecommendationTrace(Base):
-    __tablename__ = "food_recommendation_traces"
-    trace_id = Column(String, primary_key=True, default=lambda: generate_id("foodtrace"))
+class FoodRequestLog(Base):
+    __tablename__ = "food_request_logs"
+    trace_id = Column(String, primary_key=True, default=lambda: generate_id("foodreq"))
     conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True, index=True)
-    message_id = Column(String, ForeignKey("messages.id"), nullable=True, index=True)
     user_id = Column(String, nullable=True, index=True)
     guest_id = Column(String, nullable=True, index=True)
     original_query = Column(Text, nullable=True)
     rewritten_query = Column(Text, nullable=True)
+    final_answer = Column(Text, nullable=True)
     intent = Column(String, nullable=True, index=True)
+    
+    # Telemetry
+    search_latency_ms = Column(Float, default=0)
+    generation_latency_ms = Column(Float, default=0)
+    total_latency_ms = Column(Float, default=0)
+    rewrite_latency_ms = Column(Float, default=0)
+    classification_latency_ms = Column(Float, default=0)
+    total_tokens = Column(Integer, default=0)
+    cost_usd = Column(Float, default=0)
+    
+    # Results
     nlu_json = Column(Text, nullable=True)
     user_context_json = Column(Text, nullable=True)
     location_json = Column(Text, nullable=True)
@@ -204,18 +242,10 @@ class FoodRecommendationTrace(Base):
     ranking_json = Column(Text, nullable=True)
     answer_llm_json = Column(Text, nullable=True)
     sse_events_json = Column(Text, nullable=True)
-    latency_json = Column(Text, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
-class SystemLog(Base):
-    __tablename__ = "system_logs"
-    id = Column(String, primary_key=True, default=lambda: generate_id("log"))
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    level = Column(String, nullable=False)
-    phase = Column(String, nullable=False)
-    error_type = Column(String, nullable=True)
-    message = Column(Text, nullable=False)
-    details = Column(Text, nullable=True)
+
 
 class EvaluationRun(Base):
     __tablename__ = "evaluation_runs"
@@ -237,4 +267,3 @@ class EvaluationRun(Base):
     metrics_json = Column(Text, nullable=False)
     details_json = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-

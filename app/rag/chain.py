@@ -12,6 +12,7 @@ from app.core.logger import log_warn, log_error
 from app.prompts import RAG_ANSWER_SYSTEM_PROMPT, RAG_ANSWER_USER_PROMPT_TEMPLATE
 from app.rag.hybrid_search import XanhSMHybridSearch
 from app.rag.reranker import XanhSMReranker
+from app.rag.trace_store import save_rag_request_log
 
 
 class RagAnswerChain:
@@ -98,6 +99,10 @@ class RagAnswerChain:
     def stream(
         self,
         *,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        guest_id: str | None = None,
+        original_query: str = "",
         rewritten_query: str,
         normalized_query: str,
         expanded_queries: list[str],
@@ -107,7 +112,7 @@ class RagAnswerChain:
         bypass_cache: bool = False,
         is_deep_search: bool = False,
     ):
-        def finalize_generation(final_answer: str, top_docs: list[Any], messages: list[dict[str, str]]):
+        def finalize_generation(final_answer: str, top_docs: list[Any], messages: list[dict[str, str]], retrieved_docs: list[Any], reranked_docs: list[Any], expanded_docs: list[Any]):
             est_p = len(" ".join([m["content"] for m in messages])) // 4
             est_c = len(final_answer) // 4
             metrics["total_tokens"] += est_p + est_c
@@ -119,8 +124,23 @@ class RagAnswerChain:
                 if rewritten_query != normalized_query:
                     self.cache.set(rewritten_query, final_answer, citations)
             yield f'data: {json.dumps({"metrics": metrics})}\n\n'
+            
+            save_rag_request_log(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=original_query or rewritten_query,
+                metrics=metrics,
+                retrieved_docs=retrieved_docs,
+                reranked_docs=reranked_docs,
+                expanded_docs=expanded_docs,
+                final_answer=final_answer,
+            )
 
         try:
+            retrieved_candidates = []
+            reranked_docs = []
+            expanded_docs = []
             strategy = self.select_retrieval_strategy(rewritten_query)
             yield sse_pipeline_step("retrieval_search", "Đang tìm kiếm tài liệu...", 0.34, strategy=strategy)
             t_search_start = time.time()
@@ -135,19 +155,19 @@ class RagAnswerChain:
             yield sse_pipeline_step("rerank_documents", "Đang xếp hạng tài liệu...", 0.52)
             t_rerank_start = time.time()
             rerank_top_n = config.DEEP_SEARCH_RERANK_TOP_N if is_deep_search else config.RERANK_TOP_N
-            top_docs = self.reranker.rerank(
+            reranked_docs = self.reranker.rerank(
                 query=rewritten_query,
                 docs=retrieved_candidates,
                 top_n=rerank_top_n,
             )
             metrics["rerank_latency_ms"] = (time.time() - t_rerank_start) * 1000
-            metrics["num_chunks_before_expansion"] = len(top_docs)
+            metrics["num_chunks_before_expansion"] = len(reranked_docs)
 
-            yield sse_pipeline_step("context_expansion", "Đang gọi thêm tài liệu đầy đủ...", 0.64, top_docs=len(top_docs))
-            top_docs = self.search_engine.expand_context(top_docs)
+            yield sse_pipeline_step("context_expansion", "Đang gọi thêm tài liệu đầy đủ...", 0.64, top_docs=len(reranked_docs))
+            expanded_docs = self.search_engine.expand_context(reranked_docs)
             messages, compressed_context = self._build_prompt_messages(
                 query=rewritten_query,
-                context_docs=top_docs,
+                context_docs=expanded_docs,
                 chat_history=chat_history,
             )
             metrics["compressed_context_len"] = len(compressed_context)
@@ -202,7 +222,7 @@ class RagAnswerChain:
                 metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
 
-            yield from finalize_generation(final_answer, top_docs, messages)
+            yield from finalize_generation(final_answer, expanded_docs, messages, retrieved_candidates, reranked_docs, expanded_docs)
         except Exception as exc:
             log_error("CHAT", f"RAG chain execution error: {exc}")
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000

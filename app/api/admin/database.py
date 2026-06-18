@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import String, Text, case, or_
 from app.db.database import get_db, Base
-from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource, EvaluationRun
+from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, ErrorLog, CrawlSource, EvaluationRun
 from app.core.config import settings
 from fastapi.responses import StreamingResponse
 import asyncio
@@ -115,10 +115,17 @@ def get_table_data(
                 pass
 
     # Apply level/error_type exact filters if columns exist
-    if level and "level" in table.columns:
-        query = query.filter(table.columns["level"] == level)
-    if error_type and "error_type" in table.columns:
-        query = query.filter(table.columns["error_type"] == error_type)
+    if level:
+        if "level" in table.columns:
+            query = query.filter(table.columns["level"] == level)
+        elif "error_stage" in table.columns:
+            query = query.filter(table.columns["error_stage"] == level)
+            
+    if error_type:
+        if "error_type" in table.columns:
+            query = query.filter(table.columns["error_type"] == error_type)
+        elif "error_cause" in table.columns:
+            query = query.filter(table.columns["error_cause"] == error_type)
 
     # Apply keyword search across safe text columns. The default set gives
     # higher priority to knowledge text such as document_chunks.content.
@@ -177,8 +184,15 @@ def get_table_data(
     if "level" in table.columns:
         distinct_levels = db.query(table.columns["level"]).distinct().all()
         extra_metadata["levels"] = [r[0] for r in distinct_levels if r[0]]
+    elif "error_stage" in table.columns:
+        distinct_levels = db.query(table.columns["error_stage"]).distinct().all()
+        extra_metadata["levels"] = [r[0] for r in distinct_levels if r[0]]
+        
     if "error_type" in table.columns:
         distinct_error_types = db.query(table.columns["error_type"]).distinct().all()
+        extra_metadata["error_types"] = [r[0] for r in distinct_error_types if r[0]]
+    elif "error_cause" in table.columns:
+        distinct_error_types = db.query(table.columns["error_cause"]).distinct().all()
         extra_metadata["error_types"] = [r[0] for r in distinct_error_types if r[0]]
     if searched_columns:
         extra_metadata["search_columns"] = searched_columns

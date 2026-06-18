@@ -1,6 +1,9 @@
 import logging
 from sqlalchemy import text
 from app.db.database import engine
+import logging
+from sqlalchemy import text
+from app.db.database import engine
 
 logger = logging.getLogger(__name__)
 
@@ -10,12 +13,69 @@ def run_auto_migrations():
     Nếu bảng/cột đã tồn tại, lỗi sẽ được bỏ qua.
     """
     queries = [
-        # Bảng: rag_request_logs
+        # Bảng: rag_request_logs (Thêm các cột mới)
         "ALTER TABLE rag_request_logs ADD COLUMN rewrite_latency_ms FLOAT DEFAULT 0;",
         "ALTER TABLE rag_request_logs ADD COLUMN classification_latency_ms FLOAT DEFAULT 0;",
         "ALTER TABLE rag_request_logs ADD COLUMN expansion_latency_ms FLOAT DEFAULT 0;",
         "ALTER TABLE rag_request_logs ADD COLUMN rerank_latency_ms FLOAT DEFAULT 0;",
         "ALTER TABLE rag_request_logs ADD COLUMN blocked_by_guardrail BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE rag_request_logs ADD COLUMN user_id VARCHAR;",
+        "ALTER TABLE rag_request_logs ADD COLUMN guest_id VARCHAR;",
+        "ALTER TABLE rag_request_logs ADD COLUMN retrieval_result_json TEXT;",
+        "ALTER TABLE rag_request_logs ADD COLUMN rerank_result_json TEXT;",
+        "ALTER TABLE rag_request_logs ADD COLUMN parent_child_result_json TEXT;",
+        "CREATE INDEX IF NOT EXISTS ix_rag_request_logs_user_id ON rag_request_logs(user_id);",
+        "CREATE INDEX IF NOT EXISTS ix_rag_request_logs_guest_id ON rag_request_logs(guest_id);",
+        
+        # Xóa các bảng cũ
+        "DROP TABLE IF EXISTS system_logs;",
+        "DROP TABLE IF EXISTS conversation_summaries;",
+        
+        # Bảng mới: error_logs
+        """
+        CREATE TABLE IF NOT EXISTS error_logs (
+            id VARCHAR PRIMARY KEY,
+            timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            query TEXT,
+            intent VARCHAR,
+            error_stage VARCHAR,
+            error_cause VARCHAR,
+            message TEXT NOT NULL,
+            details TEXT
+        );
+        """,
+        
+        # Bảng mới: basic_request_logs
+        """
+        CREATE TABLE IF NOT EXISTS basic_request_logs (
+            id VARCHAR PRIMARY KEY,
+            conversation_id VARCHAR REFERENCES conversations(id),
+            user_id VARCHAR,
+            guest_id VARCHAR,
+            original_query TEXT,
+            rewritten_query TEXT,
+            intent VARCHAR,
+            final_answer TEXT,
+            total_latency_ms FLOAT DEFAULT 0,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_conversation_id ON basic_request_logs(conversation_id);",
+        "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_user_id ON basic_request_logs(user_id);",
+        "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_guest_id ON basic_request_logs(guest_id);",
+        "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_intent ON basic_request_logs(intent);",
+        "CREATE INDEX IF NOT EXISTS ix_basic_request_logs_created_at ON basic_request_logs(created_at);",
+        
+        # Đổi tên và sửa bảng food_recommendation_traces thành food_request_logs
+        "ALTER TABLE food_recommendation_traces RENAME TO food_request_logs;",
+        "ALTER TABLE food_request_logs ADD COLUMN final_answer TEXT;",
+        "ALTER TABLE food_request_logs ADD COLUMN search_latency_ms FLOAT DEFAULT 0;",
+        "ALTER TABLE food_request_logs ADD COLUMN generation_latency_ms FLOAT DEFAULT 0;",
+        "ALTER TABLE food_request_logs ADD COLUMN total_latency_ms FLOAT DEFAULT 0;",
+        "ALTER TABLE food_request_logs ADD COLUMN rewrite_latency_ms FLOAT DEFAULT 0;",
+        "ALTER TABLE food_request_logs ADD COLUMN classification_latency_ms FLOAT DEFAULT 0;",
+        "ALTER TABLE food_request_logs ADD COLUMN total_tokens INTEGER DEFAULT 0;",
+        "ALTER TABLE food_request_logs ADD COLUMN cost_usd FLOAT DEFAULT 0;",
         
         # Bảng: messages
         "ALTER TABLE messages ADD COLUMN pipeline_trace TEXT;",
@@ -71,33 +131,6 @@ def run_auto_migrations():
         "CREATE INDEX IF NOT EXISTS ix_user_food_profiles_user_id ON user_food_profiles(user_id);",
         "CREATE INDEX IF NOT EXISTS ix_user_food_profiles_guest_id ON user_food_profiles(guest_id);",
         "CREATE INDEX IF NOT EXISTS ix_user_food_profiles_updated_at ON user_food_profiles(updated_at);",
-        """
-        CREATE TABLE IF NOT EXISTS food_recommendation_traces (
-            trace_id VARCHAR PRIMARY KEY,
-            conversation_id VARCHAR REFERENCES conversations(id),
-            message_id VARCHAR REFERENCES messages(id),
-            user_id VARCHAR,
-            guest_id VARCHAR,
-            original_query TEXT,
-            rewritten_query TEXT,
-            intent VARCHAR,
-            nlu_json TEXT,
-            user_context_json TEXT,
-            location_json TEXT,
-            candidate_stats_json TEXT,
-            ranking_json TEXT,
-            answer_llm_json TEXT,
-            sse_events_json TEXT,
-            latency_json TEXT,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-        """,
-        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_conversation_id ON food_recommendation_traces(conversation_id);",
-        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_message_id ON food_recommendation_traces(message_id);",
-        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_user_id ON food_recommendation_traces(user_id);",
-        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_guest_id ON food_recommendation_traces(guest_id);",
-        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_intent ON food_recommendation_traces(intent);",
-        "CREATE INDEX IF NOT EXISTS ix_food_recommendation_traces_created_at ON food_recommendation_traces(created_at);",
     ]
     
     with engine.connect() as conn:

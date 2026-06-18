@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.db.models import Message, ConversationSummary
+from app.db.models import Message
 from datetime import datetime
 
 class MemoryService:
@@ -13,10 +13,6 @@ class MemoryService:
         """
         messages = self.db.query(Message).filter(Message.conversation_id == conversation_id).order_by(Message.created_at.desc()).limit(limit).all()
         return list(reversed(messages))
-
-    def get_conversation_summary(self, conversation_id: str):
-        summary = self.db.query(ConversationSummary).filter(ConversationSummary.conversation_id == conversation_id).order_by(ConversationSummary.generated_at.desc()).first()
-        return summary.summary if summary else ""
 
     def get_long_term_memory(self, user_id: str, query: str):
         # TODO: Cần nhúng query (embed), tìm kiếm trong Qdrant để lấy các fact liên quan

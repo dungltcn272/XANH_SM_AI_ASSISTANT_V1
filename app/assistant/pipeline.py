@@ -134,32 +134,8 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
             # Gửi message_id về cho frontend
             yield f'data: {{"message_id": "{msg.id}"}}\n\n'
             
-            # Log request with metrics
-            try:
-                from app.core.config import settings
-                req_log = RagRequestLog(
-                    conversation_id=conversation_id,
-                    original_query=question,
-                    rewritten_query=rewritten_query or question,  # Use original query if rewrite failed
-                    final_answer=final_answer.strip(),
-                    search_latency_ms=metrics.get("search_latency_ms", 0),
-                    generation_latency_ms=metrics.get("generation_latency_ms", 0),
-                    total_latency_ms=metrics.get("total_latency_ms", 0),
-                    rewrite_latency_ms=metrics.get("rewrite_latency_ms", 0),
-                    classification_latency_ms=metrics.get("classification_latency_ms", 0),
-                    expansion_latency_ms=metrics.get("expansion_latency_ms", 0),
-                    rerank_latency_ms=metrics.get("rerank_latency_ms", 0),
-                    total_tokens=metrics.get("total_tokens", 0),
-                    cost_usd=metrics.get("cost_usd", 0.0),
-                    blocked_by_guardrail=is_blocked,
-                    intent=metrics.get("intent", "rag")
-                )
-                new_db.add(req_log)
-                new_db.commit()
-                log_info("CHAT", f"Saved request log with metrics - Latency: {metrics.get('total_latency_ms', 0):.0f}ms (Rewrite: {metrics.get('rewrite_latency_ms', 0):.0f}ms, Classify: {metrics.get('classification_latency_ms', 0):.0f}ms, Expand: {metrics.get('expansion_latency_ms', 0):.0f}ms, Search: {metrics.get('search_latency_ms', 0):.0f}ms, Rerank: {metrics.get('rerank_latency_ms', 0):.0f}ms, Gen: {metrics.get('generation_latency_ms', 0):.0f}ms), Chunks: {metrics.get('num_chunks_before_expansion', 0)}, ContextLen: {metrics.get('compressed_context_len', 0)}, Tokens: {metrics.get('total_tokens', 0)}, Cost: ${metrics.get('cost_usd', 0):.6f}")
-            except Exception as e:
-                log_warn("CHAT", f"Failed to log request: {e}")
-                new_db.rollback()
+            # The request logs (RAG, Food, Basic) are now saved locally by their respective chains.
+            log_info("CHAT", f"Finished pipeline execution for conversation: {conversation_id}, Intent: {metrics.get('intent', 'unknown')}")
     finally:
         new_db.close()
         try:

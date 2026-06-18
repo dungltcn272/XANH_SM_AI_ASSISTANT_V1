@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import re
@@ -11,7 +11,7 @@ from app.assistant.events import sse_pipeline_step, stream_plain_answer
 from app.core.logger import log_warn
 from app.rag.classifier import XanhSMClassifier
 from app.rag.gateway import XanhSMGateway
-
+from app.assistant.trace_store import save_basic_request_log
 
 class XanhSMAssistantOrchestrator:
     """
@@ -86,7 +86,14 @@ class XanhSMAssistantOrchestrator:
         yield sse_pipeline_step("gateway_safety", "Đang kiểm tra an toàn nội dung...", 0.06)
         safety_res = self.gateway.safety_precheck(normalized_query)
         if not safety_res["safe"]:
-            yield from stream_plain_answer(self._gateway_refusal_message(safety_res))
+            refusal_msg = self._gateway_refusal_message(safety_res)
+            yield from stream_plain_answer(refusal_msg)
+            save_basic_request_log(
+                conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
+                original_query=query, rewritten_query=normalized_query,
+                intent="sensitive", final_answer=refusal_msg,
+                total_latency_ms=(time.time() - t_start) * 1000
+            )
             yield "data: [DONE]\n\n"
             return
 
@@ -98,6 +105,12 @@ class XanhSMAssistantOrchestrator:
                 metrics["intent"] = "faq"
                 metrics["rewritten_query"] = normalized_query
                 yield from stream_plain_answer(hit_res["answer"])
+                save_basic_request_log(
+                    conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
+                    original_query=query, rewritten_query=normalized_query,
+                    intent="faq", final_answer=hit_res["answer"],
+                    total_latency_ms=metrics["total_latency_ms"]
+                )
                 yield f'data: {json.dumps({"sources": hit_res.get("citations", [])})}\n\n'
                 yield f'data: {json.dumps({"metrics": metrics, "step": "cache-hit"})}\n\n'
                 yield "data: [DONE]\n\n"
@@ -157,6 +170,12 @@ class XanhSMAssistantOrchestrator:
             )
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
             yield from stream_plain_answer(refusal_msg)
+            save_basic_request_log(
+                conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
+                original_query=query, rewritten_query=rewritten_query,
+                intent=intent, final_answer=refusal_msg,
+                total_latency_ms=metrics["total_latency_ms"]
+            )
             yield f'data: {json.dumps({"metrics": metrics, "step": "sensitive"})}\n\n'
             yield "data: [DONE]\n\n"
             return
@@ -171,6 +190,12 @@ class XanhSMAssistantOrchestrator:
                 )
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
             yield from stream_plain_answer(answer)
+            save_basic_request_log(
+                conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
+                original_query=query, rewritten_query=rewritten_query,
+                intent=intent, final_answer=answer,
+                total_latency_ms=metrics["total_latency_ms"]
+            )
             yield f'data: {json.dumps({"metrics": metrics, "step": "small-talk"})}\n\n'
             yield "data: [DONE]\n\n"
             return
@@ -182,12 +207,22 @@ class XanhSMAssistantOrchestrator:
                 metrics["intent"] = "faq"
                 metrics["rewritten_query"] = rewritten_query
                 yield from stream_plain_answer(hit_res["answer"])
+                save_basic_request_log(
+                    conversation_id=conversation_id, user_id=user_id, guest_id=guest_id,
+                    original_query=query, rewritten_query=rewritten_query,
+                    intent="faq", final_answer=hit_res["answer"],
+                    total_latency_ms=metrics["total_latency_ms"]
+                )
                 yield f'data: {json.dumps({"sources": hit_res.get("citations", [])})}\n\n'
                 yield f'data: {json.dumps({"metrics": metrics, "step": "cache-hit"})}\n\n'
                 yield "data: [DONE]\n\n"
                 return
 
         yield from self.rag_chain.stream(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            original_query=query,
             rewritten_query=rewritten_query,
             normalized_query=normalized_query,
             expanded_queries=expanded_queries,

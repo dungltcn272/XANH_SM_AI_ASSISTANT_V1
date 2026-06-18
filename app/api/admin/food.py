@@ -4,7 +4,7 @@ from sqlalchemy import desc
 from typing import Any
 
 from app.db.database import get_db
-from app.db.models import FoodRecommendationTrace
+from app.db.models import FoodRequestLog
 
 router = APIRouter()
 
@@ -14,10 +14,10 @@ def get_food_traces(
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db)
 ) -> dict[str, Any]:
-    total = db.query(FoodRecommendationTrace).count()
+    total = db.query(FoodRequestLog).count()
     traces = (
-        db.query(FoodRecommendationTrace)
-        .order_by(desc(FoodRecommendationTrace.created_at))
+        db.query(FoodRequestLog)
+        .order_by(desc(FoodRequestLog.created_at))
         .offset(skip)
         .limit(limit)
         .all()
