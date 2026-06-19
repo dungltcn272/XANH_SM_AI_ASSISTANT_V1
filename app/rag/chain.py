@@ -9,10 +9,11 @@ from app.assistant.events import sse_pipeline_step
 from app.core.config import settings as config
 from app.core.llm import get_llm_client
 from app.core.logger import log_warn, log_error
-from app.prompts import RAG_ANSWER_SYSTEM_PROMPT, RAG_ANSWER_USER_PROMPT_TEMPLATE
+from app.prompts import RAG_ANSWER_SYSTEM_PROMPT
 from app.rag.hybrid_search import XanhSMHybridSearch
 from app.rag.reranker import XanhSMReranker
 from app.rag.trace_store import save_rag_request_log
+from app.memory.context_builder import ContextBuilder
 
 
 class RagAnswerChain:
@@ -82,15 +83,23 @@ class RagAnswerChain:
             })
         return citations
 
-    def _build_prompt_messages(self, query: str, context_docs: list[Any], chat_history: list[dict[str, str]] | None = None):
+    def _build_prompt_messages(
+        self,
+        query: str,
+        context_docs: list[Any],
+        chat_history: list[dict[str, str]] | None = None,
+        food_context: dict[str, Any] | None = None,
+        assistant_context: dict[str, Any] | None = None,
+    ):
         compressed_context = self._compress_context(context_docs)
-        messages = [{"role": "system", "content": RAG_ANSWER_SYSTEM_PROMPT.format(context=compressed_context)}]
-        history_messages = []
-        for turn in (chat_history or [])[-6:]:
-            if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
-                history_messages.append({"role": turn["role"], "content": turn["content"]})
-        messages.extend(history_messages)
-        messages.append({"role": "user", "content": RAG_ANSWER_USER_PROMPT_TEMPLATE.format(query=query)})
+        messages = ContextBuilder.build_rag_messages(
+            system_prompt=RAG_ANSWER_SYSTEM_PROMPT,
+            query=query,
+            chat_history=chat_history or [],
+            compressed_context=compressed_context,
+            food_context=food_context,
+            assistant_context=assistant_context,
+        )
         return messages, compressed_context
 
     def select_retrieval_strategy(self, query: str) -> str:
@@ -111,6 +120,8 @@ class RagAnswerChain:
         t_start: float,
         bypass_cache: bool = False,
         is_deep_search: bool = False,
+        food_context: dict[str, Any] | None = None,
+        assistant_context: dict[str, Any] | None = None,
     ):
         def finalize_generation(final_answer: str, top_docs: list[Any], messages: list[dict[str, str]], retrieved_docs: list[Any], reranked_docs: list[Any], expanded_docs: list[Any]):
             est_p = len(" ".join([m["content"] for m in messages])) // 4
@@ -169,6 +180,8 @@ class RagAnswerChain:
                 query=rewritten_query,
                 context_docs=expanded_docs,
                 chat_history=chat_history,
+                food_context=food_context,
+                assistant_context=assistant_context,
             )
             metrics["compressed_context_len"] = len(compressed_context)
 

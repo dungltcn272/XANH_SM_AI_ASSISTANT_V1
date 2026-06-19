@@ -21,6 +21,16 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
     except Exception as exc:
         log_warn("CHAT", f"Failed to load food profile context: {exc}")
         food_context = None
+    try:
+        assistant_context = memory_service.build_assistant_context(
+            user_id=user_id if entity_type == "user" else None,
+            guest_id=user_id if entity_type == "guest" else None,
+            conversation_id=conversation_id,
+            query=question,
+        )
+    except Exception as exc:
+        log_warn("CHAT", f"Failed to load assistant memory context: {exc}")
+        assistant_context = None
     
     # Close database session immediately to release PostgreSQL/SQLite connection,
     # preventing socket conflicts with Qdrant/OpenAI and connection hogging during RAG
@@ -56,6 +66,7 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
         image_base64=image_base64,
         is_deep_search=is_deep_search,
         food_context=food_context,
+        assistant_context=assistant_context,
         conversation_id=conversation_id,
         user_id=user_id if entity_type == "user" else None,
         guest_id=user_id if entity_type == "guest" else None,
@@ -150,6 +161,17 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
                 model_name=metrics.get('answer_model') or metrics.get('model_name'),
                 cost_usd=metrics.get('cost_usd', 0.0)
             )
+            try:
+                new_memory_service.extract_and_save_facts(
+                    user_id=user_id if entity_type == "user" else None,
+                    guest_id=user_id if entity_type == "guest" else None,
+                    conversation_id=conversation_id,
+                    message_id=msg.id,
+                    content=display_query or question,
+                    candidates=metrics.get("memory_candidates") or [],
+                )
+            except Exception as exc:
+                log_warn("MEMORY", f"Failed to save memory candidates: {exc}")
             
             log_info("CHAT", f"Finished pipeline execution for conversation: {conversation_id}, Intent: {intent_to_save}")
     finally:

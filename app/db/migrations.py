@@ -24,7 +24,66 @@ def run_auto_migrations():
         
         # Xóa các bảng cũ
         "DROP TABLE IF EXISTS system_logs;",
-        "DROP TABLE IF EXISTS conversation_summaries;",
+        """
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            id VARCHAR PRIMARY KEY,
+            user_id VARCHAR,
+            guest_id VARCHAR,
+            display_name VARCHAR,
+            facts_json TEXT,
+            preferences_json TEXT,
+            goals_json TEXT,
+            constraints_json TEXT,
+            profile_stats_json TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_user_profiles_user_id ON user_profiles(user_id);",
+        "CREATE INDEX IF NOT EXISTS ix_user_profiles_guest_id ON user_profiles(guest_id);",
+        "CREATE INDEX IF NOT EXISTS ix_user_profiles_updated_at ON user_profiles(updated_at);",
+        """
+        CREATE TABLE IF NOT EXISTS user_memories (
+            id VARCHAR PRIMARY KEY,
+            user_id VARCHAR,
+            guest_id VARCHAR,
+            conversation_id VARCHAR REFERENCES conversations(id),
+            message_id VARCHAR REFERENCES messages(id),
+            scope VARCHAR DEFAULT 'general',
+            memory_type VARCHAR DEFAULT 'fact',
+            content TEXT NOT NULL,
+            confidence FLOAT DEFAULT 0,
+            status VARCHAR DEFAULT 'active',
+            source VARCHAR DEFAULT 'nlu',
+            memory_metadata_json TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_user_id ON user_memories(user_id);",
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_guest_id ON user_memories(guest_id);",
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_conversation_id ON user_memories(conversation_id);",
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_message_id ON user_memories(message_id);",
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_scope ON user_memories(scope);",
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_memory_type ON user_memories(memory_type);",
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_status ON user_memories(status);",
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_created_at ON user_memories(created_at);",
+        "CREATE INDEX IF NOT EXISTS ix_user_memories_updated_at ON user_memories(updated_at);",
+        """
+        CREATE TABLE IF NOT EXISTS conversation_summaries (
+            id VARCHAR PRIMARY KEY,
+            conversation_id VARCHAR UNIQUE REFERENCES conversations(id),
+            user_id VARCHAR,
+            guest_id VARCHAR,
+            summary_json TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_conversation_summaries_conversation_id ON conversation_summaries(conversation_id);",
+        "CREATE INDEX IF NOT EXISTS ix_conversation_summaries_user_id ON conversation_summaries(user_id);",
+        "CREATE INDEX IF NOT EXISTS ix_conversation_summaries_guest_id ON conversation_summaries(guest_id);",
+        "CREATE INDEX IF NOT EXISTS ix_conversation_summaries_updated_at ON conversation_summaries(updated_at);",
         
         # Bảng mới: error_logs
         """

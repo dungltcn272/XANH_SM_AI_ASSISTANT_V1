@@ -56,6 +56,7 @@ class XanhSMAssistantOrchestrator:
         image_base64: str | None = None,
         is_deep_search: bool = False,
         food_context: dict[str, Any] | None = None,
+        assistant_context: dict[str, Any] | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         guest_id: str | None = None,
@@ -116,6 +117,7 @@ class XanhSMAssistantOrchestrator:
             chat_history,
             image_base64=image_base64,
             food_context=food_context,
+            assistant_context=assistant_context,
         )
         metrics["rewrite_latency_ms"] = (time.time() - t_nlu_start) * 1000
 
@@ -131,7 +133,9 @@ class XanhSMAssistantOrchestrator:
         metrics["nlu_fast_path"] = bool(nlu_res.get("fast_path"))
         metrics["nlu_fast_path_reason"] = nlu_res.get("fast_path_reason")
         metrics["food_user_context"] = food_context
+        metrics["assistant_memory_context"] = assistant_context
         metrics["nlu_missing_fields"] = nlu_res.get("missing_fields", [])
+        metrics["memory_candidates"] = nlu_res.get("memory_candidates", [])
         metrics["total_tokens"] += nlu_usage.get("prompt_tokens", 0) + nlu_usage.get("completion_tokens", 0)
         metrics["cost_usd"] += self._calculate_llm_cost(
             nlu_usage.get("prompt_tokens", 0),
@@ -146,6 +150,8 @@ class XanhSMAssistantOrchestrator:
                 t_start=t_start,
                 nlu_food_slots=nlu_res.get("food_slots"),
                 food_context=food_context,
+                assistant_context=assistant_context,
+                chat_history=chat_history,
                 conversation_id=conversation_id,
                 user_id=user_id,
                 guest_id=guest_id,
@@ -203,6 +209,8 @@ class XanhSMAssistantOrchestrator:
             t_start=t_start,
             bypass_cache=bypass_cache,
             is_deep_search=is_deep_search,
+            food_context=food_context,
+            assistant_context=assistant_context,
         )
 
     def run_debug(self, query: str, chat_history: list[dict[str, str]] | None = None) -> dict[str, Any]:

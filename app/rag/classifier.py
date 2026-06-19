@@ -5,6 +5,7 @@ from app.core.config import settings as config
 from app.core.llm import get_llm_client, has_api_key_for_model, select_model_for_multimodal
 from app.prompts import UNIFIED_NLU_PROMPT
 from app.core.logger import log_warn
+from app.memory.context_builder import ContextBuilder
 
 class XanhSMClassifier:
     """
@@ -20,6 +21,7 @@ class XanhSMClassifier:
         chat_history: List[Dict[str, str]] = None,
         image_base64: str = None,
         food_context: Dict[str, Any] | None = None,
+        assistant_context: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         """
         Unified 3-in-1 NLU Analyzer:
@@ -51,6 +53,7 @@ class XanhSMClassifier:
                 "expanded_queries": [query],
                 "safety_blocked": True,
                 "safety_reason": safety_res["reason"],
+                "memory_candidates": [],
                 "usage": {"prompt_tokens": 0, "completion_tokens": 0},
                 "fast_path": True,
                 "fast_path_reason": "safety_rule"
@@ -63,6 +66,7 @@ class XanhSMClassifier:
                 "rewritten_query": query,
                 "intent": "small-talk",
                 "expanded_queries": [query],
+                "memory_candidates": [],
                 "usage": {"prompt_tokens": 0, "completion_tokens": 0},
                 "fast_path": True,
                 "fast_path_reason": "small_talk_rule"
@@ -71,38 +75,20 @@ class XanhSMClassifier:
         # If LLM is available, use it for NLU
         if llm_available:
             try:
-                history_str = ""
-                if chat_history:
-                    # Keep only last 3 turns to keep context compact and focus NLU
-                    for turn in chat_history[-3:]:
-                        role_tag = "User" if turn.get("role") == "user" else "Assistant"
-                        content = turn.get("content", "")
-                        if len(content) > 300:
-                            content = content[:300] + "... [truncated]"
-                        history_str += f"{role_tag}: {content}\n"
-
                 client = get_llm_client(model_to_use)
-                    
-                food_context_str = json.dumps(food_context or {}, ensure_ascii=False, indent=2)
-                user_prompt = (
-                    f"Lịch sử hội thoại:\n{history_str}\n"
-                    f"Food user context từ DB (field chưa biết là null/[]):\n{food_context_str}\n"
-                    f"Câu hỏi mới nhất: '{query}'\nJSON kết quả:"
+                
+                messages = ContextBuilder.build_nlu_messages(
+                    system_prompt=UNIFIED_NLU_PROMPT,
+                    query=query,
+                    chat_history=chat_history or [],
+                    food_context=food_context,
+                    assistant_context=assistant_context,
+                    image_base64=image_base64 if include_image else None
                 )
-                if image_base64 and include_image:
-                    user_content = [
-                        {"type": "text", "text": user_prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
-                    ]
-                else:
-                    user_content = user_prompt
 
                 response = client.chat.completions.create(
                     model=model_to_use,
-                    messages=[
-                        {"role": "system", "content": UNIFIED_NLU_PROMPT},
-                        {"role": "user", "content": user_content}
-                    ],
+                    messages=messages,
                     temperature=0.0,
                     max_tokens=650,
                     response_format={"type": "json_object"}
@@ -124,6 +110,9 @@ class XanhSMClassifier:
                 user_context = result.get("user_context")
                 missing_fields = result.get("missing_fields") or []
                 ui_form = result.get("ui_form")
+                memory_candidates = result.get("memory_candidates") or []
+                if not isinstance(memory_candidates, list):
+                    memory_candidates = []
                 
                 # Expansion is now handled locally to save LLM tokens
                 expanded = [rewritten_query]
@@ -136,6 +125,7 @@ class XanhSMClassifier:
                     "user_context": user_context,
                     "missing_fields": missing_fields,
                     "ui_form": ui_form,
+                    "memory_candidates": memory_candidates,
                     "usage": {
                         "prompt_tokens": response.usage.prompt_tokens,
                         "completion_tokens": response.usage.completion_tokens
@@ -172,6 +162,7 @@ class XanhSMClassifier:
                 "optional_fields": ["budget", "taste", "liked_foods", "disliked_foods"],
                 "map_required": True,
             } if intent == "food_recommendation" else None,
+            "memory_candidates": [],
             "usage": {"prompt_tokens": 0, "completion_tokens": 0},
             "fast_path": True,
             "fast_path_reason": "rule_based_fallback"

@@ -30,6 +30,8 @@ class FoodRecommendationChain:
         t_start: float,
         nlu_food_slots: dict[str, Any] | None = None,
         food_context: dict[str, Any] | None = None,
+        assistant_context: dict[str, Any] | None = None,
+        chat_history: list[dict[str, str]] | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         guest_id: str | None = None,
@@ -176,7 +178,14 @@ class FoodRecommendationChain:
 
         t_food_answer_start = time.time()
         metrics["answer_model"] = config.FOOD_ANSWER_MODEL
-        answer_generator = stream_food_answer_with_llm(items, query, slots, food_context)
+        answer_generator = stream_food_answer_with_llm(
+            items,
+            query,
+            slots,
+            food_context,
+            chat_history,
+            assistant_context=assistant_context,
+        )
         first_token_received = False
         answer_meta = None
         for chunk in answer_generator:

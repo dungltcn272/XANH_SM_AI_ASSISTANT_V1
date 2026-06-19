@@ -60,6 +60,47 @@ class UserReview(Base):
     admin_note = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=get_vn_time)
 
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+    id = Column(String, primary_key=True, default=lambda: generate_id("profile"))
+    user_id = Column(String, nullable=True, index=True)
+    guest_id = Column(String, nullable=True, index=True)
+    display_name = Column(String, nullable=True)
+    facts_json = Column(Text, nullable=True)
+    preferences_json = Column(Text, nullable=True)
+    goals_json = Column(Text, nullable=True)
+    constraints_json = Column(Text, nullable=True)
+    profile_stats_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
+    updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time, index=True)
+
+class UserMemory(Base):
+    __tablename__ = "user_memories"
+    id = Column(String, primary_key=True, default=lambda: generate_id("mem"))
+    user_id = Column(String, nullable=True, index=True)
+    guest_id = Column(String, nullable=True, index=True)
+    conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True, index=True)
+    message_id = Column(String, ForeignKey("messages.id"), nullable=True, index=True)
+    scope = Column(String, default="general", index=True)
+    memory_type = Column(String, default="fact", index=True)
+    content = Column(Text, nullable=False)
+    confidence = Column(Float, default=0.0)
+    status = Column(String, default="active", index=True)
+    source = Column(String, default="nlu")
+    memory_metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
+    updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time, index=True)
+
+class ConversationSummary(Base):
+    __tablename__ = "conversation_summaries"
+    id = Column(String, primary_key=True, default=lambda: generate_id("summary"))
+    conversation_id = Column(String, ForeignKey("conversations.id"), unique=True, index=True)
+    user_id = Column(String, nullable=True, index=True)
+    guest_id = Column(String, nullable=True, index=True)
+    summary_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
+    updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time, index=True)
+
 class RagRequestLog(Base):
     __tablename__ = "rag_request_logs"
     id = Column(String, primary_key=True, default=lambda: generate_id("ragreq"))
