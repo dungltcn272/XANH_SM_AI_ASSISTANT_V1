@@ -20,6 +20,8 @@ class RagAnswerChain:
     """RAG capability chain: retrieve, rerank, expand context, synthesize answer."""
 
     IMAGE_MARKDOWN_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)\)')
+    RAG_CARD_START = "[[RAG_CARD"
+    RAG_CARD_END = "]]"
 
     def __init__(self, cache: Any = None):
         self.search_engine = XanhSMHybridSearch()
@@ -82,6 +84,92 @@ class RagAnswerChain:
                 "images": self._extract_images_from_doc(doc),
             })
         return citations
+
+    def _allowed_media_urls(self, docs: list[Any]) -> set[str]:
+        urls: set[str] = set()
+        for doc in docs:
+            meta = doc.metadata or {}
+            for key in ("url", "source"):
+                value = (meta.get(key) or "").strip()
+                if value.startswith(("http://", "https://")):
+                    urls.add(value)
+            for image in self._extract_images_from_doc(doc):
+                if image.get("url"):
+                    urls.add(image["url"])
+                if image.get("page_url", "").startswith(("http://", "https://")):
+                    urls.add(image["page_url"])
+        return urls
+
+    def _sanitize_rag_card(self, raw_card: Any, allowed_urls: set[str]) -> dict[str, Any] | None:
+        if not isinstance(raw_card, dict):
+            return None
+        title = str(raw_card.get("title") or "").strip()
+        if not title:
+            return None
+        card_type = str(raw_card.get("type") or "info").strip().lower()
+        if card_type not in {"news", "vehicle", "info"}:
+            card_type = "info"
+        images = raw_card.get("images") if isinstance(raw_card.get("images"), list) else []
+        clean_images = [
+            str(url).strip()
+            for url in images
+            if str(url).strip() in allowed_urls
+        ][:8]
+        image_url = str(raw_card.get("image_url") or "").strip()
+        if image_url not in allowed_urls:
+            image_url = clean_images[0] if clean_images else ""
+        elif image_url and image_url not in clean_images:
+            clean_images.insert(0, image_url)
+        link = str(raw_card.get("url") or "").strip()
+        if link and link not in allowed_urls:
+            link = ""
+        metadata = raw_card.get("metadata") if isinstance(raw_card.get("metadata"), dict) else {}
+        return {
+            "type": card_type,
+            "title": title[:180],
+            "description": str(raw_card.get("description") or "").strip()[:360],
+            "image_url": image_url or None,
+            "images": clean_images,
+            "url": link or None,
+            "metadata": metadata,
+        }
+
+    def _parse_rag_card_marker(self, marker: str, allowed_urls: set[str]) -> dict[str, Any] | None:
+        raw = marker.strip()
+        if raw.startswith(self.RAG_CARD_START):
+            raw = raw[len(self.RAG_CARD_START):]
+        if raw.endswith(self.RAG_CARD_END):
+            raw = raw[: -len(self.RAG_CARD_END)]
+        raw = raw.strip()
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        return self._sanitize_rag_card(parsed, allowed_urls)
+
+    def _split_rag_card_events(self, text: str, buffer: str, allowed_urls: set[str]) -> tuple[list[dict[str, Any]], str]:
+        buffer += text
+        events: list[dict[str, Any]] = []
+        while buffer:
+            start = buffer.find(self.RAG_CARD_START)
+            if start == -1:
+                safe_len = max(0, len(buffer) - len(self.RAG_CARD_START) + 1)
+                if safe_len:
+                    events.append({"type": "text", "text": buffer[:safe_len]})
+                    buffer = buffer[safe_len:]
+                break
+            if start > 0:
+                events.append({"type": "text", "text": buffer[:start]})
+                buffer = buffer[start:]
+            end = buffer.find(self.RAG_CARD_END)
+            if end == -1:
+                break
+            marker = buffer[: end + len(self.RAG_CARD_END)]
+            buffer = buffer[end + len(self.RAG_CARD_END):]
+            card = self._parse_rag_card_marker(marker, allowed_urls)
+            if card:
+                events.append({"type": "rag_card", "card": card})
+        return events, buffer
 
     def _build_prompt_messages(
         self,
@@ -176,6 +264,7 @@ class RagAnswerChain:
 
             yield sse_pipeline_step("context_expansion", "Đang gọi thêm tài liệu đầy đủ...", 0.64, top_docs=len(reranked_docs))
             expanded_docs = self.search_engine.expand_context(reranked_docs)
+            allowed_media_urls = self._allowed_media_urls(expanded_docs)
             messages, compressed_context = self._build_prompt_messages(
                 query=rewritten_query,
                 context_docs=expanded_docs,
@@ -199,6 +288,8 @@ class RagAnswerChain:
             )
             first_token_received = False
             stream_failed = False
+            rag_card_buffer = ""
+            rag_cards: list[dict[str, Any]] = []
             try:
                 for chunk in response:
                     if chunk.choices[0].delta.content:
@@ -207,8 +298,14 @@ class RagAnswerChain:
                             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                             first_token_received = True
                         text = chunk.choices[0].delta.content
-                        final_answer += text
-                        yield f"data: {text.replace('\n', '\ndata: ')}\n\n"
+                        events, rag_card_buffer = self._split_rag_card_events(text, rag_card_buffer, allowed_media_urls)
+                        for event in events:
+                            if event["type"] == "text":
+                                final_answer += event["text"]
+                                yield f"data: {event['text'].replace('\n', '\ndata: ')}\n\n"
+                            elif event["type"] == "rag_card":
+                                rag_cards.append(event["card"])
+                                yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
             except Exception as stream_error:
                 stream_failed = True
                 log_warn("CHAT", f"Streaming generation interrupted: {stream_error}")
@@ -217,6 +314,18 @@ class RagAnswerChain:
                     error_notice = "\n\n*(Hệ thống bị gián đoạn kết nối, câu trả lời có thể chưa hoàn chỉnh. Vui lòng thử lại)*"
                     final_answer += error_notice
                     yield f"data: {error_notice.replace('\n', '\ndata: ')}\n\n"
+
+            if rag_card_buffer:
+                events, _ = self._split_rag_card_events("", rag_card_buffer + self.RAG_CARD_END if self.RAG_CARD_START in rag_card_buffer else rag_card_buffer, allowed_media_urls)
+                for event in events:
+                    if event["type"] == "text":
+                        final_answer += event["text"]
+                        yield f"data: {event['text'].replace('\n', '\ndata: ')}\n\n"
+                    elif event["type"] == "rag_card":
+                        rag_cards.append(event["card"])
+                        yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
+            if rag_cards:
+                metrics["rag_cards"] = rag_cards
 
             if stream_failed and not final_answer:
                 log_warn("CHAT", "Retrying generation once without streaming.")

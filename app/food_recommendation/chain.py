@@ -9,7 +9,6 @@ from app.core.logger import log_info
 from app.food_recommendation.answer_llm import stream_food_answer_with_llm
 from app.food_recommendation.payloads import (
     food_location_payload,
-    food_recommendations_payload,
     format_food_answer,
     missing_location_answer,
 )
@@ -192,20 +191,30 @@ class FoodRecommendationChain:
             if chunk["type"] == "chunk":
                 if not first_token_received:
                     metrics["ttft_ms"] = (time.time() - t_food_answer_start) * 1000
+                    metrics["generation_latency_ms"] = metrics["ttft_ms"]
+                    metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                     first_token_received = True
                 text = chunk["text"]
                 yield f"data: {text.replace('\n', '\ndata: ')}\n\n"
+            elif chunk["type"] == "food_card":
+                if not first_token_received:
+                    metrics["ttft_ms"] = (time.time() - t_food_answer_start) * 1000
+                    metrics["generation_latency_ms"] = metrics["ttft_ms"]
+                    metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+                    first_token_received = True
+                yield f'data: {json.dumps({"type": "food_card", "food_card": chunk["card"]}, ensure_ascii=False)}\n\n'
             elif chunk["type"] == "done":
                 answer_meta = chunk["answer_meta"]
                 
-        metrics["generation_latency_ms"] = (time.time() - t_food_answer_start) * 1000
+        metrics["generation_total_latency_ms"] = (time.time() - t_food_answer_start) * 1000
                 
         if not first_token_received:
             metrics["generation_latency_ms"] = (time.time() - t_food_answer_start) * 1000
+            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
 
+        answer_meta = answer_meta or {"answer": format_food_answer(items, slots.category), "food_cards": None, "llm_used": False, "error": "empty_answer_meta"}
         metrics["food_answer_llm_used"] = bool(answer_meta.get("llm_used"))
         metrics["food_answer_llm_error"] = answer_meta.get("error")
-        metrics["total_latency_ms"] = (time.time() - t_start) * 1000
         trace_id = save_food_request_log(
             conversation_id=conversation_id,
             user_id=user_id,
@@ -220,15 +229,13 @@ class FoodRecommendationChain:
         )
         metrics["food_trace_id"] = trace_id
         answer = answer_meta.get("answer") or format_food_answer(items, slots.category)
-        
-        # We already streamed the text, but if it failed or returned empty we might need fallback
-        if not answer_meta.get("llm_used"):
-            yield from stream_plain_answer(answer)
-            
+        food_cards = answer_meta.get("food_cards")
+
         if items:
-            payload = food_recommendations_payload(items, slots.category, query, answer_meta=answer_meta, trace_id=trace_id)
-            metrics["food_recommendations"] = payload
-            yield f'data: {json.dumps({"type": "food_recommendation_result", "answer": answer, "food_recommendations": payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
+            if isinstance(food_cards, dict):
+                food_cards["trace_id"] = trace_id
+            metrics["food_recommendations"] = food_cards
+            yield f'data: {json.dumps({"type": "food_recommendation_result", "answer": answer, "food_cards": food_cards, "food_recommendations": food_cards, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
         else:
             location_payload = food_location_payload(query)
             yield f'data: {json.dumps({"type": "food_no_result", "answer": answer, "ui_form": location_payload, "food_location_request": location_payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'

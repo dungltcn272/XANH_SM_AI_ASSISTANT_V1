@@ -142,8 +142,8 @@ class ContextBuilder:
             f"{ContextBuilder._json_block(food_request)}\n\n"
             "RECOMMENDED_ITEMS:\n"
             f"{ContextBuilder._json_block(recommended_items)}\n\n"
-            "Yêu cầu: viết câu trả lời tự nhiên cho người dùng. "
-            "Khi nhắc item nào trong RECOMMENDED_ITEMS, bắt buộc chèn `::FOOD_CARD[item_id]`."
+            "Yêu cầu: stream câu trả lời tự nhiên. Khi muốn hiển thị card món/quán, "
+            "chèn marker `[[FOOD_CARD {...}]]` theo đúng schema trong system prompt."
         )
 
         return [

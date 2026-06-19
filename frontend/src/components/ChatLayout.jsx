@@ -7,7 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown, Search, MapPin, Clock3, Star, Utensils, Heart, DollarSign, ChevronRight, LocateFixed } from 'lucide-react';
+import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown, Search, MapPin, Clock3, Star, Utensils, Heart, DollarSign, ChevronLeft, ChevronRight, LocateFixed } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -71,6 +71,170 @@ const MessageCard = ({ icon, title, desc, image, link, index }) => {
       )}
     </CardWrapper>
   );
+};
+
+const RagMediaCard = ({ card }) => {
+  const [activeImage, setActiveImage] = useState(0);
+  const images = card.images?.length ? card.images : (card.image_url ? [card.image_url] : []);
+  const imageLabels = card.metadata?.image_labels || [];
+  const Icon = card.type === 'vehicle' ? Car : card.type === 'news' ? Newspaper : Info;
+  const Wrapper = card.url ? 'a' : 'div';
+  const wrapperProps = card.url ? { href: card.url, target: '_blank', rel: 'noopener noreferrer' } : {};
+  const imageIndex = images.length ? Math.min(activeImage, images.length - 1) : 0;
+  const goPrev = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveImage((value) => (value - 1 + images.length) % images.length);
+  };
+  const goNext = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveImage((value) => (value + 1) % images.length);
+  };
+
+  return (
+    <Wrapper
+      {...wrapperProps}
+      className="block min-w-[280px] sm:min-w-0 rounded-3xl border border-outline-variant/20 bg-white/78 dark:bg-white/[0.04] overflow-hidden hover:border-[#00c897]/40 transition-colors shadow-[0_18px_50px_rgba(0,0,0,0.06)]"
+    >
+      {images.length > 0 ? (
+        <div className="relative bg-gradient-to-br from-[#bff4ed] to-[#22bdb9]">
+          <img
+            src={images[imageIndex]}
+            alt={card.title || 'Xanh SM'}
+            className="w-full h-52 md:h-64 object-contain p-4"
+            loading="lazy"
+          />
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={goPrev}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/92 text-[#0b2a45] shadow-md flex items-center justify-center hover:bg-white"
+                aria-label="Ảnh trước"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/92 text-[#0b2a45] shadow-md flex items-center justify-center hover:bg-white"
+                aria-label="Ảnh sau"
+              >
+                <ChevronRight size={20} />
+              </button>
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-3 flex items-center gap-1.5">
+                {images.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setActiveImage(idx);
+                    }}
+                    className={`h-1.5 rounded-full transition-all ${idx === imageIndex ? 'w-8 bg-white' : 'w-2 bg-white/55'}`}
+                    aria-label={`Xem ảnh ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="h-32 flex items-center justify-center bg-[#00c897]/10 text-[#00a884]">
+          <Icon size={34} />
+        </div>
+      )}
+      <div className="p-4">
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide font-black text-[#00a884] mb-2">
+          <Icon size={14} />
+          {card.type === 'vehicle' ? 'Xe điện' : card.type === 'news' ? 'Tin tức' : 'Thông tin'}
+          {images.length > 1 && <span className="normal-case tracking-normal text-on-surface-variant/60">{imageIndex + 1}/{images.length}</span>}
+        </div>
+        <h4 className="font-black text-on-surface leading-snug line-clamp-2">{card.title}</h4>
+        {card.description && (
+          <p className="mt-2 text-sm text-on-surface-variant/85 leading-relaxed line-clamp-3">{card.description}</p>
+        )}
+        {imageLabels[imageIndex] && (
+          <div className="mt-3 text-sm font-black text-[#00a884]">{imageLabels[imageIndex]}</div>
+        )}
+        {card.metadata?.date && (
+          <div className="mt-3 text-xs font-bold text-on-surface-variant/60">{card.metadata.date}</div>
+        )}
+      </div>
+    </Wrapper>
+  );
+};
+
+const RagCardList = ({ cards }) => {
+  if (!cards?.length) return null;
+  const gridClass = cards.length === 1
+    ? 'grid grid-cols-1 gap-3'
+    : cards.length === 2
+      ? 'grid grid-cols-1 md:grid-cols-2 gap-3'
+      : 'flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1';
+  return (
+    <div className={gridClass}>
+      {cards.map((card, index) => (
+        <div key={`${card.title}-${index}`} className={cards.length > 2 ? 'snap-start' : ''}>
+          <RagMediaCard card={card} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const extractMarkdownImageCards = (content) => {
+  const imageRegex = /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+  const images = [];
+  let match;
+  while ((match = imageRegex.exec(content)) !== null) {
+    images.push({ alt: match[1]?.trim(), url: match[2]?.trim() });
+  }
+  if (images.length < 2) {
+    return { cleanContent: content, cards: [] };
+  }
+
+  const lower = content.toLowerCase();
+  const type = lower.includes('vf') || lower.includes('xe') || lower.includes('màu sắc') || lower.includes('mau sac')
+    ? 'vehicle'
+    : lower.includes('tin tức') || lower.includes('tin tuc')
+      ? 'news'
+      : 'info';
+  const titleMatch = content.match(/#{2,4}\s*([^\n]+)|(?:Hình ảnh|Các màu sắc|Màu sắc)[^\n]*/i);
+  const title = titleMatch?.[1]?.trim() || titleMatch?.[0]?.replace(/^#{2,4}\s*/, '').trim() || (type === 'vehicle' ? 'Hình ảnh xe' : 'Hình ảnh liên quan');
+
+  const lines = content.split('\n');
+  const cleanLines = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (imageRegex.test(line)) {
+      imageRegex.lastIndex = 0;
+      if (cleanLines.length && /^\s*[-*]\s+\S/.test(cleanLines[cleanLines.length - 1])) {
+        cleanLines.pop();
+      }
+      continue;
+    }
+    imageRegex.lastIndex = 0;
+    cleanLines.push(line);
+  }
+
+  return {
+    cleanContent: cleanLines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+    cards: [{
+      type,
+      title,
+      description: type === 'vehicle'
+        ? 'Anh/chị có thể dùng mũi tên để xem các hình ảnh/màu sắc khác nhau.'
+        : 'Anh/chị có thể vuốt hoặc bấm mũi tên để xem các hình ảnh liên quan.',
+      image_url: images[0]?.url,
+      images: images.map((image) => image.url),
+      metadata: {
+        image_labels: images.map((image) => image.alt).filter(Boolean),
+      },
+    }],
+  };
 };
 
 const foodPinIcon = L.divIcon({
@@ -704,7 +868,8 @@ export default function ChatLayout() {
               role: m.role, 
               content: m.content,
               created_at: m.created_at,
-              foodRecommendations: parsedTrace?.food_recommendations
+              foodRecommendations: parsedTrace?.food_recommendations,
+              ragCards: parsedTrace?.rag_cards
             };
           });
           setMessages(formatted);
@@ -748,6 +913,7 @@ export default function ChatLayout() {
       let streamMetrics = null;
       let streamFoodRecommendations = null;
       let streamFoodLocationRequest = null;
+      let streamRagCards = [];
 
       while (true) {
         const { value, done } = await reader.read();
@@ -802,8 +968,24 @@ export default function ChatLayout() {
                     streamSources = parsed.sources;
                     handledAsMetadata = true;
                   } 
+                  if (parsed.rag_card) {
+                    streamRagCards = [...streamRagCards, parsed.rag_card];
+                    handledAsMetadata = true;
+                  }
                   if (parsed.food_recommendations) {
                     streamFoodRecommendations = parsed.food_recommendations;
+                    handledAsMetadata = true;
+                  }
+                  if (parsed.food_card) {
+                    const currentItems = streamFoodRecommendations?.items || [];
+                    streamFoodRecommendations = {
+                      title: streamFoodRecommendations?.title || 'Một vài quán phù hợp gần anh/chị',
+                      subtitle: streamFoodRecommendations?.subtitle || 'AI đang gợi ý từng lựa chọn phù hợp cho anh/chị.',
+                      query: streamFoodRecommendations?.query || userQuery,
+                      trace_id: streamFoodRecommendations?.trace_id,
+                      items: [...currentItems, parsed.food_card],
+                      more_items: streamFoodRecommendations?.more_items || []
+                    };
                     handledAsMetadata = true;
                   }
                   if (parsed.food_location_request) {
@@ -843,6 +1025,9 @@ export default function ChatLayout() {
             newMsgs[newMsgs.length - 1].content = streamReply;
             if (streamSources) {
               newMsgs[newMsgs.length - 1].sources = streamSources;
+            }
+            if (streamRagCards.length) {
+              newMsgs[newMsgs.length - 1].ragCards = streamRagCards;
             }
             // Store metrics if received
             if (streamMetrics) {
@@ -1074,6 +1259,8 @@ export default function ChatLayout() {
   };
 
   const renderContent = (content) => {
+    const extractedMedia = extractMarkdownImageCards(content);
+    const contentForMarkdown = extractedMedia.cleanContent || content;
     // Robust regex to handle optional colons, variable whitespace, and optional link
     const cardRegex = /:::card\s+\[icon:?\s*(.*?)\]\s+\[title:?\s*(.*?)\]\s+\[desc:?\s*(.*?)\](?:\s+\[image:?\s*(.*?)\])?(?:\s+\[link:?\s*(.*?)\])?\s+:::/g;
     const parts = [];
@@ -1081,10 +1268,10 @@ export default function ChatLayout() {
     let match;
     let cardIndex = 1;
 
-    while ((match = cardRegex.exec(content)) !== null) {
+    while ((match = cardRegex.exec(contentForMarkdown)) !== null) {
       // Add text before card
       if (match.index > lastIndex) {
-        parts.push(content.substring(lastIndex, match.index));
+        parts.push(contentForMarkdown.substring(lastIndex, match.index));
       }
       // Add card component
       parts.push(
@@ -1101,21 +1288,26 @@ export default function ChatLayout() {
       lastIndex = cardRegex.lastIndex;
     }
     // Add remaining text
-    if (lastIndex < content.length) {
-      parts.push(content.substring(lastIndex));
+    if (lastIndex < contentForMarkdown.length) {
+      parts.push(contentForMarkdown.substring(lastIndex));
     }
 
     if (parts.length === 0) return (
-      <ReactMarkdown 
-        remarkPlugins={[remarkGfm]}
-        components={markdownComponents}
-      >
-        {content}
-      </ReactMarkdown>
+      <div className="flex flex-col gap-4">
+        {contentForMarkdown && (
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={markdownComponents}
+          >
+            {contentForMarkdown}
+          </ReactMarkdown>
+        )}
+        {extractedMedia.cards.length > 0 && <RagCardList cards={extractedMedia.cards} />}
+      </div>
     );
 
     return (
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-4">
         {parts.map((part, i) => (
           typeof part === 'string' ? (
             <ReactMarkdown 
@@ -1127,6 +1319,7 @@ export default function ChatLayout() {
             </ReactMarkdown>
           ) : part
         ))}
+        {extractedMedia.cards.length > 0 && <RagCardList cards={extractedMedia.cards} />}
       </div>
     );
   };
@@ -1153,9 +1346,9 @@ export default function ChatLayout() {
       />
     ),
     img: (props) => (
-      <div className="my-4 flex flex-col items-center">
+      <div className="my-3 flex flex-col items-center rounded-2xl border border-outline-variant/20 bg-white/70 dark:bg-white/[0.04] p-2">
         <img 
-          className="max-h-[320px] object-contain rounded-2xl border border-primary/10 shadow-md hover:scale-[1.01] transition-transform cursor-zoom-in bg-black/20"
+          className="max-h-64 w-full object-contain rounded-xl cursor-zoom-in bg-surface-container-high/50"
           alt={props.alt || "Hình ảnh từ Xanh SM"}
           onClick={() => window.open(props.src, '_blank')}
           {...stripNode(props)}
@@ -1235,6 +1428,7 @@ export default function ChatLayout() {
                 msg.foodLocationRequest ||
                 msg.foodLocationConfirmed ||
                 msg.foodRecommendations ||
+                msg.ragCards ||
                 (msg.sources && msg.sources.length > 0)
               );
               if (msg.role === 'assistant' && (!hasAssistantPayload || (!msg.content && loading))) return null;
@@ -1339,6 +1533,9 @@ export default function ChatLayout() {
                                   }}
                                   onExplain={(item) => setExplainingFood(item)}
                                 />
+                            )}
+                            {msg.ragCards && (
+                              <RagCardList cards={msg.ragCards} />
                             )}
                           </div>
                         )}
