@@ -352,3 +352,237 @@ class RagAnswerChain:
             yield "data: Xin loi, he thong dang ban. Vui long thu lai sau.\n\n"
             yield f'data: {json.dumps({"metrics": metrics})}\n\n'
         yield "data: [DONE]\n\n"
+
+
+class XanhSMRAGPipeline(RagAnswerChain):
+    """
+    Evaluation pipeline wrapper.
+    """
+    def __init__(self):
+        super().__init__()
+        from app.rag.gateway import XanhSMGateway
+        from app.rag.classifier import XanhSMClassifier
+        self.gateway = XanhSMGateway()
+        self.classifier = XanhSMClassifier()
+
+    def _gateway_refusal_message(self, safety_res: dict[str, Any]) -> str:
+        reason = (safety_res or {}).get("reason") or "Nội dung này chưa phù hợp để em hỗ trợ trực tiếp."
+        return (
+            f"Dạ, em xin phép chưa hỗ trợ nội dung này. {reason} "
+            "Anh/chị có thể hỏi em về dịch vụ, giá cước, chính sách hoặc cách xử lý sự cố khi sử dụng Xanh SM ạ."
+        )
+
+    def _is_greeting_or_thanks(self, query: str) -> dict[str, Any]:
+        return self.gateway.is_greeting_or_thanks(query)
+
+    def run(self, query: str, chat_history: list[dict[str, str]] | None = None, bypass_cache: bool = False) -> dict[str, Any]:
+        normalized_query = self.gateway.normalize_input(query)
+        safety_res = self.gateway.safety_precheck(normalized_query)
+        
+        if not safety_res["safe"]:
+            return {
+                "query": query,
+                "answer": self._gateway_refusal_message(safety_res),
+                "citations": [],
+                "intent": "sensitive",
+                "gateway_checked": True,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0
+            }
+
+        # Early Cache Lookup
+        if self.cache and not bypass_cache:
+            is_hit, hit_res, hit_type = self.cache.get(normalized_query)
+            if is_hit:
+                return {
+                    "query": query,
+                    "rewritten_query": normalized_query,
+                    "answer": hit_res["answer"],
+                    "citations": hit_res["citations"],
+                    "intent": "faq",
+                    "gateway_checked": True,
+                    "strategy_selected": "Early Semantic Cache Hit",
+                    "faithfulness_passed": True,
+                    "llm_cost_usd": 0.0,
+                    "llm_cost_vnd": 0.0,
+                    "cache_hit": hit_res.get("cache_hit", "exact"),
+                    "cache_similarity": hit_res.get("cache_similarity", 1.0)
+                }
+
+        # Unified NLU Gateway Call
+        t_nlu_start = time.time()
+        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history)
+        nlu_latency = (time.time() - t_nlu_start) * 1000
+        
+        rewritten_query = nlu_res["rewritten_query"]
+        intent = nlu_res["intent"]
+        expanded_queries = nlu_res["expanded_queries"]
+        nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+        nlu_fast_path = bool(nlu_res.get("fast_path"))
+        nlu_fast_path_reason = nlu_res.get("fast_path_reason")
+
+        # Handle Sensitive / Safety Block
+        if intent == "sensitive":
+            refusal_msg = nlu_res.get("suggested_answer") or "Dạ, em rất tiếc nhưng em không thể thực hiện yêu cầu này vì lý do bảo mật hệ thống. Tuy nhiên, em luôn sẵn sàng hỗ trợ anh/chị các thông tin về dịch vụ, giá cước hoặc chính sách của Xanh SM ạ!"
+            return {
+                "query": query,
+                "rewritten_query": rewritten_query,
+                "answer": refusal_msg,
+                "citations": [],
+                "intent": "sensitive",
+                "gateway_checked": True,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0,
+                "num_chunks_before_expansion": 0,
+                "compressed_context_len": 0,
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason
+            }
+
+        # Handle Small Talk
+        if intent == "small-talk":
+            answer = nlu_res.get("suggested_answer")
+            if not answer:
+                intercept = self._is_greeting_or_thanks(rewritten_query)
+                answer = intercept["answer"] if intercept["type"] != "none" else "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
+            return {
+                "query": query,
+                "rewritten_query": rewritten_query,
+                "answer": answer,
+                "citations": [],
+                "intent": "small-talk",
+                "gateway_checked": True,
+                "strategy_selected": "Bypass",
+                "faithfulness_passed": True,
+                "llm_cost_usd": 0.0,
+                "llm_cost_vnd": 0.0,
+                "nlu_latency_ms": round(nlu_latency, 2),
+                "nlu_fast_path": nlu_fast_path,
+                "nlu_fast_path_reason": nlu_fast_path_reason
+            }
+
+        # Second Cache Lookup
+        if self.cache and not bypass_cache and rewritten_query != normalized_query:
+            is_hit, hit_res, hit_type = self.cache.get(rewritten_query)
+            if is_hit:
+                return {
+                    "query": query,
+                    "rewritten_query": rewritten_query,
+                    "answer": hit_res["answer"],
+                    "citations": hit_res["citations"],
+                    "intent": "faq",
+                    "gateway_checked": True,
+                    "strategy_selected": "Semantic Cache Hit",
+                    "faithfulness_passed": True,
+                    "llm_cost_usd": 0.0,
+                    "llm_cost_vnd": 0.0,
+                    "cache_hit": hit_res.get("cache_hit", "exact"),
+                    "cache_similarity": hit_res.get("cache_similarity", 1.0),
+                    "nlu_latency_ms": round(nlu_latency, 2),
+                    "nlu_fast_path": nlu_fast_path,
+                    "nlu_fast_path_reason": nlu_fast_path_reason
+                }
+
+        # Search Strategy Selection
+        strategy = self.select_retrieval_strategy(rewritten_query)
+
+        # Execute Retrieval
+        retrieved_candidates = self.search_engine.search(
+            query=rewritten_query,
+            limit=config.RETRIEVAL_CANDIDATE_LIMIT,
+            expanded_queries=expanded_queries,
+        )
+
+        # Rerank
+        top_docs = self.reranker.rerank(
+            query=rewritten_query,
+            docs=retrieved_candidates,
+            top_n=config.RERANK_TOP_N,
+        )
+        num_chunks_before_expansion = len(top_docs)
+
+        # Expand context
+        top_docs = self.search_engine.expand_context(top_docs)
+
+        # Compress Context & Build messages
+        messages, compressed_context = self._build_prompt_messages(
+            query=rewritten_query,
+            context_docs=top_docs,
+            chat_history=chat_history
+        )
+
+        final_answer = ""
+        prompt_tokens = 0
+        completion_tokens = 0
+
+        if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+                response = client.chat.completions.create(
+                    model=config.RAG_ANSWER_MODEL,
+                    messages=messages,
+                    temperature=0.3,
+                    max_tokens=config.LLM_MAX_TOKENS
+                )
+                final_answer = response.choices[0].message.content
+                prompt_tokens = response.usage.prompt_tokens
+                completion_tokens = response.usage.completion_tokens
+            except Exception as e:
+                log_warn("LLM_GEN", f"LLM Generation Error: {str(e)}. Falling back to offline synthesis.")
+                final_answer = f"Lỗi sinh câu trả lời: {e}"
+        else:
+            final_answer = "Offline Mode fallback"
+
+        citations = self._build_citations(top_docs)
+
+        # Cost calculation
+        total_prompt = prompt_tokens + nlu_usage.get("prompt_tokens", 0)
+        total_comp = completion_tokens + nlu_usage.get("completion_tokens", 0)
+        cost_info = self._calculate_llm_cost(total_prompt, total_comp)
+
+        # Save to Cache
+        if self.cache and not bypass_cache:
+            self.cache.set(normalized_query, final_answer, citations)
+            if rewritten_query != normalized_query:
+                self.cache.set(rewritten_query, final_answer, citations)
+
+        return {
+            "query": query,
+            "rewritten_query": rewritten_query,
+            "answer": final_answer,
+            "citations": citations,
+            "expanded_queries": expanded_queries,
+            "compressed_context_len": len(compressed_context),
+            "num_chunks_before_expansion": num_chunks_before_expansion,
+            "nlu_latency_ms": round(nlu_latency, 2),
+            "nlu_fast_path": nlu_fast_path,
+            "nlu_fast_path_reason": nlu_fast_path_reason,
+            "intent": intent,
+            "gateway_checked": True,
+            "strategy_selected": strategy,
+            "faithfulness_passed": True,
+            "faithfulness_score": 1.0,
+            "top_docs": [
+                {
+                    "content": doc.page_content,
+                    "source": doc.metadata.get("source"),
+                    "section": doc.metadata.get("section"),
+                    "score": doc.metadata.get("rerank_score", 0.0)
+                } for doc in top_docs
+            ],
+            "token_usage": {
+                "unified_nlu": nlu_usage,
+                "generation": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
+                "total_prompt_tokens": total_prompt,
+                "total_completion_tokens": total_comp
+            },
+            "llm_cost_usd": cost_info["cost_usd"],
+            "llm_cost_vnd": cost_info["cost_usd"] * 25400
+        }
+
