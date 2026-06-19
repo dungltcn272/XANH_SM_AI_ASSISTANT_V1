@@ -10,6 +10,7 @@ from app.food_recommendation.answer_llm import stream_food_answer_with_llm
 from app.food_recommendation.payloads import (
     food_location_payload,
     format_food_answer,
+    food_recommendations_payload,
     missing_location_answer,
 )
 from app.food_recommendation.trace_store import save_food_request_log
@@ -79,6 +80,7 @@ class FoodRecommendationChain:
                 items=[],
                 answer_meta={"answer": answer, "missing_fields": ["location"]},
                 sse_steps=sse_steps,
+                final_answer=answer,
             )
             metrics["food_trace_id"] = trace_id
             location_payload = food_location_payload(query)
@@ -215,6 +217,26 @@ class FoodRecommendationChain:
         answer_meta = answer_meta or {"answer": format_food_answer(items, slots.category), "food_cards": None, "llm_used": False, "error": "empty_answer_meta"}
         metrics["food_answer_llm_used"] = bool(answer_meta.get("llm_used"))
         metrics["food_answer_llm_error"] = answer_meta.get("error")
+        food_cards = answer_meta.get("food_cards")
+        llm_card_items = food_cards.get("items") if isinstance(food_cards, dict) else None
+        if items and not llm_card_items:
+            fallback_cards = food_recommendations_payload(
+                items,
+                slots.category,
+                query,
+                answer_meta=answer_meta,
+            )
+            answer_meta["food_cards"] = fallback_cards
+            answer_meta["food_card_count"] = len(fallback_cards.get("items") or [])
+            answer_meta["food_cards_source"] = "ranked_items_fallback"
+            metrics["food_card_fallback_used"] = True
+            for item in fallback_cards.get("items") or []:
+                yield f'data: {json.dumps({"type": "food_card", "food_card": item, "source": "ranked_items_fallback"}, ensure_ascii=False)}\n\n'
+        else:
+            metrics["food_card_fallback_used"] = False
+        metrics["food_card_count"] = answer_meta.get("food_card_count", 0)
+        metrics["food_cards_source"] = answer_meta.get("food_cards_source")
+        answer = answer_meta.get("answer") or format_food_answer(items, slots.category)
         trace_id = save_food_request_log(
             conversation_id=conversation_id,
             user_id=user_id,
@@ -226,9 +248,9 @@ class FoodRecommendationChain:
             items=items,
             answer_meta=answer_meta,
             sse_steps=sse_steps,
+            final_answer=answer,
         )
         metrics["food_trace_id"] = trace_id
-        answer = answer_meta.get("answer") or format_food_answer(items, slots.category)
         food_cards = answer_meta.get("food_cards")
 
         if items:

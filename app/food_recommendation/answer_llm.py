@@ -33,6 +33,8 @@ def stream_food_answer_with_llm(
     fallback = {
         "answer": fallback_answer,
         "food_cards": fallback_cards,
+        "food_card_count": len((fallback_cards or {}).get("items") or []),
+        "food_cards_source": "ranked_items_fallback" if fallback_cards else "none",
         "llm_used": False,
         "error": None,
     }
@@ -102,6 +104,8 @@ def stream_food_answer_with_llm(
         answer_meta = {
             "answer": final_answer.strip() or fallback_answer,
             "food_cards": _cards_payload(cards, slots.category, query),
+            "food_card_count": len(cards),
+            "food_cards_source": "llm_marker" if cards else "none",
             "llm_used": True,
             "error": None,
         }

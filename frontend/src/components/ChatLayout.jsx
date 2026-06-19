@@ -973,7 +973,19 @@ export default function ChatLayout() {
                     handledAsMetadata = true;
                   }
                   if (parsed.food_recommendations) {
-                    streamFoodRecommendations = parsed.food_recommendations;
+                    const incomingItems = parsed.food_recommendations?.items || [];
+                    const currentItems = streamFoodRecommendations?.items || [];
+                    if (incomingItems.length || !currentItems.length) {
+                      streamFoodRecommendations = parsed.food_recommendations;
+                    } else {
+                      streamFoodRecommendations = {
+                        ...parsed.food_recommendations,
+                        ...streamFoodRecommendations,
+                        trace_id: parsed.food_recommendations.trace_id || streamFoodRecommendations.trace_id,
+                        items: currentItems,
+                        more_items: streamFoodRecommendations.more_items || parsed.food_recommendations.more_items || []
+                      };
+                    }
                     handledAsMetadata = true;
                   }
                   if (parsed.food_card) {
