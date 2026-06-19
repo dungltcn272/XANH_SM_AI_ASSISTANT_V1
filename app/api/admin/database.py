@@ -142,7 +142,7 @@ def activity_row(raw: dict, intent: str, icon_type: str = "chat") -> dict:
     fallback_model = settings.RAG_ANSWER_MODEL
     if raw_intent == "food_recommendation":
         fallback_model = settings.FOOD_ANSWER_MODEL
-    elif raw_intent in {"small-talk", "sensitive", "blocked_guardrail"}:
+    elif raw_intent in {"small-talk", "missing_info", "sensitive", "blocked_guardrail"}:
         fallback_model = settings.NLU_MODEL
     elif raw_intent == "faq":
         fallback_model = "semantic_cache"
@@ -225,6 +225,7 @@ def get_db_stats(db: Session = Depends(get_db)):
         "food_recommendation": "#06b6d4",
         "faq": "#3b82f6",
         "small-talk": "#8b5cf6",
+        "missing_info": "#f59e0b",
         "sensitive": "#f97316",
         "blocked_guardrail": "#ef4444",
         "unknown": "#9ca3af"

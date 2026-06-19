@@ -138,6 +138,7 @@ export default function BasicLogView() {
               <option value="faq">FAQ</option>
               <option value="food_recommendation">Food</option>
               <option value="small-talk">Small Talk</option>
+              <option value="missing_info">Missing Info</option>
               <option value="sensitive">Sensitive</option>
             </select>
           </div>

@@ -754,8 +754,8 @@
         <h2 class="section-title">NLU biến hệ thống thành <span>assistant hiểu người dùng</span></h2>
         <p class="section-lead">NLU là lớp đọc ý định, chuẩn hóa câu hỏi và điều phối domain. Nhờ lớp này, người dùng không cần nhớ cú pháp; họ chỉ cần nói tự nhiên, assistant tự hiểu cần hỏi RAG, gợi ý món ăn hay truy vấn thông tin khác.</p>
         <div class="nlu-grid">
-          <article class="nlu-card"><div class="num">1</div><h3>Intent & Domain Routing</h3><p>Nhận diện câu hỏi chính sách, xe, giá cước, tin tức, food hoặc câu hỏi ngoài phạm vi để chọn pipeline phù hợp.</p></article>
-          <article class="nlu-card"><div class="num">2</div><h3>Query Rewrite</h3><p>Viết lại câu hỏi mơ hồ thành truy vấn rõ nghĩa, giữ ngữ cảnh hội thoại và chuẩn hóa thuật ngữ Xanh SM.</p></article>
+          <article class="nlu-card"><div class="num">1</div><h3>Intent & Domain Routing</h3><p>Nhận diện câu hỏi chính sách, xe, giá cước, tin tức, food, missing-info hoặc câu hỏi ngoài phạm vi để chọn pipeline phù hợp.</p></article>
+          <article class="nlu-card"><div class="num">2</div><h3>Query Rewrite</h3><p>Viết lại câu hỏi mơ hồ thành truy vấn rõ nghĩa; nếu thiếu ngữ cảnh, NLU hỏi lại thay vì đoán hoặc gọi sai pipeline.</p></article>
           <article class="nlu-card"><div class="num">3</div><h3>Slot Extraction</h3><p>Tách địa điểm, ngân sách, khẩu vị, món muốn ăn, loại xe, thời gian và các điều kiện người dùng nhắc tới.</p></article>
         </div>
         <div class="panel" style="margin-top: 30px;">
@@ -765,7 +765,7 @@
             <div class="arrow">→</div>
             <div class="flow-node">NLU hiểu ý định và dữ kiện</div>
             <div class="arrow">→</div>
-            <div class="flow-node">Chọn RAG hoặc Food pipeline</div>
+            <div class="flow-node">Chọn RAG, Food hoặc hỏi làm rõ</div>
             <div class="arrow">→</div>
             <div class="flow-node">Trả lời theo văn phong CSKH</div>
           </div>
@@ -856,7 +856,7 @@
           <div class="bridge">→</div>
           <div class="pipe-col">
             <div class="pipe-box"><div class="pipe-label">Gateway</div><h3>Safety & Cache</h3><p>Guardrail, semantic cache, chuẩn hóa input và quyết định fast-path.</p></div>
-            <div class="pipe-box pipe-hub"><div class="pipe-label">Orchestrator</div><h3>Unified NLU</h3><p>Intent classification, query rewrite, slot extraction, domain routing và entity normalization.</p></div>
+            <div class="pipe-box pipe-hub"><div class="pipe-label">Orchestrator</div><h3>Unified NLU</h3><p>Intent classification, query rewrite, slot extraction, missing-info clarification, domain routing và entity normalization.</p></div>
           </div>
           <div class="bridge">→</div>
           <div class="pipe-col">

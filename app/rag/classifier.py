@@ -101,7 +101,9 @@ class XanhSMClassifier:
                 intent = result.get("intent", "rag")
                 if intent == "food-recommend":
                     intent = "food_recommendation"
-                if intent not in ["small-talk", "rag", "sensitive", "food_recommendation"]:
+                if intent in ["miss-info", "missing-info", "missinginfo"]:
+                    intent = "missing_info"
+                if intent not in ["small-talk", "rag", "sensitive", "missing_info", "food_recommendation"]:
                     intent = "rag"
                     
                 rewritten_query = result.get("rewritten_query", query)

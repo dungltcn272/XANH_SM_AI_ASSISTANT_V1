@@ -292,6 +292,7 @@ Cốt lõi của hệ thống là chia nhỏ "trí nhớ" thành các tầng có
 ### 1.1. Working Memory (Bộ nhớ ngắn hạn)
 - **Mục đích:** Giữ mạch hội thoại hiện tại, hiểu các câu hỏi nối tiếp và giải quyết hiện tượng đồng tham chiếu (Co-reference resolution). 
 - **Ví dụ:** User hỏi "Thông tin VF3", sau đó hỏi "nó bao tiền?". Working memory giúp NLU Gateway hiểu "nó" chính là "VF3" ngay trước khi gọi RAG.
+- **Missing info clarification:** Nếu user hỏi quá ngắn hoặc chọn một option không thể resolve chắc chắn từ Working Memory, NLU trả intent `missing_info` kèm `suggested_answer` để hỏi lại đúng phần còn thiếu. Nhánh này trả lời trực tiếp ở Orchestrator, không gọi RAG/Food để tránh truy xuất sai ngữ cảnh.
 - **Lưu trữ:** Chỉ giữ 5–10 tin nhắn gần nhất trong bộ nhớ tạm (Redis hoặc DB session).
 
 ### 1.2. Conversation Summary (Tóm tắt phiên)
@@ -329,7 +330,7 @@ USER QUESTION: {current_question}
 
 1. **Phase 1: Working Memory & Context Builder Core**
    - Áp dụng kỹ thuật nén 5-10 lượt chat gần nhất.
-   - Thử nghiệm độ chính xác của NLU trong việc phân giải đại từ ("nó bao tiền").
+   - Thử nghiệm độ chính xác của NLU trong việc phân giải đại từ ("nó bao tiền") và phát hiện `missing_info` khi không đủ ngữ cảnh.
 2. **Phase 2: Long-term User Memory (Dành riêng cho Food Recommendation)**
    - Xây dựng bảng DB lưu trữ Facts người dùng (Vị trí, sở thích).
    - Prompt Engineering cho Memory Extractor (chạy async sau mỗi lượt chat).

@@ -183,6 +183,16 @@ class XanhSMAssistantOrchestrator:
             yield "data: [DONE]\n\n"
             return
 
+        if intent == "missing_info":
+            answer = nlu_res.get("suggested_answer") or (
+                "Dạ anh/chị muốn em làm rõ thông tin nào ạ? Anh/chị có thể nói thêm tên xe, dịch vụ, món ăn hoặc mục muốn xem chi tiết giúp em."
+            )
+            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+            yield from stream_plain_answer(answer)
+            yield f'data: {json.dumps({"metrics": metrics, "step": "missing-info"})}\n\n'
+            yield "data: [DONE]\n\n"
+            return
+
         if self.cache and not bypass_cache and rewritten_query != normalized_query:
             is_hit, hit_res, _hit_type = self.cache.get(rewritten_query)
             if is_hit:

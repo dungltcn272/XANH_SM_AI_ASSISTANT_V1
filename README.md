@@ -16,7 +16,7 @@
 Hệ thống **Retrieval-Augmented Generation (RAG)** cấp doanh nghiệp (Production-Grade) được thiết kế và tối ưu hóa đặc biệt dành riêng cho **Xanh SM** nhằm hỗ trợ tra cứu tập trung và chính xác mọi thông tin chính sách cước phí, điều khoản dịch vụ, cơ chế tài chính cho khách hàng, đối tác tài xế, đối tác cửa hàng merchant và nhân viên CSKH.
 
 Hệ thống này triển khai kiến trúc **NLU-Gateway RAG (Phase 6)** tiên tiến nhất hiện nay với tốc độ xử lý siêu tốc:
-`Question ➔ Safety Guardrail ➔ Intent Classifier ➔ Slot Filling (Task/RAG) ➔ Memory Query Rewrite ➔ Hybrid Search (Qdrant Dense + BM25) ➔ Cohere Reranker ➔ Adjacent Context Expansion ➔ LLM Synthesizer ➔ Server-Sent Events (SSE) Stream ➔ Citation Validator`.
+`Question ➔ Safety Guardrail ➔ Intent Classifier ➔ Missing Info Clarification nếu thiếu ngữ cảnh ➔ Slot Filling (Task/RAG) ➔ Memory Query Rewrite ➔ Hybrid Search (Qdrant Dense + BM25) ➔ Cohere Reranker ➔ Adjacent Context Expansion ➔ LLM Synthesizer ➔ Server-Sent Events (SSE) Stream ➔ Citation Validator`.
 
 > [!IMPORTANT]
 > **🚀 LIVE PRODUCTION:** Hệ thống hỗ trợ hoàn chỉnh đăng nhập Google Auth, lưu trữ lịch sử chat cá nhân, và giao diện Dashboard quản trị mạnh mẽ.
@@ -128,6 +128,7 @@ graph TD
     D --> E{Intent Classification}
     E -- "small-talk" --> Stalk[Return NLU suggested_answer]
     E -- "sensitive" --> Sen[Return NLU suggested_answer]
+    E -- "missing_info" --> Miss[Ask clarification from NLU suggested_answer]
     E -- "rag" --> F{Second Exact Cache}
     E -- "food_recommendation" --> FC[Load food context/profile]
 
@@ -154,6 +155,7 @@ graph TD
     Block --> Out
     Stalk --> Out
     Sen --> Out
+    Miss --> Out
     FORM --> Out
 
     style A fill:#00A651,stroke:#fff,color:#fff
@@ -161,6 +163,7 @@ graph TD
     style Block fill:#ff4444,stroke:#fff,color:#fff
     style Stalk fill:#f59e0b,stroke:#fff,color:#fff
     style Sen fill:#f43f5e,stroke:#fff,color:#fff
+    style Miss fill:#f59e0b,stroke:#fff,color:#fff
     style B fill:#f43f5e,stroke:#fff,color:#fff
     style FR1 fill:#0ea5e9,stroke:#fff,color:#fff
     style FR2 fill:#0ea5e9,stroke:#fff,color:#fff
@@ -184,11 +187,13 @@ Hệ thống được cấu trúc thành một chuỗi tuần tự gồm các No
 
 3. **NODE 3: Unified NLU Orchestrator (Bộ não điều phối)**
    - **Công nghệ áp dụng**: Mô hình LLM phân loại intent thông qua function calling / structured JSON output (Llama 3.3 70B hoặc GPT-4o-mini).
-   - **Logic xử lý**: Nhận câu hỏi thô và lịch sử trò chuyện để phân loại vào 1 trong 4 Intent chính:
+   - **Logic xử lý**: Nhận câu hỏi thô, Working Memory và lịch sử trò chuyện để phân loại vào 1 trong 5 Intent chính:
      - `small-talk`: Chào hỏi đời thường, lấy luôn `suggested_answer` để trả về cho người dùng nhanh chóng.
      - `sensitive`: Phát hiện câu hỏi vi phạm nhạy cảm, sinh `suggested_answer` lịch sự từ chối thay vì chặn ngang.
+     - `missing_info`: Câu hỏi quá thiếu thông tin hoặc câu nối tiếp không thể resolve chắc chắn từ lịch sử; NLU sinh `suggested_answer` để hỏi lại đúng phần còn thiếu, không gọi RAG/Food.
      - `rag`: Rẽ nhánh vào luồng tìm kiếm RAG chính sách/tài liệu Qdrant.
      - `food_recommendation`: Bóc tách slot (budget, time, address, dish) và rẽ nhánh vào luồng gợi ý món ăn.
+   - **Ghi chú NLU follow-up**: Các câu ngắn như `cái đầu`, `mục đó`, `chi tiết hơn`, `so sánh 2 cái`, hoặc lựa chọn bằng số/tên rút gọn sẽ được resolve bằng Working Memory trước. Nếu chưa đủ chắc chắn, hệ thống trả `missing_info` để hỏi rõ thay vì đoán bừa hoặc rơi nhầm vào `sensitive`.
    - Hệ thống không sử dụng fast-path rule-based cứng nhắc. Mọi truy vấn đều qua mô hình NLU này để đảm bảo độ chuẩn xác cao.
    - Không yêu cầu khóa API Google Maps cho Geocode: Hệ thống sử dụng OpenStreetMap Nominatim/Photon miễn phí.
 

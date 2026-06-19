@@ -29,6 +29,15 @@ class ContextBuilder:
         return "\n".join(lines) if lines else "Không có lịch sử hội thoại gần đây."
 
     @staticmethod
+    def _format_nlu_history(chat_history: list[dict[str, str]] | None) -> str:
+        """Give NLU enough dialogue state to resolve short follow-up queries."""
+        return ContextBuilder._format_history(
+            chat_history,
+            limit=10,
+            max_chars_per_turn=1400,
+        )
+
+    @staticmethod
     def _json_block(value: Any) -> str:
         if value in (None, "", [], {}):
             return "{}"
@@ -66,10 +75,13 @@ class ContextBuilder:
             "LONG_TERM_USER_MEMORY:\n"
             f"{ContextBuilder._json_block(food_context)}\n\n"
             "WORKING_MEMORY:\n"
-            f"{ContextBuilder._format_history(chat_history, limit=5)}\n\n"
+            f"{ContextBuilder._format_nlu_history(chat_history)}\n\n"
             "CURRENT_QUERY:\n"
             f"{query}\n\n"
-            "Yêu cầu: phân tích input trên và trả về đúng JSON schema trong system prompt."
+            "Yêu cầu: phân tích input trên và trả về đúng JSON schema trong system prompt. "
+            "Nếu CURRENT_QUERY là câu nối tiếp ngắn, lựa chọn một option/card/mục đã được Assistant nêu, "
+            "hoặc yêu cầu kiểu 'cái đó', 'cái đầu', 'mục này', 'so sánh hai cái này', hãy dùng WORKING_MEMORY "
+            "để viết lại thành câu hỏi độc lập trước khi phân loại intent."
         )
 
         if image_base64:
