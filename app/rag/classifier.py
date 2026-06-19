@@ -90,7 +90,7 @@ class XanhSMClassifier:
                     model=model_to_use,
                     messages=messages,
                     temperature=0.0,
-                    max_tokens=650,
+                    max_tokens=1000 if include_image else 650,
                     response_format={"type": "json_object"}
                 )
                 res_content = response.choices[0].message.content.strip()

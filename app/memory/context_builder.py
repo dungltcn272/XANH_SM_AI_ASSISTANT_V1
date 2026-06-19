@@ -78,10 +78,13 @@ class ContextBuilder:
             f"{ContextBuilder._format_nlu_history(chat_history)}\n\n"
             "CURRENT_QUERY:\n"
             f"{query}\n\n"
+            f"IMAGE_ATTACHED: {'yes' if image_base64 else 'no'}\n\n"
             "Yêu cầu: phân tích input trên và trả về đúng JSON schema trong system prompt. "
             "Nếu CURRENT_QUERY là câu nối tiếp ngắn, lựa chọn một option/card/mục đã được Assistant nêu, "
             "hoặc yêu cầu kiểu 'cái đó', 'cái đầu', 'mục này', 'so sánh hai cái này', hãy dùng WORKING_MEMORY "
-            "để viết lại thành câu hỏi độc lập trước khi phân loại intent."
+            "để viết lại thành câu hỏi độc lập trước khi phân loại intent. "
+            "Nếu IMAGE_ATTACHED=yes, hãy đọc kỹ nội dung ảnh và đưa các chữ, nút, bước, lỗi, số liệu hoặc trạng thái "
+            "quan trọng vào rewritten_query; không được rewrite chung chung như 'xác thực thông tin trong ảnh'."
         )
 
         if image_base64:
@@ -89,7 +92,10 @@ class ContextBuilder:
                 {"type": "text", "text": user_prompt},
                 {
                     "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_base64}",
+                        "detail": "high",
+                    },
                 },
             ]
         else:
