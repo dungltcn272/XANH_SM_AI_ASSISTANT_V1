@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 from app.core.config import settings as config
 from app.core.llm import get_llm_client, has_api_key_for_model, select_model_for_multimodal
 from app.prompts import UNIFIED_NLU_PROMPT
-from app.core.logger import log_warn
+from app.core.logger import log_warn, log_info
 from app.memory.context_builder import ContextBuilder
 
 class XanhSMClassifier:
@@ -37,11 +37,6 @@ class XanhSMClassifier:
                 model_to_use = multimodal_model
                 include_image = True
 
-        llm_available = (
-            has_api_key_for_model(model_to_use)
-            and config.EMBEDDING_PROVIDER != "mock"
-        )
-        
         # Rule-based safety triggers (fast early exit for sensitive words)
         from app.rag.gateway import XanhSMGateway
         gateway = XanhSMGateway()
@@ -61,21 +56,20 @@ class XanhSMClassifier:
 
         # Rule-based fallbacks are only used when the NLU LLM is unavailable.
         greeting_check = gateway.is_greeting_or_thanks(query)
-        if not llm_available and greeting_check["type"] != "none":
-            return {
-                "rewritten_query": query,
-                "intent": "small-talk",
-                "expanded_queries": [query],
-                "memory_candidates": [],
-                "usage": {"prompt_tokens": 0, "completion_tokens": 0},
-                "fast_path": True,
-                "fast_path_reason": "small_talk_rule"
-            }
 
-        # If LLM is available, use it for NLU
-        if llm_available:
+        # Decide which models to try (preferred NLU model first, failover to gpt-4o-mini)
+        models_to_try = [model_to_use]
+        if "gpt-4o-mini" not in models_to_try:
+            models_to_try.append("gpt-4o-mini")
+
+        result_payload = None
+        for m in models_to_try:
+            if not has_api_key_for_model(m):
+                continue
+            if config.EMBEDDING_PROVIDER == "mock":
+                continue
             try:
-                client = get_llm_client(model_to_use)
+                client = get_llm_client(m)
                 
                 messages = ContextBuilder.build_nlu_messages(
                     system_prompt=UNIFIED_NLU_PROMPT,
@@ -87,7 +81,7 @@ class XanhSMClassifier:
                 )
 
                 response = client.chat.completions.create(
-                    model=model_to_use,
+                    model=m,
                     messages=messages,
                     temperature=0.0,
                     max_tokens=1000 if include_image else 650,
@@ -118,7 +112,7 @@ class XanhSMClassifier:
                 
                 # Expansion is now handled locally to save LLM tokens
                 expanded = [rewritten_query]
-                return {
+                result_payload = {
                     "rewritten_query": rewritten_query,
                     "intent": intent,
                     "expanded_queries": expanded,
@@ -132,11 +126,16 @@ class XanhSMClassifier:
                         "prompt_tokens": response.usage.prompt_tokens,
                         "completion_tokens": response.usage.completion_tokens
                     },
-                    "fast_path": False
+                    "fast_path": False,
+                    "nlu_model_used": m
                 }
+                break  # Success
             except Exception as e:
-                log_warn("NLU", f"Unified NLU LLM Call failed: {e}. Falling back to Rule-based.")
-        
+                log_warn("NLU", f"Unified NLU LLM Call failed for model {m}: {e}.")
+
+        if result_payload is not None:
+            return result_payload
+
         # Rule-based offline fallback if LLM is unavailable or crashes
         # 1. Offline fallback: do not infer food/RAG intent by keyword here.
         # Gateway-only greeting fallback is kept because gateway owns that rule layer.
