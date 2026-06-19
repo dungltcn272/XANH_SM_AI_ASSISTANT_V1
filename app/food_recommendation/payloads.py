@@ -38,18 +38,18 @@ def format_food_answer(items: list[Any], category: str | None = None) -> str:
     if not items:
         return (
             "Dạ, em chưa tìm được quán phù hợp quanh vị trí này trong catalog hiện tại. "
-            "Anh/chị có thể chọn lại vị trí ở khu vực trung tâm hoặc nhập địa chỉ cụ thể hơn để em tìm chính xác."
+            "Anh/chị có thể chọn lại vị trí ở khu vực trung tâm hoặc nhập địa chỉ cụ thể hơn để em tìm chính xác ạ."
         )
 
     intro = "Dạ, em đã sắp xếp một vài lựa chọn"
     if category:
         intro += f" cho món {category}"
-    return intro + " gần anh/chị. Em ưu tiên khoảng cách, thời gian giao và mức độ phù hợp với nhu cầu."
+    return intro + " gần anh/chị. Em ưu tiên khoảng cách, thời gian giao và mức độ phù hợp với nhu cầu của anh/chị ạ."
 
 
 def food_location_payload(query: str) -> dict[str, Any]:
     return {
-        "title": "Bạn muốn giao đến đâu?",
+        "title": "Anh/chị muốn giao đến đâu?",
         "query": query,
         "address_placeholder": "Nhập địa chỉ giao hàng",
         "current_location_label": "Dùng vị trí hiện tại",
@@ -64,9 +64,9 @@ def food_recommendations_payload(
     answer_meta: dict[str, Any] | None = None,
     trace_id: str | None = None,
 ) -> dict[str, Any]:
-    title = "Một vài quán phù hợp gần bạn"
+    title = "Một vài quán phù hợp gần anh/chị"
     if category:
-        title = f"Một vài quán {category} phù hợp gần bạn"
+        title = f"Một vài quán {category} phù hợp gần anh/chị"
 
     note_by_id = {
         note.get("item_id"): note.get("advice")
@@ -95,17 +95,23 @@ def food_recommendations_payload(
             "price_text": format_vnd(price) if price else "",
             "reason": item.reason,
             "score": item.score,
-            "score_breakdown": item.score_breakdown.model_dump() if hasattr(item.score_breakdown, 'model_dump') else item.score_breakdown.dict() if hasattr(item.score_breakdown, 'dict') else vars(item.score_breakdown) if hasattr(item.score_breakdown, '__dict__') else item.score_breakdown,
+            "score_breakdown": item.score_breakdown.model_dump()
+            if hasattr(item.score_breakdown, "model_dump")
+            else item.score_breakdown.dict()
+            if hasattr(item.score_breakdown, "dict")
+            else vars(item.score_breakdown)
+            if hasattr(item.score_breakdown, "__dict__")
+            else item.score_breakdown,
             "is_best": index == 0,
+            "advice": note_by_id.get(item.item_id),
         }
 
     return {
         "title": (answer_meta or {}).get("cards_title") or title,
         "subtitle": (answer_meta or {}).get("cards_subtitle")
-        or "Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.",
+        or "Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của anh/chị.",
         "query": query,
         "trace_id": trace_id,
         "items": [to_payload(item, index) for index, item in enumerate(items[:4])],
         "more_items": [to_payload(item, index + 4) for index, item in enumerate(items[4:8])],
     }
-
