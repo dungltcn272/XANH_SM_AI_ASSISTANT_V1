@@ -29,4 +29,3 @@ fastembed
 cohere
 pytz
 xgboost
-scikit-learn
