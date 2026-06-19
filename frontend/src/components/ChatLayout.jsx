@@ -302,13 +302,13 @@ const FoodMapPicker = ({ selectedPin, onPick, onConfirm, interactive = true, hei
 };
 
 const FoodMetric = ({ icon: Icon, label, value }) => (
-  <div className="flex items-center gap-2 min-w-0">
-    <div className="w-8 h-8 rounded-full bg-surface-container-high/70 dark:bg-white/10 flex items-center justify-center text-on-surface shrink-0">
-      <Icon size={16} />
+  <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+    <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-surface-container-high/70 dark:bg-white/10 flex items-center justify-center text-on-surface shrink-0">
+      <Icon size={14} className="md:w-4 md:h-4" />
     </div>
     <div className="min-w-0 leading-tight">
-      <div className="text-[11px] text-on-surface-variant/80 truncate">{label}</div>
-      <div className="text-sm font-black text-[#009e79] truncate">{value}</div>
+      <div className="text-[10px] md:text-[11px] text-on-surface-variant/80 truncate">{label}</div>
+      <div className="text-xs md:text-sm font-black text-[#009e79] truncate">{value}</div>
     </div>
   </div>
 );
@@ -382,14 +382,14 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
     <Wrapper
       {...wrapperProps}
       onClick={() => onOpenMenu?.(item, index)}
-      className={`relative grid grid-cols-[96px_1fr] md:grid-cols-[170px_1fr_auto] gap-4 p-3 md:p-4 rounded-2xl border bg-white/75 dark:bg-white/[0.04] transition-all group ${
+      className={`relative grid grid-cols-[78px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)] md:grid-cols-[170px_1fr_auto] gap-3 md:gap-4 p-2.5 md:p-4 rounded-2xl border bg-white/75 dark:bg-white/[0.04] transition-all group ${
         isBest
           ? 'border-[#00c897]/40 shadow-[0_8px_24px_rgba(0,200,151,0.10)]'
           : 'border-outline-variant/20 hover:border-[#00c897]/30'
       }`}
     >
       {isBest && (
-        <div className="absolute left-3 top-3 z-10 rounded-full bg-[#00a884] px-2.5 py-1 text-[11px] font-black text-white shadow-sm">
+        <div className="absolute left-2 top-2 md:left-3 md:top-3 z-10 rounded-full bg-[#00a884] px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[11px] font-black text-white shadow-sm max-w-[120px] md:max-w-none truncate">
           Gợi ý phù hợp nhất
         </div>
       )}
@@ -397,37 +397,37 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
       <img
         src={item.image_url || '/Bot.png'}
         alt={item.name || 'Món ăn'}
-        className="w-full h-[92px] md:h-[122px] rounded-xl object-cover border border-outline-variant/10 bg-surface-container-high"
+        className="w-full h-[78px] sm:h-[92px] md:h-[122px] rounded-xl object-cover border border-outline-variant/10 bg-surface-container-high"
         loading="lazy"
       />
 
-      <div className="min-w-0 flex flex-col justify-center gap-3">
+      <div className="min-w-0 flex flex-col justify-center gap-2 md:gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-base md:text-lg font-black text-on-surface leading-snug line-clamp-1">
+            <h4 className="text-sm sm:text-base md:text-lg font-black text-on-surface leading-snug line-clamp-1">
               {item.name}
             </h4>
             {item.rating && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#00c897]/10 px-2 py-0.5 text-sm font-black text-[#008f6f]">
-                <Star size={14} fill="currentColor" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#00c897]/10 px-1.5 md:px-2 py-0.5 text-xs md:text-sm font-black text-[#008f6f]">
+                <Star size={12} className="md:w-3.5 md:h-3.5" fill="currentColor" />
                 {item.rating}
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-on-surface-variant/85 leading-relaxed line-clamp-2">
+          <p className="mt-1 text-xs md:text-sm text-on-surface-variant/85 leading-relaxed line-clamp-2">
             {item.reason || item.dish_name || item.address || 'Phù hợp với nhu cầu món ăn của bạn.'}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 md:gap-3">
           <FoodMetric icon={Clock3} label="Giao khoảng" value={item.eta_text || 'Đang cập nhật'} />
           <FoodMetric icon={MapPin} label="Cách bạn" value={item.distance_text || 'Đang cập nhật'} />
           <FoodMetric icon={DollarSign} label="Phí giao từ" value={item.delivery_fee_text || 'Đang cập nhật'} />
         </div>
       </div>
 
-      <div className="col-span-2 md:col-span-1 flex md:flex-col items-center justify-between md:justify-center gap-3">
-        <div className="flex items-center gap-1.5">
+      <div className="col-span-2 md:col-span-1 flex md:flex-col items-center justify-between md:justify-center gap-2 md:gap-3 min-w-0">
+        <div className="flex items-center gap-1 md:gap-1.5">
           {[
             { title: 'Lưu lựa chọn', icon: Heart, action: onLike },
             { title: 'Giải thích', icon: Info, action: onExplain },
@@ -437,7 +437,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
             <button
               key={title}
               type="button"
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+              className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-colors ${
                 item.interaction === (title === 'Lưu lựa chọn' ? 'like' : title === 'Không phù hợp' ? 'dislike' : '')
                   ? 'bg-[#00c897] text-white'
                   : 'bg-surface-container-high/70 dark:bg-white/10 text-[#00a884] hover:bg-[#00c897] hover:text-white'
@@ -449,13 +449,13 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
                 action?.(item, index);
               }}
             >
-              <ActionIcon size={16} fill={item.interaction === (title === 'Lưu lựa chọn' ? 'like' : title === 'Không phù hợp' ? 'dislike' : '') ? 'currentColor' : 'none'} />
+              <ActionIcon size={14} className="md:w-4 md:h-4" fill={item.interaction === (title === 'Lưu lựa chọn' ? 'like' : title === 'Không phù hợp' ? 'dislike' : '') ? 'currentColor' : 'none'} />
             </button>
           ))}
         </div>
-        <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#00a884] px-4 py-2 text-sm font-black text-[#008f6f] group-hover:bg-[#00c897] group-hover:text-white transition-colors whitespace-nowrap">
+        <span className="inline-flex items-center justify-center gap-1.5 md:gap-2 rounded-xl border border-[#00a884] px-3 md:px-4 py-2 text-xs md:text-sm font-black text-[#008f6f] group-hover:bg-[#00c897] group-hover:text-white transition-colors whitespace-nowrap shrink-0">
           Xem thực đơn
-          <ChevronRight size={16} />
+          <ChevronRight size={14} className="md:w-4 md:h-4" />
         </span>
       </div>
     </Wrapper>
@@ -468,16 +468,16 @@ const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike
   if (!items.length) return null;
 
   return (
-    <div className="w-full rounded-3xl border border-white/50 dark:border-white/10 bg-white/72 dark:bg-white/[0.03] p-4 md:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
-      <div className="flex items-start gap-3 mb-4">
-        <div className="w-12 h-12 rounded-full bg-[#00c897]/12 text-[#009e79] flex items-center justify-center shrink-0">
-          <Utensils size={22} />
+    <div className="w-full rounded-2xl md:rounded-3xl border border-white/50 dark:border-white/10 bg-white/72 dark:bg-white/[0.03] p-3 md:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
+      <div className="flex items-start gap-2.5 md:gap-3 mb-3 md:mb-4">
+        <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-[#00c897]/12 text-[#009e79] flex items-center justify-center shrink-0">
+          <Utensils size={18} className="md:w-[22px] md:h-[22px]" />
         </div>
         <div className="min-w-0">
-          <h3 className="text-xl md:text-2xl font-black text-on-surface leading-tight">
+          <h3 className="text-base md:text-2xl font-black text-on-surface leading-tight">
             {data.title || 'Một vài quán phù hợp gần bạn'}
           </h3>
-          <p className="mt-1 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
+          <p className="mt-1 text-xs md:text-base text-on-surface-variant/85 leading-relaxed">
             {data.subtitle || 'Đã sắp xếp theo khoảng cách, thời gian giao hàng và mức độ phù hợp với nhu cầu của bạn.'}
           </p>
         </div>
@@ -988,6 +988,15 @@ export default function ChatLayout() {
                     }
                     handledAsMetadata = true;
                   }
+                  if (parsed.type === 'food_recommendation_result') {
+                    if (streamFoodRecommendations) {
+                      streamFoodRecommendations = {
+                        ...streamFoodRecommendations,
+                        trace_id: parsed.trace_id || streamFoodRecommendations.trace_id
+                      };
+                    }
+                    handledAsMetadata = true;
+                  }
                   if (parsed.food_card) {
                     const currentItems = streamFoodRecommendations?.items || [];
                     streamFoodRecommendations = {
@@ -1471,7 +1480,7 @@ export default function ChatLayout() {
                       </div>
                     )}
                     
-                    <div className={`max-w-[85%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
+                    <div className={`${msg.role === 'user' ? 'order-1 max-w-[85%]' : 'order-2 max-w-[calc(100%_-_3.25rem)] md:max-w-[85%]'}`}>
                       <div className={`p-4 md:p-5 rounded-3xl text-sm md:text-base leading-relaxed transition-all duration-300 flex flex-col gap-4 ${
                         msg.role === 'user' 
                           ? 'bg-gradient-to-br from-[#00c897] to-[#009e79] text-white rounded-tr-none shadow-[0_4px_16px_rgba(0,200,151,0.15)] dark:shadow-[0_4px_16px_rgba(0,200,151,0.05)] border border-[#00c897]/20' 

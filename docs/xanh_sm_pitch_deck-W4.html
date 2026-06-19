@@ -616,6 +616,186 @@
 
   .footer-note b { color: var(--navy); }
 
+  .closing-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.02fr 0.98fr;
+    gap: 42px;
+    align-items: center;
+    min-height: 0;
+  }
+
+  .closing-title {
+    margin-top: 28px;
+    color: var(--navy);
+    font-size: 88px;
+    line-height: 1.04;
+    letter-spacing: 0;
+    font-weight: 950;
+  }
+
+  .closing-title span {
+    color: var(--green);
+  }
+
+  .closing-copy {
+    margin-top: 26px;
+    max-width: 850px;
+    color: #314967;
+    font-size: 28px;
+    line-height: 1.5;
+    font-weight: 650;
+  }
+
+  .closing-grid {
+    margin-top: 34px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+
+  .closing-card {
+    min-height: 150px;
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    gap: 16px;
+    align-items: start;
+    border: 1px solid rgba(0, 179, 134, 0.18);
+    border-radius: 22px;
+    background: rgba(255,255,255,0.78);
+    box-shadow: 0 18px 44px rgba(13, 64, 100, 0.12);
+    padding: 20px;
+  }
+
+  .closing-card img {
+    width: 62px;
+    height: 62px;
+    object-fit: cover;
+    border-radius: 18px;
+    background: rgba(236, 255, 251, 0.92);
+  }
+
+  .closing-card h3 {
+    color: var(--navy);
+    font-size: 24px;
+    line-height: 1.18;
+  }
+
+  .closing-card p {
+    margin-top: 8px;
+    color: #405a7a;
+    font-size: 18px;
+    line-height: 1.38;
+    font-weight: 650;
+  }
+
+  .closing-visual {
+    position: relative;
+    min-height: 760px;
+    border-radius: 38px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.72);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.72), rgba(220,255,248,0.62)),
+      url("../frontend/public/bg_landing.png") center / cover no-repeat;
+    box-shadow: var(--shadow);
+  }
+
+  .closing-visual::before {
+    content: "";
+    position: absolute;
+    inset: 34px;
+    border: 1px solid rgba(255,255,255,0.72);
+    border-radius: 30px;
+  }
+
+  .closing-bot {
+    position: absolute;
+    z-index: 2;
+    right: 96px;
+    top: 108px;
+    width: 360px;
+    filter: drop-shadow(0 34px 60px rgba(4, 50, 82, 0.24));
+  }
+
+  .orbit-chip {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 198px;
+    padding: 16px 18px;
+    border-radius: 26px;
+    border: 1px solid rgba(255,255,255,0.78);
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 18px 44px rgba(13, 64, 100, 0.16);
+    color: var(--navy);
+    font-size: 18px;
+    font-weight: 900;
+  }
+
+  .orbit-chip img {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 14px;
+  }
+
+  .orbit-chip.c1 { left: 76px; top: 112px; }
+  .orbit-chip.c2 { left: 96px; bottom: 198px; }
+  .orbit-chip.c3 { right: 62px; bottom: 118px; }
+
+  .closing-stats {
+    position: absolute;
+    z-index: 3;
+    left: 62px;
+    right: 62px;
+    bottom: 44px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  .closing-stat {
+    min-height: 112px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.82);
+    border: 1px solid rgba(0, 179, 134, 0.16);
+    padding: 18px;
+  }
+
+  .closing-stat b {
+    display: block;
+    color: var(--green);
+    font-size: 34px;
+    line-height: 1;
+  }
+
+  .closing-stat span {
+    display: block;
+    margin-top: 8px;
+    color: #34506f;
+    font-size: 16px;
+    line-height: 1.32;
+    font-weight: 750;
+  }
+
+  .closing-cta {
+    margin-top: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 26px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--green), #10cdb1);
+    color: #fff;
+    box-shadow: 0 18px 42px rgba(0, 179, 134, 0.28);
+    font-size: 22px;
+    font-weight: 950;
+  }
+
   @page { size: 1920px 1080px; margin: 0; }
 
   @media print {
@@ -907,6 +1087,78 @@
         </div>
       </div>
       <div class="footer-note"><span><b>Result:</b> Gợi ý món ăn thông minh hơn, nhớ vị trí, hiểu ngữ cảnh hội thoại mượt mà</span></div>
+    </div>
+  </section>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab">Kiến trúc</div>
+          <div class="tab active">Triển khai</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="closing-layout">
+          <div>
+            <div class="kicker">Kết luận triển khai</div>
+            <h2 class="closing-title">Một dự án <span>đáng triển khai</span> cho hệ sinh thái Xanh SM</h2>
+            <p class="closing-copy">
+              AI Assistant không chỉ trả lời câu hỏi. Khi được kết hợp với dữ liệu lớn từ hệ sinh thái Xanh SM,
+              trợ lý có thể trở thành lớp giao tiếp thông minh giúp người dùng tra cứu, ra quyết định và sử dụng dịch vụ thuận tiện hơn mỗi ngày.
+            </p>
+
+            <div class="closing-grid">
+              <article class="closing-card">
+                <img src="../frontend/public/knowledge_search.png" alt="">
+                <div>
+                  <h3>Thu hút người dùng</h3>
+                  <p>Biến trải nghiệm hỏi đáp thành một điểm chạm chủ động, dễ dùng và hữu ích hơn menu tĩnh.</p>
+                </div>
+              </article>
+              <article class="closing-card">
+                <img src="../frontend/public/data_analytics.png" alt="">
+                <div>
+                  <h3>Tận dụng dữ liệu lớn</h3>
+                  <p>Khai thác dữ liệu chính sách, xe, ưu đãi, tin tức, hành vi và ngữ cảnh để cá nhân hóa câu trả lời.</p>
+                </div>
+              </article>
+              <article class="closing-card">
+                <img src="../frontend/public/food_recommendation.png" alt="">
+                <div>
+                  <h3>Mở rộng tiện ích</h3>
+                  <p>Từ RAG sang Food Recommendation, Ops, Eval và các domain mới trong cùng một assistant.</p>
+                </div>
+              </article>
+              <article class="closing-card">
+                <img src="../frontend/public/policy_support.png" alt="">
+                <div>
+                  <h3>Vận hành đo được</h3>
+                  <p>Trace, latency, feedback và evaluation giúp đội sản phẩm cải thiện chất lượng qua từng vòng lặp.</p>
+                </div>
+              </article>
+            </div>
+
+            <div class="closing-cta">Sẵn sàng bước vào demo triển khai thực tế</div>
+          </div>
+
+          <div class="closing-visual">
+            <img class="closing-bot" src="../frontend/public/Bot.png" alt="Xanh SM AI Assistant">
+            <div class="orbit-chip c1"><img src="../frontend/public/vehicle_expert.png" alt="">Vehicle Expert</div>
+            <div class="orbit-chip c2"><img src="../frontend/public/pricing_assistant.png" alt="">Pricing & Offer</div>
+            <div class="orbit-chip c3"><img src="../frontend/public/deep_research.png" alt="">Deep Research</div>
+            <div class="closing-stats">
+              <div class="closing-stat"><b>1</b><span>Assistant thống nhất cho nhiều nhu cầu người dùng.</span></div>
+              <div class="closing-stat"><b>Data</b><span>Dữ liệu hệ sinh thái là lợi thế cạnh tranh cốt lõi.</span></div>
+              <div class="closing-stat"><b>Loop</b><span>Eval/Ops/Feedback đóng vòng cải thiện liên tục.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note"><span><b>Next step:</b> triển khai pilot trên các nhóm câu hỏi có nhu cầu cao</span><span><b>Goal:</b> tăng tiện ích, tăng độ tin cậy, tăng mức độ gắn bó của người dùng</span></div>
     </div>
   </section>
 

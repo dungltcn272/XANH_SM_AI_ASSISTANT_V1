@@ -11,7 +11,6 @@ from app.food_recommendation.payloads import (
     distance_text,
     format_food_answer,
     format_vnd,
-    food_recommendations_payload,
 )
 from app.memory.context_builder import ContextBuilder
 from app.prompts import FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT
@@ -29,12 +28,11 @@ def stream_food_answer_with_llm(
     assistant_context: dict[str, Any] | None = None,
 ):
     fallback_answer = format_food_answer(items, slots.category)
-    fallback_cards = food_recommendations_payload(items, slots.category, query) if items else None
     fallback = {
         "answer": fallback_answer,
-        "food_cards": fallback_cards,
-        "food_card_count": len((fallback_cards or {}).get("items") or []),
-        "food_cards_source": "ranked_items_fallback" if fallback_cards else "none",
+        "food_cards": None,
+        "food_card_count": 0,
+        "food_cards_source": "none",
         "llm_used": False,
         "error": None,
     }
