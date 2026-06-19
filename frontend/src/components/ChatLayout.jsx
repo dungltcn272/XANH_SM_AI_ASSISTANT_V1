@@ -382,7 +382,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
     <Wrapper
       {...wrapperProps}
       onClick={() => onOpenMenu?.(item, index)}
-      className={`relative grid grid-cols-[78px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)] md:grid-cols-[170px_1fr_auto] gap-3 md:gap-4 p-2.5 md:p-4 rounded-2xl border bg-white/75 dark:bg-white/[0.04] transition-all group ${
+      className={`relative grid grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)] md:grid-cols-[170px_1fr_auto] gap-2.5 md:gap-4 p-2.5 md:p-4 rounded-2xl border bg-white/75 dark:bg-white/[0.04] transition-all group overflow-hidden ${
         isBest
           ? 'border-[#00c897]/40 shadow-[0_8px_24px_rgba(0,200,151,0.10)]'
           : 'border-outline-variant/20 hover:border-[#00c897]/30'
@@ -397,7 +397,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
       <img
         src={item.image_url || '/Bot.png'}
         alt={item.name || 'Món ăn'}
-        className="w-full h-[78px] sm:h-[92px] md:h-[122px] rounded-xl object-cover border border-outline-variant/10 bg-surface-container-high"
+        className="w-full h-[72px] sm:h-[92px] md:h-[122px] rounded-xl object-cover border border-outline-variant/10 bg-surface-container-high"
         loading="lazy"
       />
 
@@ -426,8 +426,8 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
         </div>
       </div>
 
-      <div className="col-span-2 md:col-span-1 flex md:flex-col items-center justify-between md:justify-center gap-2 md:gap-3 min-w-0">
-        <div className="flex items-center gap-1 md:gap-1.5">
+      <div className="col-span-2 md:col-span-1 flex flex-col sm:flex-row md:flex-col items-stretch sm:items-center md:items-center justify-between md:justify-center gap-2 md:gap-3 min-w-0">
+        <div className="flex items-center justify-center sm:justify-start md:justify-center gap-1 md:gap-1.5 min-w-0">
           {[
             { title: 'Lưu lựa chọn', icon: Heart, action: onLike },
             { title: 'Giải thích', icon: Info, action: onExplain },
@@ -453,7 +453,7 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
             </button>
           ))}
         </div>
-        <span className="inline-flex items-center justify-center gap-1.5 md:gap-2 rounded-xl border border-[#00a884] px-3 md:px-4 py-2 text-xs md:text-sm font-black text-[#008f6f] group-hover:bg-[#00c897] group-hover:text-white transition-colors whitespace-nowrap shrink-0">
+        <span className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 md:gap-2 rounded-xl border border-[#00a884] px-3 md:px-4 py-2 text-xs md:text-sm font-black text-[#008f6f] group-hover:bg-[#00c897] group-hover:text-white transition-colors whitespace-nowrap min-w-0">
           Xem thực đơn
           <ChevronRight size={14} className="md:w-4 md:h-4" />
         </span>
