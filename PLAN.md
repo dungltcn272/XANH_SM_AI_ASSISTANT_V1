@@ -278,3 +278,61 @@ Việc chuyển đổi toàn bộ kiến trúc từ Đồng bộ (Synchronous) s
 1. Tiến hành refactor theo thứ tự từ dưới lên (Database client -> Retriever -> NLU Classifier -> Chain -> API Controller).
 2. Kiểm thử độc lập API Endpoint `/chat` với Postman/cURL để xác nhận SSE Streaming hoạt động mượt mà.
 3. Chạy Load Test (mô phỏng CCU cao) để so sánh tài nguyên CPU/Memory sử dụng so với phiên bản dùng Global ThreadPool hiện tại.
+
+---
+
+# Kế Hoạch Tích Hợp Đa Tầng Memory & Context Builder
+
+Việc tối ưu hóa "trí nhớ" cho AI Assistant (Context Window) là yếu tố quyết định để tạo ra trải nghiệm cá nhân hóa, đặc biệt trong các kịch bản Food Recommendation (nhớ sở thích, vị trí) và hỏi đáp nối tiếp (hiểu các đại từ "nó", "ở đó"). Thay vì gửi toàn bộ lịch sử thô vào Prompt gây tốn token và tăng độ trễ (latency), hệ thống sẽ sử dụng **Context Engineering + Memory Retrieval**.
+
+## 1. Kiến Trúc 4 Tầng Bộ Nhớ (Memory Tiers)
+
+Cốt lõi của hệ thống là chia nhỏ "trí nhớ" thành các tầng có vòng đời và mục đích khác nhau:
+
+### 1.1. Working Memory (Bộ nhớ ngắn hạn)
+- **Mục đích:** Giữ mạch hội thoại hiện tại, hiểu các câu hỏi nối tiếp và giải quyết hiện tượng đồng tham chiếu (Co-reference resolution). 
+- **Ví dụ:** User hỏi "Thông tin VF3", sau đó hỏi "nó bao tiền?". Working memory giúp NLU Gateway hiểu "nó" chính là "VF3" ngay trước khi gọi RAG.
+- **Lưu trữ:** Chỉ giữ 5–10 tin nhắn gần nhất trong bộ nhớ tạm (Redis hoặc DB session).
+
+### 1.2. Conversation Summary (Tóm tắt phiên)
+- **Mục đích:** Nén một đoạn chat dài thành các insight có cấu trúc khi phiên chat vượt quá giới hạn Working Memory.
+- **Định dạng lưu trữ (JSON):** Chứa `current_goal`, `decisions`, và `open_questions`.
+
+### 1.3. Long-term User Memory (Bộ nhớ dài hạn)
+- **Mục đích:** Lưu trữ vĩnh viễn các thông tin (facts) cốt lõi về User để cá nhân hóa gợi ý (ví dụ: Vị trí làm việc, món ăn bị dị ứng, thói quen ăn uống). Tránh việc AI phải hỏi lại nhiều lần.
+- **Trích xuất:** Dùng một Agent (Memory Extractor) chạy ngầm để trích xuất các "facts" từ hội thoại và cập nhật vào User Memory DB.
+
+### 1.4. Episodic Memory (Bộ nhớ sự kiện)
+- **Mục đích:** Ghi nhớ các sự kiện quan trọng theo mốc thời gian để tránh gợi ý lặp lại gây nhàm chán (Ví dụ: Hôm qua đã gợi ý bún chả, hôm nay sẽ đề xuất phở).
+
+## 2. Context Builder & Prompt Caching
+
+Khi User đặt câu hỏi mới, **Context Builder** sẽ đóng vai trò như một nhạc trưởng:
+1. **Lấy Working Memory** hiện tại.
+2. **Query Retrieval Memory** để lấy đúng mảng kiến thức RAG và các phần tử liên quan trong Long-term User Memory.
+3. **Lắp ráp** thành một Prompt động, tinh gọn.
+
+```text
+SYSTEM: Bạn là AI Assistant của Xanh SM...
+STATIC RULES: ...
+USER PROFILE: {retrieved_user_memory}
+SESSION SUMMARY: {conversation_summary}
+RELEVANT KNOWLEDGE: {rag_chunks}
+RECENT MESSAGES: {last_5_messages}
+USER QUESTION: {current_question}
+```
+
+### Tối ưu Prompt Caching (OpenAI API)
+- Đặt phần `SYSTEM` và `STATIC RULES` lên đầu prompt để LLM tự động áp dụng Cache Hit, giúp giảm mạnh độ trễ và chi phí input token. Phần Dynamic (như User Memory và Working Memory) đặt ở cuối.
+
+## 3. Lộ Trình Triển Khai (Roadmap)
+
+1. **Phase 1: Working Memory & Context Builder Core**
+   - Áp dụng kỹ thuật nén 5-10 lượt chat gần nhất.
+   - Thử nghiệm độ chính xác của NLU trong việc phân giải đại từ ("nó bao tiền").
+2. **Phase 2: Long-term User Memory (Dành riêng cho Food Recommendation)**
+   - Xây dựng bảng DB lưu trữ Facts người dùng (Vị trí, sở thích).
+   - Prompt Engineering cho Memory Extractor (chạy async sau mỗi lượt chat).
+3. **Phase 3: Prompt Caching & Episodic Retrieval**
+   - Sắp xếp lại cấu trúc Prompt để tận dụng OpenAI Prompt Caching.
+   - Xây dựng multi-index memory để retrieval cả RAG document lẫn Episodic Memory.

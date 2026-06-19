@@ -870,5 +870,45 @@
     </div>
   </section>
 
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab">Hiệu năng</div>
+          <div class="tab active">Kiến trúc</div>
+        </div>
+      </div>
+      <div class="content">
+        <h2 class="section-title">Kiến trúc <span>Memory & Cá nhân hóa</span></h2>
+        <p class="section-lead">Giải quyết bài toán giới hạn Context Window bằng cách không nhồi nhét lịch sử thô. Phân tách trí nhớ thành đa tầng, kết hợp Context Builder để giữ prompt luôn tinh gọn, giảm latency và tối ưu cá nhân hóa.</p>
+        
+        <div class="pipeline" style="margin-top: 40px; grid-template-columns: 1fr 50px 1.2fr 50px 1fr;">
+          <div class="pipe-col">
+            <div class="pipe-box"><div class="pipe-label">Short-term</div><h3>Working Memory</h3><p>Giữ 5-10 lượt chat gần nhất để NLU hiểu đại từ (như "nó bao tiền?").</p></div>
+            <div class="pipe-box"><div class="pipe-label">Mid-term</div><h3>Session Summary</h3><p>Nén phiên chat dài thành các insight có cấu trúc (mục tiêu, quyết định).</p></div>
+            <div class="pipe-box"><div class="pipe-label">Long-term</div><h3>User Profile DB</h3><p>Nhớ vĩnh viễn sở thích, vị trí, thói quen để không phải hỏi lại nhiều lần.</p></div>
+          </div>
+          <div class="bridge">→</div>
+          <div class="pipe-col" style="justify-content: center;">
+             <div class="pipe-box pipe-hub" style="min-height: 280px; background: linear-gradient(180deg, rgba(230,245,255,0.96), rgba(255,255,255,0.78)); border-color: rgba(0, 150, 255, 0.32);">
+                <div class="pipe-label" style="color: #0077cc;">Orchestrator</div>
+                <h3>Context Builder</h3>
+                <p>Retrieval & lắp ráp các mảnh bộ nhớ liên quan kết hợp với RAG Document thành một Prompt động tinh gọn, giải phóng giới hạn Context Window.</p>
+             </div>
+          </div>
+          <div class="bridge">→</div>
+          <div class="pipe-col" style="justify-content: center;">
+            <div class="pipe-box"><div class="pipe-label">Optimization</div><h3>Prompt Caching</h3><p>Tăng tốc độ phản hồi (Latency) bằng cách cache các cấu trúc prompt tĩnh (system prompt, rules).</p></div>
+            <div class="pipe-box"><div class="pipe-label">Execution</div><h3>LLM Generation</h3><p>Sinh câu trả lời chính xác, cá nhân hóa cao với lượng token tiêu thụ ít nhất.</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note"><span><b>Result:</b> Gợi ý món ăn thông minh hơn, nhớ vị trí, hiểu ngữ cảnh hội thoại mượt mà</span></div>
+    </div>
+  </section>
+
 </body>
 </html>
