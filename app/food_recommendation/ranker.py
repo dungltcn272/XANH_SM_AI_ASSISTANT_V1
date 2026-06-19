@@ -236,8 +236,8 @@ def rank_catalog(
                     if request.category:
                         rec.score = rec.score * (rec.score_breakdown.category_score ** 1.5)
         except Exception as e:
-            import logging
-            logging.error(f"XGBoost rank error, falling back to heuristic: {e}")
+            from app.core.logger import log_error
+            log_error("FOOD_RANKER", f"XGBoost rank error, falling back to heuristic: {e}")
 
     # Sắp xếp theo score từ Rule-based Ranker hoặc ML Ranker
     ranked_sorted = sorted(ranked, key=lambda item: item.score, reverse=True)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any
 import xgboost as xgb
+from app.core.logger import log_error
 from app.food_recommendation.schemas import FoodCatalogEntry, FoodRecommendationRequest
 
 
@@ -36,8 +37,7 @@ class XGBoostFoodRanker(BaseFoodRanker):
                 self.model.load_model(self.model_path)
                 self.is_loaded = True
             except Exception as e:
-                import logging
-                logging.error(f"Failed to load XGBoost model: {e}")
+                log_error("FOOD_ML_RANKER", f"Failed to load XGBoost model: {e}")
                 self.is_loaded = False
                 self.model = None
 

@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import sys
 
@@ -11,11 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal
 from app.db.models import FoodInteraction, FoodCatalog
+from app.core.logger import log_error, log_warn
 from app.food_recommendation.features import extract_features_from_breakdown
 from app.food_recommendation.schemas import ScoreBreakdown
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 MODEL_PATH = "data/models/food_xgboost.json"
 
@@ -28,10 +25,9 @@ def train_xgboost_ranker():
     db: Session = SessionLocal()
     try:
         interactions = db.query(FoodInteraction).all()
-        logger.info(f"Loaded {len(interactions)} food interactions from DB.")
         
         if len(interactions) < 10:
-            logger.warning("Not enough data to train XGBoost. Need at least 10 interactions.")
+            log_warn("ML_TRAINING", "Not enough data to train XGBoost. Need at least 10 interactions.")
             return {"success": False, "reason": "Not enough data"}
 
         X = []
@@ -79,11 +75,9 @@ def train_xgboost_ranker():
             y.append(label)
 
         if len(X) < 10:
-            logger.warning("Not enough valid labeled data to train.")
+            log_warn("ML_TRAINING", "Not enough valid labeled data to train.")
             return {"success": False, "reason": "Not enough labeled data"}
 
-        logger.info(f"Training XGBoost with {len(X)} samples...")
-        
         model = xgb.XGBClassifier(
             n_estimators=50,
             max_depth=4,
@@ -93,16 +87,14 @@ def train_xgboost_ranker():
         )
         model.fit(X, y)
         model.save_model(MODEL_PATH)
-        logger.info(f"Model saved to {MODEL_PATH}")
         return {"success": True, "samples": len(X), "model_path": MODEL_PATH}
         
     except Exception as e:
-        logger.error(f"Error training XGBoost: {e}")
+        log_error("ML_TRAINING", f"Error training XGBoost: {e}")
         return {"success": False, "reason": str(e)}
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    result = train_xgboost_ranker()
-    print(json.dumps(result, indent=2))
+    train_xgboost_ranker()

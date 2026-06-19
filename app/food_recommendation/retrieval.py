@@ -174,8 +174,8 @@ def vector_search(
         )
     except Exception as e:
         # Fallback về rỗng nếu chưa có collection hoặc lỗi kết nối
-        import logging
-        logging.getLogger(__name__).warning(f"Vector search failed: {e}")
+        from app.core.logger import log_warn
+        log_warn("FOOD_RETRIEVAL", f"Vector search failed: {e}")
         return CandidateGenerationResult(
             items=[], 
             recall_scores={}, 

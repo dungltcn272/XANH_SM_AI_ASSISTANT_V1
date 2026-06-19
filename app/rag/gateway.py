@@ -213,7 +213,7 @@ class XanhSMGateway:
 
 if __name__ == "__main__":
     gateway = XanhSMGateway()
-    print(gateway.normalize_input("  Xin   chào   ad  "))
-    print(gateway.language_detect("How to book a ride?"))
-    print(gateway.safety_precheck("Thằng taxi Grab này phục vụ quá tệ hại"))
-    print(gateway.safety_precheck("Hủy chuyến xe bị phạt bao nhiêu?"))
+    gateway.normalize_input("  Xin   chào   ad  ")
+    gateway.language_detect("How to book a ride?")
+    gateway.safety_precheck("Thằng taxi Grab này phục vụ quá tệ hại")
+    gateway.safety_precheck("Hủy chuyến xe bị phạt bao nhiêu?")

@@ -1,11 +1,5 @@
-import logging
 from sqlalchemy import text
 from app.db.database import engine
-import logging
-from sqlalchemy import text
-from app.db.database import engine
-
-logger = logging.getLogger(__name__)
 
 def run_auto_migrations():
     """
@@ -143,10 +137,8 @@ def run_auto_migrations():
             try:
                 conn.execute(text(query))
                 conn.commit()
-                logger.info(f"Migration Success: {query}")
             except Exception as e:
                 # Phải rollback transaction nếu gặp lỗi (đặc biệt quan trọng với PostgreSQL)
                 conn.rollback()
                 pass
                 
-    logger.info("Auto migrations completed.")

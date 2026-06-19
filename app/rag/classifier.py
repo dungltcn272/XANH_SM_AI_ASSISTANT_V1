@@ -179,4 +179,4 @@ class XanhSMClassifier:
 
 if __name__ == "__main__":
     classifier = XanhSMClassifier()
-    print("Unified NLU Test:", classifier.unified_nlu("Tôi gặp tai nạn nghiêm trọng trong chuyến xe"))
+    classifier.unified_nlu("Tôi gặp tai nạn nghiêm trọng trong chuyến xe")

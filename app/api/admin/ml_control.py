@@ -2,6 +2,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
+from app.core.logger import log_error
 from app.db.database import get_db
 from app.db.models import FoodInteraction
 from app.scripts.train_food_ranker import train_xgboost_ranker
@@ -31,8 +32,7 @@ def background_train_task():
         train_xgboost_ranker()
         xgb_ranker.load_model()
     except Exception as e:
-        import logging
-        logging.error(f"Background training failed: {e}")
+        log_error("ML_TRAINING", f"Background training failed: {e}")
 
 @router.post("/train")
 def trigger_ml_training(
