@@ -220,10 +220,10 @@
 
   .bot {
     position: absolute;
-    left: 50%;
-    top: 52%;
-    width: 360px;
-    transform: translate(-50%, -50%);
+    left: 28%;
+    bottom: -200px;
+    width: 1200px;
+    transform: translateX(-50%);
     filter: drop-shadow(0 34px 42px rgba(0, 90, 124, 0.28));
   }
 
@@ -235,9 +235,9 @@
     place-items: center;
     gap: 6px;
     padding: 18px;
-    border: 1px solid rgba(255,255,255,0.76);
+    border: 1px solid rgba(255, 255, 255, 0.45);
     border-radius: 26px;
-    background: rgba(255, 255, 255, 0.62);
+    background: rgba(255, 255, 255, 0.38);
     backdrop-filter: blur(12px);
     box-shadow: 0 24px 52px rgba(19, 75, 104, 0.18);
     font-size: 18px;
@@ -252,9 +252,9 @@
 
   .f1 { left: 90px; top: 140px; transform: rotate(-6deg); }
   .f2 { right: 90px; top: 140px; transform: rotate(8deg); }
-  .f3 { left: 90px; bottom: 140px; transform: rotate(7deg); }
+  .f3 { left: 20px; bottom: 200px; transform: rotate(7deg); }
   .f4 { right: 90px; bottom: 140px; transform: rotate(-5deg); }
-  .f5 { left: 370px; bottom: 40px; transform: rotate(-4deg); }
+  .f5 { left: 420px; bottom: 30px; transform: rotate(-4deg); }
   .f6 { left: 370px; top: 40px; transform: rotate(4deg); }
 
   .section-title {
@@ -612,6 +612,7 @@
     color: #42617e;
     font-size: 18px;
     font-weight: 700;
+    line-height: 1.5;
   }
 
   .footer-note b { color: var(--navy); }
@@ -745,7 +746,7 @@
 
   .orbit-chip.c1 { left: 76px; top: 112px; }
   .orbit-chip.c2 { left: 96px; bottom: 198px; }
-  .orbit-chip.c3 { right: 62px; bottom: 118px; }
+  .orbit-chip.c3 { right: 62px; bottom: 220px; }
 
   .closing-stats {
     position: absolute;
@@ -839,13 +840,15 @@
           <div class="pill-row">
             <div class="pill">✦ RAG Answer</div>
             <div class="pill">✦ Food Recommendation</div>
-            <div class="pill">✦ NLU Orchestrator</div>
+          </div>
+          <div class="pill-row" style="margin-top: 16px;">
             <div class="pill">✦ Eval & Ops</div>
+            <div class="pill">✦ NLU Orchestrator</div>
           </div>
         </div>
         <div class="hero-stage">
           <div class="orbit"></div>
-          <img class="bot" src="../frontend/public/Bot.png" alt="AI Bot">
+          <img class="bot" src="../frontend/dist/driver_man.png" alt="AI Bot">
           <div class="float-card f1"><b>🚘</b>Xe điện</div>
           <div class="float-card f2"><b>📰</b>Tin tức</div>
           <div class="float-card f3"><b>🍜</b>Food AI</div>
@@ -854,7 +857,7 @@
           <div class="float-card f6"><b>🔎</b>Search</div>
         </div>
       </div>
-      <div class="footer-note"><span><b>Demo:</b> rag-xanh-sm-v1.vercel.app</span><span>RAG + Food + NLU + Evaluation trong cùng một assistant</span></div>
+      <div class="footer-note"><span><b>Demo:</b> <a href="https://rag-xanh-sm-v1.vercel.app" target="_blank" style="color: inherit; text-decoration: underline;">rag-xanh-sm-v1.vercel.app</a></span></div>
     </div>
   </section>
 
@@ -1046,7 +1049,7 @@
           </div>
         </div>
       </div>
-      <div class="footer-note"><span><b>Output:</b> câu trả lời nhất quán, có căn cứ, có thể debug</span><span><b>Next:</b> demo RAG → Ops trace → Evaluation → Food recommendation</span></div>
+      <div class="footer-note"><span><b>Output:</b> câu trả lời nhất quán, có căn cứ, có thể debug</span>
     </div>
   </section>
 
@@ -1158,7 +1161,7 @@
           </div>
         </div>
       </div>
-      <div class="footer-note"><span><b>Next step:</b> triển khai pilot trên các nhóm câu hỏi có nhu cầu cao</span><span><b>Goal:</b> tăng tiện ích, tăng độ tin cậy, tăng mức độ gắn bó của người dùng</span></div>
+
     </div>
   </section>
 

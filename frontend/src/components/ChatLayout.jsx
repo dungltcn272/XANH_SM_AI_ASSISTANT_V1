@@ -671,6 +671,97 @@ const FoodLocationConfirmedCard = ({ location, onSaveNamedLocation }) => {
   );
 };
 
+const SUGGESTION_CARDS = [
+  {
+    title: "Giá cước dịch vụ",
+    desc: "Xem bảng giá chi tiết cho từng loại dịch vụ",
+    action: "Khám phá",
+    query: "Giá cước Xanh Car và Xanh Bike ở các khu vực",
+    icon: Car,
+    hoverBorder: "hover:border-[#00c897]/40 dark:hover:border-[#00c897]/40",
+    hoverBg: "hover:bg-[#00c897]/5 dark:hover:bg-[#00c897]/5",
+    iconBg: "bg-[#00c897]/10 text-[#00c897] group-hover/card:bg-[#00c897] group-hover/card:text-white",
+    textColor: "text-[#00c897]"
+  },
+  {
+    title: "Xanh Food giao đồ ăn",
+    desc: "Tìm kiếm món ăn ngon, giá cước và ưu đãi hấp dẫn",
+    action: "Đặt món ngay",
+    query: "Dịch vụ giao đồ ăn Xanh Food có những ưu đãi và giá cước như thế nào?",
+    icon: Utensils,
+    hoverBorder: "hover:border-orange-500/40 dark:hover:border-orange-500/40",
+    hoverBg: "hover:bg-orange-500/5 dark:hover:bg-orange-500/5",
+    iconBg: "bg-orange-500/10 text-orange-500 group-hover/card:bg-orange-500 group-hover/card:text-white",
+    textColor: "text-orange-500"
+  },
+  {
+    title: "Thuê xe chạy dịch vụ",
+    desc: "Thông tin chi tiết về chính sách thuê xe điện VinFast",
+    action: "Tìm hiểu",
+    query: "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform",
+    icon: Key,
+    hoverBorder: "hover:border-blue-500/40 dark:hover:border-blue-500/40",
+    hoverBg: "hover:bg-blue-500/5 dark:hover:bg-blue-500/5",
+    iconBg: "bg-blue-500/10 text-blue-500 group-hover/card:bg-blue-500 group-hover/card:text-white",
+    textColor: "text-blue-500"
+  },
+  {
+    title: "Ưu đãi & khuyến mãi",
+    desc: "Các chương trình ưu đãi mới nhất hiện nay",
+    action: "Xem ngay",
+    query: "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN",
+    icon: Tag,
+    hoverBorder: "hover:border-amber-500/40 dark:hover:border-amber-500/40",
+    hoverBg: "hover:bg-amber-500/5 dark:hover:bg-amber-500/5",
+    iconBg: "bg-amber-500/10 text-amber-500 group-hover/card:bg-amber-500 group-hover/card:text-white",
+    textColor: "text-amber-500"
+  },
+  {
+    title: "Tin tức Xanh SM",
+    desc: "Cập nhật tin tức, sự kiện và thông báo mới nhất",
+    action: "Đọc ngay",
+    query: "Cập nhật các tin tức và sự kiện mới nhất từ Xanh SM",
+    icon: Newspaper,
+    hoverBorder: "hover:border-purple-500/40 dark:hover:border-purple-500/40",
+    hoverBg: "hover:bg-purple-500/5 dark:hover:bg-purple-500/5",
+    iconBg: "bg-purple-500/10 text-purple-500 group-hover/card:bg-purple-500 group-hover/card:text-white",
+    textColor: "text-purple-500"
+  },
+  {
+    title: "Hướng dẫn đặt xe",
+    desc: "Các bước tải app, đặt xe và thanh toán nhanh chóng",
+    action: "Xem hướng dẫn",
+    query: "Hướng dẫn các bước đặt xe và thanh toán trên ứng dụng Xanh SM",
+    icon: MapPin,
+    hoverBorder: "hover:border-teal-500/40 dark:hover:border-teal-500/40",
+    hoverBg: "hover:bg-teal-500/5 dark:hover:bg-teal-500/5",
+    iconBg: "bg-teal-500/10 text-teal-500 group-hover/card:bg-teal-500 group-hover/card:text-white",
+    textColor: "text-teal-500"
+  },
+  {
+    title: "Gia nhập Xanh SM",
+    desc: "Đăng ký trở thành tài xế Xanh Car, Xanh Bike",
+    action: "Đăng ký",
+    query: "Làm sao để đăng ký trở thành tài xế Xanh SM và hồ sơ cần chuẩn bị gì?",
+    icon: User,
+    hoverBorder: "hover:border-emerald-500/40 dark:hover:border-emerald-500/40",
+    hoverBg: "hover:bg-emerald-500/5 dark:hover:bg-emerald-500/5",
+    iconBg: "bg-emerald-500/10 text-emerald-500 group-hover/card:bg-emerald-500 group-hover/card:text-white",
+    textColor: "text-emerald-500"
+  },
+  {
+    title: "Dịch vụ Xanh Luxury",
+    desc: "Trải nghiệm đưa đón cao cấp với VinFast VF8, VF9",
+    action: "Khám phá ngay",
+    query: "Tìm hiểu dịch vụ Xanh Luxury đưa đón bằng xe VinFast VF8, VF9 cao cấp",
+    icon: Sparkles,
+    hoverBorder: "hover:border-indigo-500/40 dark:hover:border-indigo-500/40",
+    hoverBg: "hover:bg-indigo-500/5 dark:hover:bg-indigo-500/5",
+    iconBg: "bg-indigo-500/10 text-indigo-500 group-hover/card:bg-indigo-500 group-hover/card:text-white",
+    textColor: "text-indigo-500"
+  }
+];
+
 export default function ChatLayout() {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -749,7 +840,20 @@ export default function ChatLayout() {
   const currentConvIdRef = useRef(activeConversationId);
   const lastProcessedActiveConvIdRef = useRef(undefined);
   const messagesEndRef = useRef(null);
+  const suggestionsScrollRef = useRef(null);
   const foodImpressionLoggedRef = useRef(new Set());
+
+  const scrollSuggestions = (direction) => {
+    if (suggestionsScrollRef.current) {
+      const container = suggestionsScrollRef.current;
+      const scrollAmount = container.clientWidth;
+      if (direction === 'left') {
+        container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      } else {
+        container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }
+  };
 
   const {
     transcript,
@@ -1674,66 +1778,53 @@ export default function ChatLayout() {
       <div className="absolute bottom-6 left-0 right-0 px-4 md:px-8 flex flex-col items-center gap-4 z-40 pointer-events-none">
         
         {/* Suggestion Cards Grid (displayed only on empty state, right above input box) */}
+        {/* Suggestion Cards Carousel (displayed only on empty state, right above input box) */}
         {messages.length === 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-5xl relative z-10 pointer-events-auto mb-1">
-            {/* Card 1 */}
+          <div className="relative w-full max-w-5xl group/slider mb-1 z-10 pointer-events-auto px-4 md:px-0">
+            {/* Scroll Left Button */}
             <button
-              onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
-              className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-[#00c897]/40 dark:hover:border-[#00c897]/40 hover:bg-[#00c897]/5 dark:hover:bg-[#00c897]/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
+              onClick={() => scrollSuggestions('left')}
+              className="absolute -left-4 md:-left-6 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/90 dark:bg-[#151c27]/90 border border-white/10 dark:border-white/5 text-on-surface shadow-md flex items-center justify-center hover:bg-[#00c897] hover:text-white transition-all z-20 opacity-0 group-hover/slider:opacity-100 hidden md:flex"
+              aria-label="Trước"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#00c897]/10 flex items-center justify-center text-[#00c897] group-hover:bg-[#00c897] group-hover:text-white transition-colors shrink-0">
-                <Car size={16} />
-              </div>
-              <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Giá cước dịch vụ</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Xem bảng giá chi tiết cho từng loại dịch vụ</p>
-              </div>
-              <span className="text-[10px] md:text-xs font-extrabold text-[#00c897] mt-0.5 block select-none">Khám phá &rarr;</span>
+              <ChevronLeft size={20} />
             </button>
-
-            {/* Card 2 */}
-            <button
-              onClick={(e) => handleSubmit(e, "Chính sách thuê xe VinFast chạy dịch vụ trên Green SM Platform")}
-              className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:bg-blue-500/5 dark:hover:bg-blue-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
+            
+            {/* Cards Container */}
+            <div
+              ref={suggestionsScrollRef}
+              className="flex overflow-x-auto snap-x snap-mandatory gap-3 md:gap-4 w-full no-scrollbar scroll-smooth pb-1"
             >
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
-                <Key size={16} />
-              </div>
-              <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Thuê xe chạy dịch vụ</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Thông tin chi tiết về chính sách thuê xe điện VinFast</p>
-              </div>
-              <span className="text-[10px] md:text-xs font-extrabold text-blue-500 mt-0.5 block select-none">Tìm hiểu &rarr;</span>
-            </button>
+              {SUGGESTION_CARDS.map((card, idx) => {
+                const IconComponent = card.icon;
+                return (
+                  <button
+                    key={idx}
+                    onClick={(e) => handleSubmit(e, card.query)}
+                    className={`flex-shrink-0 w-[calc(70%-8px)] sm:w-[calc(48%-8px)] md:w-[calc(25%-12px)] snap-start glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 ${card.hoverBorder} ${card.hoverBg} transition-all hover:-translate-y-0.5 group/card flex flex-col justify-between min-h-[105px] md:min-h-[125px] h-full shadow-sm`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 ${card.iconBg}`}>
+                      <IconComponent size={16} />
+                    </div>
+                    <div className="mt-1.5 md:mt-2 flex-grow">
+                      <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">{card.title}</h3>
+                      <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">{card.desc}</p>
+                    </div>
+                    <span className={`text-[10px] md:text-xs font-extrabold ${card.textColor} mt-0.5 block select-none`}>
+                      {card.action} &rarr;
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
-            {/* Card 3 */}
+            {/* Scroll Right Button */}
             <button
-              onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
-              className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-amber-500/40 dark:hover:border-amber-500/40 hover:bg-amber-500/5 dark:hover:bg-amber-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
+              onClick={() => scrollSuggestions('right')}
+              className="absolute -right-4 md:-right-6 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/90 dark:bg-[#151c27]/90 border border-white/10 dark:border-white/5 text-on-surface shadow-md flex items-center justify-center hover:bg-[#00c897] hover:text-white transition-all z-20 opacity-0 group-hover/slider:opacity-100 hidden md:flex"
+              aria-label="Sau"
             >
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
-                <Tag size={16} />
-              </div>
-              <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Ưu đãi & khuyến mãi</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Các chương trình ưu đãi mới nhất hiện nay</p>
-              </div>
-              <span className="text-[10px] md:text-xs font-extrabold text-amber-500 mt-0.5 block select-none">Xem ngay &rarr;</span>
-            </button>
-
-            {/* Card 4 */}
-            <button
-              onClick={(e) => handleSubmit(e, "Cập nhật các tin tức và sự ki!n m:i nhất từ Xanh SM")}
-              className="glass-panel p-3 rounded-2xl text-left border border-white/10 dark:border-white/5 hover:border-purple-500/40 dark:hover:border-purple-500/40 hover:bg-purple-500/5 dark:hover:bg-purple-500/5 transition-all hover:-translate-y-0.5 group flex flex-col justify-between min-h-[100px] md:min-h-[120px] h-full shadow-sm"
-            >
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors shrink-0">
-                <Newspaper size={16} />
-              </div>
-              <div className="mt-1.5 md:mt-2 flex-grow">
-                <h3 className="text-xs md:text-sm font-extrabold text-on-surface mb-0.5 truncate">Tin tức Xanh SM</h3>
-                <p className="text-[10px] md:text-xs text-on-surface-variant/80 line-clamp-2 leading-relaxed font-medium">Cập nhật tin tức, sự ki!n và thông báo m:i nhất</p>
-              </div>
-              <span className="text-[10px] md:text-xs font-extrabold text-purple-500 mt-0.5 block select-none">Đọc ngay &rarr;</span>
+              <ChevronRight size={20} />
             </button>
           </div>
         )}
