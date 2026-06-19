@@ -41,6 +41,7 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
         
         email = idinfo.get("email")
         name = idinfo.get("name", "")
+        picture = idinfo.get("picture")
         
         if not email:
             raise HTTPException(status_code=400, detail="Google token does not contain email")
@@ -64,6 +65,7 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
             "user_id": user.id, 
             "email": user.email, 
             "name": user.name,
+            "avatar_url": picture,
             "role": user.role.value,
             "type": "user"
         }

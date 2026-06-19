@@ -1,7 +1,6 @@
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 
 export default function AnimatedParticleEdge({
-  id,
   sourceX,
   sourceY,
   targetX,

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import String, Text, case, or_
 from app.db.database import get_db, Base
-from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, SystemLog, CrawlSource, EvaluationRun
+from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, ErrorLog, CrawlSource, EvaluationRun
 from app.core.config import settings
 from fastapi.responses import StreamingResponse
 import asyncio
@@ -118,7 +118,7 @@ def get_eval_runs(limit: int = 20, db: Session = Depends(get_db)):
                 run_name=f"legacy_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                 description="Legacy evaluation run snapshot.",
                 dataset_name=f"golden_{metrics.get('total_cases', len(report.get('details', [])))}",
-                model_name=settings.LLM_MODEL,
+                model_name=settings.RAG_ANSWER_MODEL,
                 total_cases=metrics.get("total_cases", 0),
                 status="completed",
                 average_latency_sec=metrics.get("average_latency_sec", 0),

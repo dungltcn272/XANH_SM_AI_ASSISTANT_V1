@@ -7,9 +7,19 @@ from typing import Optional, Any
 
 LOCK = threading.Lock()
 
-def log_event(level: str, phase: str, message: str, error_type: Optional[str] = None, details: Any = None):
-    timestamp = datetime.datetime.now().isoformat()
-    
+def log_event(
+    level: str, 
+    phase: str, 
+    message: str, 
+    error_type: Optional[str] = None, 
+    details: Any = None,
+    query: Optional[str] = None,
+    intent: Optional[str] = None
+):
+    # Tắt hoàn toàn việc log INFO theo yêu cầu của user
+    if level.upper() == "INFO":
+        return
+
     # Auto-resolve error type if exception context exists
     if level.upper() in ("ERROR", "WARN") and not error_type:
         exc_type, _, _ = sys.exc_info()
@@ -25,33 +35,19 @@ def log_event(level: str, phase: str, message: str, error_type: Optional[str] = 
                 details_str = str(details)
         except Exception:
             details_str = str(details)
-            
-    # Print to standard output for cloud logs (Railway) (Disabled per user request)
-    # with LOCK:
-    #     log_line = f"[{timestamp}] [{level.upper()}] [{phase.upper()}] {message}"
-    #     if error_type:
-    #         log_line += f" (Error: {error_type})"
-    #     if details_str:
-    #         log_line += f" | Details: {details_str}"
-    #     
-    #     if level.upper() in ("ERROR", "WARN"):
-    #         sys.stderr.write(log_line + "\n")
-    #         sys.stderr.flush()
-    #     else:
-    #         sys.stdout.write(log_line + "\n")
-    #         sys.stdout.flush()
 
-    # Save to database (SystemLog table)
+    # Save to database (ErrorLog table)
     try:
         from app.db.database import SessionLocal
-        from app.db.models import SystemLog
+        from app.db.models import ErrorLog
         
         db = SessionLocal()
         try:
-            db_log = SystemLog(
-                level=level.upper(),
-                phase=phase.upper(),
-                error_type=error_type or "",
+            db_log = ErrorLog(
+                query=query,
+                intent=intent,
+                error_stage=phase.upper(),
+                error_cause=error_type or "",
                 message=message,
                 details=details_str
             )
@@ -65,11 +61,13 @@ def log_event(level: str, phase: str, message: str, error_type: Optional[str] = 
         pass
 
 
-def log_info(phase: str, message: str, details: Any = None):
-    log_event("INFO", phase, message, details=details)
+def log_info(phase: str, message: str, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None):
+    # Sẽ bị ignore bên trong log_event, giữ lại hàm để tương thích mã cũ
+    log_event("INFO", phase, message, details=details, query=query, intent=intent)
 
-def log_warn(phase: str, message: str, details: Any = None):
-    log_event("WARN", phase, message, details=details)
+def log_warn(phase: str, message: str, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None):
+    log_event("WARN", phase, message, details=details, query=query, intent=intent)
 
-def log_error(phase: str, message: str, error_type: Optional[str] = None, details: Any = None):
-    log_event("ERROR", phase, message, error_type=error_type, details=details)
+def log_error(phase: str, message: str, error_type: Optional[str] = None, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None):
+    log_event("ERROR", phase, message, error_type=error_type, details=details, query=query, intent=intent)
+

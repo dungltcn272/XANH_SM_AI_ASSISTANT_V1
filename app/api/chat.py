@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import Conversation
 from app.core.security import get_current_entity
-from app.rag.pipeline import stream_chat_pipeline
+from app.assistant.pipeline import stream_chat_pipeline
+from app.core.logger import log_error
 from app.core.logger import log_error
 from typing import Optional, AsyncGenerator
 import asyncio
@@ -15,6 +16,7 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     query: str
+    display_query: Optional[str] = None
     conversation_id: Optional[str] = None
     image_base64: Optional[str] = None
     deep_search: bool = False
@@ -106,8 +108,10 @@ async def chat_endpoint(
             stream_chat_pipeline,
             db=db,
             user_id=user_identifier,
+            entity_type=entity_type,
             conversation_id=conv_id,
             question=req.query,
+            display_query=req.display_query,
             image_base64=req.image_base64,
             is_deep_search=req.deep_search
         ),
@@ -118,4 +122,3 @@ async def chat_endpoint(
             "Connection": "keep-alive",
         }
     )
-

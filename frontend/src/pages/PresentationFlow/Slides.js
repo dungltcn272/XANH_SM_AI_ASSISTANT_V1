@@ -94,5 +94,17 @@ export const PRESENTATION_SLIDES = [
     activeEdges: ['e-context-llm', 'e-llm-cachesave', 'e-cachesave-out'],
     animatedNodes: ['llm', 'out'],
     leadingQuestion: null
+  },
+  {
+    id: "food_recommendation",
+    title: "8. Food Recommendation V2",
+    subtitle: "Gợi Ý Món Ăn ML-Ready",
+    strategy: "Luồng Food V2 tách biệt hoàn toàn khỏi RAG. NLU nhận diện intent 'food', trích xuất thực thể, sau đó chuyển sang Pipeline Gợi Ý: Geocoding -> Truy hồi (Recall) -> Xếp hạng học máy (Ranking) -> LLM Tư vấn tự nhiên.",
+    tech: "Unified NLU, Hybrid Geo-BM25 Search, XGBoost LTR & Bandit Ranker, LLM Synthesis",
+    benefits: "Trải nghiệm cá nhân hóa sâu sắc, dễ dàng mở rộng thuật toán khi có dữ liệu (MLOps). Không bị bó buộc bởi RAG Prompting.",
+    focusNodes: ['intent', 'food_check', 'geocode', 'ml_rank', 'food_llm', 'out'],
+    activeEdges: ['e-intent-food', 'e-food-geo', 'e-geo-rank', 'e-rank-fllm', 'e-fllm-out'],
+    animatedNodes: ['food_check', 'geocode', 'ml_rank', 'food_llm'],
+    leadingQuestion: "Làm thế nào để hệ thống đề xuất chính xác mà vẫn đảm bảo được tính đa dạng và cá nhân hóa cho từng khách hàng?"
   }
 ];

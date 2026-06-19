@@ -1,43 +1,61 @@
 # Kiến trúc RAG Pipeline hiện tại
 
-Tài liệu này mô tả pipeline đang chạy của Xanh SM RAG sau khi safety được đưa về tầng đầu vào, NLU có fast-path cho câu RAG rõ ràng, và benchmark có lịch sử so sánh theo từng lần eval.
+Tài liệu này mô tả pipeline đang chạy của Xanh SM RAG & Food Recommendation (Phase 9) kết hợp đồng thời qua bộ định tuyến Unified NLU Orchestrator., và benchmark có lịch sử so sánh theo từng lần eval.
 
 ## Sơ đồ tổng quan
 
 ```mermaid
 graph TD
-    A([User Input]) --> B[Normalize Input]
-    B --> C{Input Gateway Safety}
-    C -- Prompt injection / secret leak / malicious defamation --> X[Refusal Response]
-    C -- Safe --> D{Early Exact Cache}
+    A([User Input]) --> N[Normalize Input]
+    N --> B{Input Gateway Safety}
+    B -- "Prompt injection / secret leak" --> Block[Refusal Response]
+    B -- "Safe" --> C{Early Exact Cache}
 
-    D -- Hit --> O([SSE Answer + Sources])
-    D -- Miss --> E{NLU Fast-path Eligible?}
+    C -- "Cache Hit (~5ms)" --> Out([Stream Answer + Citations])
+    C -- "Cache Miss" --> D[Unified LLM NLU Orchestrator]
+    
+    D --> E{Intent Classification}
+    E -- "small-talk" --> Stalk[Return NLU suggested_answer]
+    E -- "sensitive" --> Sen[Return NLU suggested_answer]
+    E -- "rag" --> F{Second Exact Cache}
+    E -- "food_recommendation" --> FC[Load food context/profile]
 
-    E -- Yes: clear domain RAG query --> E1[Rule-based RAG NLU]
-    E -- No: context rewrite / ambiguous --> E2[LLM Unified NLU: intent + rewrite]
+    %% Luồng Food Recommendation
+    FC --> M{Missing info?}
+    M -- yes --> FORM[Answer + ui_form/map payload]
+    M -- no --> FR1[Geocode & Target Coordinates]
+    FR1 --> FR2[Geo-BM25 Hybrid Retrieval]
+    FR2 --> FR3[ML-Ready Candidate Ranker]
+    FR3 --> FR4[Food Answer LLM]
+    FR4 --> CARD[Food cards UI + advice]
+    CARD --> LOG[Interaction + trace log]
+    LOG --> Out
 
-    E1 --> F{Intent}
-    E2 --> F
-    F -- small-talk --> S[Fast Small-talk Response]
-    F -- sensitive --> X
-    F -- rag --> G{Second Exact Cache}
+    %% Luồng RAG
+    F -- "Cache Hit" --> Out
+    F -- "Cache Miss" --> G[Hybrid Retrieval: Dense + Sparse]
+    G --> H[Cohere Reranker]
+    H --> I[Parent / Section Context Expansion]
+    I --> K[LLM Synthesis & SSE Stream]
+    K --> CacheSave[Save Semantic Cache]
+    CacheSave --> Out
 
-    G -- Hit --> O
-    G -- Miss --> H[Hybrid Retrieval: Dense + Sparse]
-    H --> I[Cohere Reranker]
-    I --> J[Parent / Section Context Expansion]
-    J --> K[LLM Synthesis]
-    K --> L[Save Semantic Cache]
-    L --> O
+    Block --> Out
+    Stalk --> Out
+    Sen --> Out
+    FORM --> Out
 
-    subgraph Evaluation
-      R[ragas_eval.py] --> M[LLM-as-Judge Metrics]
-      R --> N[Heuristic Retrieval Metrics]
-      M --> P[evaluation_report.json]
-      N --> P
-      P --> Q[(evaluation_runs)]
-    end
+    style A fill:#00A651,stroke:#fff,color:#fff
+    style Out fill:#00A651,stroke:#fff,color:#fff
+    style Block fill:#ff4444,stroke:#fff,color:#fff
+    style Stalk fill:#f59e0b,stroke:#fff,color:#fff
+    style Sen fill:#f43f5e,stroke:#fff,color:#fff
+    style B fill:#f43f5e,stroke:#fff,color:#fff
+    style FR1 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR2 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR3 fill:#0ea5e9,stroke:#fff,color:#fff
+    style FR4 fill:#0ea5e9,stroke:#fff,color:#fff
+    style CARD fill:#0ea5e9,stroke:#fff,color:#fff
 ```
 
 ## 1. Input Gateway Safety
@@ -50,17 +68,13 @@ Việc chặn ở đầu vào giúp answer path không phải quét lại câu t
 
 Sau khi câu hỏi vượt qua gateway, hệ thống tìm exact match trong `SemanticCache` bằng câu hỏi thô đã normalize. Nếu hit, câu trả lời được trả về ngay qua SSE với latency rất thấp và không tốn token LLM.
 
-## 3. Unified NLU Gateway
+## 3. Unified NLU Orchestrator
 
-NLU hiện có hai đường:
-
-- **Fast-path rule-based**: dùng cho câu hỏi RAG rõ ràng, có domain keyword mạnh như VinFast, Xanh SM, V-GREEN, tài xế, sạc, pin, giá, phí, ưu đãi, bảo hiểm, hoàn tiền, chính sách. Đường này không gọi OpenAI, giữ nguyên query làm `rewritten_query` và được làm giàu bằng `domain_vocabulary`.
-- **Domain Vocabulary**: chạy regex/local dictionary để map câu viết tắt, sai chính tả, từ đời thường như `xsm/gsm`, `vgreen`, `dk/đk`, `platfom`, `sạc free`, `ăn chia`, `đền hàng` sang thuật ngữ tài liệu. Đây là lớp bảo hiểm tốc độ cao cho fast-path.
-- **LLM Unified NLU**: dùng khi câu hỏi cần rewrite theo lịch sử hội thoại, có tham chiếu mơ hồ như “nó”, “cái này”, “vậy còn”, hoặc không đủ tín hiệu domain. Prompt `UNIFIED_NLU_PROMPT` gom intent classification và rewrite vào một lần gọi LLM. Model NLU tách bằng biến `NLU_MODEL`, mặc định hiện là `gpt-4o-mini`.
-- **Xử Lý Ảnh (Multimodal Vision)**: Khi có hình ảnh đính kèm, fast-path bị vô hiệu hóa. NLU đóng vai trò thị giác máy tính đọc hiểu ảnh và chuyển đổi toàn bộ nội dung ảnh thành truy vấn chữ (`rewritten_query`). Hình ảnh bị hủy sau bước NLU để LLM Generator phía sau chỉ nhận Text, qua đó tiết kiệm tối đa Token và ngăn chặn lỗi Crash Data.
-  *(Lưu ý: Tính năng Query Expansion đã được tắt bỏ hoàn toàn trên tất cả các luồng để tránh gánh nặng sinh token, giảm tải cho Qdrant/backend và hạ thấp latency của LLM).*
-
-`max_tokens` NLU đang là `220`. Ảnh hưởng dự kiến thấp vì output NLU là JSON ngắn; đổi lại giúp giảm trần sinh token, chi phí và latency xấu nhất. Rủi ro chính là JSON bị cắt nếu prompt sinh quá dài, nhưng pipeline đã có fallback rule-based khi parse lỗi.
+Hệ thống hiện sử dụng một mô hình ngôn ngữ trung tâm (Unified LLM NLU) để điều phối toàn bộ các tác vụ. Mô hình này nhận câu hỏi, lịch sử hội thoại và tự động phân loại `intent`:
+- **rag**: Hỏi đáp thông tin chính sách, tiếp tục luồng RAG retrieval + rerank + answer LLM.
+- **food_recommendation**: Gợi ý món ăn, rẽ nhánh sang luồng Geocode & ML Ranking.
+- **small-talk**: Giao tiếp xã giao, sử dụng suggested_answer từ NLU.
+- **sensitive**: Nhận diện câu hỏi nhạy cảm và sử dụng luôn suggested_answer từ NLU để phản hồi, không chặn cụt lủn.
 
 ## 4. Second Exact Cache
 
@@ -113,7 +127,7 @@ Mỗi lần eval ghi thêm snapshot vào bảng `evaluation_runs`, gồm metrics
 
 Latency cao thường đến từ bốn điểm:
 
-- NLU Gateway: trước đây luôn gọi LLM nên có thể tốn 1-5 giây. Fast-path mới bỏ qua LLM NLU cho câu RAG rõ ràng.
+- NLU Orchestrator: Gọi Unified NLU LLM để phân loại intent. Tốn khoảng 1-2 giây nhưng độ chính xác rất cao.
 - Embedding + hybrid retrieval: phụ thuộc Qdrant và kích thước tập ứng viên.
 - Cohere rerank: là API call riêng, thường tốn thêm hàng trăm ms đến vài giây nếu network chậm.
 - LLM synthesis: phụ thuộc độ dài context sau expansion và độ dài câu trả lời; đây thường là phần lớn nhất nếu context/document dài.

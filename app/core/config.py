@@ -50,9 +50,12 @@ class Settings(BaseSettings):
     
     # LLM & Embedding
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    RAG_ANSWER_MODEL: str = os.getenv("RAG_ANSWER_MODEL", "gpt-4o-mini")
     NLU_MODEL: str = os.getenv("NLU_MODEL", "gpt-4o-mini")
+    FOOD_ANSWER_MODEL: str = os.getenv("FOOD_ANSWER_MODEL", "gpt-4o-mini")
     AI_JUDGE_MODEL: str = os.getenv("AI_JUDGE_MODEL", "gpt-4o-mini")
+    VLM_MODEL: str = os.getenv("VLM_MODEL", "gpt-4o-mini")
     OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "900"))
     EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "openai")
@@ -72,7 +75,7 @@ class Settings(BaseSettings):
     
     # Reranker
     RERANKER_PROVIDER: str = os.getenv("RERANKER_PROVIDER", "cohere")
-    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "rerank-v3.0")
+    RERANKER_MODEL: str = os.getenv("RERANKER_MODEL", "rerank-multilingual-v3.0")
     COHERE_API_KEY: str = os.getenv("COHERE_API_KEY", "")
     
     # Crawl / Data

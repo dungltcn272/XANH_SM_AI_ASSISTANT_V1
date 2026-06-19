@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xanh SM AI Assistant Pitch Deck W4</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --green: #00b386;
+    --cyan: #1cc7f2;
+    --navy: #071735;
+    --ink: #0b1a3d;
+    --muted: #48617f;
+    --soft: rgba(255, 255, 255, 0.82);
+    --glass: rgba(255, 255, 255, 0.72);
+    --line: rgba(14, 87, 122, 0.16);
+    --shadow: 0 28px 90px rgba(8, 45, 77, 0.22);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: #cfeee9;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 64px;
+    padding: 56px 0;
+  }
+
+  .slide-wrapper {
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top center;
+    transform: scale(min(calc(94vw / 1920), 0.72));
+    margin-bottom: calc(-1080px * (1 - min(calc(94vw / 1920), 0.72)));
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 34px 100px rgba(4, 44, 74, 0.28);
+  }
+
+  .slide {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    padding: 60px 80px;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.96) 0%, rgba(235,251,255,0.76) 42%, rgba(235,251,255,0.2) 100%),
+      url("../frontend/public/bg_landing.png") center / cover no-repeat;
+    page-break-after: always;
+  }
+
+  .slide::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 18% 18%, rgba(255,255,255,0.82), transparent 28%),
+      radial-gradient(circle at 78% 16%, rgba(0, 198, 242, 0.18), transparent 32%),
+      linear-gradient(180deg, rgba(255,255,255,0.2), rgba(198,246,238,0.26));
+    pointer-events: none;
+  }
+
+  .slide::after {
+    content: "";
+    position: absolute;
+    inset: 46px;
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    border-radius: 34px;
+    pointer-events: none;
+  }
+
+  .logo {
+    position: relative;
+    z-index: 2;
+    height: 74px;
+    width: auto;
+  }
+
+  .topbar {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+  }
+
+  .tabs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,0.76);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.42);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 16px 38px rgba(10, 86, 126, 0.12);
+  }
+
+  .tab {
+    min-width: 144px;
+    text-align: center;
+    padding: 18px 24px;
+    border-radius: 999px;
+    color: #24415f;
+    font-weight: 800;
+    font-size: 18px;
+  }
+
+  .tab.active {
+    color: #fff;
+    background: var(--green);
+    box-shadow: 0 14px 28px rgba(0, 179, 134, 0.28);
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    height: calc(100% - 106px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .kicker {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 18px;
+    border-radius: 999px;
+    background: rgba(0, 179, 134, 0.12);
+    color: #008c72;
+    font-size: 17px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  h1, h2, h3, p { margin: 0; }
+
+  .hero {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 0.92fr 1.08fr;
+    gap: 54px;
+    align-items: center;
+  }
+
+  .hero h1 {
+    margin-top: 26px;
+    font-size: 110px;
+    line-height: 1.05;
+    letter-spacing: 0;
+    color: var(--navy);
+  }
+
+  .hero h1 span, .section-title span {
+    color: var(--green);
+  }
+
+  .lead {
+    margin-top: 28px;
+    color: #314967;
+    font-size: 30px;
+    line-height: 1.48;
+    font-weight: 650;
+  }
+
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 36px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border: 1px solid rgba(0, 179, 134, 0.22);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.62);
+    color: #123257;
+    font-size: 20px;
+    font-weight: 800;
+    box-shadow: 0 12px 28px rgba(13, 87, 118, 0.1);
+  }
+
+  .hero-stage {
+    position: relative;
+    min-height: 740px;
+  }
+
+  .orbit {
+    position: absolute;
+    left: 50%;
+    top: 48%;
+    width: 590px;
+    height: 590px;
+    border: 2px solid rgba(255,255,255,0.78);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(0,179,134,0.2), rgba(255,255,255,0.12) 54%, transparent 68%);
+    box-shadow: inset 0 0 60px rgba(255,255,255,0.45), 0 24px 80px rgba(0, 179, 134, 0.18);
+  }
+
+  .bot {
+    position: absolute;
+    left: 28%;
+    bottom: -200px;
+    width: 1200px;
+    transform: translateX(-50%);
+    filter: drop-shadow(0 34px 42px rgba(0, 90, 124, 0.28));
+  }
+
+  .float-card {
+    position: absolute;
+    width: 160px;
+    height: 132px;
+    display: grid;
+    place-items: center;
+    gap: 6px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.38);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 24px 52px rgba(19, 75, 104, 0.18);
+    font-size: 18px;
+    font-weight: 900;
+    text-align: center;
+  }
+
+  .float-card b {
+    font-size: 34px;
+    line-height: 1;
+  }
+
+  .f1 { left: 90px; top: 140px; transform: rotate(-6deg); }
+  .f2 { right: 90px; top: 140px; transform: rotate(8deg); }
+  .f3 { left: 20px; bottom: 200px; transform: rotate(7deg); }
+  .f4 { right: 90px; bottom: 140px; transform: rotate(-5deg); }
+  .f5 { left: 420px; bottom: 30px; transform: rotate(-4deg); }
+  .f6 { left: 370px; top: 40px; transform: rotate(4deg); }
+
+  .section-title {
+    margin-top: 40px;
+    font-size: 60px;
+    line-height: 1.1;
+    color: var(--navy);
+    letter-spacing: 0;
+  }
+
+  .section-lead {
+    margin-top: 16px;
+    max-width: 1120px;
+    color: #415b7d;
+    font-size: 26px;
+    line-height: 1.45;
+    font-weight: 650;
+  }
+
+  .feature-grid {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+
+  .feature-card {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(9, 74, 112, 0.13);
+    border-radius: 20px;
+    background: rgba(255,255,255,0.84);
+    box-shadow: 0 16px 36px rgba(13, 64, 100, 0.1);
+  }
+
+  .feature-card img {
+    display: block;
+    width: 100%;
+    height: 150px;
+    flex: none;
+    object-fit: cover;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .feature-card div {
+    padding: 20px;
+    margin-top: auto;
+  }
+
+  .feature-card h3 {
+    color: var(--navy);
+    font-size: 26px;
+    line-height: 1.15;
+  }
+
+  .feature-card p {
+    margin-top: 10px;
+    color: #365071;
+    font-size: 20px;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  .split {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 0.94fr 1.06fr;
+    gap: 24px;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .panel {
+    border: 1px solid rgba(9, 74, 112, 0.14);
+    border-radius: 24px;
+    background: rgba(255,255,255,0.78);
+    box-shadow: var(--shadow);
+    padding: 30px;
+    min-height: 0;
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  .metric {
+    min-height: 130px;
+    border: 1px solid rgba(0, 179, 134, 0.18);
+    border-radius: 20px;
+    background: rgba(255,255,255,0.78);
+    padding: 20px;
+  }
+
+  .metric b {
+    display: block;
+    color: var(--navy);
+    font-size: 40px;
+    line-height: 1;
+  }
+
+  .metric span {
+    display: block;
+    margin-top: 8px;
+    color: #3d5574;
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  .demo-image {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .demo-image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 22px;
+    box-shadow: 0 18px 60px rgba(0, 70, 98, 0.18);
+  }
+
+  .card-title {
+    color: var(--navy);
+    font-size: 38px;
+    line-height: 1.14;
+    font-weight: 900;
+  }
+
+  .body-copy {
+    margin-top: 18px;
+    color: #344e70;
+    font-size: 24px;
+    line-height: 1.52;
+    font-weight: 650;
+  }
+
+  .nlu-grid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .nlu-card {
+    min-height: 220px;
+    border: 1px solid rgba(9, 74, 112, 0.14);
+    border-radius: 24px;
+    background: rgba(255,255,255,0.78);
+    padding: 24px;
+    box-shadow: 0 16px 36px rgba(13, 64, 100, 0.1);
+  }
+
+  .nlu-card .num {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    color: #fff;
+    font-size: 20px;
+    font-weight: 900;
+  }
+
+  .nlu-card h3 {
+    margin-top: 18px;
+    color: var(--navy);
+    font-size: 28px;
+    line-height: 1.2;
+  }
+
+  .nlu-card p {
+    margin-top: 10px;
+    color: #405a7a;
+    font-size: 20px;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  .flow-strip {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 40px 1fr 40px 1fr 40px 1fr;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .flow-node {
+    min-height: 100px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    border: 1px solid rgba(0, 179, 134, 0.18);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.76);
+    color: var(--navy);
+    font-size: 22px;
+    line-height: 1.3;
+    font-weight: 800;
+    padding: 16px;
+  }
+
+  .arrow {
+    color: var(--green);
+    font-size: 36px;
+    text-align: center;
+    font-weight: 900;
+  }
+
+  .compare {
+    width: 100%;
+    margin-top: 24px;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+  }
+
+  .compare th,
+  .compare td {
+    padding: 16px 20px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid rgba(9, 74, 112, 0.11);
+    border-right: 1px solid rgba(9, 74, 112, 0.09);
+  }
+
+  .compare th {
+    color: var(--navy);
+    background: rgba(255,255,255,0.86);
+    font-size: 24px;
+    font-weight: 900;
+  }
+
+  .compare td {
+    color: #405a7a;
+    background: rgba(255,255,255,0.72);
+    font-size: 21px;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  .compare .ours {
+    color: var(--navy);
+    background: rgba(225, 255, 247, 0.9);
+    font-weight: 800;
+  }
+
+  .compare tr:last-child td { border-bottom: 0; }
+  .compare th:last-child, .compare td:last-child { border-right: 0; }
+
+  .advantage-row {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .advantage {
+    border-radius: 18px;
+    border: 1px solid rgba(0, 179, 134, 0.17);
+    background: rgba(255,255,255,0.76);
+    padding: 18px;
+    color: #123257;
+    font-size: 20px;
+    line-height: 1.4;
+    font-weight: 700;
+  }
+
+  .pipeline {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 50px 1.2fr 50px 1fr;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .pipe-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pipe-box {
+    min-height: auto;
+    border: 1px solid rgba(9, 74, 112, 0.14);
+    border-radius: 20px;
+    background: rgba(255,255,255,0.78);
+    padding: 20px;
+    box-shadow: 0 12px 28px rgba(13, 64, 100, 0.1);
+  }
+
+  .pipe-box h3 {
+    color: var(--navy);
+    font-size: 24px;
+    line-height: 1.2;
+  }
+
+  .pipe-box p {
+    margin-top: 8px;
+    color: #46607f;
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  .pipe-hub {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 2px solid rgba(0, 179, 134, 0.32);
+    background: linear-gradient(180deg, rgba(230,255,248,0.96), rgba(255,255,255,0.78));
+  }
+
+  .pipe-label {
+    margin-bottom: 8px;
+    color: #008c72;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .bridge {
+    align-self: center;
+    width: 100%;
+    display: grid;
+    place-items: center;
+    color: var(--green);
+    font-size: 44px;
+    font-weight: 900;
+  }
+
+  .footer-note {
+    position: absolute;
+    z-index: 3;
+    left: 80px;
+    right: 80px;
+    bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    color: #42617e;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .footer-note b { color: var(--navy); }
+
+  .closing-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.02fr 0.98fr;
+    gap: 42px;
+    align-items: center;
+    min-height: 0;
+  }
+
+  .closing-title {
+    margin-top: 28px;
+    color: var(--navy);
+    font-size: 88px;
+    line-height: 1.04;
+    letter-spacing: 0;
+    font-weight: 950;
+  }
+
+  .closing-title span {
+    color: var(--green);
+  }
+
+  .closing-copy {
+    margin-top: 26px;
+    max-width: 850px;
+    color: #314967;
+    font-size: 28px;
+    line-height: 1.5;
+    font-weight: 650;
+  }
+
+  .closing-grid {
+    margin-top: 34px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+
+  .closing-card {
+    min-height: 150px;
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    gap: 16px;
+    align-items: start;
+    border: 1px solid rgba(0, 179, 134, 0.18);
+    border-radius: 22px;
+    background: rgba(255,255,255,0.78);
+    box-shadow: 0 18px 44px rgba(13, 64, 100, 0.12);
+    padding: 20px;
+  }
+
+  .closing-card img {
+    width: 62px;
+    height: 62px;
+    object-fit: cover;
+    border-radius: 18px;
+    background: rgba(236, 255, 251, 0.92);
+  }
+
+  .closing-card h3 {
+    color: var(--navy);
+    font-size: 24px;
+    line-height: 1.18;
+  }
+
+  .closing-card p {
+    margin-top: 8px;
+    color: #405a7a;
+    font-size: 18px;
+    line-height: 1.38;
+    font-weight: 650;
+  }
+
+  .closing-visual {
+    position: relative;
+    min-height: 760px;
+    border-radius: 38px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.72);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.72), rgba(220,255,248,0.62)),
+      url("../frontend/public/bg_landing.png") center / cover no-repeat;
+    box-shadow: var(--shadow);
+  }
+
+  .closing-visual::before {
+    content: "";
+    position: absolute;
+    inset: 34px;
+    border: 1px solid rgba(255,255,255,0.72);
+    border-radius: 30px;
+  }
+
+  .closing-bot {
+    position: absolute;
+    z-index: 2;
+    right: 96px;
+    top: 108px;
+    width: 360px;
+    filter: drop-shadow(0 34px 60px rgba(4, 50, 82, 0.24));
+  }
+
+  .orbit-chip {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 198px;
+    padding: 16px 18px;
+    border-radius: 26px;
+    border: 1px solid rgba(255,255,255,0.78);
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 18px 44px rgba(13, 64, 100, 0.16);
+    color: var(--navy);
+    font-size: 18px;
+    font-weight: 900;
+  }
+
+  .orbit-chip img {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 14px;
+  }
+
+  .orbit-chip.c1 { left: 76px; top: 112px; }
+  .orbit-chip.c2 { left: 96px; bottom: 198px; }
+  .orbit-chip.c3 { right: 62px; bottom: 220px; }
+
+  .closing-stats {
+    position: absolute;
+    z-index: 3;
+    left: 62px;
+    right: 62px;
+    bottom: 44px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  .closing-stat {
+    min-height: 112px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.82);
+    border: 1px solid rgba(0, 179, 134, 0.16);
+    padding: 18px;
+  }
+
+  .closing-stat b {
+    display: block;
+    color: var(--green);
+    font-size: 34px;
+    line-height: 1;
+  }
+
+  .closing-stat span {
+    display: block;
+    margin-top: 8px;
+    color: #34506f;
+    font-size: 16px;
+    line-height: 1.32;
+    font-weight: 750;
+  }
+
+  .closing-cta {
+    margin-top: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 26px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--green), #10cdb1);
+    color: #fff;
+    box-shadow: 0 18px 42px rgba(0, 179, 134, 0.28);
+    font-size: 22px;
+    font-weight: 950;
+  }
+
+  @page { size: 1920px 1080px; margin: 0; }
+
+  @media print {
+    html, body {
+      display: block;
+      padding: 0;
+      background: none;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .slide-wrapper {
+      transform: none;
+      margin: 0;
+      border-radius: 0;
+      box-shadow: none;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
+    .slide { border-radius: 0; }
+  }
+</style>
+</head>
+<body>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab active">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab">Hiệu năng</div>
+          <div class="tab">Kiến trúc</div>
+        </div>
+      </div>
+      <div class="hero">
+        <div>
+          <div class="kicker">AI Assistant</div>
+          <h1>Xanh SM<br><span>AI Assistant</span></h1>
+          <p class="lead">Một trợ lý hội thoại cho hệ sinh thái Xanh SM: hỏi đáp tri thức, hiểu ngôn ngữ tự nhiên, gợi ý theo ngữ cảnh và vận hành có đo lường.</p>
+          <div class="pill-row">
+            <div class="pill">✦ RAG Answer</div>
+            <div class="pill">✦ Food Recommendation</div>
+          </div>
+          <div class="pill-row" style="margin-top: 16px;">
+            <div class="pill">✦ Eval & Ops</div>
+            <div class="pill">✦ NLU Orchestrator</div>
+          </div>
+        </div>
+        <div class="hero-stage">
+          <div class="orbit"></div>
+          <img class="bot" src="../frontend/dist/driver_man.png" alt="AI Bot">
+          <div class="float-card f1"><b>🚘</b>Xe điện</div>
+          <div class="float-card f2"><b>📰</b>Tin tức</div>
+          <div class="float-card f3"><b>🍜</b>Food AI</div>
+          <div class="float-card f4"><b>📊</b>Analytics</div>
+          <div class="float-card f5"><b>🛡️</b>Policy</div>
+          <div class="float-card f6"><b>🔎</b>Search</div>
+        </div>
+      </div>
+      <div class="footer-note"><span><b>Demo:</b> <a href="https://rag-xanh-sm-v1.vercel.app" target="_blank" style="color: inherit; text-decoration: underline;">rag-xanh-sm-v1.vercel.app</a></span></div>
+    </div>
+  </section>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab active">Khám phá</div>
+          <div class="tab">Hiệu năng</div>
+          <div class="tab">Kiến trúc</div>
+        </div>
+      </div>
+      <div class="content">
+        <h2 class="section-title">Khám phá <span>khả năng</span></h2>
+        <p class="section-lead">Assistant không chỉ trả lời câu hỏi. Hệ thống gom nhiều năng lực vào một trải nghiệm thống nhất để người dùng hỏi bằng ngôn ngữ tự nhiên và nhận phản hồi đúng ngữ cảnh.</p>
+        <div class="feature-grid">
+          <article class="feature-card"><img src="../frontend/public/knowledge_search.png" alt=""><div><h3>Knowledge Search</h3><p>Tra cứu tri thức, chính sách, nội dung vận hành và tài liệu nội bộ.</p></div></article>
+          <article class="feature-card"><img src="../frontend/public/deep_research.png" alt=""><div><h3>Deep Research</h3><p>Tổng hợp nhiều nguồn, giữ trích dẫn và lý do trả lời rõ ràng.</p></div></article>
+          <article class="feature-card"><img src="../frontend/public/vehicle_expert.png" alt=""><div><h3>Vehicle Expert</h3><p>Hỏi đáp về dòng xe, dịch vụ, trải nghiệm di chuyển và hệ sinh thái.</p></div></article>
+          <article class="feature-card"><img src="../frontend/public/pricing_assistant.png" alt=""><div><h3>Pricing Assistant</h3><p>Giải thích giá cước, ưu đãi và điều kiện áp dụng theo tình huống.</p></div></article>
+          <article class="feature-card"><img src="../frontend/public/news_digest.png" alt=""><div><h3>News Digest</h3><p>Cập nhật tin tức, tóm tắt điểm đáng chú ý và biến động thị trường.</p></div></article>
+          <article class="feature-card"><img src="../frontend/public/food_recommendation.png" alt=""><div><h3>Food Recommendation</h3><p>Gợi ý món/quán theo khẩu vị, vị trí, ngân sách và ngữ cảnh hội thoại.</p></div></article>
+          <article class="feature-card"><img src="../frontend/public/policy_support.png" alt=""><div><h3>Policy & Support</h3><p>Hỗ trợ chính sách, điều khoản, câu hỏi thường gặp và CSKH.</p></div></article>
+          <article class="feature-card"><img src="../frontend/public/data_analytics.png" alt=""><div><h3>Data Analytics</h3><p>Theo dõi chất lượng, trace, latency, feedback và tín hiệu cải thiện.</p></div></article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab active">Hiệu năng</div>
+          <div class="tab">Kiến trúc</div>
+        </div>
+      </div>
+      <div class="content">
+        <h2 class="section-title">Hiệu năng <span>RAG & Food</span></h2>
+        <p class="section-lead">RAG answer và Food recommendation cùng chạy trong một assistant, cùng được trace, đánh giá và tối ưu theo dữ liệu vận hành.</p>
+        <div class="split">
+          <div class="panel">
+            <h3 class="card-title">Đo lường theo luồng thực tế</h3>
+            <p class="body-copy">Eval tập trung vào độ bám tài liệu, độ đúng câu trả lời, tốc độ phản hồi và khả năng mở rộng domain. Food dùng cùng lớp NLU để hiểu khẩu vị, địa điểm, ngân sách và ràng buộc của người dùng.</p>
+            <div class="metric-grid">
+              <div class="metric"><b>99%</b><span>Faithfulness trên bộ golden cases RAG đã kiểm thử.</span></div>
+              <div class="metric"><b>90%</b><span>Correctness mục tiêu cho câu hỏi chính sách, giá cước, xe và tin tức.</span></div>
+              <div class="metric"><b>~120ms</b><span>Fast-path/cache cho các câu hỏi phổ biến và guardrail nhẹ.</span></div>
+              <div class="metric"><b>Food</b><span>Gợi ý có lý do, điều kiện cá nhân hóa và trace để debug.</span></div>
+            </div>
+          </div>
+          <div class="panel demo-image">
+            <img src="food_recommend.png" alt="Food recommendation demo">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab active">NLU</div>
+          <div class="tab">Kiến trúc</div>
+        </div>
+      </div>
+      <div class="content">
+        <h2 class="section-title">NLU biến hệ thống thành <span>assistant hiểu người dùng</span></h2>
+        <p class="section-lead">NLU là lớp đọc ý định, chuẩn hóa câu hỏi và điều phối domain. Nhờ lớp này, người dùng không cần nhớ cú pháp; họ chỉ cần nói tự nhiên, assistant tự hiểu cần hỏi RAG, gợi ý món ăn hay truy vấn thông tin khác.</p>
+        <div class="nlu-grid">
+          <article class="nlu-card"><div class="num">1</div><h3>Intent & Domain Routing</h3><p>Nhận diện câu hỏi chính sách, xe, giá cước, tin tức, food, missing-info hoặc câu hỏi ngoài phạm vi để chọn pipeline phù hợp.</p></article>
+          <article class="nlu-card"><div class="num">2</div><h3>Query Rewrite</h3><p>Viết lại câu hỏi mơ hồ thành truy vấn rõ nghĩa; nếu thiếu ngữ cảnh, NLU hỏi lại thay vì đoán hoặc gọi sai pipeline.</p></article>
+          <article class="nlu-card"><div class="num">3</div><h3>Slot Extraction</h3><p>Tách địa điểm, ngân sách, khẩu vị, món muốn ăn, loại xe, thời gian và các điều kiện người dùng nhắc tới.</p></article>
+        </div>
+        <div class="panel" style="margin-top: 30px;">
+          <h3 class="card-title">Nhanh hơn, mượt hơn, ít hỏi lại hơn</h3>
+          <div class="flow-strip">
+            <div class="flow-node">Người dùng hỏi tự nhiên</div>
+            <div class="arrow">→</div>
+            <div class="flow-node">NLU hiểu ý định và dữ kiện</div>
+            <div class="arrow">→</div>
+            <div class="flow-node">Chọn RAG, Food hoặc hỏi làm rõ</div>
+            <div class="arrow">→</div>
+            <div class="flow-node">Trả lời theo văn phong CSKH</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab active">Lợi thế</div>
+          <div class="tab">Kiến trúc</div>
+        </div>
+      </div>
+      <div class="content">
+        <h2 class="section-title">So sánh trực quan <span>& lợi thế</span></h2>
+        <p class="section-lead">Điểm khác biệt không nằm ở một câu trả lời riêng lẻ, mà ở cách assistant hiểu ý định, chọn nguồn dữ liệu, giữ trace và cải thiện chất lượng qua từng phiên bản.</p>
+        <table class="compare">
+          <thead>
+            <tr>
+              <th>Năng lực</th>
+              <th>Chatbot phổ thông</th>
+              <th>RAG thông thường</th>
+              <th class="ours">Xanh SM AI Assistant</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Xử lý câu hỏi tự nhiên</td>
+              <td>Nhận diện theo từ khóa tĩnh, dễ sai lệch hoặc báo lỗi nếu người dùng gõ câu dài, nói lóng.</td>
+              <td>Hiểu ngữ nghĩa tốt nhưng chủ yếu dùng để tìm kiếm tài liệu thay vì bóc tách yêu cầu phức tạp.</td>
+              <td class="ours">NLU thông minh bóc tách chính xác ý định (intent), trích xuất điều kiện (slot) và nhớ ngữ cảnh hội thoại.</td>
+            </tr>
+            <tr>
+              <td>Đa nhiệm & Nghiệp vụ</td>
+              <td>Chỉ trả lời được kịch bản FAQ cố định, không lấy được dữ liệu động từ hệ thống.</td>
+              <td>Chỉ mạnh về đọc hiểu tài liệu văn bản, khó kết hợp logic nghiệp vụ (như gợi ý món ăn, giá cước).</td>
+              <td class="ours">Tích hợp Đa Engine (Kiến thức, Food Recommendation, Tin tức) để xử lý chéo nhiều luồng dịch vụ.</td>
+            </tr>
+            <tr>
+              <td>Kiểm soát & Vận hành</td>
+              <td>Hoạt động như "hộp đen", khi trả lời sai kỹ sư rất khó truy vết nguyên nhân để sửa chữa.</td>
+              <td>Có trích dẫn nguồn tài liệu nhưng thiếu hệ thống đánh giá chất lượng tự động (Eval) liên tục.</td>
+              <td class="ours">Vòng lặp Ops (Trace & Eval) ghi log mọi suy luận, giúp đo lường RAGAS và tự động cải tiến tức thì.</td>
+            </tr>
+            <tr>
+              <td>Trải nghiệm khách hàng</td>
+              <td>Giao tiếp rập khuôn, máy móc, thường bắt ép người dùng phải bấm chọn menu tĩnh.</td>
+              <td>Văn phong AI khô khan giống "bách khoa toàn thư", thiếu sự đồng cảm và cá nhân hóa.</td>
+              <td class="ours">Tư vấn chuẩn văn phong CSKH, cá nhân hóa theo profile và luôn định hướng rõ hành động kế tiếp.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="advantage-row">
+          <div class="advantage">Một assistant cho nhiều nhiệm vụ, không tách rời từng công cụ.</div>
+          <div class="advantage">NLU làm lớp điều phối, giúp mở rộng domain nhanh hơn.</div>
+          <div class="advantage">Eval/Ops gắn trực tiếp vào vòng phát triển sản phẩm.</div>
+          <div class="advantage">UI mới hướng tới trải nghiệm demo mượt và dễ hiểu.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab">Hiệu năng</div>
+          <div class="tab active">Kiến trúc</div>
+        </div>
+      </div>
+      <div class="content">
+        <h2 class="section-title">Kiến trúc <span>AI Assistant Pipeline</span></h2>
+        <p class="section-lead">Pipeline được thiết kế theo lớp: gateway bảo vệ đầu vào, NLU hiểu ý định, các engine xử lý domain và lớp ops/eval đóng vòng cải thiện chất lượng.</p>
+        <div class="pipeline">
+          <div class="pipe-col">
+            <div class="pipe-box"><div class="pipe-label">Input</div><h3>User Message</h3><p>Text, ảnh, voice, file upload và ngữ cảnh phiên chat.</p></div>
+            <div class="pipe-box"><h3>Session Context</h3><p>Lịch sử hội thoại, user profile, vị trí và trạng thái tác vụ.</p></div>
+          </div>
+          <div class="bridge">→</div>
+          <div class="pipe-col">
+            <div class="pipe-box"><div class="pipe-label">Gateway</div><h3>Safety & Cache</h3><p>Guardrail, semantic cache, chuẩn hóa input và quyết định fast-path.</p></div>
+            <div class="pipe-box pipe-hub"><div class="pipe-label">Orchestrator</div><h3>Unified NLU</h3><p>Intent classification, query rewrite, slot extraction, missing-info clarification, domain routing và entity normalization.</p></div>
+          </div>
+          <div class="bridge">→</div>
+          <div class="pipe-col">
+            <div class="pipe-box"><div class="pipe-label">RAG Engine</div><h3>Hybrid Retrieval</h3><p>BM25 + vector search, reranking, table-aware chunks và answer synthesis.</p></div>
+            <div class="pipe-box"><div class="pipe-label">Food Engine</div><h3>Recommendation</h3><p>Profile, retrieval, ranker, constraints và lý do gợi ý theo khẩu vị.</p></div>
+            <div class="pipe-box"><div class="pipe-label">Ops</div><h3>Trace & Eval</h3><p>Log, latency, feedback, golden dataset và RAGAS evaluation.</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note"><span><b>Output:</b> câu trả lời nhất quán, có căn cứ, có thể debug</span>
+    </div>
+  </section>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab">Hiệu năng</div>
+          <div class="tab active">Kiến trúc</div>
+        </div>
+      </div>
+      <div class="content">
+        <h2 class="section-title">Kiến trúc <span>Memory & Cá nhân hóa</span></h2>
+        <p class="section-lead">Giải quyết bài toán giới hạn Context Window bằng cách không nhồi nhét lịch sử thô. Phân tách trí nhớ thành đa tầng, kết hợp Context Builder để giữ prompt luôn tinh gọn, giảm latency và tối ưu cá nhân hóa.</p>
+        
+        <div class="pipeline" style="margin-top: 40px; grid-template-columns: 1fr 50px 1.2fr 50px 1fr;">
+          <div class="pipe-col">
+            <div class="pipe-box"><div class="pipe-label">Short-term</div><h3>Working Memory</h3><p>Giữ 5-10 lượt chat gần nhất để NLU hiểu đại từ (như "nó bao tiền?").</p></div>
+            <div class="pipe-box"><div class="pipe-label">Mid-term</div><h3>Session Summary</h3><p>Nén phiên chat dài thành các insight có cấu trúc (mục tiêu, quyết định).</p></div>
+            <div class="pipe-box"><div class="pipe-label">Long-term</div><h3>User Profile DB</h3><p>Nhớ vĩnh viễn sở thích, vị trí, thói quen để không phải hỏi lại nhiều lần.</p></div>
+          </div>
+          <div class="bridge">→</div>
+          <div class="pipe-col" style="justify-content: center;">
+             <div class="pipe-box pipe-hub" style="min-height: 280px; background: linear-gradient(180deg, rgba(230,245,255,0.96), rgba(255,255,255,0.78)); border-color: rgba(0, 150, 255, 0.32);">
+                <div class="pipe-label" style="color: #0077cc;">Orchestrator</div>
+                <h3>Context Builder</h3>
+                <p>Retrieval & lắp ráp các mảnh bộ nhớ liên quan kết hợp với RAG Document thành một Prompt động tinh gọn, giải phóng giới hạn Context Window.</p>
+             </div>
+          </div>
+          <div class="bridge">→</div>
+          <div class="pipe-col" style="justify-content: center;">
+            <div class="pipe-box"><div class="pipe-label">Optimization</div><h3>Prompt Caching</h3><p>Tăng tốc độ phản hồi (Latency) bằng cách cache các cấu trúc prompt tĩnh (system prompt, rules).</p></div>
+            <div class="pipe-box"><div class="pipe-label">Execution</div><h3>LLM Generation</h3><p>Sinh câu trả lời chính xác, cá nhân hóa cao với lượng token tiêu thụ ít nhất.</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note"><span><b>Result:</b> Gợi ý món ăn thông minh hơn, nhớ vị trí, hiểu ngữ cảnh hội thoại mượt mà</span></div>
+    </div>
+  </section>
+
+  <section class="slide-wrapper">
+    <div class="slide">
+      <div class="topbar">
+        <img class="logo" src="../frontend/public/logo.svg" alt="Green SM">
+        <div class="tabs">
+          <div class="tab">Tổng quan</div>
+          <div class="tab">Khám phá</div>
+          <div class="tab">Kiến trúc</div>
+          <div class="tab active">Triển khai</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="closing-layout">
+          <div>
+            <div class="kicker">Kết luận triển khai</div>
+            <h2 class="closing-title">Một dự án <span>đáng triển khai</span> cho hệ sinh thái Xanh SM</h2>
+            <p class="closing-copy">
+              AI Assistant không chỉ trả lời câu hỏi. Khi được kết hợp với dữ liệu lớn từ hệ sinh thái Xanh SM,
+              trợ lý có thể trở thành lớp giao tiếp thông minh giúp người dùng tra cứu, ra quyết định và sử dụng dịch vụ thuận tiện hơn mỗi ngày.
+            </p>
+
+            <div class="closing-grid">
+              <article class="closing-card">
+                <img src="../frontend/public/knowledge_search.png" alt="">
+                <div>
+                  <h3>Thu hút người dùng</h3>
+                  <p>Biến trải nghiệm hỏi đáp thành một điểm chạm chủ động, dễ dùng và hữu ích hơn menu tĩnh.</p>
+                </div>
+              </article>
+              <article class="closing-card">
+                <img src="../frontend/public/data_analytics.png" alt="">
+                <div>
+                  <h3>Tận dụng dữ liệu lớn</h3>
+                  <p>Khai thác dữ liệu chính sách, xe, ưu đãi, tin tức, hành vi và ngữ cảnh để cá nhân hóa câu trả lời.</p>
+                </div>
+              </article>
+              <article class="closing-card">
+                <img src="../frontend/public/food_recommendation.png" alt="">
+                <div>
+                  <h3>Mở rộng tiện ích</h3>
+                  <p>Từ RAG sang Food Recommendation, Ops, Eval và các domain mới trong cùng một assistant.</p>
+                </div>
+              </article>
+              <article class="closing-card">
+                <img src="../frontend/public/policy_support.png" alt="">
+                <div>
+                  <h3>Vận hành đo được</h3>
+                  <p>Trace, latency, feedback và evaluation giúp đội sản phẩm cải thiện chất lượng qua từng vòng lặp.</p>
+                </div>
+              </article>
+            </div>
+
+            <div class="closing-cta">Sẵn sàng bước vào demo triển khai thực tế</div>
+          </div>
+
+          <div class="closing-visual">
+            <img class="closing-bot" src="../frontend/public/Bot.png" alt="Xanh SM AI Assistant">
+            <div class="orbit-chip c1"><img src="../frontend/public/vehicle_expert.png" alt="">Vehicle Expert</div>
+            <div class="orbit-chip c2"><img src="../frontend/public/pricing_assistant.png" alt="">Pricing & Offer</div>
+            <div class="orbit-chip c3"><img src="../frontend/public/deep_research.png" alt="">Deep Research</div>
+            <div class="closing-stats">
+              <div class="closing-stat"><b>1</b><span>Assistant thống nhất cho nhiều nhu cầu người dùng.</span></div>
+              <div class="closing-stat"><b>Data</b><span>Dữ liệu hệ sinh thái là lợi thế cạnh tranh cốt lõi.</span></div>
+              <div class="closing-stat"><b>Loop</b><span>Eval/Ops/Feedback đóng vòng cải thiện liên tục.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
 export const api = {
     _fetch: async (url, options = {}) => {
@@ -17,14 +17,14 @@ export const api = {
     return localStorage.getItem('access_token');
   },
 
-  chatStream: async (query, conversation_id = null, imageBase64 = null, isDeepSearch = false) => {
+  chatStream: async (query, conversation_id = null, imageBase64 = null, isDeepSearch = false, displayQuery = null) => {
     const token = api.getAuthToken();
     const headers = { 'Content-Type': 'application/json' };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const body = { query, conversation_id, deep_search: isDeepSearch };
+    const body = { query, conversation_id, deep_search: isDeepSearch, display_query: displayQuery };
     if (imageBase64) {
       body.image_base64 = imageBase64;
     }
@@ -42,11 +42,44 @@ export const api = {
     return res.json();
   },
 
+  getSystemHealth: async () => {
+    const res = await api._fetch(`${API_BASE}/admin/health`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getAdminLogs: async (intent = null) => {
     let url = `${API_BASE}/admin/logs`;
     if (intent) {
       url += `?intent=${encodeURIComponent(intent)}`;
     }
+    const res = await api._fetch(url);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getRagLogs: async (skip = 0, limit = 50, date = '') => {
+    let url = `${API_BASE}/admin/logs/rag?skip=${skip}&limit=${limit}`;
+    if (date) url += `&date=${date}`;
+    const res = await api._fetch(url);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getFoodLogs: async (skip = 0, limit = 50, date = '') => {
+    let url = `${API_BASE}/admin/logs/food?skip=${skip}&limit=${limit}`;
+    if (date) url += `&date=${date}`;
+    const res = await api._fetch(url);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getBasicLogs: async (skip = 0, limit = 50, intent = '', date = '') => {
+    let url = `${API_BASE}/admin/logs/basic?skip=${skip}&limit=${limit}`;
+    if (intent && intent !== 'all') {
+      url += `&intent=${encodeURIComponent(intent)}`;
+    }
+    if (date) url += `&date=${date}`;
     const res = await api._fetch(url);
     if (!res.ok) throw new Error('API Error');
     return res.json();
@@ -60,6 +93,12 @@ export const api = {
 
   getAdminData: async () => {
     const res = await api._fetch(`${API_BASE}/admin/data`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getFoodTraces: async (skip = 0, limit = 50) => {
+    const res = await api._fetch(`${API_BASE}/admin/food-traces?skip=${skip}&limit=${limit}`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },
@@ -166,6 +205,49 @@ export const api = {
 
   ingestAllKnowledge: async () => {
     const res = await api._fetch(`${API_BASE}/admin/knowledge/ingest-all`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  importFoodCatalog: async (payload = {}) => {
+    const res = await api._fetch(`${API_BASE}/admin/food-catalog/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  testFoodRecommendation: async (payload) => {
+    const res = await api._fetch(`${API_BASE}/admin/food-catalog/recommend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  logFoodInteraction: async (payload) => {
+    const res = await api._fetch(`${API_BASE}/food/interactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getFoodInteractionStats: async (limit = 20) => {
+    const res = await api._fetch(`${API_BASE}/food/interactions/stats?limit=${limit}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  geocodeFoodAddress: async (address) => {
+    const params = new URLSearchParams({ address });
+    const res = await api._fetch(`${API_BASE}/food/geocode?${params.toString()}`);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },

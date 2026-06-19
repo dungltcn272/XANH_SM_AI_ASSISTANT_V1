@@ -1,74 +1,60 @@
-import os
-import sys
+from __future__ import annotations
+
 import json
-import hashlib
-import time
 import re
-from typing import List, Dict, Any, Tuple
+import time
+from typing import Any
 
-from openai import OpenAI
-from app.retrieval.hybrid_search import XanhSMHybridSearch
-from app.retrieval.reranker import XanhSMReranker
-from app.rag.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, FAITHFULNESS_CHECK_PROMPT
-from app.rag.gateway import XanhSMGateway
-from app.rag.classifier import XanhSMClassifier
-from app.rag.guardrail import OutputGuardrail
+from app.assistant.events import sse_pipeline_step
 from app.core.config import settings as config
-from app.core.logger import log_info, log_warn, log_error
+from app.core.llm import get_llm_client
+from app.core.logger import log_warn, log_error
+from app.prompts import RAG_ANSWER_SYSTEM_PROMPT
+from app.rag.hybrid_search import XanhSMHybridSearch
+from app.rag.reranker import XanhSMReranker
+from app.rag.trace_store import save_rag_request_log
+from app.memory.context_builder import ContextBuilder
 
-class XanhSMRAGPipeline:
-    """
-    Phase 3 Advanced NLU-Gateway RAG Pipeline:
-    Coordinates Conversation Gateway ➔ Unified NLU Gateway ➔ Semantic Cache Check 
-    ➔ Strategy Selector ➔ Hybrid Search ➔ Reranker ➔ Parent-Child ➔ LLM Gen ➔ Faithfulness Check ➔ Citations.
-    """
-    
-    def __init__(self):
+
+class RagAnswerChain:
+    """RAG capability chain: retrieve, rerank, expand context, synthesize answer."""
+
+    IMAGE_MARKDOWN_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)\)')
+    RAG_CARD_START = "[[RAG_CARD"
+    RAG_CARD_END = "]]"
+
+    def __init__(self, cache: Any = None):
         self.search_engine = XanhSMHybridSearch()
         self.reranker = XanhSMReranker()
-        self.gateway = XanhSMGateway()
-        self.classifier = XanhSMClassifier()
-        self.output_guardrail = OutputGuardrail()
-        try:
-            from app.rag.cache import XanhSMRAGCache
-            self.cache = XanhSMRAGCache()
-        except Exception as e:
-            log_warn("CACHE", f"Failed to load cache: {e}")
-            self.cache = None
+        self.cache = cache
 
-    def _gateway_refusal_message(self, safety_res: Dict[str, Any]) -> str:
-        reason = (safety_res or {}).get("reason") or "Nội dung này chưa phù hợp để em hỗ trợ trực tiếp."
-        return (
-            f"Dạ, em xin phép chưa hỗ trợ nội dung này. {reason} "
-            "Anh/chị có thể hỏi em về dịch vụ, giá cước, chính sách hoặc cách xử lý sự cố khi sử dụng Xanh SM ạ."
-        )
-            
-    def _compress_context(self, docs: List[Any]) -> str:
-        """
-        Formats and compresses retrieved documents with source boundaries.
-        Giữ nguyên mọi chunks (không lược bỏ Parent) để đảm bảo không mất thông tin giá tiền.
-        """
+    def _calculate_llm_cost(self, prompt_tokens: int, completion_tokens: int) -> dict[str, Any]:
+        usd_input = (prompt_tokens / 1_000_000) * 0.15
+        usd_output = (completion_tokens / 1_000_000) * 0.60
+        usd_total = usd_input + usd_output
+        return {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "cost_usd": usd_total,
+            "cost_vnd": usd_total * 25400,
+        }
+
+    def _compress_context(self, docs: list[Any]) -> str:
         formatted_blocks = []
-        
         for doc in docs:
             content = doc.page_content.strip()
             source = doc.metadata.get("source", "unknown_policy.md")
             section = doc.metadata.get("section", "Introduction")
-            
-            block = (
+            formatted_blocks.append(
                 f"[Tài liệu tham khảo #{len(formatted_blocks) + 1}]\n"
                 f"Nguồn File: {source}\n"
                 f"Phần/Điều khoản: {section}\n"
                 f"Nội dung: {content}\n"
                 f"---"
             )
-            formatted_blocks.append(block)
-
         return "\n\n".join(formatted_blocks)
 
-    IMAGE_MARKDOWN_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)\)')
-
-    def _extract_images_from_doc(self, doc: Any) -> List[Dict[str, Any]]:
+    def _extract_images_from_doc(self, doc: Any) -> list[dict[str, Any]]:
         images = []
         content = doc.page_content or ""
         meta = doc.metadata or {}
@@ -87,712 +73,176 @@ class XanhSMRAGPipeline:
             })
         return images
 
-        
-    def _calculate_llm_cost(self, prompt_tokens: int, completion_tokens: int) -> Dict[str, Any]:
-        """
-        Calculates exact API cost in USD and VND based on GPT-4o-mini pricing.
-        """
-        usd_input = (prompt_tokens / 1_000_000) * 0.15
-        usd_output = (completion_tokens / 1_000_000) * 0.60
-        usd_total = usd_input + usd_output
-        vnd_total = usd_total * 25400
-        
-        return {
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "cost_usd": usd_total,
-            "cost_vnd": vnd_total
-        }
-
-    def _build_citations(self, docs: List[Any]) -> List[Dict[str, Any]]:
+    def _build_citations(self, docs: list[Any]) -> list[dict[str, Any]]:
         citations = []
-        for d in docs:
-            images_in_chunk = self._extract_images_from_doc(d)
-            
+        for doc in docs:
             citations.append({
-                "source": d.metadata.get("source", "unknown"),
-                "section": d.metadata.get("section", ""),
-                "url": d.metadata.get("url", "") or d.metadata.get("source", ""),
-                "relevance_score": d.metadata.get("rerank_score", 0.0),
-                "images": images_in_chunk
+                "source": doc.metadata.get("source", "unknown"),
+                "section": doc.metadata.get("section", ""),
+                "url": doc.metadata.get("url", "") or doc.metadata.get("source", ""),
+                "relevance_score": doc.metadata.get("rerank_score", 0.0),
+                "images": self._extract_images_from_doc(doc),
             })
         return citations
 
+    def _allowed_media_urls(self, docs: list[Any]) -> set[str]:
+        urls: set[str] = set()
+        for doc in docs:
+            meta = doc.metadata or {}
+            for key in ("url", "source"):
+                value = (meta.get(key) or "").strip()
+                if value.startswith(("http://", "https://")):
+                    urls.add(value)
+            for image in self._extract_images_from_doc(doc):
+                if image.get("url"):
+                    urls.add(image["url"])
+                if image.get("page_url", "").startswith(("http://", "https://")):
+                    urls.add(image["page_url"])
+        return urls
 
-    def _build_prompt_messages(self, query: str, context_docs: List[Any], chat_history: List[Dict[str, str]] = None):
+    def _sanitize_rag_card(self, raw_card: Any, allowed_urls: set[str]) -> dict[str, Any] | None:
+        if not isinstance(raw_card, dict):
+            return None
+        title = str(raw_card.get("title") or "").strip()
+        if not title:
+            return None
+        card_type = str(raw_card.get("type") or "info").strip().lower()
+        if card_type not in {"news", "vehicle", "info"}:
+            card_type = "info"
+        images = raw_card.get("images") if isinstance(raw_card.get("images"), list) else []
+        clean_images = [
+            str(url).strip()
+            for url in images
+            if str(url).strip() in allowed_urls
+        ][:8]
+        image_url = str(raw_card.get("image_url") or "").strip()
+        if image_url not in allowed_urls:
+            image_url = clean_images[0] if clean_images else ""
+        elif image_url and image_url not in clean_images:
+            clean_images.insert(0, image_url)
+        link = str(raw_card.get("url") or "").strip()
+        if link and link not in allowed_urls:
+            link = ""
+        metadata = raw_card.get("metadata") if isinstance(raw_card.get("metadata"), dict) else {}
+        return {
+            "type": card_type,
+            "title": title[:180],
+            "description": str(raw_card.get("description") or "").strip()[:360],
+            "image_url": image_url or None,
+            "images": clean_images,
+            "url": link or None,
+            "metadata": metadata,
+        }
+
+    def _parse_rag_card_marker(self, marker: str, allowed_urls: set[str]) -> dict[str, Any] | None:
+        raw = marker.strip()
+        if raw.startswith(self.RAG_CARD_START):
+            raw = raw[len(self.RAG_CARD_START):]
+        if raw.endswith(self.RAG_CARD_END):
+            raw = raw[: -len(self.RAG_CARD_END)]
+        raw = raw.strip()
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        return self._sanitize_rag_card(parsed, allowed_urls)
+
+    def _split_rag_card_events(self, text: str, buffer: str, allowed_urls: set[str]) -> tuple[list[dict[str, Any]], str]:
+        buffer += text
+        events: list[dict[str, Any]] = []
+        while buffer:
+            start = buffer.find(self.RAG_CARD_START)
+            if start == -1:
+                safe_len = max(0, len(buffer) - len(self.RAG_CARD_START) + 1)
+                if safe_len:
+                    events.append({"type": "text", "text": buffer[:safe_len]})
+                    buffer = buffer[safe_len:]
+                break
+            if start > 0:
+                events.append({"type": "text", "text": buffer[:start]})
+                buffer = buffer[start:]
+            end = buffer.find(self.RAG_CARD_END)
+            if end == -1:
+                break
+            marker = buffer[: end + len(self.RAG_CARD_END)]
+            buffer = buffer[end + len(self.RAG_CARD_END):]
+            card = self._parse_rag_card_marker(marker, allowed_urls)
+            if card:
+                events.append({"type": "rag_card", "card": card})
+        return events, buffer
+
+    def _build_prompt_messages(
+        self,
+        query: str,
+        context_docs: list[Any],
+        chat_history: list[dict[str, str]] | None = None,
+        food_context: dict[str, Any] | None = None,
+        assistant_context: dict[str, Any] | None = None,
+    ):
         compressed_context = self._compress_context(context_docs)
-        system_msg = SYSTEM_PROMPT.format(context=compressed_context)
-        user_msg = USER_PROMPT_TEMPLATE.format(query=query)
-
-        messages = [{"role": "system", "content": system_msg}]
-        if chat_history and len(chat_history) > 0:
-            history_messages = []
-            for turn in chat_history[-6:]:
-                if isinstance(turn, dict) and turn.get("role") and turn.get("content"):
-                    history_messages.append({"role": turn["role"], "content": turn["content"]})
-            if history_messages:
-                messages.extend(history_messages)
-
-        messages.append({"role": "user", "content": user_msg})
-        return messages, compressed_context, ""
-
-    def _is_greeting_or_thanks(self, query: str) -> Dict[str, Any]:
-        """
-        Spell-tolerant and accent-insensitive detector for greetings, thanks, and short chit-chat.
-        """
-        return self.gateway.is_greeting_or_thanks(query)
+        messages = ContextBuilder.build_rag_messages(
+            system_prompt=RAG_ANSWER_SYSTEM_PROMPT,
+            query=query,
+            chat_history=chat_history or [],
+            compressed_context=compressed_context,
+            food_context=food_context,
+            assistant_context=assistant_context,
+        )
+        return messages, compressed_context
 
     def select_retrieval_strategy(self, query: str) -> str:
-        """
-        Strategy Selector: Dynamically decides the optimal search mechanism based on query properties.
-        - BM25: For queries seeking specific error codes, hotlines, bridge fees, numbers, exact rule clauses.
-        - Dense: For conceptual, abstract, semantic meaning queries.
-        - Hybrid (Default): Merges dense semantic & exact keyword search.
-        """
-        query_clean = query.lower()
-        
-        # Specific indicators for exact keywords/numbers
-        bm25_indicators = {
-            "1900", "2088", "hotline", "điều", "khoản", "mục", "phần", "chế tài", 
-            "vnđ", "đồng", "triệu", "phạt", "mã lỗi", "rùa vàng", "rùa", "cứu hộ"
-        }
-        
-        # Numeric or phone check
-        has_numbers = any(char.isdigit() for char in query_clean)
-        
-        if any(ind in query_clean for ind in bm25_indicators) or has_numbers:
-            # Contains high density of exact keywords or numbers
-            return "BM25 / Keyword"
-            
-        # Abstract queries like "tác phong chuẩn mực", "hỗ trợ khách hàng thế nào", "giúp tôi hiểu..."
-        dense_indicators = {"chuẩn mực", "thế nào", "nghĩa là gì", "giải thích", "tại sao", "lý do", "ý nghĩa", "hiểu thế nào"}
-        if any(ind in query_clean for ind in dense_indicators) and not has_numbers:
-            return "Dense Search"
-            
         return "Hybrid Search"
 
-    def run_faithfulness_check(self, context: str, answer: str) -> Tuple[bool, float, str]:
-        """
-        Evaluates whether the LLM answer is strictly faithful to the provided context.
-        Returns (is_faithful, score, reason).
-        """
-        if not context or not answer:
-            return True, 1.0, "No context or answer to evaluate."
-            
-        if not config.OPENAI_API_KEY or config.EMBEDDING_PROVIDER == "mock" or "YOUR_OPENAI_API_KEY" in config.OPENAI_API_KEY:
-            # Skip in offline mode
-            return True, 1.0, "Skipped in Offline Mode."
-            
-        try:
-            import re
-            system_msg = FAITHFULNESS_CHECK_PROMPT.format(context=context, answer=answer)
-            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": f"Bắt đầu đánh giá câu trả lời sau đây."}
-                ],
-                temperature=0.0,
-                max_tokens=180
-            )
-            res_content = response.choices[0].message.content.strip()
-            res_content = re.sub(r"```json|```", "", res_content).strip()
-            res_json = json.loads(res_content)
-            
-            is_faithful = res_json.get("faithful", True)
-            score = res_json.get("score", 1.0)
-            reason = res_json.get("reason", "OK")
-            return is_faithful, score, reason
-        except Exception as e:
-            log_warn("GUARDRAIL", f"Faithfulness Check failed: {e}. Defaulting to True.")
-            return True, 1.0, f"Error: {e}"
-
-    def run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False) -> Dict[str, Any]:
-        """
-        Executes the full advanced NLU-Gateway RAG chain.
-        """
-        normalized_query = self.gateway.normalize_input(query)
-        safety_res = self.gateway.safety_precheck(normalized_query)
-        
-        if not safety_res["safe"]:
-            return {
-                "query": query,
-                "answer": self._gateway_refusal_message(safety_res),
-                "citations": [],
-                "intent": "sensitive",
-                "gateway_checked": True,
-                "strategy_selected": "Bypass",
-                "faithfulness_passed": True,
-                "llm_cost_usd": 0.0,
-                "llm_cost_vnd": 0.0
-            }
-
-        # 2. Early Cache Lookup
-        if self.cache and not bypass_cache:
-            is_hit, hit_res, hit_type = self.cache.get(normalized_query)
-            if is_hit:
-                log_info("CACHE", f"Early cache hit query via {hit_type} match.")
-                return {
-                    "query": query,
-                    "rewritten_query": normalized_query,
-                    "answer": hit_res["answer"],
-                    "citations": hit_res["citations"],
-                    "intent": "faq",
-                    "gateway_checked": True,
-                    "strategy_selected": "Early Semantic Cache Hit",
-                    "faithfulness_passed": True,
-                    "llm_cost_usd": 0.0,
-                    "llm_cost_vnd": 0.0,
-                    "cache_hit": hit_res.get("cache_hit", "exact"),
-                    "cache_similarity": hit_res.get("cache_similarity", 1.0)
-                }
-
-        # 3. Unified NLU Gateway Call
-        t_nlu_start = time.time()
-        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history)
-        nlu_latency = (time.time() - t_nlu_start) * 1000
-        
-        rewritten_query = nlu_res["rewritten_query"]
-        intent = nlu_res["intent"]
-        expanded_queries = nlu_res["expanded_queries"]
-        nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
-        nlu_fast_path = bool(nlu_res.get("fast_path"))
-        nlu_fast_path_reason = nlu_res.get("fast_path_reason")
-
-        # 4. Handle Sensitive / Safety Block
-        if intent == "sensitive":
-            refusal_msg = nlu_res.get("suggested_answer") or "Dạ, em rất tiếc nhưng em không thể thực hiện yêu cầu này vì lý do bảo mật hệ thống. Tuy nhiên, em luôn sẵn sàng hỗ trợ anh/chị các thông tin về dịch vụ, giá cước hoặc chính sách của Xanh SM ạ!"
-            return {
-                "query": query,
-                "rewritten_query": rewritten_query,
-                "answer": refusal_msg,
-                "citations": [],
-                "intent": "sensitive",
-                "gateway_checked": True,
-                "strategy_selected": "Bypass",
-                "faithfulness_passed": True,
-                "llm_cost_usd": 0.0,
-                "llm_cost_vnd": 0.0,
-                "num_chunks_before_expansion": 0,
-                "compressed_context_len": 0,
-                "nlu_latency_ms": round(nlu_latency, 2),
-                "nlu_fast_path": nlu_fast_path,
-                "nlu_fast_path_reason": nlu_fast_path_reason
-            }
-
-        # 5. Handle Small Talk
-        if intent == "small-talk":
-            answer = nlu_res.get("suggested_answer")
-            if not answer:
-                intercept = self._is_greeting_or_thanks(rewritten_query)
-                answer = intercept["answer"] if intercept["type"] != "none" else "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
-            return {
-                "query": query,
-                "rewritten_query": rewritten_query,
-                "answer": answer,
-                "citations": [],
-                "intent": "small-talk",
-                "gateway_checked": True,
-                "strategy_selected": "Bypass",
-                "faithfulness_passed": True,
-                "llm_cost_usd": 0.0,
-                "llm_cost_vnd": 0.0,
-                "nlu_latency_ms": round(nlu_latency, 2),
-                "nlu_fast_path": nlu_fast_path,
-                "nlu_fast_path_reason": nlu_fast_path_reason
-            }
-
-        # 5. Second Cache Lookup
-        if self.cache and not bypass_cache and rewritten_query != normalized_query:
-            is_hit, hit_res, hit_type = self.cache.get(rewritten_query)
-            if is_hit:
-                log_info("CACHE", f"Hit query after rewrite via {hit_type} match.")
-                return {
-                    "query": query,
-                    "rewritten_query": rewritten_query,
-                    "answer": hit_res["answer"],
-                    "citations": hit_res["citations"],
-                    "intent": "faq",
-                    "gateway_checked": True,
-                    "strategy_selected": "Semantic Cache Hit",
-                    "faithfulness_passed": True,
-                    "llm_cost_usd": 0.0,
-                    "llm_cost_vnd": 0.0,
-                    "cache_hit": hit_res.get("cache_hit", "exact"),
-                    "cache_similarity": hit_res.get("cache_similarity", 1.0),
-                    "nlu_latency_ms": round(nlu_latency, 2),
-                    "nlu_fast_path": nlu_fast_path,
-                    "nlu_fast_path_reason": nlu_fast_path_reason
-                }
-
-        # 6. Search Strategy Selection
-        strategy = self.select_retrieval_strategy(rewritten_query)
-        log_info("RETRIEVAL", f"Dynamically selected search strategy: {strategy}")
-
-        # 7. Execute Retrieval
-        retrieved_candidates = self.search_engine.search(
-            query=rewritten_query,
-            limit=config.RETRIEVAL_CANDIDATE_LIMIT,
-            expanded_queries=expanded_queries,
-        )
-
-        # 8. Rerank
-        top_docs = self.reranker.rerank(
-            query=rewritten_query,
-            docs=retrieved_candidates,
-            top_n=config.RERANK_TOP_N,
-        )
-        num_chunks_before_expansion = len(top_docs)
-
-        # 9. Expand context
-        top_docs = self.search_engine.expand_context(top_docs)
-
-        # 10. Compress Context
-        # 11. LLM Generation
-        final_answer = ""
-        citations = []
-        prompt_tokens = 0
-        completion_tokens = 0
-
-        citations = self._build_citations(top_docs)
-        messages, compressed_context, _ = self._build_prompt_messages(
-            query=rewritten_query,
-            context_docs=top_docs,
-            chat_history=chat_history
-        )
-
-        if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
-            try:
-                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
-                response = client.chat.completions.create(
-                    model=config.LLM_MODEL,
-                    messages=messages,
-                    temperature=0.3,
-                    max_tokens=config.LLM_MAX_TOKENS
-                )
-                final_answer = response.choices[0].message.content
-                prompt_tokens = response.usage.prompt_tokens
-                completion_tokens = response.usage.completion_tokens
-            except Exception as e:
-                log_warn("LLM_GEN", f"LLM Generation Error: {str(e)}. Falling back to offline synthesis.")
-                final_answer = self._generate_fallback_answer(rewritten_query, top_docs)
-        else:
-            final_answer = self._generate_fallback_answer(rewritten_query, top_docs)
-
-        # Cost calculation
-        total_prompt = prompt_tokens + nlu_usage.get("prompt_tokens", 0)
-        total_comp = completion_tokens + nlu_usage.get("completion_tokens", 0)
-        cost_info = self._calculate_llm_cost(total_prompt, total_comp)
-
-        # Save to Cache
-        if self.cache and not bypass_cache:
-            self.cache.set(normalized_query, final_answer, citations)
-            if rewritten_query != normalized_query:
-                self.cache.set(rewritten_query, final_answer, citations)
-
-        return {
-            "query": query,
-            "rewritten_query": rewritten_query,
-            "answer": final_answer,
-            "citations": citations,
-            "expanded_queries": expanded_queries,
-            "compressed_context_len": len(compressed_context),
-            "num_chunks_before_expansion": num_chunks_before_expansion,
-            "nlu_latency_ms": round(nlu_latency, 2),
-            "nlu_fast_path": nlu_fast_path,
-            "nlu_fast_path_reason": nlu_fast_path_reason,
-            "intent": intent,
-            "gateway_checked": True,
-            "strategy_selected": strategy,
-            "faithfulness_passed": True,
-            "faithfulness_score": 1.0,
-            "top_docs": [
-                {
-                    "content": doc.page_content,
-                    "source": doc.metadata.get("source"),
-                    "section": doc.metadata.get("section"),
-                    "score": doc.metadata.get("rerank_score", 0.0)
-                } for doc in top_docs
-            ],
-            "token_usage": {
-                "unified_nlu": nlu_usage,
-                "generation": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
-                "total_prompt_tokens": total_prompt,
-                "total_completion_tokens": total_comp
-            },
-            "llm_cost_usd": cost_info["cost_usd"],
-            "llm_cost_vnd": cost_info["cost_vnd"]
-        }
-
-    def run_debug(self, query: str, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
-        """
-        Executes the full RAG pipeline for debugging, bypassing cache and capturing
-        all intermediate steps like raw_candidates, reranked_docs, and expanded_docs.
-        """
-        normalized_query = self.gateway.normalize_input(query)
-        safety_res = self.gateway.safety_precheck(normalized_query)
-        
-        # 1. Gateway safety check
-        if not safety_res["safe"]:
-            return {
-                "query": query,
-                "normalized_query": normalized_query,
-                "answer": self._gateway_refusal_message(safety_res),
-                "citations": [],
-                "intent": "sensitive",
-                "gateway_checked": True,
-                "safety_res": safety_res,
-                "strategy_selected": "Bypass",
-                "faithfulness_passed": True,
-                "llm_cost_usd": 0.0,
-                "llm_cost_vnd": 0.0,
-                "raw_candidates": [],
-                "reranked_docs": [],
-                "expanded_docs": []
-            }
-
-        # 2. Unified NLU Gateway Call
-        t_nlu_start = time.time()
-        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history)
-        nlu_latency = (time.time() - t_nlu_start) * 1000
-        
-        rewritten_query = nlu_res["rewritten_query"]
-        intent = nlu_res["intent"]
-        expanded_queries = nlu_res["expanded_queries"]
-        nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
-        nlu_fast_path = bool(nlu_res.get("fast_path"))
-        nlu_fast_path_reason = nlu_res.get("fast_path_reason")
-
-        # 3. Handle Sensitive / Safety Block from NLU
-        if intent == "sensitive":
-            refusal_msg = nlu_res.get("suggested_answer") or "Dạ, em rất tiếc nhưng em không thể thực hiện yêu cầu này vì lý do bảo mật hệ thống. Tuy nhiên, em luôn sẵn sàng hỗ trợ anh/chị các thông tin về dịch vụ, giá cước hoặc chính sách của Xanh SM ạ!"
-            return {
-                "query": query,
-                "normalized_query": normalized_query,
-                "rewritten_query": rewritten_query,
-                "answer": refusal_msg,
-                "citations": [],
-                "intent": "sensitive",
-                "gateway_checked": True,
-                "safety_res": {"safe": True, "reason": ""},
-                "strategy_selected": "Bypass",
-                "faithfulness_passed": True,
-                "llm_cost_usd": 0.0,
-                "llm_cost_vnd": 0.0,
-                "raw_candidates": [],
-                "reranked_docs": [],
-                "expanded_docs": [],
-                "num_chunks_before_expansion": 0,
-                "compressed_context_len": 0,
-                "nlu_latency_ms": round(nlu_latency, 2),
-                "nlu_fast_path": nlu_fast_path,
-                "nlu_fast_path_reason": nlu_fast_path_reason,
-                "token_usage": {
-                    "unified_nlu": nlu_usage,
-                    "generation": {"prompt_tokens": 0, "completion_tokens": 0},
-                    "total_prompt_tokens": nlu_usage.get("prompt_tokens", 0),
-                    "total_completion_tokens": nlu_usage.get("completion_tokens", 0)
-                }
-            }
-
-        # 4. Handle Small Talk
-        if intent == "small-talk":
-            answer = nlu_res.get("suggested_answer")
-            if not answer:
-                intercept = self._is_greeting_or_thanks(rewritten_query)
-                answer = intercept["answer"] if intercept["type"] != "none" else "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
-            return {
-                "query": query,
-                "normalized_query": normalized_query,
-                "rewritten_query": rewritten_query,
-                "answer": answer,
-                "citations": [],
-                "intent": "small-talk",
-                "gateway_checked": True,
-                "safety_res": {"safe": True, "reason": ""},
-                "strategy_selected": "Bypass",
-                "faithfulness_passed": True,
-                "llm_cost_usd": 0.0,
-                "llm_cost_vnd": 0.0,
-                "raw_candidates": [],
-                "reranked_docs": [],
-                "expanded_docs": [],
-                "nlu_latency_ms": round(nlu_latency, 2),
-                "nlu_fast_path": nlu_fast_path,
-                "nlu_fast_path_reason": nlu_fast_path_reason,
-                "token_usage": {
-                    "unified_nlu": nlu_usage,
-                    "generation": {"prompt_tokens": 0, "completion_tokens": 0},
-                    "total_prompt_tokens": nlu_usage.get("prompt_tokens", 0),
-                    "total_completion_tokens": nlu_usage.get("completion_tokens", 0)
-                }
-            }
-
-        # 5. Search Strategy Selection
-        strategy = self.select_retrieval_strategy(rewritten_query)
-
-        # 6. Execute Retrieval (Hybrid Search)
-        retrieved_candidates = self.search_engine.search(
-            query=rewritten_query,
-            limit=config.RETRIEVAL_CANDIDATE_LIMIT,
-            expanded_queries=expanded_queries,
-        )
-        raw_candidates_data = [
-            {
-                "content": doc.page_content,
-                "source": doc.metadata.get("source", "unknown"),
-                "section": doc.metadata.get("section", "unknown"),
-                "score": doc.metadata.get("score", 0.0)
-            } for doc in retrieved_candidates
-        ]
-
-        # 7. Rerank
-        top_docs = self.reranker.rerank(
-            query=rewritten_query,
-            docs=retrieved_candidates,
-            top_n=config.RERANK_TOP_N,
-        )
-        reranked_docs_data = [
-            {
-                "content": doc.page_content,
-                "source": doc.metadata.get("source", "unknown"),
-                "section": doc.metadata.get("section", "unknown"),
-                "score": doc.metadata.get("rerank_score", 0.0)
-            } for doc in top_docs
-        ]
-
-        # 8. Expand context
-        top_docs_expanded = self.search_engine.expand_context(top_docs)
-        expanded_docs_data = [
-            {
-                "content": doc.page_content,
-                "source": doc.metadata.get("source", "unknown"),
-                "section": doc.metadata.get("section", "unknown"),
-                "score": doc.metadata.get("rerank_score", 0.0),
-                "parent_chunk_id": doc.metadata.get("parent_chunk_id")
-            } for doc in top_docs_expanded
-        ]
-
-        # 9. Compress Context
-        # 10. LLM Generation
-        final_answer = ""
-        citations = []
-        prompt_tokens = 0
-        completion_tokens = 0
-
-        citations = self._build_citations(top_docs_expanded)
-        messages, compressed_context, _ = self._build_prompt_messages(
-            query=rewritten_query,
-            context_docs=top_docs_expanded,
-            chat_history=chat_history
-        )
-
-        if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
-            try:
-                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
-                response = client.chat.completions.create(
-                    model=config.LLM_MODEL,
-                    messages=messages,
-                    temperature=0.3,
-                    max_tokens=config.LLM_MAX_TOKENS
-                )
-                final_answer = response.choices[0].message.content
-                prompt_tokens = response.usage.prompt_tokens
-                completion_tokens = response.usage.completion_tokens
-            except Exception as e:
-                log_warn("LLM_GEN", f"LLM Generation Error in Debug: {str(e)}. Falling back.")
-                final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded)
-        else:
-            final_answer = self._generate_fallback_answer(rewritten_query, top_docs_expanded)
-
-        output_guardrail_passed = True
-
-        # Cost calculation
-        total_prompt = prompt_tokens + nlu_usage.get("prompt_tokens", 0)
-        total_comp = completion_tokens + nlu_usage.get("completion_tokens", 0)
-        cost_info = self._calculate_llm_cost(total_prompt, total_comp)
-
-        return {
-            "query": query,
-            "normalized_query": normalized_query,
-            "rewritten_query": rewritten_query,
-            "answer": final_answer,
-            "citations": citations,
-            "expanded_queries": expanded_queries,
-            "compressed_context_len": len(compressed_context),
-            "num_chunks_before_expansion": len(top_docs),
-            "nlu_latency_ms": round(nlu_latency, 2),
-            "nlu_fast_path": nlu_fast_path,
-            "nlu_fast_path_reason": nlu_fast_path_reason,
-            "intent": intent,
-            "gateway_checked": True,
-            "safety_res": {"safe": True, "reason": ""},
-            "strategy_selected": strategy,
-            "faithfulness_passed": True,
-            "faithfulness_score": 1.0,
-            "raw_candidates": raw_candidates_data,
-            "reranked_docs": reranked_docs_data,
-            "expanded_docs": expanded_docs_data,
-            "output_guardrail_passed": output_guardrail_passed,
-            "token_usage": {
-                "unified_nlu": nlu_usage,
-                "generation": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
-                "total_prompt_tokens": total_prompt,
-                "total_completion_tokens": total_comp
-            },
-            "llm_cost_usd": cost_info["cost_usd"],
-            "llm_cost_vnd": cost_info["cost_vnd"]
-        }
-
-    def stream_run(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False):
-        """
-        Stream version of the NLU-Gateway RAG chain.
-        """
-        return self._stream_run_raw(query=query, chat_history=chat_history, bypass_cache=bypass_cache, image_base64=image_base64, is_deep_search=is_deep_search)
-
-    def _stream_run_raw(self, query: str, chat_history: List[Dict[str, str]] = None, bypass_cache: bool = False, image_base64: str = None, is_deep_search: bool = False):
-        """
-        Internal raw streaming implementation of the RAG chain.
-        """
-        t_start = time.time()
-        
-        metrics = {
-            "search_latency_ms": 0, "generation_latency_ms": 0, "rewrite_latency_ms": 0,
-            "classification_latency_ms": 0, "expansion_latency_ms": 0, "rerank_latency_ms": 0,
-            "total_tokens": 0, "cost_usd": 0.0, "expanded_queries": [], "rewritten_query": "",
-            "num_chunks_before_expansion": 0, "compressed_context_len": 0
-        }
-        
-        def yield_msg(val):
-            yield val
-
-        def finalize_generation(final_answer: str, top_docs: List[Any], messages: List[Dict[str, str]]):
+    def stream(
+        self,
+        *,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        guest_id: str | None = None,
+        original_query: str = "",
+        rewritten_query: str,
+        normalized_query: str,
+        expanded_queries: list[str],
+        chat_history: list[dict[str, str]] | None,
+        metrics: dict[str, Any],
+        t_start: float,
+        bypass_cache: bool = False,
+        is_deep_search: bool = False,
+        food_context: dict[str, Any] | None = None,
+        assistant_context: dict[str, Any] | None = None,
+    ):
+        def finalize_generation(final_answer: str, top_docs: list[Any], messages: list[dict[str, str]], retrieved_docs: list[Any], reranked_docs: list[Any], expanded_docs: list[Any]):
             est_p = len(" ".join([m["content"] for m in messages])) // 4
             est_c = len(final_answer) // 4
             metrics["total_tokens"] += est_p + est_c
-            gen_cost = self._calculate_llm_cost(est_p, est_c)
-            metrics["cost_usd"] += gen_cost["cost_usd"]
-
+            metrics["cost_usd"] += self._calculate_llm_cost(est_p, est_c)["cost_usd"]
             citations = self._build_citations(top_docs[:5])
-            yield from yield_msg(f'data: {json.dumps({"sources": citations})}\n\n')
-
+            yield f'data: {json.dumps({"sources": citations})}\n\n'
             if self.cache and not bypass_cache and final_answer:
                 self.cache.set(normalized_query, final_answer, citations)
                 if rewritten_query != normalized_query:
                     self.cache.set(rewritten_query, final_answer, citations)
-
-            yield from yield_msg(f'data: {json.dumps({"metrics": metrics})}\n\n')
-
-        if is_deep_search:
-            bypass_cache = True
-
-        normalized_query = self.gateway.normalize_input(query)
-        safety_res = self.gateway.safety_precheck(normalized_query)
-        if not safety_res["safe"]:
-            yield from yield_msg(f"data: {self._gateway_refusal_message(safety_res)}\n\n")
-            yield from yield_msg("data: [DONE]\n\n")
-            return
-
-        # 2. Early Cache Lookup
-        if self.cache and not bypass_cache:
-            is_hit, hit_res, hit_type = self.cache.get(normalized_query)
-            if is_hit:
-                metrics["total_latency_ms"] = (time.time() - t_start) * 1000
-                metrics["intent"] = "faq"
-                metrics["rewritten_query"] = normalized_query
-                import re
-                for token in re.split(r'(\s+)', hit_res["answer"]):
-                    if token:
-                        safe_token = token.replace('\n', '\ndata: ')
-                        yield from yield_msg(f"data: {safe_token}\n\n")
-                yield from yield_msg(f'data: {json.dumps({"sources": hit_res.get("citations", [])})}\n\n')
-                yield from yield_msg(f'data: {json.dumps({"metrics": metrics, "step": "cache-hit"})}\n\n')
-                yield from yield_msg("data: [DONE]\n\n")
-                return
-
-        if is_deep_search:
-            yield from yield_msg('data: {"step": "Đang phân tích chuyên sâu (Deep Search)..."}\n\n')
-        else:
-            yield from yield_msg('data: {"step": "Phân tích ngữ cảnh & Ý định..."}\n\n')
-        
-        # 3. Unified NLU Call
-        t_nlu_start = time.time()
-        # For deep search, we could optionally tell NLU to expand more aggressively
-        nlu_res = self.classifier.unified_nlu(normalized_query, chat_history, image_base64=image_base64)
-        metrics["rewrite_latency_ms"] = (time.time() - t_nlu_start) * 1000
-        
-        rewritten_query = nlu_res["rewritten_query"]
-        intent = nlu_res["intent"]
-        expanded_queries = nlu_res["expanded_queries"]
-        nlu_usage = nlu_res.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
-        
-        metrics["rewritten_query"] = rewritten_query
-        metrics["intent"] = intent
-        metrics["expanded_queries"] = expanded_queries
-        metrics["nlu_fast_path"] = bool(nlu_res.get("fast_path"))
-        metrics["nlu_fast_path_reason"] = nlu_res.get("fast_path_reason")
-        metrics["total_tokens"] += nlu_usage.get("prompt_tokens", 0) + nlu_usage.get("completion_tokens", 0)
-        
-        # Calculate NLU/Rewrite cost immediately so it is recorded even if generating fails/is interrupted
-        nlu_cost = self._calculate_llm_cost(nlu_usage.get("prompt_tokens", 0), nlu_usage.get("completion_tokens", 0))
-        metrics["cost_usd"] += nlu_cost["cost_usd"]
-
-        # 4. Handle Sensitive / Safety Block
-        if intent == "sensitive":
-            refusal_msg = nlu_res.get("suggested_answer") or "Dạ, em rất tiếc nhưng em không thể thực hiện yêu cầu này vì lý do bảo mật hệ thống. Tuy nhiên, em luôn sẵn sàng hỗ trợ anh/chị các thông tin về dịch vụ, giá cước hoặc chính sách của Xanh SM ạ!"
-            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
-            import re
-            for token in re.split(r'(\s+)', refusal_msg):
-                if token:
-                    safe_token = token.replace('\n', '\ndata: ')
-                    yield from yield_msg(f"data: {safe_token}\n\n")
-            yield from yield_msg(f'data: {json.dumps({"metrics": metrics, "step": "sensitive"})}\n\n')
-            yield from yield_msg("data: [DONE]\n\n")
-            return
-
-        # 5. Handle Small Talk
-        if intent == "small-talk":
-            answer = nlu_res.get("suggested_answer")
-            if not answer:
-                intercept = self._is_greeting_or_thanks(rewritten_query)
-                if intercept["type"] != "none":
-                    answer = intercept["answer"]
-                else:
-                    answer = "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. Hiện tại em chưa có thông tin về vấn đề này. Anh/chị có thể hỏi em các vấn đề liên quan đến Xanh SM như: giá cước taxi, chính sách hủy chuyến, hoặc cách đặt xe ạ!"
+            yield f'data: {json.dumps({"metrics": metrics})}\n\n'
             
-            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
-            import re
-            for token in re.split(r'(\s+)', answer):
-                if token:
-                    safe_token = token.replace('\n', '\ndata: ')
-                    yield from yield_msg(f"data: {safe_token}\n\n")
-            yield from yield_msg(f'data: {json.dumps({"metrics": metrics, "step": "small-talk"})}\n\n')
-            yield from yield_msg("data: [DONE]\n\n")
-            return
-
-        # 5. Second Cache Lookup
-        if self.cache and not bypass_cache and rewritten_query != normalized_query:
-            is_hit, hit_res, hit_type = self.cache.get(rewritten_query)
-            if is_hit:
-                metrics["total_latency_ms"] = (time.time() - t_start) * 1000
-                metrics["intent"] = "faq"
-                metrics["rewritten_query"] = rewritten_query
-                import re
-                for token in re.split(r'(\s+)', hit_res["answer"]):
-                    if token:
-                        safe_token = token.replace('\n', '\ndata: ')
-                        yield from yield_msg(f"data: {safe_token}\n\n")
-                yield from yield_msg(f'data: {json.dumps({"sources": hit_res.get("citations", [])})}\n\n')
-                yield from yield_msg(f'data: {json.dumps({"metrics": metrics, "step": "cache-hit"})}\n\n')
-                yield from yield_msg("data: [DONE]\n\n")
-                return
+            save_rag_request_log(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=original_query or rewritten_query,
+                metrics=metrics,
+                retrieved_docs=retrieved_docs,
+                reranked_docs=reranked_docs,
+                expanded_docs=expanded_docs,
+                final_answer=final_answer,
+            )
 
         try:
+            retrieved_candidates = []
+            reranked_docs = []
+            expanded_docs = []
             strategy = self.select_retrieval_strategy(rewritten_query)
-            yield from yield_msg('data: {"step": "Đang truy xuất dữ liệu (Hybrid)..."}\n\n')
+            yield sse_pipeline_step("retrieval_search", "Đang tìm kiếm tài liệu...", 0.34, strategy=strategy)
             t_search_start = time.time()
-            
             search_limit = config.DEEP_SEARCH_CANDIDATE_LIMIT if is_deep_search else config.RETRIEVAL_CANDIDATE_LIMIT
             retrieved_candidates = self.search_engine.search(
                 query=rewritten_query,
@@ -801,43 +251,45 @@ class XanhSMRAGPipeline:
             )
             metrics["search_latency_ms"] = (time.time() - t_search_start) * 1000
 
-            yield from yield_msg('data: {"step": "Đang chấm điểm & Reranking tài liệu..."}\n\n')
+            yield sse_pipeline_step("rerank_documents", "Đang xếp hạng tài liệu...", 0.52)
             t_rerank_start = time.time()
-            
             rerank_top_n = config.DEEP_SEARCH_RERANK_TOP_N if is_deep_search else config.RERANK_TOP_N
-            top_docs = self.reranker.rerank(
+            reranked_docs = self.reranker.rerank(
                 query=rewritten_query,
                 docs=retrieved_candidates,
                 top_n=rerank_top_n,
             )
             metrics["rerank_latency_ms"] = (time.time() - t_rerank_start) * 1000
-            metrics["num_chunks_before_expansion"] = len(top_docs)
-            
-            top_docs = self.search_engine.expand_context(top_docs)
-            messages, compressed_context, _ = self._build_prompt_messages(
+            metrics["num_chunks_before_expansion"] = len(reranked_docs)
+
+            yield sse_pipeline_step("context_expansion", "Đang gọi thêm tài liệu đầy đủ...", 0.64, top_docs=len(reranked_docs))
+            expanded_docs = self.search_engine.expand_context(reranked_docs)
+            allowed_media_urls = self._allowed_media_urls(expanded_docs)
+            messages, compressed_context = self._build_prompt_messages(
                 query=rewritten_query,
-                context_docs=top_docs,
-                chat_history=chat_history
+                context_docs=expanded_docs,
+                chat_history=chat_history,
+                food_context=food_context,
+                assistant_context=assistant_context,
             )
-            
-            
             metrics["compressed_context_len"] = len(compressed_context)
 
-            yield from yield_msg('data: {"step": "Đang tổng hợp câu trả lời..."}\n\n')
+            yield sse_pipeline_step("answer_prepare", "Đang chuẩn bị trả lời...", 0.78)
             t_gen_start = time.time()
-
             final_answer = ""
-            client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
+            metrics["answer_model"] = config.RAG_ANSWER_MODEL
+            client = get_llm_client(config.RAG_ANSWER_MODEL)
             response = client.chat.completions.create(
-                model=config.LLM_MODEL,
+                model=config.RAG_ANSWER_MODEL,
                 messages=messages,
                 temperature=0.3,
                 max_tokens=config.LLM_MAX_TOKENS,
-                stream=True
+                stream=True,
             )
-            
             first_token_received = False
             stream_failed = False
+            rag_card_buffer = ""
+            rag_cards: list[dict[str, Any]] = []
             try:
                 for chunk in response:
                     if chunk.choices[0].delta.content:
@@ -846,117 +298,57 @@ class XanhSMRAGPipeline:
                             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                             first_token_received = True
                         text = chunk.choices[0].delta.content
-                        final_answer += text
-                        yield from yield_msg(f"data: {text.replace('\n', '\ndata: ')}\n\n")
+                        events, rag_card_buffer = self._split_rag_card_events(text, rag_card_buffer, allowed_media_urls)
+                        for event in events:
+                            if event["type"] == "text":
+                                final_answer += event["text"]
+                                yield f"data: {event['text'].replace('\n', '\ndata: ')}\n\n"
+                            elif event["type"] == "rag_card":
+                                rag_cards.append(event["card"])
+                                yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
             except Exception as stream_error:
                 stream_failed = True
                 log_warn("CHAT", f"Streaming generation interrupted: {stream_error}")
+                if final_answer:
+                    # Đã có nội dung nhưng bị gãy giữa chừng
+                    error_notice = "\n\n*(Hệ thống bị gián đoạn kết nối, câu trả lời có thể chưa hoàn chỉnh. Vui lòng thử lại)*"
+                    final_answer += error_notice
+                    yield f"data: {error_notice.replace('\n', '\ndata: ')}\n\n"
+
+            if rag_card_buffer:
+                events, _ = self._split_rag_card_events("", rag_card_buffer + self.RAG_CARD_END if self.RAG_CARD_START in rag_card_buffer else rag_card_buffer, allowed_media_urls)
+                for event in events:
+                    if event["type"] == "text":
+                        final_answer += event["text"]
+                        yield f"data: {event['text'].replace('\n', '\ndata: ')}\n\n"
+                    elif event["type"] == "rag_card":
+                        rag_cards.append(event["card"])
+                        yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
+            if rag_cards:
+                metrics["rag_cards"] = rag_cards
 
             if stream_failed and not final_answer:
                 log_warn("CHAT", "Retrying generation once without streaming.")
                 retry_response = client.chat.completions.create(
-                    model=config.LLM_MODEL,
+                    model=config.RAG_ANSWER_MODEL,
                     messages=messages,
                     temperature=0.3,
-                    max_tokens=config.LLM_MAX_TOKENS
+                    max_tokens=config.LLM_MAX_TOKENS,
                 )
                 final_answer = retry_response.choices[0].message.content or ""
                 metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                 if final_answer:
-                    yield from yield_msg(f"data: {final_answer.replace('\n', '\ndata: ')}\n\n")
-            
+                    yield f"data: {final_answer.replace('\n', '\ndata: ')}\n\n"
+
             if not first_token_received:
                 metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
 
-            yield from finalize_generation(final_answer, top_docs, messages)
-                
-        except Exception as e:
-            log_error("CHAT", f"Pipeline Execution Error: {e}")
-            yield from yield_msg(f"data: Xin loi, he thong dang ban. Vui long thu lai sau.\n\n")
+            yield from finalize_generation(final_answer, expanded_docs, messages, retrieved_candidates, reranked_docs, expanded_docs)
+        except Exception as exc:
+            log_error("CHAT", f"RAG chain execution error: {exc}")
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
-            yield from yield_msg(f'data: {json.dumps({"metrics": metrics})}\n\n')
-            
-        yield from yield_msg("data: [DONE]\n\n")
-
-
-
-    def run_vision_diagnostics(self, image_bytes: bytes, mime_type: str) -> Tuple[str, Dict[str, Any]]:
-        """
-        Uses OpenAI Vision model to analyze taplo EV warning lights and translate to text diagnostic query.
-        """
-        import base64
-        base64_image = base64.b64encode(image_bytes).decode('utf-8')
-        
-        system_prompt = (
-            "Bạn là chuyên gia chẩn đoán kỹ thuật xe điện (EV) của hãng Xanh SM.\n"
-            "Hãy phân tích kỹ hình ảnh bảng điều khiển (taplo), đèn cảnh báo lỗi, hoặc sự cố xe điện được gửi kèm.\n"
-            "Nhiệm vụ của bạn:\n"
-            "1. Xác định tên lỗi cảnh báo (ví dụ: 'Lỗi rùa vàng', 'Lỗi báo lỗi động cơ', 'Lỗi hệ thống phanh', 'Lỗi ắc quy').\n"
-            "2. Mô tả ngắn gọn sự cố bằng Tiếng Việt kỹ thuật.\n"
-            "3. Tạo ra một câu truy vấn tìm kiếm sách hướng dẫn (ví dụ: 'Cách khắc phục lỗi rùa vàng xe điện VinFast').\n"
-            "BẮT BUỘC chỉ trả về duy nhất chuỗi câu truy vấn chẩn đoán kỹ thuật để gửi vào RAG, KHÔNG giải thích thêm."
-        )
-        
-        if config.OPENAI_API_KEY and config.EMBEDDING_PROVIDER != "mock" and "YOUR_OPENAI_API_KEY" not in config.OPENAI_API_KEY:
-            try:
-                client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT_SECONDS)
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": system_prompt},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:{mime_type};base64,{base64_image}"
-                                    }
-                                }
-                            ]
-                        }
-                    ],
-                    max_tokens=min(config.LLM_MAX_TOKENS, 300)
-                )
-                diagnostic_query = response.choices[0].message.content.strip().strip('"').strip("'")
-                log_info("NLU", f"Identified diagnostic query: '{diagnostic_query}'")
-                return diagnostic_query, {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens
-                }
-            except Exception as e:
-                log_warn("NLU", f"Failed to analyze image with Vision LLM: {e}")
-                
-        return "Lỗi cảnh báo kỹ thuật xe điện VinFast", {"prompt_tokens": 0, "completion_tokens": 0}
-
-    def _generate_fallback_answer(self, query: str, docs: List[Any]) -> str:
-        """
-        Creates a cautious deterministic fallback response when synthesis is skipped.
-        """
-        if not docs:
-            return (
-                "Rất tiếc, tài liệu chính sách hiện tại của Xanh SM "
-                "không có thông tin về vấn đề này."
-            )
-
-        first_doc = docs[0]
-        source = first_doc.metadata.get("source", "policy.md")
-        section = first_doc.metadata.get("section", "Quy định")
-
-        # Cautious phrasing to avoid "blind citation"
-        answer = (
-            "Hiện tại tôi chưa tìm thấy câu trả lời trực tiếp trong chính sách, "
-            f"nhưng bạn có thể tham khảo thông tin liên quan tại mục **\"{section}\"** của tài liệu **{source}**:\n\n"
-            f"> {first_doc.page_content.strip()[:600]}...\n\n"
-            f"Để được hỗ trợ chính xác nhất, quý khách vui lòng liên hệ Tổng đài Xanh SM: **1900 2088**."
-        )
-        return answer
-if __name__ == "__main__":
-    pipeline = XanhSMRAGPipeline()
-    res = pipeline.run("Giá cước taxi Xanh SM Car tại Hà Nội")
-    print(f"\nAnswer:\n{res['answer']}")
-    print(f"\nIntent:\n{res.get('intent')}")
-    print(f"\nStrategy:\n{res.get('strategy_selected')}")
-
+            yield "data: Xin loi, he thong dang ban. Vui long thu lai sau.\n\n"
+            yield f'data: {json.dumps({"metrics": metrics})}\n\n'
+        yield "data: [DONE]\n\n"

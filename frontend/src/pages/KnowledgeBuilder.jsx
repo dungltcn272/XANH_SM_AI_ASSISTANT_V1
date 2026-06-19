@@ -253,129 +253,142 @@ export default function KnowledgeBuilder() {
   const selectedCrawlLimit = crawlUnlimited ? 0 : Math.max(1, Number(crawlLimit) || 1);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto p-4 md:p-8 gap-6">
-      <header>
-        <h1 className="text-3xl font-black text-on-surface mb-1">Knowledge Builder</h1>
-        <p className="text-sm text-on-surface-variant">
-          Quản lý nguồn crawl, đồng bộ URL registry, sinh Markdown sạch và vận hành clear/ingest tri thức tách biệt.
-        </p>
+    <div className="flex flex-col h-full overflow-y-auto p-4 md:p-8 gap-6 bg-[#070b14]">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Knowledge Hub</h1>
+          <p className="text-sm text-[#94a3b8]">
+            Quản lý nguồn crawl, đồng bộ URL registry, sinh Markdown sạch và vận hành clear/ingest tri thức tách biệt.
+          </p>
+        </div>
       </header>
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 glass-panel border border-outline-variant/30 rounded-2xl p-5">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+        {/* Left Column: URL Registry */}
+        <div className="xl:col-span-2 rounded-2xl border border-[#1e293b]/60 bg-[#0b0f19] p-5 shadow-xl glass-panel flex flex-col min-h-[500px]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
             <div>
-              <h2 className="text-lg font-bold text-on-surface">URL Registry</h2>
-              <p className="text-xs text-on-surface-variant">
-                Tổng {registryStats.total || 0} URL · profile: main_site {registryStats.by_profile?.main_site || 0}, platform_crawler {registryStats.by_profile?.platform || 0}, pdf_parser {registryStats.by_profile?.platform_pdf || 0}
-              </p>
-              <p className="text-[11px] text-on-surface-variant">
-                Nhóm dữ liệu: vehicle {registryStats.by_category?.vehicle || 0}, pdf {registryStats.by_category?.pdf || 0}, news {registryStats.by_category?.news || 0}, term-policies {registryStats.by_category?.['term-policies'] || 0} · đang hiển thị {sources.length} dòng
-              </p>
+              <h2 className="text-lg font-bold text-[#00c897] flex items-center gap-2">
+                <DatabaseZap size={18} />
+                URL Registry
+              </h2>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs font-medium text-[#94a3b8]">
+                <span>Tổng: <b className="text-white">{registryStats.total || 0}</b></span>
+                <span className="text-[#1e293b]">|</span>
+                <span>main_site: <b className="text-white">{registryStats.by_profile?.main_site || 0}</b></span>
+                <span>platform_crawler: <b className="text-white">{registryStats.by_profile?.platform || 0}</b></span>
+                <span>pdf_parser: <b className="text-white">{registryStats.by_profile?.platform_pdf || 0}</b></span>
+              </div>
             </div>
-            <button onClick={syncUrlsJson} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">
+            <button onClick={syncUrlsJson} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00c897]/10 text-[#00c897] hover:bg-[#00c897]/20 border border-[#00c897]/20 text-sm font-bold transition-all disabled:opacity-50">
               {busy === 'sync' ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
               Sync urls.json
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
             <div className="relative md:col-span-1">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
-              <input className="w-full pl-9 pr-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" placeholder="Search URL/title" value={filters.keyword} onChange={(e) => setFilters({ ...filters, keyword: e.target.value })} />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b]" />
+              <input className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] focus:border-[#00c897]/50 focus:ring-1 focus:ring-[#00c897]/50 transition-all outline-none placeholder:text-[#64748b]" placeholder="Search URL/title..." value={filters.keyword} onChange={(e) => setFilters({ ...filters, keyword: e.target.value })} />
             </div>
-            <select className="px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" value={filters.source_profile} onChange={(e) => setFilters({ ...filters, source_profile: e.target.value })}>
+            <select className="px-3 py-2.5 rounded-xl bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] focus:border-[#00c897]/50 outline-none" value={filters.source_profile} onChange={(e) => setFilters({ ...filters, source_profile: e.target.value })}>
               <option value="">All profiles</option>
               {profiles.map((p) => <option key={p} value={p}>{profileLabels[p] || p}</option>)}
             </select>
-            <select className="px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
+            <select className="px-3 py-2.5 rounded-xl bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] focus:border-[#00c897]/50 outline-none" value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
               <option value="">All categories</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <button onClick={applyFilters} className="px-4 py-2 rounded-xl bg-surface-container-high text-on-surface text-sm font-bold border border-outline-variant/30">Apply</button>
+            <button onClick={applyFilters} className="px-4 py-2.5 rounded-xl bg-[#1e293b] hover:bg-[#334155] text-white text-sm font-bold transition-all">Apply Filters</button>
           </div>
 
-          <div className="overflow-auto border border-outline-variant/20 rounded-xl max-h-[420px]">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-surface-container-high text-on-surface">
+          <div className="flex-1 overflow-auto border border-[#1e293b] rounded-xl bg-[#030914] custom-scrollbar">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="sticky top-0 bg-[#0b0f19] text-[#64748b] shadow-[0_1px_0_0_#1e293b]">
                 <tr>
-                  <th className="text-left p-3">On</th>
-                  <th className="text-left p-3">Title / URL</th>
-                  <th className="text-left p-3">Profile</th>
-                  <th className="text-left p-3">Category</th>
-                  <th className="text-left p-3">Type</th>
-                  <th className="text-right p-3">Actions</th>
+                  <th className="p-3 font-semibold w-16">Status</th>
+                  <th className="p-3 font-semibold">Title / URL</th>
+                  <th className="p-3 font-semibold">Profile</th>
+                  <th className="p-3 font-semibold">Category</th>
+                  <th className="p-3 font-semibold">Type</th>
+                  <th className="p-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {currentSources.map((item) => (
-                  <tr key={item.id} className="border-t border-outline-variant/15 hover:bg-surface-container/60">
+                  <tr key={item.id} className="border-b border-[#1e293b]/50 hover:bg-[#0f1520] transition-colors group">
                     <td className="p-3">
-                      <button onClick={() => toggleSource(item)} className={`w-9 h-5 rounded-full p-0.5 flex ${item.enabled ? 'bg-primary justify-end' : 'bg-outline-variant justify-start'}`}>
-                        <span className="w-4 h-4 rounded-full bg-white" />
+                      <button onClick={() => toggleSource(item)} className={`w-9 h-5 rounded-full p-0.5 flex transition-colors ${item.enabled ? 'bg-[#00c897] justify-end' : 'bg-[#334155] justify-start'}`}>
+                        <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
                       </button>
                     </td>
-                    <td className="p-3 min-w-[320px]">
-                      {item.title ? <div className="font-bold text-on-surface">{item.title}</div> : null}
-                      <div className="text-on-surface-variant break-all">{item.url}</div>
+                    <td className="p-3 max-w-[320px]">
+                      {item.title ? <div className="font-bold text-[#e2e8f0] truncate">{item.title}</div> : null}
+                      <div className="text-[#64748b] truncate text-[11px] group-hover:text-[#94a3b8] transition-colors">{item.url}</div>
                     </td>
-                    <td className="p-3">{item.source_profile}</td>
-                    <td className="p-3">{item.category}</td>
-                    <td className="p-3">{item.document_type}</td>
                     <td className="p-3">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => editSource(item)} className="p-2 rounded-lg hover:bg-primary/10 text-primary" title="Edit"><Pencil size={15} /></button>
-                        <button onClick={() => deleteSource(item)} className="p-2 rounded-lg hover:bg-error/10 text-error" title="Delete"><Trash2 size={15} /></button>
+                      <span className="inline-block px-2 py-1 rounded bg-[#1e293b]/50 text-[#94a3b8] text-[10px] uppercase font-bold">{item.source_profile}</span>
+                    </td>
+                    <td className="p-3 text-[#cbd5e1]">{item.category}</td>
+                    <td className="p-3 text-[#cbd5e1]">{item.document_type}</td>
+                    <td className="p-3">
+                      <div className="flex justify-end gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => editSource(item)} className="p-1.5 rounded hover:bg-[#3b82f6]/20 text-[#3b82f6] transition-colors" title="Edit"><Pencil size={14} /></button>
+                        <button onClick={() => deleteSource(item)} className="p-1.5 rounded hover:bg-[#ef4444]/20 text-[#ef4444] transition-colors" title="Delete"><Trash2 size={14} /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
+                {currentSources.length === 0 && (
+                  <tr>
+                    <td colSpan="6" className="p-8 text-center text-[#64748b] italic">Không tìm thấy dữ liệu.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
           
           {/* Pagination Controls */}
           {sources.length > 0 && (
-            <div className="flex items-center justify-between mt-4 text-xs">
-              <span className="text-on-surface-variant">
-                Hiển thị {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, sources.length)} trong {sources.length} kết quả
+            <div className="flex items-center justify-between mt-5 text-xs">
+              <span className="text-[#64748b]">
+                Hiển thị <b className="text-white">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, sources.length)}</b> trong <b className="text-white">{sources.length}</b>
               </span>
               <div className="flex items-center gap-1">
                 <button 
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30"
+                  className="p-1.5 rounded hover:bg-[#1e293b] text-[#94a3b8] disabled:opacity-30 transition-colors"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 {Array.from({ length: totalPages }).map((_, i) => {
-                  // Hiển thị các trang gần trang hiện tại hoặc đầu/cuối
                   const page = i + 1;
                   if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
                     return (
                       <button 
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`w-7 h-7 rounded flex items-center justify-center ${page === currentPage ? 'bg-primary text-white font-bold' : 'hover:bg-surface-container text-on-surface'}`}
+                        className={`w-7 h-7 rounded flex items-center justify-center text-[11px] transition-colors ${page === currentPage ? 'bg-[#00c897] text-white font-bold' : 'hover:bg-[#1e293b] text-[#94a3b8]'}`}
                       >
                         {page}
                       </button>
                     );
                   } else if (page === currentPage - 2 || page === currentPage + 2) {
-                    return <span key={page} className="px-1 text-on-surface-variant">...</span>;
+                    return <span key={page} className="px-1 text-[#475569]">...</span>;
                   }
                   return null;
                 })}
                 <button 
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30"
+                  className="p-1.5 rounded hover:bg-[#1e293b] text-[#94a3b8] disabled:opacity-30 transition-colors"
                 >
                   <ChevronRight size={16} />
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <select className="px-2 py-1.5 rounded bg-surface-container border border-outline-variant/30 text-xs">
+                <select className="px-2 py-1.5 rounded bg-[#0f1520] border border-[#1e293b] text-[#94a3b8] text-xs outline-none">
                   <option>10 / trang</option>
                 </select>
               </div>
@@ -383,94 +396,156 @@ export default function KnowledgeBuilder() {
           )}
         </div>
 
-        <div className="glass-panel border border-outline-variant/30 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-on-surface">{editingId ? 'Edit URL' : 'Add URL'}</h2>
-            {editingId && <button onClick={resetForm} className="p-2 rounded-lg hover:bg-surface-container"><X size={16} /></button>}
+        {/* Right Column: Add URL Form */}
+        <div className="rounded-2xl border border-[#1e293b]/60 bg-[#0b0f19] p-5 shadow-xl glass-panel h-fit">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Plus size={18} className="text-[#00c897]" />
+              {editingId ? 'Edit URL' : 'Add New URL'}
+            </h2>
+            {editingId && <button onClick={resetForm} className="p-1.5 rounded-lg hover:bg-[#1e293b] text-[#94a3b8] transition-colors"><X size={16} /></button>}
           </div>
-          <div className="space-y-3">
-            <input className="w-full px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" placeholder="Title" value={form.title} onChange={(e) => updateForm('title', e.target.value)} />
-            <textarea className="w-full px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm min-h-[76px]" placeholder="URL" value={form.url} onChange={(e) => updateForm('url', e.target.value)} />
-            <div className="grid grid-cols-2 gap-2">
-              <select className="px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" value={form.source_profile} onChange={(e) => updateForm('source_profile', e.target.value)}>
-                {profiles.map((p) => <option key={p} value={p}>{profileLabels[p] || p}</option>)}
-              </select>
-              <select className="px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" value={form.source_type} onChange={(e) => updateForm('source_type', e.target.value)}>
-                <option value="web">web</option>
-                <option value="pdf">pdf</option>
-              </select>
-              <select className="px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" value={form.category} onChange={(e) => updateForm('category', e.target.value)}>
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <select className="px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" value={form.document_type} onChange={(e) => updateForm('document_type', e.target.value)}>
-                {documentTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Title</label>
+              <input className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] focus:border-[#00c897]/50 focus:ring-1 focus:ring-[#00c897]/50 outline-none" placeholder="Page title" value={form.title} onChange={(e) => updateForm('title', e.target.value)} />
             </div>
-            <input className="w-full px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" placeholder="Output dir" value={form.output_dir} onChange={(e) => updateForm('output_dir', e.target.value)} />
-            <textarea className="w-full px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm min-h-[64px]" placeholder="Notes" value={form.notes} onChange={(e) => updateForm('notes', e.target.value)} />
-            <label className="flex items-center gap-2 text-sm text-on-surface-variant">
-              <input type="checkbox" checked={form.enabled} onChange={(e) => updateForm('enabled', e.target.checked)} />
-              Enabled for crawl
+            <div>
+              <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">URL <span className="text-[#ef4444]">*</span></label>
+              <textarea className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] focus:border-[#00c897]/50 focus:ring-1 focus:ring-[#00c897]/50 outline-none min-h-[64px] resize-none" placeholder="https://..." value={form.url} onChange={(e) => updateForm('url', e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Profile</label>
+                <select className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] outline-none" value={form.source_profile} onChange={(e) => updateForm('source_profile', e.target.value)}>
+                  {profiles.map((p) => <option key={p} value={p}>{profileLabels[p] || p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Type</label>
+                <select className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] outline-none" value={form.source_type} onChange={(e) => updateForm('source_type', e.target.value)}>
+                  <option value="web">web</option>
+                  <option value="pdf">pdf</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Category</label>
+                <select className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] outline-none" value={form.category} onChange={(e) => updateForm('category', e.target.value)}>
+                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Doc Type</label>
+                <select className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] outline-none" value={form.document_type} onChange={(e) => updateForm('document_type', e.target.value)}>
+                  {documentTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Output Dir</label>
+              <input className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] outline-none" value={form.output_dir} onChange={(e) => updateForm('output_dir', e.target.value)} />
+            </div>
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#e2e8f0] cursor-pointer mt-2">
+              <input type="checkbox" checked={form.enabled} onChange={(e) => updateForm('enabled', e.target.checked)} className="w-4 h-4 rounded accent-[#00c897]" />
+              Enabled for crawling
             </label>
-            <button onClick={saveSource} disabled={Boolean(busy) || !form.url.trim()} className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
-              {busy === 'save' ? <Loader2 size={18} className="animate-spin" /> : editingId ? <Save size={18} /> : <Plus size={18} />}
-              {editingId ? 'Save URL' : 'Add URL'}
+            <button onClick={saveSource} disabled={Boolean(busy) || !form.url.trim()} className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-[#00c897] to-[#00a67d] hover:from-[#00b084] hover:to-[#009570] shadow-[0_4px_15px_rgba(0,200,151,0.2)] text-white font-bold flex justify-center items-center gap-2 disabled:opacity-50 transition-all">
+              {busy === 'save' ? <Loader2 size={16} className="animate-spin" /> : editingId ? <Save size={16} /> : <Plus size={16} />}
+              {editingId ? 'Save Changes' : 'Add to Registry'}
             </button>
           </div>
         </div>
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="glass-panel border border-outline-variant/30 rounded-2xl p-5 space-y-4">
-          <h2 className="text-lg font-bold text-on-surface">Crawl & Clean</h2>
-          <p className="text-xs text-on-surface-variant">Crawler chỉ sinh Markdown/PDF Markdown trong data/. Không clear và không ingest.</p>
-          <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-            <label className="text-xs text-on-surface-variant">
-              Giới hạn URL
-              <input
-                type="number"
-                min="1"
-                value={crawlLimit}
-                disabled={crawlUnlimited}
-                onChange={(e) => setCrawlLimit(e.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm text-on-surface disabled:opacity-50"
-              />
-            </label>
-            <label className="inline-flex items-center gap-2 text-xs text-on-surface-variant mt-5">
-              <input type="checkbox" checked={crawlUnlimited} onChange={(e) => setCrawlUnlimited(e.target.checked)} />
-              UNLIMIT
-            </label>
+        {/* Crawl & Clean Card */}
+        <div className="rounded-2xl border border-[#1e293b]/60 bg-[#0b0f19] p-5 shadow-xl glass-panel flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
+              <FileDown size={18} className="text-[#3b82f6]" />
+              Data Pipeline Actions
+            </h2>
+            <p className="text-[11px] text-[#94a3b8] mb-4">Crawler sinh Markdown/PDF Markdown trong thư mục data/. Không clear và không ingest tự động.</p>
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-end mb-5">
+              <div>
+                <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Max URLs to Crawl</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={crawlLimit}
+                  disabled={crawlUnlimited}
+                  onChange={(e) => setCrawlLimit(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-white disabled:opacity-40 outline-none focus:border-[#3b82f6]/50"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-xs font-bold text-[#94a3b8] mb-2.5 cursor-pointer">
+                <input type="checkbox" checked={crawlUnlimited} onChange={(e) => setCrawlUnlimited(e.target.checked)} className="accent-[#3b82f6]" />
+                UNLIMITED
+              </label>
+            </div>
           </div>
-          <button onClick={() => runStreamAction('crawl-all', `Crawl All Data (${crawlUnlimited ? 'UNLIMIT' : `${selectedCrawlLimit} URL`})`, () => api.runCrawler(selectedCrawlLimit))} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-            {busy === 'crawl-all' ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
-            Crawl All Data (Main Site + Vehicle/PDF)
-          </button>
-          <button onClick={() => runStreamAction('vlm-process', 'Tiền xử lý Ảnh VLM (data/news)', api.runVLMProcessor)} disabled={Boolean(busy)} className="w-full py-3 rounded-xl border-2 border-primary text-primary hover:bg-primary/10 font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50 active:scale-95 transition-all">
-            {busy === 'vlm-process' ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
-            Tiền xử lý Ảnh VLM (data/news)
-          </button>
+          <div className="space-y-3">
+            <button onClick={() => runStreamAction('crawl-all', `Crawl Data (${crawlUnlimited ? 'UNLIMITED' : `${selectedCrawlLimit} URLs`})`, () => api.runCrawler(selectedCrawlLimit))} disabled={Boolean(busy)} className="w-full py-2.5 rounded-lg bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/30 hover:bg-[#3b82f6]/20 font-bold flex justify-center items-center gap-2 disabled:opacity-50 transition-all text-sm">
+              {busy === 'crawl-all' ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+              Run Crawl Pipeline
+            </button>
+            <button onClick={() => runStreamAction('vlm-process', 'VLM Image Processing', api.runVLMProcessor)} disabled={Boolean(busy)} className="w-full py-2.5 rounded-lg bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/30 hover:bg-[#8b5cf6]/20 font-bold flex justify-center items-center gap-2 disabled:opacity-50 transition-all text-sm">
+              {busy === 'vlm-process' ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
+              Run VLM Processor
+            </button>
+          </div>
         </div>
 
-        <div className="glass-panel border border-outline-variant/30 rounded-2xl p-5 space-y-4">
-          <h2 className="text-lg font-bold text-on-surface">Knowledge Operations</h2>
-          <p className="text-xs text-on-surface-variant">Clear và Ingest là hai thao tác độc lập. Ingest không clear ngầm.</p>
-          <input className="w-full px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/30 text-sm" placeholder="Nhập CLEAR để xóa knowledge" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
-          <button onClick={() => runJsonAction('clear', 'Clear ALL Knowledge', api.clearAllKnowledge)} disabled={Boolean(busy) || confirmText !== 'CLEAR'} className="w-full py-3 rounded-xl bg-error text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50">
-            {busy === 'clear' ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-            Clear ALL Knowledge
-          </button>
-          <button onClick={() => runStreamAction('ingest-all', 'Ingest ALL From data/', api.runIngestion)} disabled={Boolean(busy)} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold inline-flex justify-center items-center gap-2 disabled:opacity-50 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-            {busy === 'ingest-all' ? <Loader2 size={18} className="animate-spin" /> : <DatabaseZap size={18} />}
-            Ingest ALL From data/
-          </button>
+        {/* Knowledge Operations Card */}
+        <div className="rounded-2xl border border-[#1e293b]/60 bg-[#0b0f19] p-5 shadow-xl glass-panel flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
+              <DatabaseZap size={18} className="text-[#f59e0b]" />
+              Database Operations
+            </h2>
+            <p className="text-[11px] text-[#94a3b8] mb-4">Quản lý Ingest dữ liệu vào Vector DB. Dữ liệu cũ cần phải Clear thủ công.</p>
+            <div className="mb-5">
+              <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Confirmation string</label>
+              <input className="w-full px-3 py-2 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-white placeholder:text-[#64748b] outline-none focus:border-[#ef4444]/50" placeholder="Type CLEAR to unlock deletion" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <button onClick={() => runJsonAction('clear', 'Clear ALL Knowledge', api.clearAllKnowledge)} disabled={Boolean(busy) || confirmText !== 'CLEAR'} className="w-full py-2.5 rounded-lg bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/30 hover:bg-[#ef4444]/20 font-bold flex justify-center items-center gap-2 disabled:opacity-50 transition-all text-sm">
+              {busy === 'clear' ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              Clear ALL Knowledge DB
+            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => runJsonAction('food-import', 'Import Food Catalog', () => api.importFoodCatalog({ path: 'data/food_catalog/shopeefood_catalog.jsonl' }))} disabled={Boolean(busy)} className="w-full py-2.5 rounded-lg bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/30 hover:bg-[#f59e0b]/20 font-bold flex justify-center items-center gap-2 disabled:opacity-50 transition-all text-sm">
+                {busy === 'food-import' ? <Loader2 size={16} className="animate-spin" /> : <DatabaseZap size={16} />}
+                Ingest Food
+              </button>
+              <button onClick={() => runStreamAction('ingest-all', 'Ingest ALL From data/', api.runIngestion)} disabled={Boolean(busy)} className="w-full py-2.5 rounded-lg bg-[#00c897]/10 text-[#00c897] border border-[#00c897]/30 hover:bg-[#00c897]/20 font-bold flex justify-center items-center gap-2 disabled:opacity-50 transition-all text-sm">
+                {busy === 'ingest-all' ? <Loader2 size={16} className="animate-spin" /> : <DatabaseZap size={16} />}
+                Ingest Main
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-[#05090f] rounded-2xl border border-outline-variant/30 overflow-hidden h-[320px] min-h-0 flex flex-col">
-          <div className="px-4 py-3 bg-white/5 border-b border-white/10 text-xs font-mono text-white/50">knowledge_builder.log</div>
-          <div ref={terminalRef} className="p-4 overflow-y-auto font-mono text-xs flex-1 min-h-0 text-green-300">
-            {logs.length === 0 ? <div className="text-white/25 italic">Logs sẽ hiện ở đây...</div> : logs.map((log, idx) => (
-              <pre key={idx} className={`whitespace-pre-wrap mb-2 ${log.includes('[ERROR]') ? 'text-red-400' : log.includes('[SYSTEM]') ? 'text-blue-400' : 'text-green-300'}`}>{log}</pre>
-            ))}
+        {/* Terminal Log */}
+        <div className="rounded-2xl border border-[#1e293b]/60 bg-black shadow-xl overflow-hidden flex flex-col h-[320px] lg:h-auto">
+          <div className="px-4 py-2.5 bg-[#111] border-b border-[#333] flex items-center gap-2 shrink-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+            <span className="ml-2 text-xs font-bold text-[#64748b] font-mono">knowledge_builder.log</span>
+          </div>
+          <div ref={terminalRef} className="flex-1 p-4 overflow-y-auto custom-scrollbar font-mono text-[11px] leading-relaxed bg-black text-[#00c897]">
+            {logs.length === 0 ? (
+              <div className="text-[#64748b] italic">Waiting for operations...</div>
+            ) : (
+              logs.map((log, idx) => (
+                <div key={idx} className={`mb-1 ${log.includes('[ERROR]') ? 'text-red-400' : log.includes('[SYSTEM]') ? 'text-blue-400' : 'text-[#00c897]'}`}>
+                  <span className="opacity-50 mr-2">{new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                  {log}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>

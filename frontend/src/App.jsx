@@ -7,13 +7,13 @@ import AdminLayout from './components/AdminLayout';
 import NotificationDropdown from './components/NotificationDropdown';
 import CommandCenter from './pages/CommandCenter';
 import AIEvalLab from './pages/AIEvalLab';
-import PipelineManager from './pages/PipelineManager';
-import RAGHistory from './pages/RAGHistory';
+import HistoryDashboard from './pages/HistoryDashboard';
 import DatabaseManager from './pages/DatabaseManager';
-import AgentCrawler from './pages/AgentCrawler';
 import KnowledgeBuilder from './pages/KnowledgeBuilder';
 import UserReviews from './pages/UserReviews';
+import MLControlCenter from './pages/MLControlCenter';
 import AdminLogin from './pages/AdminLogin';
+import LandingPage from './pages/LandingPage';
 import { Moon, Sun, LogOut, Plus, User, HelpCircle, X, Menu, ChevronLeft, ChevronRight, MoreHorizontal, Bell, ChevronDown, MessageSquare, Search } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -79,7 +79,6 @@ function SidebarContent({ user, conversations, activeConversationId, theme, togg
           className="flex flex-col gap-1 items-start cursor-pointer hover:opacity-85 transition-opacity" 
           onClick={() => {
             navigate('/');
-            window.dispatchEvent(new Event('refresh-conversations'));
             onClose?.();
           }}
         >
@@ -106,7 +105,7 @@ function SidebarContent({ user, conversations, activeConversationId, theme, togg
 
       <button 
         onClick={() => {
-          navigate('/');
+          navigate('/chat');
           window.dispatchEvent(new Event('refresh-conversations'));
           onClose?.();
         }} 
@@ -147,7 +146,7 @@ function SidebarContent({ user, conversations, activeConversationId, theme, togg
                       <button 
                         className={`flex items-center gap-2.5 py-2 px-2.5 rounded-xl w-full text-left transition-all text-xs pr-8 ${activeConversationId === conv.id ? 'bg-[#00c897]/8 text-[#00c897] font-semibold border-l-2 border-[#00c897] rounded-l-none' : 'text-on-surface-variant/85 hover:bg-surface-variant/50 hover:text-[#00c897]'}`} 
                         onClick={() => {
-                          navigate(`/?c=${conv.id}`);
+                          navigate(`/chat?c=${conv.id}`);
                           onClose?.();
                         }}
                       >
@@ -620,8 +619,11 @@ function App() {
       {/* Presentation Route */}
       <Route path="/presentation" element={<PresentationFlow />} />
 
+      {/* Landing Route */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* User Chat Route */}
-      <Route path="/" element={
+      <Route path="/chat" element={
         <MainLayout>
           <ChatLayout />
         </MainLayout>
@@ -636,10 +638,9 @@ function App() {
         <Route index element={<CommandCenter />} />
         <Route path="reviews" element={<UserReviews />} />
         <Route path="eval" element={<AIEvalLab />} />
-        <Route path="pipeline" element={<PipelineManager />} />
+        <Route path="ml" element={<MLControlCenter />} />
         <Route path="knowledge-builder" element={<KnowledgeBuilder />} />
-        <Route path="agent-crawler" element={<AgentCrawler />} />
-        <Route path="history" element={<RAGHistory />} />
+        <Route path="history" element={<HistoryDashboard />} />
         <Route path="db" element={<DatabaseManager />} />
       </Route>
       

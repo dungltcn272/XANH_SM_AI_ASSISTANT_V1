@@ -1,12 +1,36 @@
 import { useState, useEffect } from 'react';
-import { History, Search, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Search, Copy, Download, ChevronDown, ChevronRight, Check, X, Box, Target, Clock, Activity, Cpu } from 'lucide-react';
 import { api } from '../api';
 
 export default function RAGHistory() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedIntent, setSelectedIntent] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [copiedId, setCopiedId] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({
+    nlu: true,
+    context: false,
+    userContext: false,
+    trace: false
+  });
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setLoading(true);
+      try {
+        const data = await api.getAdminLogs();
+        setLogs(data || []);
+        if (data && data.length > 0) {
+          setSelectedLog(prev => prev || data[0]);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      setLoading(false);
+    };
+    fetchLogs();
+  }, []);
 
   const filteredLogs = logs.filter(log => {
     const q = searchQuery.toLowerCase().trim();
@@ -18,179 +42,299 @@ export default function RAGHistory() {
     );
   });
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true);
-      try {
-        const data = await api.getAdminLogs(selectedIntent || null);
-        setLogs(data || []);
-      } catch (err) {
-        console.error(err);
-      }
-      setLoading(false);
-    };
-    fetchLogs();
-  }, [selectedIntent]);
+  const handleCopyId = (id) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
 
-  if (loading) return <div className="p-8 text-on-surface-variant animate-pulse">Loading RAG history...</div>;
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const renderLatencyBar = (log) => {
+    const total = log.total_latency_ms || 1; // Prevent div by 0
+    const nlu = log.rewrite_latency_ms + log.classification_latency_ms || 0;
+    const expand = log.expansion_latency_ms || 0;
+    const retrieve = log.search_latency_ms || 0;
+    const rerank = log.rerank_latency_ms || 0;
+    const gen = log.generation_latency_ms || 0;
+
+    const parts = [
+      { label: 'NLU Processing', value: nlu, color: 'bg-[#00c897]' },
+      { label: 'Context Expansion', value: expand, color: 'bg-[#3b82f6]' },
+      { label: 'Retrieval', value: retrieve, color: 'bg-[#8b5cf6]' },
+      { label: 'Reranking', value: rerank, color: 'bg-[#f59e0b]' },
+      { label: 'LLM Generation', value: gen, color: 'bg-[#ef4444]' }
+    ];
+
+    return (
+      <div className="space-y-3">
+        {parts.map(p => {
+          const pct = Math.max(0, Math.min(100, (p.value / total) * 100));
+          if (p.value === 0 && p.label !== 'LLM Generation') return null;
+          return (
+            <div key={p.label} className="flex items-center gap-3 text-xs">
+              <span className="w-32 text-[#94a3b8]">{p.label}</span>
+              <div className="flex-1 h-2 bg-[#1e293b] rounded-full overflow-hidden">
+                <div className={`h-full ${p.color} rounded-full`} style={{ width: `${pct}%` }}></div>
+              </div>
+              <span className="w-20 text-right text-[#e2e8f0] font-mono">{p.value.toFixed(0)}ms <span className="text-[#64748b]">({pct.toFixed(0)}%)</span></span>
+            </div>
+          );
+        })}
+        <div className="pt-2 mt-2 border-t border-[#1e293b] flex justify-between items-center text-xs font-bold">
+          <span className="text-[#94a3b8]">Total</span>
+          <span className="text-white font-mono">{(log.total_latency_ms / 1000).toFixed(2)}s</span>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="max-w-[1600px] mx-auto w-full">
-      {/* Header */}
-      <div className="mb-10 flex justify-between items-end">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="inline-block w-3 h-3 rounded-full bg-primary animate-pulse shadow-[0_0_10px_#00c897]"></span>
-            <span className="text-primary text-xs font-bold tracking-widest uppercase">System Logs</span>
-          </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-on-surface">Lịch Sử RAG & Đánh Giá</h2>
-          <p className="text-lg text-on-surface-variant mt-2 max-w-2xl">
-            Giám sát toàn bộ lịch sử truy vấn của người dùng. Đánh giá chất lượng câu trả lời bằng hệ thống RAGAS.
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto mt-4 sm:mt-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-on-surface-variant shrink-0">Intent:</span>
-            <select
-              value={selectedIntent}
-              onChange={(e) => setSelectedIntent(e.target.value)}
-              className="bg-white/60 border border-outline-variant/50 text-on-surface text-sm rounded-full pl-4 pr-10 py-2 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none shadow-sm cursor-pointer"
-            >
-              <option value="">Tất cả Intents</option>
-              <option value="rag">RAG</option>
-              <option value="small-talk">Small-talk</option>
-              <option value="sensitive">Sensitive</option>
-              <option value="faq">FAQ</option>
-            </select>
-          </div>
-          <div className="relative w-full sm:w-64">
+    <div className="flex h-full gap-4 overflow-hidden p-4 md:p-6 bg-[#070b14]">
+      {/* Left Pane: Master List */}
+      <div className="w-[380px] shrink-0 flex flex-col glass-panel rounded-2xl border border-[#1e293b]/60 overflow-hidden bg-[#0b0f19] shadow-xl">
+        <div className="p-4 border-b border-[#1e293b]/60 shrink-0">
+          <h2 className="text-lg font-bold text-white mb-4">RAG History</h2>
+          
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b]" size={16} />
             <input 
               type="text" 
-              placeholder="Tìm kiếm truy vấn..." 
+              placeholder="Search query..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/60 border border-outline-variant/50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none pl-10 pr-4 py-2.5 rounded-full transition-all text-on-surface font-medium shadow-sm"
+              className="w-full bg-[#0f1520] border border-[#1e293b] focus:border-[#00c897]/50 focus:ring-1 focus:ring-[#00c897]/50 outline-none pl-9 pr-4 py-2 rounded-lg text-sm text-white placeholder:text-[#64748b] transition-all"
             />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50" size={18} />
           </div>
+        </div>
+
+        <div className="px-4 py-2 bg-[#0f1520]/50 border-b border-[#1e293b]/60 text-xs text-[#94a3b8] flex justify-between items-center shrink-0">
+          <span>{filteredLogs.length} logs found</span>
+          <select className="bg-transparent outline-none cursor-pointer text-[#cbd5e1]">
+            <option>Newest First</option>
+            <option>Oldest First</option>
+          </select>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+          {loading ? (
+            <div className="text-center p-8 text-[#64748b] animate-pulse">Loading logs...</div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="text-center p-8 text-[#64748b] italic">No logs found.</div>
+          ) : (
+            filteredLogs.map(log => {
+              const isSelected = selectedLog?.id === log.id;
+              
+              return (
+                <div 
+                  key={log.id} 
+                  onClick={() => setSelectedLog(log)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                    isSelected 
+                      ? 'bg-[#00c897]/10 border-[#00c897]/50 shadow-[0_0_15px_rgba(0,200,151,0.1)]' 
+                      : 'bg-[#0f1520] border-[#1e293b] hover:border-[#334155] hover:bg-[#151b2b]'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-[#e2e8f0] text-sm line-clamp-1 flex-1 pr-2">{log.original_query || 'Unknown query'}</h4>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#1e293b] text-[#94a3b8] uppercase tracking-wider border border-[#334155]">
+                      LOG
+                    </span>
+                    <div className="flex flex-col items-end text-[10px] text-[#64748b]">
+                      <span>{new Date(log.created_at).toLocaleTimeString('en-US', {hour12: false})}</span>
+                      <span className="font-mono mt-0.5">{(log.total_latency_ms / 1000).toFixed(2)}s</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      {/* Grid List */}
-      <div className="flex flex-col gap-4">
-        {filteredLogs.map((log) => (
-          <div key={log.id} className="glass-panel p-6 rounded-2xl flex flex-col gap-4 border border-outline-variant/30 hover:border-primary/30 transition-all group">
+      {/* Right Pane: Detail View */}
+      {selectedLog ? (
+        <div className="flex-1 flex flex-col glass-panel rounded-2xl border border-[#1e293b]/60 overflow-hidden bg-[#0b0f19] shadow-xl">
+          {/* Detail Header */}
+          <div className="px-6 py-4 border-b border-[#1e293b]/60 flex justify-between items-center shrink-0">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-[#94a3b8]">Log ID: <span className="font-mono text-[#cbd5e1]">{selectedLog.id}</span></span>
+              <button onClick={() => handleCopyId(selectedLog.id)} className="text-[#64748b] hover:text-white transition-colors" title="Copy ID">
+                {copiedId ? <Check size={14} className="text-[#00c897]" /> : <Copy size={14} />}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#334155] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                <Download size={14} /> Export JSON
+              </button>
+              <button className="p-1.5 rounded-lg hover:bg-[#ef4444]/20 text-[#64748b] hover:text-[#ef4444] transition-colors ml-2" onClick={() => setSelectedLog(null)}>
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Detail Scrollable Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
             
-            <div className="flex justify-between items-start">
-              <div className="flex gap-3 items-start flex-1">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <History size={20} />
+            {/* Top Cards: Question & Answer */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Question Card */}
+              <div className="rounded-xl border border-[#00c897]/30 bg-[#00c897]/5 p-5 flex flex-col">
+                <span className="text-[10px] font-bold text-[#00c897] uppercase tracking-wider mb-2">Question</span>
+                <p className="text-lg font-bold text-white mb-4 flex-1">{selectedLog.original_query}</p>
+                <div className="flex gap-6 text-xs text-[#94a3b8] mt-auto">
+                  <span>User ID: <span className="text-[#cbd5e1] font-mono">{selectedLog.conversation_id?.substring(0,8) || 'unknown'}</span></span>
+                  <span>Source: <span className="text-[#cbd5e1]">Web Chat</span></span>
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-on-surface text-lg">{log.original_query || 'Unknown'}</h4>
-                  {log.rewritten_query && log.rewritten_query !== log.original_query && (
-                    <p className="text-xs text-on-surface-variant/80 italic mt-1 bg-on-surface-variant/5 px-2 py-1 rounded">
-                      📝 Viết lại: {log.rewritten_query}
-                    </p>
+              </div>
+
+              {/* Answer Card */}
+              <div className="rounded-xl border border-[#8b5cf6]/30 bg-[#8b5cf6]/5 p-5 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold text-[#8b5cf6] uppercase tracking-wider">Final Answer</span>
+                  <Activity size={14} className="text-[#8b5cf6]" />
+                </div>
+                <p className="text-sm text-[#e2e8f0] mb-4 flex-1 line-clamp-4">
+                  {selectedLog.final_answer || <span className="italic text-[#64748b]">No final answer generated.</span>}
+                </p>
+                <div className="flex gap-6 text-xs text-[#94a3b8] mt-auto">
+                  <span>Model: <span className="text-[#cbd5e1] font-mono">Llama-3</span></span>
+                  <span>Generated at: <span className="text-[#cbd5e1]">{new Date(selectedLog.created_at).toLocaleTimeString()}</span></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Metrics Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[#8b5cf6]/10 text-[#8b5cf6]"><Clock size={18} /></div>
+                <div>
+                  <div className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold mb-0.5">Latency</div>
+                  <div className="text-sm font-bold text-white">{(selectedLog.total_latency_ms / 1000).toFixed(2)}s</div>
+                </div>
+              </div>
+              <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[#f59e0b]/10 text-[#f59e0b]"><Cpu size={18} /></div>
+                <div>
+                  <div className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold mb-0.5">Tokens</div>
+                  <div className="text-sm font-bold text-white">{selectedLog.total_tokens || 0}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Grid: NLU, Latency Breakdown, Raw Trace */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Left Col: Accordions */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Box size={16} className="text-[#3b82f6]" /> NLU & Context
+                </h3>
+                
+                {/* NLU Result */}
+                <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] overflow-hidden">
+                  <button 
+                    onClick={() => toggleSection('nlu')}
+                    className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
+                  >
+                    <span className="text-xs font-bold text-[#e2e8f0]">NLU Result</span>
+                    {expandedSections.nlu ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
+                  </button>
+                  {expandedSections.nlu && (
+                    <div className="px-4 pb-4 border-t border-[#1e293b] pt-3">
+                      <pre className="text-[11px] text-[#00c897] font-mono overflow-x-auto">
+{JSON.stringify({
+  rewrite: selectedLog.rewritten_query,
+  latency_ms: selectedLog.rewrite_latency_ms + selectedLog.classification_latency_ms
+}, null, 2)}
+                      </pre>
+                    </div>
                   )}
-                  <div className="text-xs text-on-surface-variant flex gap-4 mt-2 font-medium flex-wrap">
-                    <span>🕐 {new Date(log.created_at).toLocaleString('vi-VN')}</span>
-                    <span>ID: <span className="font-mono">{log.conversation_id?.substring(0, 8) || 'N/A'}...</span></span>
+                </div>
+
+                {/* Context Expansion */}
+                <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] overflow-hidden">
+                  <button 
+                    onClick={() => toggleSection('context')}
+                    className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
+                  >
+                    <span className="text-xs font-bold text-[#e2e8f0]">Context Expansion</span>
+                    {expandedSections.context ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
+                  </button>
+                  {expandedSections.context && (
+                    <div className="px-4 pb-4 border-t border-[#1e293b] pt-3">
+                      <pre className="text-[11px] text-[#3b82f6] font-mono overflow-x-auto">
+                        {"{\n  \"status\": \"completed\",\n  \"latency_ms\": " + selectedLog.expansion_latency_ms + "\n}"}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Right Col: Latency & Raw Trace */}
+              <div className="space-y-6">
+                
+                {/* Latency Breakdown */}
+                <div>
+                  <h3 className="text-sm font-bold text-white mb-4">Latency Breakdown</h3>
+                  <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-5">
+                    {renderLatencyBar(selectedLog)}
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex flex-col items-end gap-2">
-                {log.blocked_by_guardrail ? (
-                  <span className="flex items-center gap-1 text-xs font-bold bg-error/10 text-error px-3 py-1.5 rounded-full border border-error/20">
-                    <ShieldAlert size={14} /> Bị chặn
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-xs font-bold bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/20">
-                    <ShieldCheck size={14} /> An toàn
-                  </span>
-                )}
-              </div>
-            </div>
 
-            {/* Detailed Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 pb-3 border-b border-outline-variant/20">
-              <div className="bg-surface-container-low p-3 rounded-lg">
-                <p className="text-xs text-on-surface-variant/70 font-semibold">⏱️ Tổng thời gian</p>
-                <p className="text-sm font-bold text-primary">{(log.total_latency_ms || 0).toFixed(0)}ms</p>
-              </div>
-              <div className="bg-surface-container-low p-3 rounded-lg">
-                <p className="text-xs text-on-surface-variant/70 font-semibold">🔍 Search</p>
-                <p className="text-sm font-bold text-secondary">{(log.search_latency_ms || 0).toFixed(0)}ms</p>
-              </div>
-              <div className="bg-surface-container-low p-3 rounded-lg">
-                <p className="text-xs text-on-surface-variant/70 font-semibold">🤖 Generation</p>
-                <p className="text-sm font-bold text-blue-500">{(log.generation_latency_ms || 0).toFixed(0)}ms</p>
-              </div>
-              <div className="bg-surface-container-low p-3 rounded-lg">
-                <p className="text-xs text-on-surface-variant/70 font-semibold">💰 Cost</p>
-                <p className="text-sm font-bold text-on-surface">${(log.cost_usd || 0).toFixed(6)}</p>
-              </div>
-            </div>
+                {/* Raw Trace */}
+                <div>
+                  <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] overflow-hidden">
+                    <button 
+                      onClick={() => toggleSection('trace')}
+                      className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
+                    >
+                      <span className="text-xs font-bold text-[#e2e8f0]">Raw Trace JSON</span>
+                      {expandedSections.trace ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
+                    </button>
+                    {expandedSections.trace && (
+                      <div className="px-4 pb-4 border-t border-[#1e293b] pt-3 relative">
+                        <button className="absolute top-4 right-4 text-[#64748b] hover:text-white" onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(selectedLog, null, 2));
+                        }}><Copy size={14}/></button>
+                        <pre className="text-[10px] text-[#94a3b8] font-mono overflow-x-auto max-h-[300px] custom-scrollbar">
+{JSON.stringify(selectedLog, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-            {/* Detailed Latency Breakdown */}
-            {(log.rewrite_latency_ms > 0 || log.classification_latency_ms > 0 || log.expansion_latency_ms > 0 || log.rerank_latency_ms > 0) && (
-              <div className="text-xs text-on-surface-variant/70 flex gap-4 mt-2 px-1 py-1 rounded bg-surface-container-low/30 border border-outline-variant/10 flex-wrap font-medium">
-                <span className="font-semibold text-primary">Chi tiết các bước:</span>
-                {log.rewrite_latency_ms > 0 && (
-                  log.classification_latency_ms === 0 && log.expansion_latency_ms === 0 ? (
-                    <span>🔮 NLU Gateway: {log.rewrite_latency_ms.toFixed(0)}ms</span>
-                  ) : (
-                    <span>📝 Rewrite: {log.rewrite_latency_ms.toFixed(0)}ms</span>
-                  )
-                )}
-                {log.classification_latency_ms > 0 && <span>🧠 Classify: {log.classification_latency_ms.toFixed(0)}ms</span>}
-                {log.expansion_latency_ms > 0 && <span>🔍 Expand: {log.expansion_latency_ms.toFixed(0)}ms</span>}
-                {log.rerank_latency_ms > 0 && <span>⚡ Rerank: {log.rerank_latency_ms.toFixed(0)}ms</span>}
-              </div>
-            )}
+                {/* Cost Info */}
+                <div className="flex justify-between items-center px-2">
+                  <div className="text-xs text-[#64748b] flex gap-4">
+                    <span>Prompt: {selectedLog.total_tokens ? Math.floor(selectedLog.total_tokens*0.6) : 0}</span>
+                    <span>Completion: {selectedLog.total_tokens ? Math.ceil(selectedLog.total_tokens*0.4) : 0}</span>
+                    <span className="font-bold text-[#94a3b8]">Total: {selectedLog.total_tokens || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="p-1 rounded bg-[#10b981]/10 text-[#10b981] font-bold">$</span>
+                    <span className="text-[#10b981] font-mono">${(selectedLog.cost_usd || 0).toFixed(6)} USD</span>
+                  </div>
+                </div>
 
-            {/* Token Count */}
-            <div className="flex gap-3 items-center">
-              <span className="text-xs font-mono bg-surface-container-high px-3 py-1 rounded text-on-surface-variant font-bold border border-outline-variant/30">
-                📊 {log.total_tokens || 0} tokens
-              </span>
-              <span className="text-xs font-semibold text-on-surface-variant">
-                (Input tokens + Output tokens)
-              </span>
-            </div>
-
-            <div className="bg-surface-lowest p-4 rounded-xl text-sm text-on-surface border border-outline-variant/20 mt-2 line-clamp-3">
-              <span className="font-bold text-primary mr-2">AI Trả lời:</span>
-              {log.final_answer || <span className="italic text-on-surface-variant/50">Không có câu trả lời (bị chặn hoặc lỗi)</span>}
-            </div>
-
-            <div className="flex justify-between items-center mt-2 pt-4 border-t border-outline-variant/20">
-              <div className="flex gap-2">
-                {log.ragas_faithfulness && (
-                  <span className="text-xs font-bold bg-secondary/10 text-secondary px-2 py-1 rounded border border-secondary/20">
-                    Faithfulness: {log.ragas_faithfulness.toFixed(2)}
-                  </span>
-                )}
-                {log.ragas_relevancy && (
-                  <span className="text-xs font-bold bg-blue-500/10 text-blue-500 px-2 py-1 rounded border border-blue-500/20">
-                    Relevancy: {log.ragas_relevancy.toFixed(2)}
-                  </span>
-                )}
               </div>
             </div>
 
           </div>
-        ))}
-
-        {filteredLogs.length === 0 && (
-          <div className="text-center p-12 glass-panel rounded-2xl border border-outline-variant/30">
-            <History size={48} className="mx-auto text-on-surface-variant/30 mb-4" />
-            <h3 className="text-xl font-bold text-on-surface-variant">Chưa có dữ liệu lịch sử</h3>
-            <p className="text-on-surface-variant/70 mt-2">Hệ thống chưa ghi nhận truy vấn nào.</p>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center glass-panel rounded-2xl border border-[#1e293b]/60 bg-[#0b0f19] shadow-xl">
+          <Target size={48} className="text-[#1e293b] mb-4" />
+          <h3 className="text-lg font-bold text-[#94a3b8]">Select a log to view details</h3>
+          <p className="text-sm text-[#64748b] mt-2 max-w-sm text-center">Click on any log entry in the left panel to explore its full execution trace, latency breakdown, and safety metrics.</p>
+        </div>
+      )}
     </div>
   );
 }
