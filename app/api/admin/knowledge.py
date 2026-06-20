@@ -38,6 +38,10 @@ class CrawlSourceRequest(BaseModel):
     notes: Optional[str] = ""
 
 
+class CrawlSourceBulkStatusRequest(BaseModel):
+    enabled: bool
+
+
 class FoodCatalogImportRequest(BaseModel):
     path: Optional[str] = None
     clear_existing: bool = False
@@ -199,6 +203,16 @@ def create_crawl_source(req: CrawlSourceRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(row)
     return serialize_crawl_source(row)
+
+
+@router.post("/crawl-sources/status")
+def update_all_crawl_sources_status(req: CrawlSourceBulkStatusRequest, db: Session = Depends(get_db)):
+    updated = db.query(CrawlSource).update(
+        {CrawlSource.enabled: req.enabled},
+        synchronize_session=False,
+    )
+    db.commit()
+    return {"success": True, "enabled": req.enabled, "updated": updated}
 
 
 @router.put("/crawl-sources/{source_id}")
