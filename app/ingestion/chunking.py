@@ -7,6 +7,21 @@ from langchain_core.documents import Document
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from app.core.logger import log_info, log_warn, log_error
 
+GENERATED_MARKDOWN_PATTERNS = (
+    "_catalog.md",
+)
+
+
+def should_skip_ingestion_file(filepath: str, category: str) -> bool:
+    filename = os.path.basename(filepath).lower()
+    category_name = (category or "").lower()
+    if category_name in {"raw", "raw_converted", "manifests", "markitdown_tests"}:
+        return True
+    if category_name == "overview" and filename.endswith(GENERATED_MARKDOWN_PATTERNS):
+        return True
+    return False
+
+
 class HeadingAwareSplitter:
     """
     Heading-aware splitter for legal and policy documents.
@@ -386,7 +401,7 @@ class HeadingAwareSplitter:
         
         for category in categories:
             # Bỏ qua thư mục raw
-            if category.lower() == "raw":
+            if category.lower() in {"raw", "raw_converted", "manifests", "markitdown_tests"}:
                 continue
                 
             if category_filter and category.lower() != category_filter.lower():
@@ -397,6 +412,9 @@ class HeadingAwareSplitter:
                 for file in files:
                     if file.lower().endswith((".md", ".pdf")):
                         filepath = os.path.join(root, file)
+                        if should_skip_ingestion_file(filepath, category):
+                            log_info("INGESTION", f"Skipping generated/support file: {filepath}")
+                            continue
                         log_info("INGESTION", f"Splitting: {filepath} (Category: {category})")
                         try:
                             chunks = self.split_file(filepath, category=category)
