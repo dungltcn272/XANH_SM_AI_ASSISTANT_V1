@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from typing import Any
 
 from sqlalchemy import or_
@@ -11,7 +12,7 @@ from app.db.models import ConversationSummary, Message, UserMemory, UserProfile
 
 
 VALID_MEMORY_SCOPES = {"general", "food", "rag", "project", "support"}
-VALID_MEMORY_TYPES = {"fact", "preference", "dislike", "goal", "constraint", "location"}
+VALID_MEMORY_TYPES = {"fact", "preference", "dislike", "goal", "constraint", "location", "behavior"}
 
 
 def _json_or_default(value: str | None, default: Any) -> Any:
@@ -35,7 +36,10 @@ def _identity(user_id: str | None = None, guest_id: str | None = None) -> dict[s
 
 
 def _normalize_text(value: str | None) -> str:
-    return re.sub(r"\s+", " ", (value or "").casefold()).strip()
+    normalized = unicodedata.normalize("NFD", value or "")
+    without_marks = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    text = without_marks.replace("đ", "d").replace("Đ", "D")
+    return re.sub(r"\s+", " ", text.casefold()).strip()
 
 
 def _query_terms(query: str, limit: int = 8) -> list[str]:
@@ -104,11 +108,13 @@ class MemoryService:
         if not profile:
             return {}
         return {
+            "profile_cache_note": "Derived from active user_memories; user_memories remain the source of truth.",
             "display_name": profile.display_name,
             "facts": _json_or_default(profile.facts_json, []),
             "preferences": _json_or_default(profile.preferences_json, []),
             "goals": _json_or_default(profile.goals_json, []),
             "constraints": _json_or_default(profile.constraints_json, []),
+            "behaviors": _json_or_default(getattr(profile, "behaviors_json", None), []),
             "profile_stats": _json_or_default(profile.profile_stats_json, {}),
         }
 
@@ -238,6 +244,7 @@ class MemoryService:
             for row in saved:
                 self.db.refresh(row)
             self._refresh_profile_from_memories(ident["user_id"], ident["guest_id"])
+            self._sync_location_candidates_to_food_profile(candidates, ident["user_id"], ident["guest_id"])
         return saved
 
     def extract_and_save_facts(
@@ -268,6 +275,7 @@ class MemoryService:
             "content": row.content,
             "confidence": row.confidence,
             "source": row.source,
+            "metadata": _json_or_default(row.memory_metadata_json, {}),
         }
 
     def _find_existing_memory(
@@ -297,29 +305,103 @@ class MemoryService:
             "preferences": [],
             "goals": [],
             "constraints": [],
+            "behaviors": [],
         }
+        display_name = profile.display_name
         for memory in memories:
             item = {
                 "content": memory["content"],
                 "scope": memory["scope"],
                 "confidence": memory["confidence"],
             }
+            metadata = memory.get("metadata") or {}
+            if metadata:
+                item["metadata"] = metadata
             memory_type = memory["memory_type"]
             if memory_type == "goal":
                 grouped["goals"].append(item)
             elif memory_type in {"constraint", "dislike", "location"}:
                 grouped["constraints"].append(item)
+            elif memory_type == "behavior":
+                grouped["behaviors"].append(item)
             elif memory_type == "preference":
                 grouped["preferences"].append(item)
             else:
                 grouped["facts"].append(item)
+            if not display_name:
+                display_name = self._display_name_from_memory(memory)
 
+        profile.display_name = display_name
         profile.facts_json = _dump_json(grouped["facts"][:24])
         profile.preferences_json = _dump_json(grouped["preferences"][:24])
         profile.goals_json = _dump_json(grouped["goals"][:12])
         profile.constraints_json = _dump_json(grouped["constraints"][:24])
-        profile.profile_stats_json = _dump_json({"memory_count": len(memories)})
+        if hasattr(profile, "behaviors_json"):
+            profile.behaviors_json = _dump_json(grouped["behaviors"][:24])
+        profile.profile_stats_json = _dump_json({
+            "memory_count": len(memories),
+            "profile_source": "derived_from_user_memories",
+        })
         self.db.commit()
+
+    @staticmethod
+    def _display_name_from_memory(memory: dict[str, Any]) -> str | None:
+        metadata = memory.get("metadata") or {}
+        for key in ("display_name", "name", "user_name"):
+            value = metadata.get(key)
+            if isinstance(value, str) and 1 <= len(value.strip()) <= 80:
+                return value.strip()
+        content = memory.get("content") or ""
+        patterns = [
+            r"(?:tên tôi là|tôi tên là|mình tên là|gọi tôi là)\s+([^,.!?\n]{1,80})",
+            r"(?:anh/chị tên là)\s+([^,.!?\n]{1,80})",
+        ]
+        lowered = content.casefold()
+        for pattern in patterns:
+            match = re.search(pattern, lowered, flags=re.IGNORECASE)
+            if match:
+                return match.group(1).strip().title()
+        return None
+
+    def _sync_location_candidates_to_food_profile(
+        self,
+        candidates: list[dict[str, Any]] | None,
+        user_id: str | None,
+        guest_id: str | None,
+    ) -> None:
+        if not candidates:
+            return
+        try:
+            from app.food_recommendation.profile_store import save_food_location
+
+            for candidate in candidates:
+                if not isinstance(candidate, dict):
+                    continue
+                if candidate.get("memory_type") != "location" and candidate.get("type") != "location":
+                    continue
+                metadata = candidate.get("metadata") or {}
+                lat = metadata.get("lat") or metadata.get("latitude")
+                lng = metadata.get("lng") or metadata.get("lon") or metadata.get("longitude")
+                if lat is None or lng is None:
+                    continue
+                label = metadata.get("label") or metadata.get("name") or metadata.get("type") or "Vị trí đã lưu"
+                save_food_location(
+                    self.db,
+                    user_id=user_id,
+                    guest_id=guest_id,
+                    location={
+                        "id": metadata.get("id") or metadata.get("type") or label,
+                        "type": metadata.get("type") or metadata.get("id"),
+                        "label": label,
+                        "address": metadata.get("address") or candidate.get("content"),
+                        "lat": lat,
+                        "lng": lng,
+                        "source": "nlu_memory",
+                    },
+                    set_current=bool(metadata.get("set_current", True)),
+                )
+        except Exception:
+            return
 
     @staticmethod
     def _safe_confidence(value: Any) -> float:

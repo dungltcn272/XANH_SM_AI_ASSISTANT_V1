@@ -70,6 +70,7 @@ class UserProfile(Base):
     preferences_json = Column(Text, nullable=True)
     goals_json = Column(Text, nullable=True)
     constraints_json = Column(Text, nullable=True)
+    behaviors_json = Column(Text, nullable=True)
     profile_stats_json = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=get_vn_time)
     updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time, index=True)
@@ -158,6 +159,21 @@ class ErrorLog(Base):
     error_stage = Column(String, nullable=True, index=True)
     error_cause = Column(Text, nullable=True)
     details_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
+
+class SystemLog(Base):
+    __tablename__ = "system_logs"
+    id = Column(String, primary_key=True, default=lambda: generate_id("syslog"))
+    trace_id = Column(String, nullable=True, index=True)
+    conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True, index=True)
+    user_id = Column(String, nullable=True, index=True)
+    guest_id = Column(String, nullable=True, index=True)
+    level = Column(String, default="INFO", index=True)
+    node = Column(String, nullable=False, index=True)
+    event = Column(String, nullable=False, index=True)
+    query = Column(Text, nullable=True)
+    intent = Column(String, nullable=True, index=True)
+    payload_json = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
 class SemanticCache(Base):
     __tablename__ = "semantic_cache"
