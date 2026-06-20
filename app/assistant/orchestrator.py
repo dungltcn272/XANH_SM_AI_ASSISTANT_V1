@@ -10,6 +10,7 @@ from app.rag.chain import RagAnswerChain
 from app.assistant.events import sse_pipeline_step, stream_plain_answer
 from app.core.config import settings as config
 from app.core.logger import log_warn
+from app.assistant.system_log import save_system_log
 from app.rag.classifier import XanhSMClassifier
 from app.rag.gateway import XanhSMGateway
 class XanhSMAssistantOrchestrator:
@@ -82,6 +83,15 @@ class XanhSMAssistantOrchestrator:
 
         yield sse_pipeline_step("received", "Chờ một chút...", 0.03)
         normalized_query = self.gateway.normalize_input(query)
+        save_system_log(
+            node="orchestrator",
+            event="received",
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=query,
+            payload={"normalized_query": normalized_query, "has_image": bool(image_base64), "is_deep_search": is_deep_search},
+        )
 
         yield sse_pipeline_step("gateway_safety", "Đang kiểm tra an toàn nội dung...", 0.06)
         safety_res = self.gateway.safety_precheck(normalized_query)
@@ -112,6 +122,19 @@ class XanhSMAssistantOrchestrator:
 
         t_nlu_start = time.time()
         yield sse_pipeline_step("nlu_intent", "Đang phân tích ý định...", 0.18)
+        save_system_log(
+            node="nlu.context",
+            event="before_nlu",
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=normalized_query,
+            payload={
+                "chat_history_tail": (chat_history or [])[-6:],
+                "food_context": food_context,
+                "assistant_context": assistant_context,
+            },
+        )
         nlu_res = self.classifier.unified_nlu(
             normalized_query,
             chat_history,
@@ -141,8 +164,39 @@ class XanhSMAssistantOrchestrator:
             nlu_usage.get("prompt_tokens", 0),
             nlu_usage.get("completion_tokens", 0),
         )["cost_usd"]
+        save_system_log(
+            node="nlu.result",
+            event="after_nlu",
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=normalized_query,
+            intent=intent,
+            payload={
+                "rewritten_query": rewritten_query,
+                "expanded_queries": expanded_queries,
+                "food_slots": nlu_res.get("food_slots"),
+                "missing_fields": nlu_res.get("missing_fields"),
+                "ui_form": nlu_res.get("ui_form"),
+                "user_context": nlu_res.get("user_context"),
+                "fast_path": nlu_res.get("fast_path"),
+                "fast_path_reason": nlu_res.get("fast_path_reason"),
+                "model": nlu_res.get("nlu_model_used"),
+                "usage": nlu_usage,
+            },
+        )
 
         if intent == "food_recommendation":
+            save_system_log(
+                node="orchestrator.route",
+                event="route_food",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=normalized_query,
+                intent=intent,
+                payload={"rewritten_query": rewritten_query, "missing_fields": nlu_res.get("missing_fields", [])},
+            )
             yield sse_pipeline_step("food_context_load", "Đang xem lại khẩu vị và vị trí của bạn...", 0.24)
             yield from self.food_chain.stream(
                 query=query,
@@ -159,6 +213,16 @@ class XanhSMAssistantOrchestrator:
             return
 
         if intent == "sensitive":
+            save_system_log(
+                node="orchestrator.route",
+                event="route_sensitive",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=normalized_query,
+                intent=intent,
+                payload={"suggested_answer": nlu_res.get("suggested_answer")},
+            )
             refusal_msg = nlu_res.get("suggested_answer") or (
                 "Dạ, em rất tiếc nhưng em không thể thực hiện yêu cầu này. "
                 "Anh/chị có thể hỏi em về dịch vụ, giá cước hoặc chính sách của Xanh SM ạ."
@@ -170,6 +234,16 @@ class XanhSMAssistantOrchestrator:
             return
 
         if intent == "small-talk":
+            save_system_log(
+                node="orchestrator.route",
+                event="route_small_talk",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=normalized_query,
+                intent=intent,
+                payload={"suggested_answer": nlu_res.get("suggested_answer")},
+            )
             answer = nlu_res.get("suggested_answer")
             if not answer:
                 intercept = self._is_greeting_or_thanks(rewritten_query)
@@ -184,6 +258,16 @@ class XanhSMAssistantOrchestrator:
             return
 
         if intent == "missing_info":
+            save_system_log(
+                node="orchestrator.route",
+                event="route_missing_info",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=normalized_query,
+                intent=intent,
+                payload={"suggested_answer": nlu_res.get("suggested_answer"), "missing_fields": nlu_res.get("missing_fields")},
+            )
             answer = nlu_res.get("suggested_answer") or (
                 "Dạ anh/chị muốn em làm rõ thông tin nào ạ? Anh/chị có thể nói thêm tên xe, dịch vụ, món ăn hoặc mục muốn xem chi tiết giúp em."
             )

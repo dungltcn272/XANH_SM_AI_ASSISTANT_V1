@@ -6,6 +6,7 @@ from typing import Any
 
 from app.core.config import settings as config
 from app.core.logger import log_info
+from app.assistant.system_log import save_system_log
 from app.food_recommendation.answer_llm import stream_food_answer_with_llm
 from app.food_recommendation.payloads import (
     food_location_payload,
@@ -21,6 +22,48 @@ from app.food_recommendation.tool import recommend_food
 
 class FoodRecommendationChain:
     """Food recommendation capability chain."""
+
+    def _resolve_location_from_context(self, slots, food_context: dict[str, Any] | None, query: str) -> str | None:
+        context = food_context or {}
+        query_norm = (query or "").casefold()
+        saved_places = context.get("saved_places") or []
+        current_location = context.get("current_location")
+        candidates: list[tuple[str, dict[str, Any]]] = []
+
+        if isinstance(current_location, dict):
+            candidates.append(("current_location", current_location))
+        if isinstance(saved_places, list):
+            for place in saved_places:
+                if isinstance(place, dict):
+                    label = str(place.get("label") or place.get("name") or place.get("type") or "").casefold()
+                    if label and label in query_norm:
+                        candidates.insert(0, ("saved_place", place))
+                    else:
+                        candidates.append(("saved_place", place))
+
+        home_words = ("nhà", "nha", "home")
+        if any(word in query_norm for word in home_words):
+            for source, place in candidates:
+                label = str(place.get("label") or place.get("name") or place.get("type") or "").casefold()
+                if source == "current_location" or label in {"nhà", "nha", "home"}:
+                    lat = place.get("lat") or place.get("latitude")
+                    lng = place.get("lng") or place.get("lon") or place.get("longitude")
+                    if lat is not None and lng is not None:
+                        slots.lat = float(lat)
+                        slots.lng = float(lng)
+                        slots.address_text = slots.address_text or place.get("address") or place.get("label") or "Nhà"
+                        return source
+
+        if slots.lat is None or slots.lng is None:
+            if isinstance(current_location, dict):
+                lat = current_location.get("lat") or current_location.get("latitude")
+                lng = current_location.get("lng") or current_location.get("lon") or current_location.get("longitude")
+                if lat is not None and lng is not None and any(word in query_norm for word in ("gần", "gan", "quanh", "đây", "day")):
+                    slots.lat = float(lat)
+                    slots.lng = float(lng)
+                    slots.address_text = slots.address_text or current_location.get("address") or current_location.get("label")
+                    return "current_location"
+        return None
 
     def stream(
         self,
@@ -48,6 +91,32 @@ class FoodRecommendationChain:
             "max_distance_km": slots.max_distance_km,
             "address_text": slots.address_text,
         }
+        save_system_log(
+            node="food.slots",
+            event="slots_from_nlu",
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=query,
+            intent="food_recommendation",
+            payload={"food_slots": metrics["food_slots"], "nlu_food_slots": nlu_food_slots, "food_context": food_context},
+        )
+
+        location_source = self._resolve_location_from_context(slots, food_context, query)
+        if location_source:
+            metrics["food_location_source"] = location_source
+            metrics["food_slots"]["has_location"] = True
+            metrics["food_slots"]["address_text"] = slots.address_text
+            save_system_log(
+                node="food.location",
+                event="resolved_from_context",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=query,
+                intent="food_recommendation",
+                payload={"source": location_source, "lat": slots.lat, "lng": slots.lng, "address_text": slots.address_text},
+            )
 
         if slots.lat is None or slots.lng is None:
             geocode_target = slots.address_text
@@ -82,6 +151,17 @@ class FoodRecommendationChain:
                 final_answer=answer,
             )
             metrics["food_trace_id"] = trace_id
+            save_system_log(
+                node="food.location",
+                event="missing_location",
+                trace_id=trace_id,
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=query,
+                intent="food_recommendation",
+                payload={"food_context": food_context, "nlu_food_slots": nlu_food_slots},
+            )
             location_payload = food_location_payload(query)
             yield sse_pipeline_step("food_missing_info", "Em cần thêm một chút thông tin để gợi ý chính xác hơn...", 0.42)
             yield from stream_plain_answer(answer)
@@ -111,6 +191,16 @@ class FoodRecommendationChain:
                 db=db,
                 metrics=metrics,
                 food_context=food_context,
+            )
+            save_system_log(
+                node="food.retrieval",
+                event="candidate_search",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=query,
+                intent="food_recommendation",
+                payload={"result_count": len(items), "retrieval": metrics.get("food_retrieval"), "category": slots.category},
             )
             if not items:
                 metrics["food_fallback"] = "expanded_radius"
@@ -236,6 +326,22 @@ class FoodRecommendationChain:
             final_answer=answer,
         )
         metrics["food_trace_id"] = trace_id
+        save_system_log(
+            node="food.answer_llm",
+            event="final_answer",
+            trace_id=trace_id,
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=query,
+            intent="food_recommendation",
+            payload={
+                "llm_used": metrics.get("food_answer_llm_used"),
+                "card_count": metrics.get("food_card_count"),
+                "cards_source": metrics.get("food_cards_source"),
+                "answer_preview": (answer or "")[:500],
+            },
+        )
         food_cards = answer_meta.get("food_cards")
 
         if items:

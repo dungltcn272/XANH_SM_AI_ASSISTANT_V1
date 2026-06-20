@@ -66,6 +66,8 @@ Quy tắc food_slots:
 - Chỉ trả object khi intent là "food_recommendation"; intent khác trả null.
 - Field chưa biết để null hoặc [].
 - Nếu user nói "gần đây", "gần tôi", "quanh đây" nhưng LONG_TERM_USER_MEMORY không có current_location thì lat/lng phải null và missing_fields có "location".
+- Nếu user nói "gần nhà", "nhà tôi", "home" hoặc bấm nhanh "Nhà" và LONG_TERM_USER_MEMORY có current_location hoặc saved_places label/type/name là "Nhà"/"home" có lat/lng, phải dùng lat/lng đó trong food_slots, address_text là label/address tương ứng, missing_fields không được có "location".
+- Nếu user nói "gần đây", "gần tôi", "quanh đây" và LONG_TERM_USER_MEMORY.current_location có lat/lng, phải dùng current_location đó thay vì hỏi lại vị trí.
 - Nếu user nhập địa chỉ chữ, đưa vào address_text, không tự bịa lat/lng.
 
 Food slots schema:

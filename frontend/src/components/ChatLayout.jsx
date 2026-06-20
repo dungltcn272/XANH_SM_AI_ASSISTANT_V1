@@ -17,6 +17,54 @@ const stripNode = (props) => {
   return rest;
 };
 
+const parseFoodInlineParts = (text) => {
+  const parts = [];
+  const completeMarker = /\[\[FOOD_CARD\s+({[\s\S]*?})\]\]/g;
+  let cursor = 0;
+  let match;
+
+  while ((match = completeMarker.exec(text)) !== null) {
+    const before = text.slice(cursor, match.index);
+    if (before) parts.push({ type: 'text', text: before });
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed && typeof parsed === 'object') {
+        parts.push({ type: 'food_card', card: parsed });
+      }
+    } catch (error) {
+      console.error('FOOD_CARD marker parse error:', error);
+      parts.push({ type: 'text', text: match[0] });
+    }
+    cursor = completeMarker.lastIndex;
+  }
+
+  const tail = text.slice(cursor);
+  const partialStart = tail.lastIndexOf('[[FOOD_CARD');
+  if (partialStart !== -1 && tail.indexOf(']]', partialStart) === -1) {
+    const visibleTail = tail.slice(0, partialStart);
+    if (visibleTail) parts.push({ type: 'text', text: visibleTail });
+    parts.push({ type: 'food_loading' });
+  } else if (tail) {
+    parts.push({ type: 'text', text: tail });
+  }
+
+  return parts;
+};
+
+const foodInlineText = (parts) => (
+  (parts || [])
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('')
+);
+
+const foodInlineRecommendations = (parts, query, traceId) => {
+  const items = (parts || [])
+    .filter((part) => part.type === 'food_card')
+    .map((part) => part.card);
+  return items.length ? { query, trace_id: traceId, items, more_items: [] } : null;
+};
+
 const MessageCard = ({ icon, title, desc, image, link, index }) => {
   const IconComponent = useMemo(() => {
     switch (icon) {
@@ -461,6 +509,26 @@ const FoodRecommendationRow = ({ item, index, onOpenMenu, onLike, onDismiss, onD
     </Wrapper>
   );
 };
+
+const FoodCardShimmer = () => (
+  <div className="my-2 grid grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)] md:grid-cols-[170px_1fr_auto] gap-2.5 md:gap-4 p-2.5 md:p-4 rounded-2xl border border-[#00c897]/25 bg-white/70 dark:bg-white/[0.04] overflow-hidden animate-pulse">
+    <div className="w-full h-[72px] sm:h-[92px] md:h-[122px] rounded-xl bg-[#00c897]/15" />
+    <div className="min-w-0 flex flex-col justify-center gap-3">
+      <div className="h-5 w-3/4 rounded-full bg-on-surface/10" />
+      <div className="h-3 w-full rounded-full bg-on-surface/10" />
+      <div className="h-3 w-2/3 rounded-full bg-on-surface/10" />
+      <div className="grid grid-cols-3 gap-3 pt-2">
+        <div className="h-8 rounded-full bg-[#00c897]/10" />
+        <div className="h-8 rounded-full bg-[#00c897]/10" />
+        <div className="h-8 rounded-full bg-[#00c897]/10" />
+      </div>
+    </div>
+    <div className="hidden md:flex flex-col justify-center gap-3">
+      <div className="h-9 w-28 rounded-xl bg-[#00c897]/10" />
+      <div className="h-9 w-28 rounded-xl bg-on-surface/10" />
+    </div>
+  </div>
+);
 
 const FoodRecommendationList = ({ data, onOpenMenu, onLike, onDismiss, onDislike, onExplain }) => {
   const items = data?.items || [];
@@ -1012,10 +1080,12 @@ export default function ChatLayout() {
       const decoder = new TextDecoder();
       /* eslint-disable react-hooks/immutability */
       let streamReply = '';
+      let rawStreamReply = '';
       let streamBuffer = '';
       let streamSources = null;
       let streamMetrics = null;
       let streamFoodRecommendations = null;
+      let streamFoodInlineParts = null;
       let streamFoodLocationRequest = null;
       let streamRagCards = [];
 
@@ -1102,15 +1172,8 @@ export default function ChatLayout() {
                     handledAsMetadata = true;
                   }
                   if (parsed.food_card) {
-                    const currentItems = streamFoodRecommendations?.items || [];
-                    streamFoodRecommendations = {
-                      title: streamFoodRecommendations?.title || 'Một vài quán phù hợp gần anh/chị',
-                      subtitle: streamFoodRecommendations?.subtitle || 'AI đang gợi ý từng lựa chọn phù hợp cho anh/chị.',
-                      query: streamFoodRecommendations?.query || userQuery,
-                      trace_id: streamFoodRecommendations?.trace_id,
-                      items: [...currentItems, parsed.food_card],
-                      more_items: streamFoodRecommendations?.more_items || []
-                    };
+                    streamFoodInlineParts = [...(streamFoodInlineParts || []), { type: 'food_card', card: parsed.food_card }];
+                    streamFoodRecommendations = foodInlineRecommendations(streamFoodInlineParts, userQuery, streamFoodRecommendations?.trace_id);
                     handledAsMetadata = true;
                   }
                   if (parsed.food_location_request) {
@@ -1141,7 +1204,10 @@ export default function ChatLayout() {
           const textData = textDataParts.join('\n');
           
           if (!isStep && !isMetrics && textData.length > 0) {
-             streamReply += textData;
+             rawStreamReply += textData;
+             streamFoodInlineParts = parseFoodInlineParts(rawStreamReply);
+             streamReply = foodInlineText(streamFoodInlineParts);
+             streamFoodRecommendations = foodInlineRecommendations(streamFoodInlineParts, userQuery, streamFoodRecommendations?.trace_id);
              setPipelineStep(null);
           }
           
@@ -1161,6 +1227,9 @@ export default function ChatLayout() {
             }
             if (streamFoodRecommendations) {
               newMsgs[newMsgs.length - 1].foodRecommendations = streamFoodRecommendations;
+            }
+            if (streamFoodInlineParts) {
+              newMsgs[newMsgs.length - 1].foodInlineParts = streamFoodInlineParts;
             }
             if (streamFoodLocationRequest) {
               newMsgs[newMsgs.length - 1].foodLocationRequest = streamFoodLocationRequest;
@@ -1487,8 +1556,79 @@ export default function ChatLayout() {
     )
   };
 
+  const updateInlineFoodCard = (messageIndex, item, updater) => {
+    setMessages(prev => prev.map((message, index) => {
+      if (index !== messageIndex || !message.foodInlineParts) return message;
+      const nextParts = message.foodInlineParts
+        .map((part) => {
+          if (part.type !== 'food_card') return part;
+          if ((part.card.item_id || part.card.name) !== (item.item_id || item.name)) return part;
+          const nextCard = updater(part.card);
+          return nextCard ? { ...part, card: nextCard } : null;
+        })
+        .filter(Boolean);
+      return {
+        ...message,
+        foodInlineParts: nextParts,
+        foodRecommendations: foodInlineRecommendations(nextParts, message.foodRecommendations?.query, message.foodRecommendations?.trace_id),
+      };
+    }));
+  };
+
+  const renderFoodInlineParts = (msg, messageIndex) => {
+    let cardIndex = 0;
+    const recommendationContext = msg.foodRecommendations || foodInlineRecommendations(msg.foodInlineParts, msg.content, undefined);
+
+    return (
+      <div className="flex flex-col gap-3">
+        {(msg.foodInlineParts || []).map((part, partIndex) => {
+          if (part.type === 'text') {
+            if (!part.text?.trim()) return null;
+            return (
+              <div key={`text-${partIndex}`} className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
+                {renderContent(part.text)}
+              </div>
+            );
+          }
+          if (part.type === 'food_loading') {
+            return <FoodCardShimmer key={`food-loading-${partIndex}`} />;
+          }
+          if (part.type === 'food_card') {
+            const rankPosition = cardIndex++;
+            const item = part.card;
+            return (
+              <FoodRecommendationRow
+                key={item.item_id || `${item.name}-${partIndex}`}
+                item={item}
+                index={rankPosition}
+                onOpenMenu={() => {
+                  logFoodInteraction('click_item', item, rankPosition, recommendationContext, msg);
+                  logFoodInteraction('click_out', item, rankPosition, recommendationContext, msg);
+                }}
+                onLike={() => {
+                  updateInlineFoodCard(messageIndex, item, (card) => ({ ...card, interaction: card.interaction === 'like' ? null : 'like' }));
+                  logFoodInteraction('like', item, rankPosition, recommendationContext, msg);
+                }}
+                onDismiss={() => {
+                  updateInlineFoodCard(messageIndex, item, () => null);
+                  logFoodInteraction('dismiss', item, rankPosition, recommendationContext, msg);
+                }}
+                onDislike={() => {
+                  updateInlineFoodCard(messageIndex, item, (card) => ({ ...card, interaction: card.interaction === 'dislike' ? null : 'dislike' }));
+                  logFoodInteraction('dislike', item, rankPosition, recommendationContext, msg);
+                }}
+                onExplain={() => setExplainingFood(item)}
+              />
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
+
   const lastMsg = messages[messages.length - 1];
-  const showSpinner = loading && (!lastMsg || lastMsg.role !== 'assistant' || !lastMsg.content);
+  const showSpinner = loading && (!lastMsg || lastMsg.role !== 'assistant' || (!lastMsg.content && !lastMsg.foodInlineParts));
 
   return (
     <div className="relative flex-1 min-h-0 flex flex-col w-full bg-transparent overflow-hidden">
@@ -1552,6 +1692,7 @@ export default function ChatLayout() {
                 msg.content ||
                 msg.foodLocationRequest ||
                 msg.foodLocationConfirmed ||
+                msg.foodInlineParts ||
                 msg.foodRecommendations ||
                 msg.ragCards ||
                 (msg.sources && msg.sources.length > 0)
@@ -1599,7 +1740,9 @@ export default function ChatLayout() {
                           </div>
                         ) : (
                           <div className="flex flex-col gap-4">
-                            {msg.content && (
+                            {msg.foodInlineParts ? (
+                              renderFoodInlineParts(msg, idx)
+                            ) : msg.content && (
                               <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
                                 {renderContent(msg.content)}
                               </div>
@@ -1619,7 +1762,7 @@ export default function ChatLayout() {
                                 onSaveNamedLocation={handleSaveNamedFoodLocation}
                               />
                             )}
-                            {msg.foodRecommendations && (
+                            {msg.foodRecommendations && !msg.foodInlineParts && (
                                 <FoodRecommendationList
                                   data={msg.foodRecommendations}
                                   onOpenMenu={(item, rankPosition) => {

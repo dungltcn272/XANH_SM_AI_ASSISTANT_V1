@@ -67,6 +67,28 @@ def match_score(needle: str | None, haystack_parts: list[str]) -> float:
     return clamp(hits / len(query_terms))
 
 
+def infer_food_category_from_query(text: str | None) -> str | None:
+    normalized = normalize_text(text or "")
+    keyword_groups = [
+        ("cơm", ["com", "com tam", "com van phong", "com ga", "com suon"]),
+        ("phở", ["pho"]),
+        ("bún", ["bun"]),
+        ("mì", ["mi", "my y"]),
+        ("cháo", ["chao"]),
+        ("xôi", ["xoi"]),
+        ("bánh mì", ["banh mi"]),
+        ("trà sữa", ["tra sua", "milk tea"]),
+        ("cà phê", ["ca phe", "coffee"]),
+        ("sinh tố", ["sinh to"]),
+        ("gà rán", ["ga ran", "fried chicken", "kfc", "lotteria", "jollibee"]),
+        ("burger", ["burger", "hamburger"]),
+    ]
+    for category, keywords in keyword_groups:
+        if any(keyword in normalized for keyword in keywords):
+            return category
+    return None
+
+
 def taste_score(taste_tags: list[str] | None, item: FoodCatalogEntry) -> float:
     if not taste_tags:
         return 0.55
@@ -151,6 +173,7 @@ def rank_catalog(
     recall_scores: dict[str, float] | None = None,
 ) -> list[FoodRecommendation]:
     recall_scores = recall_scores or {}
+    effective_category = request.category or infer_food_category_from_query(request.query_text)
     ranked = []
     for item in catalog:
         if item.merchant_lat is None or item.merchant_lng is None:
@@ -169,7 +192,18 @@ def rank_catalog(
             eta_score=clamp(1 - (eta_minutes / 60)),
             budget_score=budget_score(price, request.budget_min, request.budget_max),
             discount_score=clamp((item.discount_percent or 0) / 50),
-            category_score=match_score(request.category, [item.name, item.category or "", item.cuisine or ""]),
+            category_score=match_score(
+                effective_category,
+                [
+                    item.name,
+                    item.description or "",
+                    item.category or "",
+                    item.cuisine or "",
+                    item.merchant_name or "",
+                    " ".join(item.taste_tags),
+                    " ".join(item.ingredient_tags),
+                ],
+            ),
             taste_score=taste_score(request.taste_tags, item),
             rating_score=normalized_rating(item.merchant_rating),
             popularity_score=clamp(math.log10((item.merchant_review_count or 0) + 1) / 4),
@@ -177,7 +211,7 @@ def rank_catalog(
         )
         
         # Hard filter if category is requested but match is extremely poor
-        if request.category and breakdown.category_score < 0.25:
+        if effective_category and breakdown.category_score < 0.25:
             continue
             
         score = (
@@ -196,7 +230,7 @@ def rank_catalog(
         
         # Nếu có request.category, category_score là yếu tố SỐNG CÒN. 
         # Nhân score với bình phương category_score để trừng phạt nặng các quán không liên quan.
-        if request.category:
+        if effective_category:
             score = score * (breakdown.category_score ** 1.5)
             
         ranked.append(
@@ -218,7 +252,7 @@ def rank_catalog(
                 image_url=item.image_url,
                 order_url=item.source_url,
                 score=round(score, 4),
-                reason=build_reason(item, distance, request, breakdown),
+                reason=build_reason(item, distance, request, breakdown, effective_category=effective_category),
                 score_breakdown=breakdown,
             )
         )
@@ -233,7 +267,7 @@ def rank_catalog(
                     # Thay thế heuristic score bằng xác suất của XGBoost
                     rec.score = float(xgb_score)
                     # Áp dụng trừng phạt category nếu cần
-                    if request.category:
+                    if effective_category:
                         rec.score = rec.score * (rec.score_breakdown.category_score ** 1.5)
         except Exception as e:
             from app.core.logger import log_error
@@ -268,10 +302,11 @@ def build_reason(
     distance_km: float,
     request: FoodRecommendationRequest,
     breakdown: ScoreBreakdown,
+    effective_category: str | None = None,
 ) -> str:
     reasons = [f"cách khoảng {distance_km:.1f} km"]
-    if request.category and breakdown.category_score > 0:
-        reasons.append(f"khớp nhu cầu '{request.category}'")
+    if effective_category and breakdown.category_score > 0:
+        reasons.append(f"khớp nhu cầu '{effective_category}'")
     if request.budget_max and (item.final_price or item.price):
         reasons.append("hợp ngân sách")
     if item.merchant_rating is not None:

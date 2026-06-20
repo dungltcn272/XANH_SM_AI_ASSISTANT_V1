@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import String, Text, case, or_, text
 from app.db.database import get_db, Base
-from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, ErrorLog, CrawlSource, EvaluationRun, BasicRequestLog, FoodInteraction, FoodRequestLog, SemanticCache
+from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, ErrorLog, CrawlSource, EvaluationRun, BasicRequestLog, FoodInteraction, FoodRequestLog, SemanticCache, SystemLog
 from app.core.config import settings
 from fastapi.responses import StreamingResponse
 import asyncio
@@ -130,6 +130,23 @@ def serialize_food_request_log(row: FoodRequestLog) -> dict:
             "rewrite_latency_ms": row.rewrite_latency_ms or 0,
             "classification_latency_ms": row.classification_latency_ms or 0,
         }),
+        "created_at": _iso(row.created_at),
+    }
+
+
+def serialize_system_log(row: SystemLog) -> dict:
+    return {
+        "id": row.id,
+        "trace_id": row.trace_id,
+        "conversation_id": row.conversation_id,
+        "user_id": row.user_id,
+        "guest_id": row.guest_id,
+        "level": row.level,
+        "node": row.node,
+        "event": row.event,
+        "query": row.query,
+        "intent": row.intent,
+        "payload_json": row.payload_json,
         "created_at": _iso(row.created_at),
     }
 
@@ -318,6 +335,30 @@ def get_food_logs(skip: int = 0, limit: int = 50, date: Optional[str] = None, db
     if date:
         query = query.filter(func.date(FoodRequestLog.created_at) == date)
     logs = [serialize_food_request_log(row) for row in query.order_by(FoodRequestLog.created_at.desc()).offset(skip).limit(limit).all()]
+    total = query.count()
+    return {"logs": logs, "items": logs, "total": total}
+
+
+@router.get("/logs/system")
+def get_system_logs(
+    skip: int = 0,
+    limit: int = 100,
+    conversation_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    node: Optional[str] = None,
+    date: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(SystemLog)
+    if conversation_id:
+        query = query.filter(SystemLog.conversation_id == conversation_id)
+    if trace_id:
+        query = query.filter(SystemLog.trace_id == trace_id)
+    if node:
+        query = query.filter(SystemLog.node == node)
+    if date:
+        query = query.filter(func.date(SystemLog.created_at) == date)
+    logs = [serialize_system_log(row) for row in query.order_by(SystemLog.created_at.desc()).offset(skip).limit(limit).all()]
     total = query.count()
     return {"logs": logs, "items": logs, "total": total}
 

@@ -23,7 +23,31 @@ def run_auto_migrations():
         "CREATE INDEX IF NOT EXISTS ix_rag_request_logs_guest_id ON rag_request_logs(guest_id);",
         
         # Xóa các bảng cũ
-        "DROP TABLE IF EXISTS system_logs;",
+        """
+        CREATE TABLE IF NOT EXISTS system_logs (
+            id VARCHAR PRIMARY KEY,
+            trace_id VARCHAR,
+            conversation_id VARCHAR REFERENCES conversations(id),
+            user_id VARCHAR,
+            guest_id VARCHAR,
+            level VARCHAR DEFAULT 'INFO',
+            node VARCHAR NOT NULL,
+            event VARCHAR NOT NULL,
+            query TEXT,
+            intent VARCHAR,
+            payload_json TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_trace_id ON system_logs(trace_id);",
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_conversation_id ON system_logs(conversation_id);",
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_user_id ON system_logs(user_id);",
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_guest_id ON system_logs(guest_id);",
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_level ON system_logs(level);",
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_node ON system_logs(node);",
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_event ON system_logs(event);",
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_intent ON system_logs(intent);",
+        "CREATE INDEX IF NOT EXISTS ix_system_logs_created_at ON system_logs(created_at);",
         """
         CREATE TABLE IF NOT EXISTS user_profiles (
             id VARCHAR PRIMARY KEY,
