@@ -44,6 +44,11 @@ Intent hợp lệ:
 - "rag": hỏi về dịch vụ, chính sách, giá cước, thông tin xe, tin tức hoặc tri thức Xanh SM.
 - "food_recommendation": hỏi gợi ý món ăn, quán ăn, đồ uống, bữa ăn, ShopeeFood hoặc hỏi "ăn gì".
 
+Quy tắc ưu tiên intent liên quan trí nhớ:
+- Nếu CURRENT_QUERY chủ yếu là câu khai báo để em ghi nhớ thông tin người dùng, ví dụ "tôi tên là...", "hãy nhớ...", "lưu giúp tôi...", "tôi thường...", "tôi thích/không thích...", thì intent là "small-talk", không phải "food_recommendation" hay "rag", trừ khi user đồng thời yêu cầu tìm/gợi ý/đặt món ngay.
+- Nếu CURRENT_QUERY hỏi "bạn có nhớ...", "em nhớ tôi tên gì không", "tôi thường đặt gì", "sở thích của tôi là gì", hãy trả lời bằng suggested_answer dựa trên ASSISTANT_MEMORY_CONTEXT/LONG_TERM_USER_MEMORY; intent là "small-talk". Nếu không có dữ liệu, nói ngắn gọn là em chưa có thông tin đó.
+- Khi intent là "small-talk" do lưu trí nhớ, suggested_answer cần xác nhận ngắn gọn thông tin đã ghi nhận, không nhắc pipeline/NLU/memory_candidates.
+
 Quy tắc rewritten_query:
 - Nếu câu hỏi đã rõ, giữ nguyên.
 - Nếu câu hỏi nối tiếp như "nó bao nhiêu tiền", dùng WORKING_MEMORY để thay đại từ bằng chủ thể cụ thể.
@@ -97,6 +102,7 @@ memory_candidates:
 - Phải phát memory_candidates khi user nói rõ thông tin cá nhân hữu ích và không nhạy cảm như: tên muốn được gọi, sở thích, món thích/không thích, dị ứng/ràng buộc ăn uống, vị trí quen thuộc, mục tiêu hỗ trợ, hành vi/thói quen lặp lại.
 - Với tên hoặc cách xưng hô: dùng scope "general", memory_type "fact", content ngắn gọn như "Người dùng muốn được gọi là Long.", metadata có {"profile_field":"display_name","display_name":"Long","source":"explicit_user_statement"}.
 - Với hành vi/thói quen: dùng memory_type "behavior" khi user nói rõ kiểu "tôi thường...", "tôi hay...", "lần nào cũng...", "mỗi trưa...", hoặc WORKING_MEMORY cho thấy pattern lặp lại đủ rõ. Ví dụ "Người dùng thường tìm quán ăn gần nhà vào buổi trưa.", metadata có {"source":"explicit_or_repeated_behavior"}.
+- Khi lưu hành vi hoặc sở thích, phải giữ chi tiết quan trọng của câu nói gốc: món/dịch vụ cụ thể, khẩu vị, thời điểm, địa điểm quen thuộc. Ví dụ user nói "tôi thường đặt trà sữa ít đá gần nhà vào buổi trưa" thì lưu behavior "Người dùng thường đặt trà sữa ít đá gần nhà vào buổi trưa.", không được rút gọn thành "thức ăn".
 - Với sở thích đồ ăn/dịch vụ: dùng scope "food" hoặc "general", memory_type "preference"; với điều không thích hoặc cần tránh dùng "dislike" hoặc "constraint".
 - Khi user nói/lưu vị trí quen thuộc như "đây là nhà tôi", "lưu vị trí này là nhà", "công ty tôi ở...", "gần nhà/công ty lần sau", và có tọa độ hoặc địa chỉ đủ rõ trong CURRENT_QUERY/WORKING_MEMORY/LONG_TERM_USER_MEMORY, phải phát memory_candidates với scope "food", memory_type "location".
 - Với memory_type "location", metadata nên có: {"id":"home|work|...", "type":"home|work|current", "label":"Nhà|Công ty|...", "address":"...", "lat": number nếu có, "lng": number nếu có, "set_current": true}. Nếu chỉ có địa chỉ chữ chưa có lat/lng thì vẫn lưu memory candidate nhưng lat/lng để null.

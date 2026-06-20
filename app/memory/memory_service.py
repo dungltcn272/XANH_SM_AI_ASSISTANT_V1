@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from typing import Any
 
 from sqlalchemy import or_
@@ -35,7 +36,10 @@ def _identity(user_id: str | None = None, guest_id: str | None = None) -> dict[s
 
 
 def _normalize_text(value: str | None) -> str:
-    return re.sub(r"\s+", " ", (value or "").casefold()).strip()
+    normalized = unicodedata.normalize("NFD", value or "")
+    without_marks = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    text = without_marks.replace("đ", "d").replace("Đ", "D")
+    return re.sub(r"\s+", " ", text.casefold()).strip()
 
 
 def _query_terms(query: str, limit: int = 8) -> list[str]:

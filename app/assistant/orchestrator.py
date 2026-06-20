@@ -83,6 +83,8 @@ class XanhSMAssistantOrchestrator:
 
         yield sse_pipeline_step("received", "Chờ một chút...", 0.03)
         normalized_query = self.gateway.normalize_input(query)
+        if self.classifier.is_memory_related_query(normalized_query):
+            bypass_cache = True
         save_system_log(
             node="orchestrator",
             event="received",
