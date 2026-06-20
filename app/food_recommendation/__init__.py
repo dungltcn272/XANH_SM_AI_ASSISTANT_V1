@@ -1,4 +1,4 @@
-from app.food_recommendation.schemas import FoodRecommendation, FoodRecommendationRequest
-from app.food_recommendation.tool import recommend_food
-
-__all__ = ["FoodRecommendation", "FoodRecommendationRequest", "recommend_food"]
+# Package interface
+from app.food_recommendation.core.chain import FoodRecommendationChain
+from app.food_recommendation.core.schemas import FoodRecommendation, FoodRecommendationRequest
+from app.food_recommendation.core.tool import recommend_food

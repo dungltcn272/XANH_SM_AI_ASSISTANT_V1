@@ -4,7 +4,7 @@ from typing import List
 from openai import OpenAI
 from app.core.config import settings as config
 from app.core.logger import log_warn
-from app.rag.domain_vocabulary import enrich_queries
+from app.rag.search.domain_vocabulary import enrich_queries
 
 class XanhSMQueryExpansion:
     """

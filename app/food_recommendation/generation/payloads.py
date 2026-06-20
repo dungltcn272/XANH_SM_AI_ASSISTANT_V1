@@ -95,13 +95,6 @@ def food_recommendations_payload(
             "price_text": format_vnd(price) if price else "",
             "reason": item.reason,
             "score": item.score,
-            "score_breakdown": item.score_breakdown.model_dump()
-            if hasattr(item.score_breakdown, "model_dump")
-            else item.score_breakdown.dict()
-            if hasattr(item.score_breakdown, "dict")
-            else vars(item.score_breakdown)
-            if hasattr(item.score_breakdown, "__dict__")
-            else item.score_breakdown,
             "is_best": index == 0,
             "advice": note_by_id.get(item.item_id),
         }

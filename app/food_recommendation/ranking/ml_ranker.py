@@ -4,7 +4,7 @@ import os
 from typing import Any
 import xgboost as xgb
 from app.core.logger import log_error
-from app.food_recommendation.schemas import FoodCatalogEntry, FoodRecommendationRequest
+from app.food_recommendation.core.schemas import FoodCatalogEntry, FoodRecommendationRequest
 
 
 class BaseFoodRanker:

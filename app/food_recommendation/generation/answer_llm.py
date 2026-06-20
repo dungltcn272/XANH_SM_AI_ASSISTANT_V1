@@ -5,7 +5,7 @@ from typing import Any
 from app.core.config import settings as config
 from app.core.llm import get_llm_client
 from app.core.logger import log_warn
-from app.food_recommendation.payloads import (
+from app.food_recommendation.generation.payloads import (
     display_rating,
     distance_text,
     format_food_answer,
@@ -64,7 +64,7 @@ def stream_food_answer_with_llm(
             model=model_to_use,
             messages=messages,
             temperature=0.3,
-            max_tokens=900,
+            max_tokens=1800,
             stream=True,
         )
 

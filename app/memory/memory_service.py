@@ -372,7 +372,7 @@ class MemoryService:
         if not candidates:
             return
         try:
-            from app.food_recommendation.profile_store import save_food_location
+            from app.food_recommendation.profile.profile_store import save_food_location
 
             for candidate in candidates:
                 if not isinstance(candidate, dict):

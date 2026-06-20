@@ -11,20 +11,21 @@ from app.db.models import UserFoodProfile
 def _json_or_default(value: str | None, default: Any) -> Any:
     if not value:
         return default
-
-
-def _append_unique_place(items: list[dict[str, Any]], value: dict[str, Any], limit: int = 20) -> list[dict[str, Any]]:
-    place_id = value.get("id")
-    label = str(value.get("label") or "").casefold()
-    filtered = [
-        item for item in items
-        if item.get("id") != place_id and str(item.get("label") or "").casefold() != label
-    ]
-    return [value, *filtered][:limit]
     try:
         return json.loads(value)
     except (TypeError, json.JSONDecodeError):
         return default
+
+
+def _append_unique_place(items: list[dict[str, Any]] | None, value: dict[str, Any], limit: int = 20) -> list[dict[str, Any]]:
+    items_list = items if items is not None else []
+    place_id = value.get("id")
+    label = str(value.get("label") or "").casefold()
+    filtered = [
+        item for item in items_list
+        if item.get("id") != place_id and str(item.get("label") or "").casefold() != label
+    ]
+    return [value, *filtered][:limit]
 
 
 def _profile_identity(user_id: str | None = None, guest_id: str | None = None) -> dict[str, str | None]:

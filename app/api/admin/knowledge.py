@@ -10,11 +10,14 @@ from sqlalchemy import String, Text, case, or_
 from app.db.database import get_db, Base
 from app.db.models import RagRequestLog, User, Conversation, DocumentChunk, ErrorLog, CrawlSource, EvaluationRun, FoodCatalog
 from app.core.config import settings
-from app.food_recommendation.schemas import FoodRecommendationRequest
-from app.food_recommendation.tool import recommend_food
+from app.food_recommendation.core.schemas import FoodRecommendationRequest
+from app.food_recommendation.core.tool import recommend_food
 from fastapi.responses import StreamingResponse
 import asyncio
 from typing import Optional
+
+from app.api.admin.utils import parse_optional_datetime, json_text
+from app.api.admin.serializers import serialize_crawl_source
 
 router = APIRouter()
 
@@ -40,24 +43,10 @@ class FoodCatalogImportRequest(BaseModel):
     clear_existing: bool = False
 
 
-def parse_optional_datetime(value):
-    if not value:
-        return None
-    if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
-        try:
-            normalized = value.replace("Z", "+00:00")
-            return datetime.fromisoformat(normalized)
-        except ValueError:
-            return None
-    return None
 
 
-def json_text(value) -> str:
-    if value is None:
-        return "[]"
-    return json.dumps(value, ensure_ascii=False)
+
+
 
 
 def resolve_repo_data_path(path_value: str | None) -> Path:
@@ -71,26 +60,7 @@ def resolve_repo_data_path(path_value: str | None) -> Path:
     return resolved
 
 
-def serialize_crawl_source(row: CrawlSource) -> dict:
-    return {
-        "id": row.id,
-        "url": row.url,
-        "title": row.title,
-        "source_profile": row.source_profile,
-        "source_type": row.source_type,
-        "category": row.category,
-        "document_type": row.document_type,
-        "output_dir": row.output_dir,
-        "crawl_strategy": row.crawl_strategy,
-        "enabled": row.enabled,
-        "priority": row.priority,
-        "notes": row.notes,
-        "last_crawled_at": row.last_crawled_at.isoformat() if row.last_crawled_at else None,
-        "last_status": row.last_status,
-        "last_error": row.last_error,
-        "created_at": row.created_at.isoformat() if row.created_at else None,
-        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-    }
+
 
 
 def build_crawl_sources_query(

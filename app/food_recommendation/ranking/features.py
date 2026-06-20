@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.food_recommendation.schemas import ScoreBreakdown
+from app.food_recommendation.core.schemas import ScoreBreakdown
 
 
 def extract_features_from_breakdown(breakdown: ScoreBreakdown) -> list[float]:

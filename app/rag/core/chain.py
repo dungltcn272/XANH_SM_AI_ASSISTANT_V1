@@ -10,9 +10,9 @@ from app.core.config import settings as config
 from app.core.llm import get_llm_client
 from app.core.logger import log_warn, log_error
 from app.prompts import RAG_ANSWER_SYSTEM_PROMPT
-from app.rag.hybrid_search import XanhSMHybridSearch
-from app.rag.reranker import XanhSMReranker
-from app.rag.trace_store import save_rag_request_log
+from app.rag.search.hybrid_search import XanhSMHybridSearch
+from app.rag.search.reranker import XanhSMReranker
+from app.rag.storage.trace_store import save_rag_request_log
 from app.memory.context_builder import ContextBuilder
 
 
@@ -360,8 +360,8 @@ class XanhSMRAGPipeline(RagAnswerChain):
     """
     def __init__(self):
         super().__init__()
-        from app.rag.gateway import XanhSMGateway
-        from app.rag.classifier import XanhSMClassifier
+        from app.rag.core.gateway import XanhSMGateway
+        from app.nlu.classifier import XanhSMClassifier
         self.gateway = XanhSMGateway()
         self.classifier = XanhSMClassifier()
 
@@ -585,4 +585,3 @@ class XanhSMRAGPipeline(RagAnswerChain):
             "llm_cost_usd": cost_info["cost_usd"],
             "llm_cost_vnd": cost_info["cost_usd"] * 25400
         }
-

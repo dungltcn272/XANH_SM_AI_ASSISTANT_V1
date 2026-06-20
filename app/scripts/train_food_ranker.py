@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.db.models import FoodInteraction, FoodCatalog
 from app.core.logger import log_error, log_warn
-from app.food_recommendation.features import extract_features_from_breakdown
-from app.food_recommendation.schemas import ScoreBreakdown
+from app.food_recommendation.ranking.features import extract_features_from_breakdown
+from app.food_recommendation.core.schemas import ScoreBreakdown
 
 MODEL_PATH = "data/models/food_xgboost.json"
 

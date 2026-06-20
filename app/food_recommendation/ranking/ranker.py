@@ -3,15 +3,15 @@ from __future__ import annotations
 import math
 import random
 
-from app.food_recommendation.profile import normalize_text
-from app.food_recommendation.schemas import (
+from app.food_recommendation.profile.profile import normalize_text
+from app.food_recommendation.core.schemas import (
     FoodCatalogEntry,
     FoodRecommendation,
     FoodRecommendationRequest,
     ScoreBreakdown,
 )
-from app.food_recommendation.ml_ranker import xgb_ranker
-from app.food_recommendation.features import extract_features_from_breakdown
+from app.food_recommendation.ranking.ml_ranker import xgb_ranker
+from app.food_recommendation.ranking.features import extract_features_from_breakdown
 
 
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -282,7 +282,7 @@ def rank_catalog(
     # ranked_sorted = cross_encoder.rank(ranked_sorted, request, recall_scores)
 
     # ML-Ready: Bandit Explorer (Trộn lẫn kết quả khám phá)
-    from app.food_recommendation.ml_ranker import BanditExplorer
+    from app.food_recommendation.ranking.ml_ranker import BanditExplorer
     bandit = BanditExplorer(epsilon=0.1)
     
     # Ứng dụng thuật toán Bandit trên top N trước khi trả về
