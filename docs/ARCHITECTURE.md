@@ -323,7 +323,9 @@ Tầng database.
 
 - `database.py`: engine/session/base.
 
-- `migrations.py`: auto migration nhẹ cho SQLite/Postgres trong demo.
+- `alembic/`: migration schema chính thức. Docker chạy `alembic upgrade head` trước khi start API.
+
+- `migrations.py`: đã được thay bằng Alembic.
 
 
 

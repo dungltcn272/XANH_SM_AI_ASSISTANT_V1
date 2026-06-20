@@ -116,6 +116,7 @@ graph TD
 * Chi tiết cấu trúc thư mục dự án xem tại: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 * Chi tiết nguyên lý hoạt động và chi tiết từng Node xử lý xem tại: [`docs/PIPELINE.md`](docs/PIPELINE.md)
 * Database diagram, class diagram và giải thích chi tiết từng bảng xem tại: [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md)
+* Quy trình thay đổi schema database bằng Alembic xem tại: [`docs/DATABASE_MIGRATIONS.md`](docs/DATABASE_MIGRATIONS.md)
 
 ---
 
@@ -157,6 +158,7 @@ QDRANT_URL=http://localhost:6333
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+Khi chạy backend local sau khi đổi schema, chạy `alembic upgrade head` trước. Khi deploy Docker, lệnh này được chạy tự động trước khi start API.
 
 ### 📦 D. Cài Đặt & Khởi Chạy Frontend
 Mở một Terminal mới:

@@ -42,19 +42,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, chat, conversations, reviews, food
 from app.api.admin import router as admin_router
-from app.db.database import engine, Base
-
-# Tạo các bảng trong CSDL
-Base.metadata.create_all(bind=engine)
-
-# Chạy Migration thủ công thay vì Alembic
-from app.db.migrations import run_auto_migrations
-run_auto_migrations()
 
 app = FastAPI(
     title="GreenSM Production RAG",
-    description="Xanh SM Enterprise Production RAG System (Phase 4)",
-    version="4.0.0"
+    description="Xanh SM Enterprise Production RAG System (Phase 9)",
+    version="9.0.0"
 )
 
 app.add_middleware(
