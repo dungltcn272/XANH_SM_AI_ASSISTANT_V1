@@ -18,3 +18,4 @@ docs/
 PIPELINE.md
 Procfile
 railway.toml
+data/food_catalog/shopeefood_raw_network.json
