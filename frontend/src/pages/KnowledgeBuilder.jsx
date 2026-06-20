@@ -4,10 +4,13 @@ import {
   ChevronRight,
   DatabaseZap,
   FileDown,
+  HelpCircle,
   Image as ImageIcon,
   Loader2,
   Pencil,
   Plus,
+  Power,
+  PowerOff,
   RefreshCw,
   Save,
   Search,
@@ -30,15 +33,75 @@ const emptyForm = {
   notes: '',
 };
 
-const categories = ['user', 'merchant', 'driver', 'green-care', 'helps', 'term-policies', 'vehicle', 'pdf', 'overview'];
+const categories = ['user', 'merchant', 'driver', 'green-care', 'helps', 'term-policies', 'vehicle', 'vehicle-car', 'vehicle-bike', 'pdf', 'overview', 'news'];
 const profiles = ['main_site', 'platform', 'platform_pdf'];
-const documentTypes = ['service', 'pricing', 'policy', 'faq', 'news', 'news_list', 'vehicle', 'platform_overview', 'policy_page', 'policy_pdf', 'overview', 'driver', 'merchant'];
+const documentTypes = ['service', 'pricing', 'policy', 'faq', 'news', 'news_list', 'vehicle', 'platform_page', 'platform_overview', 'policy_page', 'policy_pdf', 'overview', 'driver', 'merchant'];
+
+const categoryHelp = {
+  user: 'Nhóm dịch vụ cho khách hàng: car, bike, express, van, ngon...',
+  merchant: 'Nhóm đối tác, doanh nghiệp, merchant.',
+  driver: 'Nhóm nội dung dành cho tài xế.',
+  'green-care': 'Nhóm bảo hiểm và chăm sóc khách hàng/hàng hóa.',
+  helps: 'Trang trợ giúp, hỏi đáp.',
+  'term-policies': 'Điều khoản, chính sách, quy định.',
+  vehicle: 'Nhóm xe chung khi không cần tách ô tô/xe máy.',
+  'vehicle-car': 'Trang platform về ô tô điện.',
+  'vehicle-bike': 'Trang platform về xe máy điện.',
+  pdf: 'File PDF cần parse/extract.',
+  overview: 'Trang tổng quan hoặc catalog hệ thống.',
+  news: 'Tin tức và bài viết.',
+};
+
+const documentTypeHelp = {
+  service: 'Trang dịch vụ hoặc sản phẩm.',
+  pricing: 'Trang giá, phí, bảng giá.',
+  policy: 'Chính sách hoặc điều khoản dạng web.',
+  faq: 'Trang hỏi đáp, trợ giúp.',
+  news: 'Một bài tin tức chi tiết.',
+  news_list: 'Trang danh sách hoặc tổng hợp tin tức.',
+  vehicle: 'Trang chi tiết xe hoặc sản phẩm vehicle.',
+  platform_page: 'Trang nội dung platform khác.',
+  platform_overview: 'Trang tổng quan platform.',
+  policy_page: 'Trang chính sách dạng landing/page.',
+  policy_pdf: 'Chính sách trong file PDF.',
+  overview: 'Tài liệu tổng quan hoặc catalog.',
+  driver: 'Trang dành cho tài xế.',
+  merchant: 'Trang merchant hoặc doanh nghiệp.',
+};
+
+const defaultDocTypeByCategory = {
+  driver: 'driver',
+  helps: 'faq',
+  merchant: 'merchant',
+  news: 'news',
+  overview: 'overview',
+  pdf: 'policy_pdf',
+  'term-policies': 'policy',
+  vehicle: 'vehicle',
+  'vehicle-car': 'vehicle',
+  'vehicle-bike': 'vehicle',
+};
 
 const profileLabels = {
   main_site: 'main_site',
   platform: 'platform_crawler',
   platform_pdf: 'pdf_parser',
 };
+
+function FieldHelp({ text }) {
+  return (
+    <span className="relative inline-flex group">
+      <HelpCircle size={13} className="text-[#64748b] cursor-help" />
+      <span className="pointer-events-none absolute left-1/2 top-5 z-20 hidden w-56 -translate-x-1/2 rounded-md border border-[#1e293b] bg-[#020617] px-3 py-2 text-[11px] normal-case leading-snug text-[#cbd5e1] shadow-xl group-hover:block">
+        {text}
+      </span>
+    </span>
+  );
+}
+
+function optionLabel(value, helpMap) {
+  return helpMap[value] ? `${value} - ${helpMap[value]}` : value;
+}
 
 async function readSse(response, onLine) {
   const reader = response.body.getReader();
@@ -115,17 +178,24 @@ export default function KnowledgeBuilder() {
 
   const updateForm = (field, value) => {
     const next = { ...form, [field]: value };
-    if (field === 'category') next.output_dir = `data/${value}`;
+    if (field === 'category') {
+      next.output_dir = `data/${value}`;
+      const suggestedDocType = defaultDocTypeByCategory[value];
+      if (suggestedDocType && (!form.document_type || form.document_type === 'service')) {
+        next.document_type = suggestedDocType;
+      }
+    }
     if (field === 'source_profile' && value === 'platform_pdf') {
       next.source_type = 'pdf';
-      next.category = 'vehicle';
-      next.output_dir = 'data/vehicle';
+      next.category = 'pdf';
+      next.output_dir = 'data/pdf';
       next.document_type = 'policy_pdf';
       next.crawl_strategy = 'pdf_extract';
     }
     if (field === 'source_profile' && value === 'platform') {
-      next.category = 'vehicle';
-      next.output_dir = 'data/vehicle';
+      next.category = 'vehicle-car';
+      next.output_dir = 'data/vehicle-car';
+      if (!form.document_type || form.document_type === 'service') next.document_type = 'vehicle';
     }
     setForm(next);
   };
@@ -213,6 +283,22 @@ export default function KnowledgeBuilder() {
     }
   };
 
+  const updateAllStatuses = async (enabled) => {
+    if (busy) return;
+    const label = enabled ? 'ON ALL' : 'OFF ALL';
+    if (!window.confirm(`${label} URL Registry?`)) return;
+    setBusy(enabled ? 'on-all' : 'off-all');
+    try {
+      const res = await api.updateAllCrawlSourcesStatus(enabled);
+      appendLog(`[SYSTEM] ${label}: updated=${res.updated || 0}`);
+      await loadSources(filters);
+    } catch (err) {
+      appendLog(`[ERROR] ${err.message}`);
+    } finally {
+      setBusy('');
+    }
+  };
+
   const runStreamAction = async (key, label, fn) => {
     if (busy) return;
     setBusy(key);
@@ -280,10 +366,20 @@ export default function KnowledgeBuilder() {
                 <span>pdf_parser: <b className="text-white">{registryStats.by_profile?.platform_pdf || 0}</b></span>
               </div>
             </div>
-            <button onClick={syncUrlsJson} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00c897]/10 text-[#00c897] hover:bg-[#00c897]/20 border border-[#00c897]/20 text-sm font-bold transition-all disabled:opacity-50">
-              {busy === 'sync' ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-              Sync urls.json
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => updateAllStatuses(true)} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#00c897]/10 text-[#00c897] hover:bg-[#00c897]/20 border border-[#00c897]/20 text-sm font-bold transition-all disabled:opacity-50">
+                {busy === 'on-all' ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} />}
+                On All
+              </button>
+              <button onClick={() => updateAllStatuses(false)} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20 border border-[#ef4444]/20 text-sm font-bold transition-all disabled:opacity-50">
+                {busy === 'off-all' ? <Loader2 size={16} className="animate-spin" /> : <PowerOff size={16} />}
+                Off All
+              </button>
+              <button onClick={syncUrlsJson} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00c897]/10 text-[#00c897] hover:bg-[#00c897]/20 border border-[#00c897]/20 text-sm font-bold transition-all disabled:opacity-50">
+                {busy === 'sync' ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                Sync urls.json
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
@@ -429,15 +525,21 @@ export default function KnowledgeBuilder() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Category</label>
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">
+                  Category
+                  <FieldHelp text="Nhóm thư mục/metadata lớn để crawl và ingest, thường tương ứng data/<category>." />
+                </label>
                 <select className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] outline-none" value={form.category} onChange={(e) => updateForm('category', e.target.value)}>
-                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {categories.map((c) => <option key={c} value={c}>{optionLabel(c, categoryHelp)}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">Doc Type</label>
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-1.5">
+                  Doc Type
+                  <FieldHelp text="Loại nội dung chi tiết hơn category, dùng để boost/filter retrieval trong RAG." />
+                </label>
                 <select className="w-full px-3 py-2.5 rounded-lg bg-[#0f1520] border border-[#1e293b] text-sm text-[#f8f9ff] outline-none" value={form.document_type} onChange={(e) => updateForm('document_type', e.target.value)}>
-                  {documentTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {documentTypes.map((t) => <option key={t} value={t}>{optionLabel(t, documentTypeHelp)}</option>)}
                 </select>
               </div>
             </div>

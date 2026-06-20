@@ -179,6 +179,16 @@ export const api = {
     return res.json();
   },
 
+  updateAllCrawlSourcesStatus: async (enabled) => {
+    const res = await api._fetch(`${API_BASE}/admin/crawl-sources/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled })
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   deleteCrawlSource: async (id) => {
     const res = await api._fetch(`${API_BASE}/admin/crawl-sources/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('API Error');
