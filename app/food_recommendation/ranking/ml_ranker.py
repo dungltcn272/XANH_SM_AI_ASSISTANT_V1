@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import random
 from typing import Any
 import xgboost as xgb
 from app.core.logger import log_error
