@@ -4,20 +4,20 @@ import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognitio
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'react-router-dom';
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { User, Loader2, Link2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, CheckCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, ThumbsUp, ThumbsDown, Search, MapPin, Utensils, ChevronLeft, ChevronRight, LocateFixed } from 'lucide-react';
+import { User, Loader2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, Search, MapPin, Utensils, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
-import { FoodCardShimmer, FoodExplanationModal, FoodRecommendationList, FoodRecommendationRow } from './chat/FoodInlineCards';
+import { FoodCardShimmer, FoodExplanationModal, FoodRecommendationRow } from './chat/FoodInlineCards';
 import { foodInlineRecommendations, foodInlineText, parseFoodInlineParts } from './chat/FoodInlineParts';
+import { MessageBubble } from './chat/MessageBubble';
 
 const stripNode = (props) => {
   const rest = { ...props };
   delete rest.node;
   return rest;
 };
+
+
 
 const MessageCard = ({ icon, title, desc, image, link, index }) => {
   const IconComponent = useMemo(() => {
@@ -239,207 +239,7 @@ const extractMarkdownImageCards = (content) => {
   };
 };
 
-const foodPinIcon = L.divIcon({
-  className: '',
-  html: '<div style="width:28px;height:28px;border-radius:9999px;background:#00a884;border:3px solid white;box-shadow:0 8px 24px rgba(0,168,132,.35);"></div>',
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
-});
 
-const FoodMapClickHandler = ({ onPick }) => {
-  useMapEvents({
-    click(event) {
-      onPick({ lat: event.latlng.lat, lng: event.latlng.lng, label: 'Vị trí đã chọn trên bản đồ' });
-    },
-  });
-  return null;
-};
-
-const FoodMapRecenter = ({ center }) => {
-  const map = useMap();
-  const [lat, lng] = center;
-
-  useEffect(() => {
-    map.setView([lat, lng], map.getZoom(), { animate: true });
-  }, [map, lat, lng]);
-
-  return null;
-};
-
-const FoodMapPicker = ({ selectedPin, onPick, onConfirm, interactive = true, heightClass = 'h-56 md:h-64' }) => {
-  const center = [
-    Number(selectedPin?.lat) || 10.7769,
-    Number(selectedPin?.lng) || 106.7009,
-  ];
-
-  return (
-    <div className={`relative ${heightClass} overflow-hidden rounded-2xl border border-outline-variant/15 bg-surface-container-high`}>
-      <MapContainer
-        center={center}
-        zoom={15}
-        scrollWheelZoom={interactive}
-        dragging={interactive}
-        doubleClickZoom={interactive}
-        className="h-full w-full z-0"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <FoodMapRecenter center={center} />
-        {interactive && <FoodMapClickHandler onPick={onPick} />}
-        <Marker position={center} icon={foodPinIcon} />
-      </MapContainer>
-      {interactive && (
-        <button
-          type="button"
-          onClick={() => onConfirm?.(selectedPin)}
-          className="absolute bottom-3 left-3 right-3 z-[500] h-11 rounded-xl bg-[#00a884] text-sm font-black text-white shadow-lg hover:bg-[#008f73] transition-colors"
-        >
-          Xác nhận vị trí đã chọn
-        </button>
-      )}
-    </div>
-  );
-};
-
-const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmitAddress, onSelectMapLocation, savedLocations = [] }) => {
-  const [address, setAddress] = useState('');
-  const [mapMode, setMapMode] = useState(false);
-  const [selectedPin, setSelectedPin] = useState({ lat: 10.7769, lng: 106.7009, label: 'Vị trí đã chọn trên bản đồ' });
-
-  const submitAddress = (event) => {
-    event.preventDefault();
-    const trimmed = address.trim();
-    if (!trimmed) return;
-    onSubmitAddress(trimmed);
-  };
-
-
-  return (
-    <div className="w-full">
-      <div className="overflow-hidden rounded-3xl border border-outline-variant/20 bg-white/82 dark:bg-white/[0.04] shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.95fr)_minmax(260px,1fr)] gap-4 p-4 md:p-5">
-          <div className="flex flex-col justify-between gap-4">
-            <div>
-              <h3 className="text-lg md:text-xl font-black text-on-surface leading-snug">
-                Để gợi ý món ăn gần bạn chính xác hơn, em cần biết vị trí hiện tại của bạn nhé!
-              </h3>
-              <p className="mt-3 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
-                Em sẽ giúp bạn tìm quán gần nhất, ước tính thời gian giao hàng và tính phí ship chính xác.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={onUseCurrentLocation}
-                className="h-12 rounded-xl bg-[#00a884] px-4 text-sm md:text-base font-black text-white hover:bg-[#008f73] transition-colors inline-flex items-center justify-center gap-2"
-              >
-                <LocateFixed size={18} />
-                {request?.current_location_label || 'Chia sẻ vị trí hiện tại'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setMapMode(prev => !prev)}
-                className="h-12 rounded-xl border border-[#00a884] px-4 text-sm md:text-base font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors inline-flex items-center justify-center gap-2"
-              >
-                <MapPin size={18} />
-                Chọn trên bản đồ
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <FoodMapPicker
-              selectedPin={selectedPin}
-              onPick={setSelectedPin}
-              onConfirm={onSelectMapLocation}
-              interactive={mapMode}
-            />
-            <div className="mt-2 text-xs text-on-surface-variant/75">
-              Bạn có thể chia sẻ vị trí hiện tại hoặc chọn pin trên bản đồ
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={submitAddress} className="border-t border-outline-variant/15 p-4 md:p-5">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <label className="relative flex-1">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50" />
-              <input
-                value={address}
-                onChange={(event) => setAddress(event.target.value)}
-                placeholder={request?.address_placeholder || 'Nhập địa chỉ giao hàng'}
-                className="w-full h-12 rounded-xl border border-outline-variant/30 bg-white/85 dark:bg-white/5 pl-10 pr-3 text-sm font-semibold text-on-surface outline-none focus:border-[#00c897] focus:ring-2 focus:ring-[#00c897]/15 transition-all"
-              />
-            </label>
-            <button
-              type="submit"
-              className="h-12 rounded-xl border border-[#00a884] px-4 text-sm font-black text-[#008f6f] hover:bg-[#00c897] hover:text-white transition-colors whitespace-nowrap"
-            >
-              {request?.submit_label || 'Tìm quán gần đây'}
-            </button>
-          </div>
-          {savedLocations.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {savedLocations.slice(0, 3).map((place) => (
-                <button
-                  key={place.id}
-                  type="button"
-                  onClick={() => onSelectMapLocation(place)}
-                  className="rounded-full border border-[#00a884]/30 bg-[#00c897]/8 px-3 py-1.5 text-xs font-bold text-[#008f6f] hover:bg-[#00c897]/15 transition-colors"
-                >
-                  {place.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const FoodLocationConfirmedCard = ({ location, onSaveNamedLocation }) => {
-  if (!location) return null;
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,0.8fr)_minmax(260px,1fr)] gap-4 rounded-3xl border border-[#00c897]/25 bg-white/82 dark:bg-white/[0.04] p-4 md:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
-      <div className="flex flex-col justify-center gap-3">
-        <div className="flex items-center gap-2 text-lg font-black text-on-surface">
-          <span className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center">
-            <CheckCheck size={18} />
-          </span>
-          Vị trí hiện tại của bạn
-        </div>
-        <div className="text-sm leading-relaxed text-on-surface-variant/90">
-          {location.label || location.address || 'Đã cập nhật vị trí giao hàng'}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onSaveNamedLocation?.('home', 'Nhà', location)}
-            className="rounded-full border border-[#00a884]/30 px-3 py-1.5 text-xs font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors"
-          >
-            Lưu là Nhà
-          </button>
-          <button
-            type="button"
-            onClick={() => onSaveNamedLocation?.('work', 'Công ty', location)}
-            className="rounded-full border border-[#00a884]/30 px-3 py-1.5 text-xs font-black text-[#008f6f] hover:bg-[#00c897]/10 transition-colors"
-          >
-            Lưu là Công ty
-          </button>
-        </div>
-      </div>
-      <FoodMapPicker
-        selectedPin={{ lat: location.lat, lng: location.lng }}
-        interactive={false}
-        heightClass="h-40"
-      />
-    </div>
-  );
-};
 
 const SUGGESTION_CARDS = [
   {
@@ -1395,214 +1195,28 @@ export default function ChatLayout() {
         {/* Messages List */}
         {messages.length > 0 && (
           <div className="w-full max-w-5xl flex flex-col gap-8">
-            {messages.map((msg, idx) => {
-              const hasAssistantPayload = Boolean(
-                msg.content ||
-                msg.foodLocationRequest ||
-                msg.foodLocationConfirmed ||
-                msg.foodInlineParts ||
-                msg.foodRecommendations ||
-                msg.ragCards ||
-                (msg.sources && msg.sources.length > 0)
-              );
-              if (msg.role === 'assistant' && (!hasAssistantPayload || (!msg.content && loading))) return null;
-              return (
-                <div key={idx} className={`flex flex-col w-full ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  {/* Header info */}
-                  <div className={`flex items-center gap-2 mb-2 px-1 text-[11px] font-bold text-on-surface-variant/50 select-none ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                    {msg.role === 'user' ? (
-                      <>
-                        <span>Bạn</span>
-                        <span>⬢</span>
-                        <span>{formatTime(msg.created_at)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-[#00c897]">Xanh SM</span>
-                        <div className="px-1.5 py-0.5 rounded-md border border-[#00c897]/30 text-[#00c897] scale-75 origin-left flex items-center justify-center font-black">AI</div>
-                        <span>⬢</span>
-                        <span>{formatTime(msg.created_at)}</span>
-                      </>
-                    )}
-                  </div>
-
-                  <div className={`flex gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-start`}>
-                    {msg.role !== 'user' && (
-                      <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 flex items-center justify-center text-white shrink-0 shadow-md border border-[#00c897]/20 relative overflow-hidden group">
-                        <img src="/Bot.png" alt="Xanh SM AI" className="w-7 h-7 object-contain group-hover:scale-110 transition-transform" />
-                      </div>
-                    )}
-                    
-                    <div className={`${msg.role === 'user' ? 'order-1 max-w-[85%]' : 'order-2 max-w-[calc(100%_-_3.25rem)] md:max-w-[85%]'}`}>
-                      <div className={`p-4 md:p-5 rounded-3xl text-sm md:text-base leading-relaxed transition-all duration-300 flex flex-col gap-4 ${
-                        msg.role === 'user' 
-                          ? 'bg-gradient-to-br from-[#00c897] to-[#009e79] text-white rounded-tr-none shadow-[0_4px_16px_rgba(0,200,151,0.15)] dark:shadow-[0_4px_16px_rgba(0,200,151,0.05)] border border-[#00c897]/20' 
-                          : 'bg-white/88 dark:bg-white/5 backdrop-blur-md border border-white/40 dark:border-white/10 text-on-surface rounded-tl-none shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.2)]'
-                      }`}>
-                        {msg.role === 'user' ? (
-                          <div className="flex flex-col gap-2">
-                            {msg.image && (
-                              <img src={msg.image} alt="User upload" className="max-w-[200px] max-h-[200px] rounded-xl object-contain bg-black/20" />
-                            )}
-                            <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-4">
-                            {msg.foodInlineParts ? (
-                              renderFoodInlineParts(msg, idx)
-                            ) : msg.content && (
-                              <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-                                {renderContent(msg.content)}
-                              </div>
-                            )}
-                            {msg.foodLocationRequest && (
-                              <FoodLocationRequestCard
-                                request={msg.foodLocationRequest}
-                                onUseCurrentLocation={() => handleUseCurrentFoodLocation(msg.foodLocationRequest)}
-                                onSubmitAddress={(address) => handleSubmitFoodAddress(msg.foodLocationRequest, address)}
-                                onSelectMapLocation={(pin) => handleSelectMapFoodLocation(msg.foodLocationRequest, pin)}
-                                savedLocations={savedFoodLocations}
-                              />
-                            )}
-                            {msg.foodLocationConfirmed && (
-                              <FoodLocationConfirmedCard
-                                location={msg.foodLocationConfirmed}
-                                onSaveNamedLocation={handleSaveNamedFoodLocation}
-                              />
-                            )}
-                            {msg.foodRecommendations && !msg.foodInlineParts && (
-                                <FoodRecommendationList
-                                  data={msg.foodRecommendations}
-                                  onOpenMenu={(item, rankPosition) => {
-                                    logFoodInteraction('click_item', item, rankPosition, msg.foodRecommendations, msg);
-                                    logFoodInteraction('click_out', item, rankPosition, msg.foodRecommendations, msg);
-                                  }}
-                                  onLike={(item, rankPosition) => {
-                                    setMessages(prev => prev.map(m => m.id === msg.id ? {
-                                      ...m,
-                                      foodRecommendations: {
-                                        ...m.foodRecommendations,
-                                        items: m.foodRecommendations.items.map(i => i.item_id === item.item_id ? { ...i, interaction: i.interaction === 'like' ? null : 'like' } : i)
-                                      }
-                                    } : m));
-                                    logFoodInteraction('like', item, rankPosition, msg.foodRecommendations, msg);
-                                  }}
-                                  onDismiss={(item, rankPosition) => {
-                                    setMessages(prev => prev.map(m => m.id === msg.id ? {
-                                      ...m,
-                                      foodRecommendations: {
-                                        ...m.foodRecommendations,
-                                        items: m.foodRecommendations.items.filter(i => i.item_id !== item.item_id)
-                                      }
-                                    } : m));
-                                    logFoodInteraction('dismiss', item, rankPosition, msg.foodRecommendations, msg);
-                                  }}
-                                  onDislike={(item, rankPosition) => {
-                                    setMessages(prev => prev.map(m => m.id === msg.id ? {
-                                      ...m,
-                                      foodRecommendations: {
-                                        ...m.foodRecommendations,
-                                        items: m.foodRecommendations.items.map(i => i.item_id === item.item_id ? { ...i, interaction: i.interaction === 'dislike' ? null : 'dislike' } : i)
-                                      }
-                                    } : m));
-                                    logFoodInteraction('dislike', item, rankPosition, msg.foodRecommendations, msg);
-                                  }}
-                                  onExplain={(item) => setExplainingFood(item)}
-                                />
-                            )}
-                            {msg.ragCards && (
-                              <RagCardList cards={msg.ragCards} />
-                            )}
-                          </div>
-                        )}
-                        {/* Citations / Sources */}
-                        {msg.sources && msg.sources.length > 0 && (() => {
-                          const uniqueSources = [];
-                          const seenSources = new Set();
-                          for (const src of msg.sources) {
-                            const normalizedSource = (src.source || '').toLowerCase().trim();
-                            if (normalizedSource && !seenSources.has(normalizedSource)) {
-                              seenSources.add(normalizedSource);
-                              uniqueSources.push(src);
-                            }
-                          }
-                          return (
-                            <div className="flex gap-2 flex-wrap mt-1">
-                              {uniqueSources.slice(0, 3).map((src, i) => (
-                                <a key={i} href={src.url || '#'} target="_blank" rel="noopener noreferrer" 
-                                   className="flex items-center gap-1 text-[10px] font-bold bg-surface-container-high/50 text-primary px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary hover:text-white transition-all max-w-[240px]">
-                                  <Link2 size={10} className="shrink-0" />
-                                  <span className="truncate">
-                                    {src.source ? src.source.replace(/\.(md|html|txt)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Tài li!u Xanh SM'}
-                                  </span>
-                                </a>
-                              ))}
-                            </div>
-                          );
-                        })()}
-
-                        {/* Assistant Footer */}
-                        {msg.role === 'assistant' && (
-                          <div className="mt-2 pt-3 border-t border-outline-variant/10 flex items-center justify-between text-[10px] font-bold text-on-surface-variant/40">
-                            <div className="flex items-center gap-1.5">
-                              <span className="scale-110">⏱️</span>
-                              <span>Tổng thời gian: {msg.latency_ms ? `${Math.round(msg.latency_ms)}ms` : 'N/A'}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              {msg.id && (
-                                <div className="flex items-center gap-2">
-                                  <button 
-                                    onClick={() => handleReviewClick(msg.id, 'up')}
-                                    className={`hover:text-[#00c897] transition-colors p-1 rounded-md ${submittedReviews[msg.id] === 'up' ? 'text-[#00c897] bg-[#00c897]/10' : ''}`}
-                                    title="Hữu ích"
-                                    disabled={!!submittedReviews[msg.id]}
-                                  >
-                                    <ThumbsUp size={14} />
-                                  </button>
-                                  <button 
-                                    onClick={() => handleReviewClick(msg.id, 'down')}
-                                    className={`hover:text-red-500 transition-colors p-1 rounded-md ${submittedReviews[msg.id] === 'down' ? 'text-red-500 bg-red-50' : ''}`}
-                                    title="Không hữu ích"
-                                    disabled={!!submittedReviews[msg.id]}
-                                  >
-                                    <ThumbsDown size={14} />
-                                  </button>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-1.5">
-                                <span>Nguồn: Xanh SM Official</span>
-                                <ShieldCheck size={12} className="text-[#00c897]" />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {msg.role === 'user' && (
-                        <div className="flex justify-end mt-1.5 px-1">
-                          <CheckCheck size={14} className="text-[#00c897]" />
-                        </div>
-                      )}
-                    </div>
-
-                    {msg.role === 'user' && (
-                      user?.type === 'user' ? (
-                        <div 
-                          className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-black shadow-md uppercase border border-primary/20 shrink-0 order-2 overflow-hidden"
-                          title={user.email}
-                        >
-                          {user.name ? user.name[0] : <User size={18} />}
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary shrink-0 shadow-sm order-2 border border-primary/10">
-                          <User size={20} />
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {messages.map((msg, idx) => (
+              <MessageBubble
+                key={idx}
+                msg={msg}
+                idx={idx}
+                loading={loading}
+                formatTime={formatTime}
+                renderContent={renderContent}
+                renderFoodInlineParts={renderFoodInlineParts}
+                handleUseCurrentFoodLocation={handleUseCurrentFoodLocation}
+                handleSubmitFoodAddress={handleSubmitFoodAddress}
+                handleSelectMapFoodLocation={handleSelectMapFoodLocation}
+                savedFoodLocations={savedFoodLocations}
+                handleSaveNamedFoodLocation={handleSaveNamedFoodLocation}
+                logFoodInteraction={logFoodInteraction}
+                setMessages={setMessages}
+                setExplainingFood={setExplainingFood}
+                RagCardList={RagCardList}
+                handleReviewClick={handleReviewClick}
+                submittedReviews={submittedReviews}
+              />
+            ))}
           </div>
         )}
 
