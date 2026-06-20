@@ -115,6 +115,7 @@ graph TD
 
 * Chi tiết cấu trúc thư mục dự án xem tại: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 * Chi tiết nguyên lý hoạt động và chi tiết từng Node xử lý xem tại: [`docs/PIPELINE.md`](docs/PIPELINE.md)
+* Database diagram, class diagram và giải thích chi tiết từng bảng xem tại: [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md)
 
 ---
 
