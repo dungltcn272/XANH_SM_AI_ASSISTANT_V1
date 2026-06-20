@@ -267,10 +267,8 @@ class FoodRecommendationChain:
         answer_meta = answer_meta or {"answer": format_food_answer(items, slots.category), "food_cards": None, "llm_used": False, "error": "empty_answer_meta"}
         metrics["food_answer_llm_used"] = bool(answer_meta.get("llm_used"))
         metrics["food_answer_llm_error"] = answer_meta.get("error")
-        food_cards = answer_meta.get("food_cards")
-        llm_card_items = food_cards.get("items") if isinstance(food_cards, dict) else None
-        metrics["food_card_missing_from_llm"] = bool(items and not llm_card_items)
         metrics["food_card_count"] = answer_meta.get("food_card_count", 0)
+        metrics["food_card_missing_from_llm"] = bool(items and metrics["food_card_count"] == 0)
         metrics["food_cards_source"] = answer_meta.get("food_cards_source")
         answer = answer_meta.get("answer") or format_food_answer(items, slots.category)
         trace_id = save_food_request_log(
@@ -303,13 +301,8 @@ class FoodRecommendationChain:
                 "answer_preview": (answer or "")[:500],
             },
         )
-        food_cards = answer_meta.get("food_cards")
-
         if items:
-            if isinstance(food_cards, dict):
-                food_cards["trace_id"] = trace_id
-            metrics["food_recommendations"] = food_cards
-            yield f'data: {json.dumps({"type": "food_recommendation_result", "answer": answer, "food_card_count": metrics.get("food_card_count", 0), "food_cards_source": metrics.get("food_cards_source"), "trace_id": trace_id}, ensure_ascii=False)}\n\n'
+            yield f'data: {json.dumps({"type": "food_recommendation_result", "food_card_count": metrics.get("food_card_count", 0), "food_cards_source": metrics.get("food_cards_source"), "trace_id": trace_id}, ensure_ascii=False)}\n\n'
         else:
             location_payload = food_location_payload(query)
             yield f'data: {json.dumps({"type": "food_no_result", "answer": answer, "ui_form": location_payload, "food_location_request": location_payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'

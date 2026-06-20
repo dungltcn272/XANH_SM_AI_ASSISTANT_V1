@@ -17,6 +17,32 @@ const stripNode = (props) => {
   return rest;
 };
 
+const parseSseMetadata = (data) => {
+  const trimmed = data.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
+
+  try {
+    const parsed = JSON.parse(data);
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') return null;
+
+    const knownMetadataKeys = [
+      'conversation_id',
+      'error',
+      'food_card',
+      'food_location_request',
+      'message_id',
+      'metrics',
+      'rag_card',
+      'sources',
+      'step',
+      'type',
+    ];
+    return knownMetadataKeys.some((key) => Object.prototype.hasOwnProperty.call(parsed, key)) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 
 
 const MessageCard = ({ icon, title, desc, image, link, index }) => {
@@ -517,9 +543,20 @@ export default function ChatLayout() {
     }
   }, [messages.length]);
 
+  const autoScrollSignature = useMemo(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage) return 'empty';
+
+    const streamingMarker = loading
+      ? `${lastMessage.content?.length || 0}:${lastMessage.foodInlineParts?.length || 0}:${lastMessage.ragCards?.length || 0}`
+      : 'idle';
+
+    return `${messages.length}:${lastMessage.role}:${streamingMarker}`;
+  }, [loading, messages]);
+
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [autoScrollSignature, scrollToBottom]);
 
   useEffect(() => {
     if (activeConversationId !== lastProcessedActiveConvIdRef.current) {
@@ -542,8 +579,8 @@ export default function ChatLayout() {
               role: m.role, 
               content: m.content,
               created_at: m.created_at,
-              foodRecommendations: parsedTrace?.food_recommendations,
-              ragCards: parsedTrace?.rag_cards
+              ragCards: parsedTrace?.rag_cards,
+              foodInlineParts: m.role === 'assistant' ? parseFoodInlineParts(m.content) : null
             };
           });
           setMessages(formatted);
@@ -612,10 +649,9 @@ export default function ChatLayout() {
             if (line.startsWith('data: ')) {
               const data = line.slice(6); // remove 'data: '
               if (data === '[DONE]') continue;
-              
-              if (data.trim().startsWith('{')) {
-                try {
-                  const parsed = JSON.parse(data);
+
+              const parsed = parseSseMetadata(data);
+              if (parsed) {
                   
                   let handledAsMetadata = false;
 
@@ -648,22 +684,6 @@ export default function ChatLayout() {
                     streamRagCards = [...streamRagCards, parsed.rag_card];
                     handledAsMetadata = true;
                   }
-                  if (parsed.food_recommendations) {
-                    const incomingItems = parsed.food_recommendations?.items || [];
-                    const currentItems = streamFoodRecommendations?.items || [];
-                    if (incomingItems.length || !currentItems.length) {
-                      streamFoodRecommendations = parsed.food_recommendations;
-                    } else {
-                      streamFoodRecommendations = {
-                        ...parsed.food_recommendations,
-                        ...streamFoodRecommendations,
-                        trace_id: parsed.food_recommendations.trace_id || streamFoodRecommendations.trace_id,
-                        items: currentItems,
-                        more_items: streamFoodRecommendations.more_items || parsed.food_recommendations.more_items || []
-                      };
-                    }
-                    handledAsMetadata = true;
-                  }
                   if (parsed.type === 'food_recommendation_result') {
                     if (streamFoodRecommendations) {
                       streamFoodRecommendations = {
@@ -693,10 +713,6 @@ export default function ChatLayout() {
                   if (!handledAsMetadata) {
                     textDataParts.push(data);
                   }
-                } catch(e) {
-                  console.error("JSON parse error:", e);
-                  textDataParts.push(data);
-                }
               } else {
                 textDataParts.push(data);
               }
@@ -833,7 +849,7 @@ export default function ChatLayout() {
           distance_text: item?.distance_text,
           eta_text: item?.eta_text,
           delivery_fee_text: item?.delivery_fee_text,
-          breakdown: item?.score_breakdown,
+          score: item?.score,
         }
       });
     } catch (error) {
@@ -1125,7 +1141,12 @@ export default function ChatLayout() {
                   updateInlineFoodCard(messageIndex, item, (card) => ({ ...card, interaction: card.interaction === 'dislike' ? null : 'dislike' }));
                   logFoodInteraction('dislike', item, rankPosition, recommendationContext, msg);
                 }}
-                onExplain={() => setExplainingFood(item)}
+                onExplain={() => {
+                  const matchingItem = recommendationContext?.items?.find(
+                    (x) => (x.item_id || x.name) === (item.item_id || item.name)
+                  );
+                  setExplainingFood({ ...matchingItem, ...item });
+                }}
               />
             );
           }

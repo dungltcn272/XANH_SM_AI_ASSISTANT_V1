@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link2, CheckCheck, ThumbsUp, ThumbsDown, ShieldCheck } from 'lucide-react';
 import { FoodLocationRequestCard, FoodLocationConfirmedCard } from './FoodLocationPrompt';
 import { FoodRecommendationList } from './FoodInlineCards';

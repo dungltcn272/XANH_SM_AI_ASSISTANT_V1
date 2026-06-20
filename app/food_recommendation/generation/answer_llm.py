@@ -64,7 +64,7 @@ def stream_food_answer_with_llm(
             model=model_to_use,
             messages=messages,
             temperature=0.3,
-            max_tokens=900,
+            max_tokens=1800,
             stream=True,
         )
 

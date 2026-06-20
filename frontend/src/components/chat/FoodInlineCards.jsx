@@ -25,7 +25,6 @@ const FoodMetric = ({ icon: Icon, label, value }) => (
 
 export const FoodExplanationModal = ({ item, onClose }) => {
   if (!item) return null;
-  const bd = item.score_breakdown || {};
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -45,30 +44,19 @@ export const FoodExplanationModal = ({ item, onClose }) => {
             <div className="text-center text-xs font-semibold text-on-surface-variant uppercase mt-1">Độ phù hợp tổng thể</div>
           </div>
 
-          <div className="space-y-3">
-            {[
-              { label: 'Ngữ nghĩa (Vector Recall)', val: bd.recall_score },
-              { label: 'Khoảng cách (Nearby)', val: bd.nearby_score },
-              { label: 'Phí giao hàng', val: bd.delivery_fee_score },
-              { label: 'Thời gian giao (ETA)', val: bd.eta_score },
-              { label: 'Mức giá (Budget)', val: bd.budget_score },
-              { label: 'Khuyến mãi (Discount)', val: bd.discount_score },
-              { label: 'Khớp danh mục', val: bd.category_score },
-              { label: 'Khớp khẩu vị', val: bd.taste_score },
-              { label: 'Điểm đánh giá', val: bd.rating_score },
-              { label: 'Độ phổ biến', val: bd.popularity_score },
-            ].map((metric) => metric.val !== undefined && (
-              <div key={metric.label} className="flex items-center justify-between">
-                <span className="text-on-surface-variant font-medium">{metric.label}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 h-2 bg-surface-variant rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: `${(metric.val || 0) * 100}%` }} />
-                  </div>
-                  <span className="text-xs font-bold w-8 text-right">{((metric.val || 0) * 10).toFixed(1)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {item.reason && (
+            <div className="bg-primary/5 p-3.5 rounded-xl border border-primary/10">
+              <h4 className="font-bold text-xs text-primary uppercase tracking-wider mb-1">Lý do gợi ý</h4>
+              <p className="text-on-surface-variant text-xs md:text-sm leading-relaxed">{item.reason}</p>
+            </div>
+          )}
+
+          {item.advice && (
+            <div className="bg-[#00c897]/5 p-3.5 rounded-xl border border-[#00c897]/20">
+              <h4 className="font-bold text-xs text-[#008f6f] uppercase tracking-wider mb-1">Lời khuyên ăn uống</h4>
+              <p className="text-on-surface-variant text-xs md:text-sm leading-relaxed">{item.advice}</p>
+            </div>
+          )}
 
           <div className="text-xs text-on-surface-variant/80 italic text-center mt-4 pt-4 border-t border-outline-variant/20">
             Kết quả được chấm điểm tự động dựa trên học máy và thuật toán nội bộ của Xanh SM AI.
