@@ -70,6 +70,7 @@ class UserProfile(Base):
     preferences_json = Column(Text, nullable=True)
     goals_json = Column(Text, nullable=True)
     constraints_json = Column(Text, nullable=True)
+    behaviors_json = Column(Text, nullable=True)
     profile_stats_json = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=get_vn_time)
     updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time, index=True)

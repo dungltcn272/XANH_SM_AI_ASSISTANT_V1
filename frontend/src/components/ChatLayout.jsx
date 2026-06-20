@@ -1375,6 +1375,12 @@ export default function ChatLayout() {
       localStorage.setItem('xanhsm_food_locations', JSON.stringify(next));
       return next;
     });
+    api.saveFoodLocation({
+      ...nextLocation,
+      type: nextLocation.id,
+      source: 'frontend',
+      set_current: true,
+    }).catch((error) => console.warn('Failed to persist food location', error));
     return nextLocation;
   }, []);
 

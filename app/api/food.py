@@ -10,7 +10,7 @@ from app.core.security import get_current_entity
 from app.db.database import get_db
 from app.db.models import FoodCatalog, FoodInteraction
 from app.food_recommendation.geocode import geocode_address
-from app.food_recommendation.profile_store import get_or_create_food_profile
+from app.food_recommendation.profile_store import get_or_create_food_profile, save_food_location
 
 router = APIRouter()
 
@@ -26,6 +26,18 @@ class FoodInteractionRequest(BaseModel):
     rank_position: Optional[int] = None
     query: Optional[str] = None
     request_context: Optional[Dict[str, Any]] = None
+
+
+class FoodLocationRequest(BaseModel):
+    id: Optional[str] = None
+    type: Optional[str] = None
+    label: Optional[str] = None
+    address: Optional[str] = None
+    lat: float
+    lng: float
+    source: Optional[str] = "user"
+    saved_at: Optional[str] = None
+    set_current: bool = True
 
 
 def _append_unique(items: list[dict[str, Any]], value: dict[str, Any], key: str = "item_id", limit: int = 80) -> list[dict[str, Any]]:
@@ -112,6 +124,29 @@ def log_food_interaction(
     db.commit()
     db.refresh(row)
     return {"success": True, "event_id": row.event_id}
+
+
+@router.post("/locations")
+def save_location(
+    req: FoodLocationRequest,
+    db: Session = Depends(get_db),
+    entity: dict = Depends(get_current_entity),
+):
+    if not (8 <= float(req.lat) <= 24 and 102 <= float(req.lng) <= 110):
+        raise HTTPException(status_code=400, detail="Location is outside supported Vietnam bounds")
+
+    entity_type = entity.get("type")
+    entity_obj = entity.get("entity")
+    user_id = entity_obj.id if entity_type == "user" and entity_obj else None
+    session_id = entity_obj.id if entity_type == "guest" and entity_obj else None
+    location = save_food_location(
+        db,
+        user_id=user_id,
+        guest_id=session_id,
+        location=req.model_dump(),
+        set_current=req.set_current,
+    )
+    return {"success": True, "location": location}
 
 
 @router.get("/interactions/stats")

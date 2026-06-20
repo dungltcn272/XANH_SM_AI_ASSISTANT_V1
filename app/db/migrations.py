@@ -58,11 +58,13 @@ def run_auto_migrations():
             preferences_json TEXT,
             goals_json TEXT,
             constraints_json TEXT,
+            behaviors_json TEXT,
             profile_stats_json TEXT,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
         """,
+        "ALTER TABLE user_profiles ADD COLUMN behaviors_json TEXT;",
         "CREATE INDEX IF NOT EXISTS ix_user_profiles_user_id ON user_profiles(user_id);",
         "CREATE INDEX IF NOT EXISTS ix_user_profiles_guest_id ON user_profiles(guest_id);",
         "CREATE INDEX IF NOT EXISTS ix_user_profiles_updated_at ON user_profiles(updated_at);",

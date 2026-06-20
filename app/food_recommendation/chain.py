@@ -228,7 +228,7 @@ class FoodRecommendationChain:
                 items = recommend_food(
                     lat=slots.lat,
                     lng=slots.lng,
-                    query_text=query,
+                    query_text=None,
                     category=None,
                     taste_tags=slots.taste_tags,
                     budget_min=slots.budget_min,

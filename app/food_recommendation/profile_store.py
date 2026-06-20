@@ -11,6 +11,16 @@ from app.db.models import UserFoodProfile
 def _json_or_default(value: str | None, default: Any) -> Any:
     if not value:
         return default
+
+
+def _append_unique_place(items: list[dict[str, Any]], value: dict[str, Any], limit: int = 20) -> list[dict[str, Any]]:
+    place_id = value.get("id")
+    label = str(value.get("label") or "").casefold()
+    filtered = [
+        item for item in items
+        if item.get("id") != place_id and str(item.get("label") or "").casefold() != label
+    ]
+    return [value, *filtered][:limit]
     try:
         return json.loads(value)
     except (TypeError, json.JSONDecodeError):
@@ -69,6 +79,34 @@ def food_profile_context(
         "allergies": _json_or_default(row.allergies_json, None),
         "profile_stats": _json_or_default(row.profile_stats_json, None),
     }
+
+
+def save_food_location(
+    db: Session,
+    *,
+    user_id: str | None = None,
+    guest_id: str | None = None,
+    location: dict[str, Any],
+    set_current: bool = True,
+) -> dict[str, Any]:
+    row = get_or_create_food_profile(db, user_id=user_id, guest_id=guest_id)
+    saved_places = _json_or_default(row.saved_places_json, [])
+    clean_location = {
+        "id": location.get("id") or location.get("type") or location.get("label") or "current",
+        "type": location.get("type") or location.get("id"),
+        "label": location.get("label") or location.get("address") or "Vị trí đã lưu",
+        "address": location.get("address") or location.get("label"),
+        "lat": float(location.get("lat")),
+        "lng": float(location.get("lng")),
+        "source": location.get("source") or "user",
+        "saved_at": location.get("saved_at"),
+    }
+    row.saved_places_json = json.dumps(_append_unique_place(saved_places, clean_location), ensure_ascii=False)
+    if set_current:
+        row.current_location_json = json.dumps(clean_location, ensure_ascii=False)
+    db.commit()
+    db.refresh(row)
+    return clean_location
 
 
 def empty_food_context() -> dict[str, Any]:

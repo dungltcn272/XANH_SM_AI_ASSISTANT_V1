@@ -12,7 +12,7 @@ def normalize_text(value: str | None) -> str:
 def strip_accents(value: str) -> str:
     normalized = unicodedata.normalize("NFD", value)
     without_marks = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
-    return without_marks.replace("đ", "d").replace("Đ", "D")
+    return without_marks.replace("đ", "d").replace("Đ", "D").replace("Ä‘", "d").replace("Ä", "D")
 
 
 def split_terms(value: str | None) -> list[str]:

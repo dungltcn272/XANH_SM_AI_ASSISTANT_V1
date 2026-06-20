@@ -63,7 +63,8 @@ def match_score(needle: str | None, haystack_parts: list[str]) -> float:
     query_terms = [term for term in query.replace("/", " ").replace(",", " ").split() if term]
     if not query_terms:
         return 0.55
-    hits = sum(1 for term in query_terms if term in haystack)
+    haystack_terms = set(term for term in haystack.replace("/", " ").replace(",", " ").split() if term)
+    hits = sum(1 for term in query_terms if term in haystack_terms)
     return clamp(hits / len(query_terms))
 
 
