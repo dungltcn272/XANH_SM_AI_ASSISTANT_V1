@@ -13,142 +13,16 @@ from fastapi.responses import StreamingResponse
 import asyncio
 from typing import Optional
 
+from app.api.admin.utils import _iso, _json_text_with_defaults
+from app.api.admin.serializers import (
+    serialize_rag_log,
+    serialize_basic_log,
+    serialize_food_interaction,
+    serialize_food_request_log,
+    serialize_system_log
+)
+
 router = APIRouter()
-
-
-def _iso(value):
-    return value.isoformat() if value else None
-
-
-def serialize_rag_log(row: RagRequestLog) -> dict:
-    return {
-        "id": row.id,
-        "conversation_id": row.conversation_id,
-        "user_id": row.user_id,
-        "guest_id": row.guest_id,
-        "original_query": row.original_query,
-        "rewritten_query": row.rewritten_query,
-        "final_answer": row.final_answer,
-        "search_latency_ms": row.search_latency_ms or 0,
-        "generation_latency_ms": row.generation_latency_ms or 0,
-        "total_latency_ms": row.total_latency_ms or 0,
-        "rewrite_latency_ms": row.rewrite_latency_ms or 0,
-        "classification_latency_ms": row.classification_latency_ms or 0,
-        "expansion_latency_ms": row.expansion_latency_ms or 0,
-        "rerank_latency_ms": row.rerank_latency_ms or 0,
-        "total_tokens": row.total_tokens or 0,
-        "cost_usd": row.cost_usd or 0,
-        "blocked_by_guardrail": bool(row.blocked_by_guardrail),
-        "retrieval_result_json": row.retrieval_result_json,
-        "rerank_result_json": row.rerank_result_json,
-        "parent_child_result_json": row.parent_child_result_json,
-        "created_at": _iso(row.created_at),
-    }
-
-
-def serialize_basic_log(row: BasicRequestLog) -> dict:
-    return {
-        "id": row.id,
-        "conversation_id": row.conversation_id,
-        "user_id": row.user_id,
-        "guest_id": row.guest_id,
-        "original_query": row.original_query,
-        "rewritten_query": row.rewritten_query,
-        "intent": row.intent,
-        "final_answer": row.final_answer,
-        "model_name": row.model_name,
-        "nlu_latency_ms": row.nlu_latency_ms or 0,
-        "total_latency_ms": row.total_latency_ms or 0,
-        "cost_usd": row.cost_usd or 0,
-        "created_at": _iso(row.created_at),
-    }
-
-
-def serialize_food_interaction(row: FoodInteraction) -> dict:
-    return {
-        "event_id": row.event_id,
-        "id": row.event_id,
-        "user_id": row.user_id,
-        "session_id": row.session_id,
-        "conversation_id": row.conversation_id,
-        "message_id": row.message_id,
-        "event_type": row.event_type,
-        "item_id": row.item_id,
-        "merchant_id": row.merchant_id,
-        "rank_position": row.rank_position,
-        "query": row.query,
-        "request_context_json": row.request_context_json,
-        "created_at": _iso(row.created_at),
-    }
-
-
-def _json_text_with_defaults(value: str | None, defaults: dict) -> str:
-    try:
-        data = json.loads(value or "{}")
-        if not isinstance(data, dict):
-            data = {}
-    except json.JSONDecodeError:
-        data = {}
-    for key, fallback in defaults.items():
-        data.setdefault(key, fallback(data) if callable(fallback) else fallback)
-    return json.dumps(data, ensure_ascii=False)
-
-
-def serialize_food_request_log(row: FoodRequestLog) -> dict:
-    candidate_stats_json = _json_text_with_defaults(row.candidate_stats_json, {
-        "returned_count": lambda data: data.get("result_count", 0),
-        "total_candidates": lambda data: data.get("result_count", 0),
-    })
-    return {
-        "trace_id": row.trace_id,
-        "id": row.trace_id,
-        "conversation_id": row.conversation_id,
-        "user_id": row.user_id,
-        "guest_id": row.guest_id,
-        "original_query": row.original_query,
-        "rewritten_query": row.rewritten_query,
-        "final_answer": row.final_answer,
-        "intent": row.intent,
-        "search_latency_ms": row.search_latency_ms or 0,
-        "generation_latency_ms": row.generation_latency_ms or 0,
-        "total_latency_ms": row.total_latency_ms or 0,
-        "rewrite_latency_ms": row.rewrite_latency_ms or 0,
-        "classification_latency_ms": row.classification_latency_ms or 0,
-        "total_tokens": row.total_tokens or 0,
-        "cost_usd": row.cost_usd or 0,
-        "nlu_json": row.nlu_json,
-        "user_context_json": row.user_context_json,
-        "location_json": row.location_json,
-        "candidate_stats_json": candidate_stats_json,
-        "ranking_json": row.ranking_json,
-        "answer_llm_json": row.answer_llm_json,
-        "sse_events_json": row.sse_events_json,
-        "latency_json": json.dumps({
-            "search_latency_ms": row.search_latency_ms or 0,
-            "generation_latency_ms": row.generation_latency_ms or 0,
-            "total_latency_ms": row.total_latency_ms or 0,
-            "rewrite_latency_ms": row.rewrite_latency_ms or 0,
-            "classification_latency_ms": row.classification_latency_ms or 0,
-        }),
-        "created_at": _iso(row.created_at),
-    }
-
-
-def serialize_system_log(row: SystemLog) -> dict:
-    return {
-        "id": row.id,
-        "trace_id": row.trace_id,
-        "conversation_id": row.conversation_id,
-        "user_id": row.user_id,
-        "guest_id": row.guest_id,
-        "level": row.level,
-        "node": row.node,
-        "event": row.event,
-        "query": row.query,
-        "intent": row.intent,
-        "payload_json": row.payload_json,
-        "created_at": _iso(row.created_at),
-    }
 
 
 def activity_row(raw: dict, intent: str, icon_type: str = "chat") -> dict:
