@@ -1258,7 +1258,7 @@ export default function ChatLayout() {
             {/* Cards Container */}
             <div
               ref={suggestionsScrollRef}
-              className="flex overflow-x-auto snap-x snap-mandatory gap-3 md:gap-4 w-full no-scrollbar scroll-smooth pb-1"
+              className="flex overflow-x-auto snap-x snap-mandatory gap-3 md:gap-4 w-full no-scrollbar scroll-smooth py-2"
             >
               {SUGGESTION_CARDS.map((card, idx) => {
                 const IconComponent = card.icon;
