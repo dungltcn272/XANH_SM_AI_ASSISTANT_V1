@@ -2,6 +2,9 @@
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live-00A651?style=for-the-badge&logo=vercel&logoColor=white)](https://rag-xanh-sm-v1.vercel.app/)
 
+> [!TIP]
+> **Architecture source of truth:** cấu trúc code hiện tại được cập nhật tại [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). README này giữ phần mô tả sản phẩm và hướng dẫn chạy; tài liệu kiến trúc chi tiết nên đọc ở file docs để tránh drift.
+
 > [!NOTE]
 > **🚀 CẬP NHẬT MỚI TẠI PHASE 9 (FOOD RECOMMENDATION ML-READY & TRACE ANALYTICS):**
 > *   **Admin Food Traces Dashboard**: Giao diện quản trị mới cho phép theo dõi chi tiết các lượt gợi ý món ăn (Trace Logs), phân tích các điểm số thành phần (score breakdown) của thuật toán Ranking (Ngữ nghĩa, Khoảng cách, ETA, Khớp khẩu vị, v.v.).
@@ -23,91 +26,36 @@ Hệ thống này triển khai kiến trúc **NLU-Gateway RAG (Phase 6)** tiên 
 
 ---
 
-## 🏗️ 1. Kiến Trúc Thư Mục Dự Án
+## 1. Current Code Organization
 
-Mã nguồn được tổ chức theo cấu trúc Full-Stack hiện đại:
+The detailed and maintained architecture map now lives in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Short version:
 
 ```text
 RAG_XANH_SM/
-│
-├── app/                      # Backend FastAPI Cốt Lõi
-│   ├── ingestion/            # Pipeline nạp dữ liệu & dọn dẹp sạch sẽ CSDL vector cũ
-│   │   ├── chunking.py       # Phân đoạn heading-aware với Parent-Child (400 ký tự)
-│   │   ├── embedding.py      # Bộ sinh Dense Vector (OpenAI)
-│   │   └── ingest.py         # Quét thư mục, bóc tách và Upsert vào Qdrant + Postgres
-│   │
-│   ├── vectordb/
-│   │   └── qdrant_client.py  # Quản lý giao tiếp Qdrant (Hỗ trợ Native Hybrid Search & RRF)
-│   │
-│   ├── retrieval/
-│   │   ├── hybrid_search.py  # Hybrid Search kết hợp Dense/Sparse Vector từ Qdrant
-│   │   ├── multi_query.py    # Query Expansion mở rộng truy vấn đồng nghĩa tiếng Việt
-│   │   └── reranker.py       # Cohere Reranker xếp hạng lại Top 10 tài liệu
-│   │
-│   ├── rag/
-│   │   ├── prompt.py         # Prompt hệ thống tối ưu hóa tác phong và trích nguồn
-│   │   ├── gateway.py        # Conversation Gateway (Regex chặn từ cấm tức thì ~0ms)
-│   │   ├── classifier.py     # Intent Classifier & Slot Filling (Xử lý Small-talk & Task-agent)
-│   │   ├── chain.py          # Chuỗi RAG chính, xử lý SSE Stream
-│   │   ├── pipeline.py       # Điều phối luồng xử lý RAG Pipeline tích hợp Guardrails & Cache
-│   │   ├── guardrail.py      # Lớp bảo vệ an toàn (Guardrail) ngăn chặn Prompt Injection và từ cấm
-│   │   └── cache.py          # Quản lý Semantic Cache tăng tốc độ phản hồi truy vấn lặp lại
-│   │
-│   ├── food_recommendation/  # Pipeline Gợi Ý Món Ăn (V2)
-│   │   ├── geocode.py        # Chuyển đổi địa chỉ thành tọa độ
-│   │   ├── retrieval.py      # Qdrant Hybrid Search & Geo Filtering
-│   │   ├── ml_ranker.py      # XGBoost, Bandit & CrossEncoder Ranker
-│   │   ├── answer_llm.py     # Sinh câu trả lời mượt mà từ kết quả Rank
-│   │   ├── trace_store.py    # Lưu vết đánh giá (Tracing)
-│   │   └── chain.py          # Luồng chính Food Recommendation
-│   │
-│   ├── api/                  # FastAPI REST Endpoints
-│   │   ├── admin.py          # Quản trị hệ thống, Benchmark Ragas và Ingestion
-│   │   ├── auth.py           # Xác thực Google OAuth2 & Guest Session
-│   │   ├── chat.py           # Phân phối luồng chat stream SSE
-│   │   └── conversations.py  # Quản lý lịch sử hội thoại khách hàng
-│   │
-│   ├── core/                 # Cấu hình & Tiện ích chung
-│   │   ├── config.py         # Cấu hình biến môi trường và thiết lập hệ thống
-│   │   ├── security.py       # Xử lý JWT Token và bảo mật phân quyền admin
-│   │   └── logger.py         # Ghi log hợp nhất kết hợp xuất console (stdout/stderr) và lưu Database
-│   │
-│   └── db/                   # Quản lý Database PostgreSQL/SQLite
-│       ├── database.py       # Khởi tạo kết nối SQLAlchemy Engine và Session Local
-│       └── models.py         # Định nghĩa các bảng dữ liệu (Users, Conversations, Logs, Chunks...)
-│
-├── crawler/                  # Module crawl theo URL registry đã duyệt
-│   ├── registry.py           # Bootstrap/đọc crawl_sources từ DB và urls.json
-│   ├── sources.py            # Khai báo source profile main_site/platform/platform_pdf
-│   ├── crawler.py            # Page Crawler thu thập HTML bằng requests
-│   ├── run_crawler.py        # Deterministic crawler main_site/platform/platform_pdf -> Markdown
-│   ├── agent_crawler.py      # Compatibility wrapper, no LLM/Agent API calls
-│   ├── category_cleaners.py  # Rule-based cleaners for service/news/platform pages
-│   ├── pdf_utils.py          # Extract PDF bằng pymupdf4llm/PyMuPDF
-│   └── storage.py            # Lưu trữ tài liệu Markdown
-│
-├── data/                     # Thư mục chứa tài liệu Markdown thô (Crawler tạo ra)
-│
-├── frontend/                 # React + Vite Frontend UI (Web Browser)
-│   ├── src/components/       # Component UI module hóa (ChatLayout, Dashboard...)
-│   ├── src/pages/            # Các trang quản trị và Presentation
-│   │   ├── FoodTraceDashboard.jsx  # Xem log phân tích điểm số gợi ý
-│   │   └── PresentationFlow/       # Interactive Technical Architecture
-│   └── src/api.js            # Xử lý REST API và đọc luồng SSE theo thời gian thực
-│
-├── mobile/                   # 📱 React Native + Expo App (iOS & Android)
-│   ├── App.js                # Entry point chính của Mobile App với UI/UX tương đồng bản Web
-│   ├── app.json              # Cấu hình dự án Expo (GreenSM AI)
-│   └── assets/               # Chứa hình ảnh, logo SVG và bot animation
-│
-├── evaluation/               # Hệ thống Benchmark Ragas tự động đánh giá RAG
-│   ├── golden_dataset.py     # Bộ dữ liệu câu hỏi và câu trả lời chuẩn (Ground Truth)
-│   └── ragas_eval.py         # Script chạy đánh giá tự động đo lường chất lượng RAG
-│
-├── docs/                     # Tài liệu đặc tả kỹ thuật nội bộ
-├── requirements.txt          # Thư viện phụ thuộc (FastAPI, Qdrant-client, Cohere...)
-└── README.md                 # Hướng dẫn khởi chạy và vận hành
+  app/
+    api/                  FastAPI REST/SSE routes
+    assistant/            Chat orchestration and route decisions
+    core/                 Config, LLM clients, logging, security
+    db/                   SQLAlchemy models, database session, migrations
+    food_recommendation/  Food recommendation capability
+    ingestion/            Chunking, embedding, document ingestion
+    memory/               Short-term and long-term user memory
+    nlu/                  Intent classification, rewrite, memory candidates
+    prompts/              Shared system prompts
+    rag/                  Knowledge retrieval, rerank, RAG answer, cache
+    scripts/              Operational/training scripts
+    vectordb/             Qdrant client
+  crawler/                Source registry and deterministic crawlers
+  data/                   Local assets and food catalog files
+  docs/                   Technical documentation
+  evaluation/             Evaluation datasets and scripts
+  frontend/               React + Vite web client
+  mobile/                 Expo / React Native client
 ```
+
+Compatibility note: `app.rag.classifier` is kept as an import wrapper, but new
+code should import `XanhSMClassifier` from `app.nlu.classifier`.
 
 ---
 

@@ -11,7 +11,7 @@ from app.assistant.events import sse_pipeline_step, stream_plain_answer
 from app.core.config import settings as config
 from app.core.logger import log_warn
 from app.assistant.system_log import save_system_log
-from app.rag.classifier import XanhSMClassifier
+from app.nlu.classifier import XanhSMClassifier
 from app.rag.gateway import XanhSMGateway
 class XanhSMAssistantOrchestrator:
     """

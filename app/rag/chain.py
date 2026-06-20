@@ -361,7 +361,7 @@ class XanhSMRAGPipeline(RagAnswerChain):
     def __init__(self):
         super().__init__()
         from app.rag.gateway import XanhSMGateway
-        from app.rag.classifier import XanhSMClassifier
+        from app.nlu.classifier import XanhSMClassifier
         self.gateway = XanhSMGateway()
         self.classifier = XanhSMClassifier()
 
@@ -585,4 +585,3 @@ class XanhSMRAGPipeline(RagAnswerChain):
             "llm_cost_usd": cost_info["cost_usd"],
             "llm_cost_vnd": cost_info["cost_usd"] * 25400
         }
-

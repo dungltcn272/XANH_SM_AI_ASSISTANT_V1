@@ -384,7 +384,7 @@ class PipelineTestRequest(BaseModel):
 
 @router.post("/pipeline/test")
 def test_pipeline(req: PipelineTestRequest):
-    from app.rag.classifier import XanhSMClassifier
+    from app.nlu.classifier import XanhSMClassifier
 
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="Query is required")
