@@ -71,7 +71,7 @@ class XanhSMClassifier:
                 model_to_use = multimodal_model
                 include_image = True
 
-        from app.rag.gateway import XanhSMGateway
+        from app.rag.core.gateway import XanhSMGateway
 
         gateway = XanhSMGateway()
         safety_res = gateway.safety_precheck(query)

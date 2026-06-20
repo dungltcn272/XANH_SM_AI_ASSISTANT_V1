@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_entity
 from app.db.database import get_db
 from app.db.models import FoodCatalog, FoodInteraction
-from app.food_recommendation.geocode import geocode_address
-from app.food_recommendation.profile_store import get_or_create_food_profile, save_food_location
+from app.food_recommendation.location.geocode import geocode_address
+from app.food_recommendation.profile.profile_store import get_or_create_food_profile, save_food_location
 
 router = APIRouter()
 

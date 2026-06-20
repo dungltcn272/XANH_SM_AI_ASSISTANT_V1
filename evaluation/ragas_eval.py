@@ -19,7 +19,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
-from app.rag.chain import XanhSMRAGPipeline
+from app.rag.core.chain import XanhSMRAGPipeline
 from app.core.config import settings
 from app.core.logger import log_warn, log_error
 from openai import OpenAI

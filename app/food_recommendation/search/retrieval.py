@@ -4,9 +4,9 @@ from dataclasses import dataclass
 
 from rank_bm25 import BM25Okapi
 
-from app.food_recommendation.profile import normalize_text
-from app.food_recommendation.ranker import haversine_km
-from app.food_recommendation.schemas import FoodCatalogEntry, FoodRecommendationRequest
+from app.food_recommendation.profile.profile import normalize_text
+from app.food_recommendation.ranking.ranker import haversine_km
+from app.food_recommendation.core.schemas import FoodCatalogEntry, FoodRecommendationRequest
 
 
 @dataclass

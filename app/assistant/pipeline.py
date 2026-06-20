@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.assistant.orchestrator import XanhSMAssistantOrchestrator
 from app.memory.memory_service import MemoryService
 from app.db.models import RagRequestLog
-from app.rag.guardrail import OutputGuardrail
+from app.rag.security.guardrail import OutputGuardrail
 from app.core.logger import log_info, log_warn
 import json
 
@@ -12,7 +12,7 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
     raw_history = memory_service.get_recent_messages(conversation_id, limit=12)  # Increased from 6 to 12
     chat_history = [{"role": msg.role, "content": msg.content} for msg in raw_history]
     try:
-        from app.food_recommendation.profile_store import food_profile_context
+        from app.food_recommendation.profile.profile_store import food_profile_context
         food_context = food_profile_context(
             db=db,
             user_id=user_id if entity_type == "user" else None,

@@ -7,20 +7,20 @@ from typing import Any
 from app.core.config import settings as config
 from app.core.logger import log_info
 from app.assistant.system_log import save_system_log
-from app.food_recommendation.answer_llm import stream_food_answer_with_llm
-from app.food_recommendation.payloads import (
+from app.food_recommendation.generation.answer_llm import stream_food_answer_with_llm
+from app.food_recommendation.generation.payloads import (
     food_location_payload,
     format_food_answer,
     missing_location_answer,
 )
-from app.food_recommendation.trace_store import save_food_request_log
+from app.food_recommendation.storage.trace_store import save_food_request_log
 from app.assistant.events import sse_pipeline_step, stream_plain_answer
-from app.food_recommendation.geocode import geocode_address
-from app.food_recommendation.nlu import slots_from_nlu
-from app.food_recommendation.tool import recommend_food
+from app.food_recommendation.location.geocode import geocode_address
+from app.food_recommendation.core.nlu import slots_from_nlu
+from app.food_recommendation.core.tool import recommend_food
 
 
-from app.food_recommendation.location_resolver import FoodLocationResolver
+from app.food_recommendation.location.location_resolver import FoodLocationResolver
 
 
 class FoodRecommendationChain:

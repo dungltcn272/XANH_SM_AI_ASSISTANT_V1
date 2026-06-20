@@ -5,7 +5,7 @@ from typing import Any
 from app.core.config import settings as config
 from app.core.llm import get_llm_client
 from app.core.logger import log_warn
-from app.food_recommendation.payloads import (
+from app.food_recommendation.generation.payloads import (
     display_rating,
     distance_text,
     format_food_answer,

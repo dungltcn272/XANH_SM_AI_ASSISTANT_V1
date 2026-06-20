@@ -28,7 +28,7 @@ def get_ml_status(
 
 def background_train_task():
     try:
-        from app.food_recommendation.ml_ranker import xgb_ranker
+        from app.food_recommendation.ranking.ml_ranker import xgb_ranker
         train_xgboost_ranker()
         xgb_ranker.load_model()
     except Exception as e:

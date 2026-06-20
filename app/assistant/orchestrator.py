@@ -5,14 +5,14 @@ import re
 import time
 from typing import Any
 
-from app.food_recommendation.chain import FoodRecommendationChain
-from app.rag.chain import RagAnswerChain
+from app.food_recommendation.core.chain import FoodRecommendationChain
+from app.rag.core.chain import RagAnswerChain
 from app.assistant.events import sse_pipeline_step, stream_plain_answer
 from app.core.config import settings as config
 from app.core.logger import log_warn
 from app.assistant.system_log import save_system_log
 from app.nlu.classifier import XanhSMClassifier
-from app.rag.gateway import XanhSMGateway
+from app.rag.core.gateway import XanhSMGateway
 class XanhSMAssistantOrchestrator:
     """
     Assistant-level orchestrator.
@@ -26,7 +26,7 @@ class XanhSMAssistantOrchestrator:
         self.gateway = XanhSMGateway()
         self.classifier = XanhSMClassifier()
         try:
-            from app.rag.cache import XanhSMRAGCache
+            from app.rag.storage.cache import XanhSMRAGCache
             self.cache = XanhSMRAGCache()
         except Exception as exc:
             log_warn("CACHE", f"Failed to load cache: {exc}")

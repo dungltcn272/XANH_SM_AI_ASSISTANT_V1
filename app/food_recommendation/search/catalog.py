@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.models import FoodCatalog
-from app.food_recommendation.schemas import FoodCatalogEntry
+from app.food_recommendation.core.schemas import FoodCatalogEntry
 
 
 def parse_json_value(value, default):

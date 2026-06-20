@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.food_recommendation.catalog import load_catalog
-from app.food_recommendation.ranker import rank_catalog
-from app.food_recommendation.retrieval import generate_candidates
-from app.food_recommendation.schemas import FoodRecommendation, FoodRecommendationRequest
+from app.food_recommendation.search.catalog import load_catalog
+from app.food_recommendation.ranking.ranker import rank_catalog
+from app.food_recommendation.search.retrieval import generate_candidates
+from app.food_recommendation.core.schemas import FoodRecommendation, FoodRecommendationRequest
 
 
 def recommend_food(
