@@ -3,6 +3,8 @@ builder = "DOCKERFILE"
 
 watchPatterns = [
   "app/**",
+  "alembic/**",
+  "alembic.ini",
   "requirements.txt",
   "Dockerfile",
   "railway.toml"
