@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Keyboard } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Keyboard, RotateCcw } from 'lucide-react';
 
 export default function SlideShow() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(0); // -1 for left/prev, 1 for right/next
   const [scale, setScale] = useState(1);
 
-  const TOTAL_SLIDES = 8;
+  const TOTAL_SLIDES = 10;
 
   // Dynamic scaling to fit 1920x1080 design in viewport
   useEffect(() => {
@@ -65,17 +65,19 @@ export default function SlideShow() {
     if (index === 3) return 'Khác biệt';
     if (index === 4) return 'Lợi thế';
     if (index === 5 || index === 6) return 'Giải pháp';
-    return 'Triển khai';
+    if (index === 7) return 'Triển khai';
+    if (index === 8) return 'Nâng cấp';
+    return 'Cảm ơn';
   };
 
   const getTabsList = (index) => {
-    if (index === 0) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
-    if (index === 1) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
-    if (index === 2) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
+    if (index === 0 || index === 1 || index === 2) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
     if (index === 3) return ['Tầm nhìn', 'Giá trị', 'Khác biệt', 'Giải pháp'];
     if (index === 4) return ['Tầm nhìn', 'Giá trị', 'Lợi thế', 'Giải pháp'];
     if (index === 5 || index === 6) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
-    return ['Tầm nhìn', 'Giá trị', 'Giải pháp', 'Triển khai'];
+    if (index === 7) return ['Giá trị', 'Giải pháp', 'Triển khai', 'Nâng cấp'];
+    if (index === 8) return ['Giải pháp', 'Triển khai', 'Nâng cấp', 'Cảm ơn'];
+    return ['Triển khai', 'Nâng cấp', 'Cảm ơn'];
   };
 
   const navigateToTab = (tabName) => {
@@ -86,7 +88,9 @@ export default function SlideShow() {
       'Khác biệt': 3,
       'Lợi thế': 4,
       'Giải pháp': 5,
-      'Triển khai': 7
+      'Triển khai': 7,
+      'Nâng cấp': 8,
+      'Cảm ơn': 9
     };
     const targetIndex = targetMap[tabName];
     if (targetIndex !== undefined) {
@@ -658,6 +662,103 @@ export default function SlideShow() {
                     </div>
                   </div>
                 )}
+
+                {/* SLIDE 8: NÂNG CẤP HỆ SINH THÁI */}
+                {currentSlide === 8 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-[60px] font-black leading-tight text-[#071735]">
+                        Tầm nhìn <span className="text-[#00b386]">Nâng Cấp Hệ Sinh Thái</span>
+                      </h2>
+                      <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
+                        Xanh SM AI Assistant liên tục mở rộng tiện ích nhằm mang lại trải nghiệm tối ưu nhất cho Đối tác Tài xế và Nhà hàng, thúc đẩy doanh số và hiệu suất.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-8 pt-4">
+                      {/* Cột Tài xế */}
+                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-[30px] shadow-[0_16px_36px_rgba(13,64,100,0.1)]">
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className="w-[60px] h-[60px] rounded-2xl bg-gradient-to-br from-[#00b386] to-[#10cdb1] flex items-center justify-center text-white text-[32px]">🚘</div>
+                          <h3 className="text-[#071735] text-[34px] font-black leading-[1.2]">Đối tác Tài xế (Drivers)</h3>
+                        </div>
+                        <ul className="space-y-4">
+                          <li className="flex gap-4">
+                            <span className="text-[#00b386] text-[24px]">✓</span>
+                            <div>
+                              <strong className="text-[#071735] text-[20px]">Trợ Lý Rảnh Tay (Voice-First):</strong>
+                              <p className="text-[#405a7a] text-[18px] mt-1">Hỏi doanh thu, kiểm tra thưởng, báo cáo sự cố bằng giọng nói, không cần chạm màn hình.</p>
+                            </div>
+                          </li>
+                          <li className="flex gap-4">
+                            <span className="text-[#00b386] text-[24px]">✓</span>
+                            <div>
+                              <strong className="text-[#071735] text-[20px]">Tối Ưu Hóa Trạm Sạc V-GREEN:</strong>
+                              <p className="text-[#405a7a] text-[18px] mt-1">Gợi ý trạm sạc gần nhất có trụ trống và giá tối ưu theo thời gian thực.</p>
+                            </div>
+                          </li>
+                          <li className="flex gap-4">
+                            <span className="text-[#00b386] text-[24px]">✓</span>
+                            <div>
+                              <strong className="text-[#071735] text-[20px]">Heatmap & Điều Hướng:</strong>
+                              <p className="text-[#405a7a] text-[18px] mt-1">Dự báo điểm nóng nhu cầu cao để điều phối xe, tối đa hóa thu nhập.</p>
+                            </div>
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* Cột Nhà hàng */}
+                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-[30px] shadow-[0_16px_36px_rgba(13,64,100,0.1)]">
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className="w-[60px] h-[60px] rounded-2xl bg-gradient-to-br from-[#ff9900] to-[#ffb84d] flex items-center justify-center text-white text-[32px]">🍜</div>
+                          <h3 className="text-[#071735] text-[34px] font-black leading-[1.2]">Cửa hàng (Merchants)</h3>
+                        </div>
+                        <ul className="space-y-4">
+                          <li className="flex gap-4">
+                            <span className="text-[#ff9900] text-[24px]">✓</span>
+                            <div>
+                              <strong className="text-[#071735] text-[20px]">Dự Báo Nhu Cầu & Tồn Kho:</strong>
+                              <p className="text-[#405a7a] text-[18px] mt-1">Phân tích thời tiết, sự kiện để dự báo đơn hàng, tối ưu nhập nguyên liệu.</p>
+                            </div>
+                          </li>
+                          <li className="flex gap-4">
+                            <span className="text-[#ff9900] text-[24px]">✓</span>
+                            <div>
+                              <strong className="text-[#071735] text-[20px]">Tự Động Trả Lời Đánh Giá:</strong>
+                              <p className="text-[#405a7a] text-[18px] mt-1">Tạo phản hồi chuẩn mực, cá nhân hóa cho từng review, tiết kiệm CSKH.</p>
+                            </div>
+                          </li>
+                          <li className="flex gap-4">
+                            <span className="text-[#ff9900] text-[24px]">✓</span>
+                            <div>
+                              <strong className="text-[#071735] text-[20px]">Đề Xuất Khuyến Mãi:</strong>
+                              <p className="text-[#405a7a] text-[18px] mt-1">Gợi ý tạo combo flash sale vào khung giờ thấp điểm nhằm kích cầu.</p>
+                            </div>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SLIDE 9: CẢM ƠN */}
+                {currentSlide === 9 && (
+                  <div className="flex flex-col items-center justify-center h-full text-center space-y-8">
+                    <img src="/logo.svg" alt="Green SM" className="h-[120px] mb-4 drop-shadow-xl" />
+                    <h1 className="text-[86px] font-black leading-[1.1] text-[#071735]">
+                      Cảm ơn quý vị đã lắng nghe!
+                    </h1>
+                    <p className="text-[32px] font-semibold leading-[1.48] text-[#314967] max-w-[800px]">
+                      Xanh SM AI Assistant - Cùng kiến tạo tương lai dịch vụ xanh và thông minh.
+                    </p>
+                    <button 
+                      onClick={() => setCurrentSlide(0)} 
+                      className="inline-flex items-center gap-3 px-[32px] py-[24px] rounded-full bg-gradient-to-r from-[#00b386] to-[#10cdb1] text-white shadow-[0_18px_42px_rgba(0,179,134,0.28)] hover:scale-105 active:scale-95 transition-all text-[26px] font-black mt-8"
+                    >
+                      <RotateCcw size={28} /> Trở về trang đầu
+                    </button>
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -674,7 +775,16 @@ export default function SlideShow() {
               {currentSlide === 6 && (
                 <span><b>Cá nhân hóa trải nghiệm thúc đẩy Giá trị vòng đời khách hàng (CLV)</b></span>
               )}
-              {currentSlide !== 0 && currentSlide !== 5 && currentSlide !== 6 && (
+              {currentSlide === 7 && (
+                <span><b>Giải Pháp Trợ Lý Ảo Thông Minh Xanh SM</b></span>
+              )}
+              {currentSlide === 8 && (
+                <span><b>Tối ưu Hệ sinh thái với AI - Đa dạng hóa dịch vụ Đối tác</b></span>
+              )}
+              {currentSlide === 9 && (
+                <span><b>Xanh SM - Vươn tầm Trí tuệ Việt</b></span>
+              )}
+              {currentSlide !== 0 && currentSlide !== 5 && currentSlide !== 6 && currentSlide !== 7 && currentSlide !== 8 && currentSlide !== 9 && (
                 <span>Giải Pháp Trợ Lý Ảo Thông Minh Xanh SM</span>
               )}
             </div>
