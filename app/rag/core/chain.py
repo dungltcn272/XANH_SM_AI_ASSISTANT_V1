@@ -9,7 +9,7 @@ from app.assistant.events import sse_pipeline_step
 from app.core.config import settings as config
 from app.core.llm import get_llm_client
 from app.core.logger import log_warn, log_error
-from app.prompts import RAG_ANSWER_SYSTEM_PROMPT
+from app.prompts import RAG_ANSWER_SYSTEM_PROMPT, apply_assistant_persona
 from app.rag.search.hybrid_search import XanhSMHybridSearch
 from app.rag.search.reranker import XanhSMReranker
 from app.rag.storage.trace_store import save_rag_request_log
@@ -178,10 +178,11 @@ class RagAnswerChain:
         chat_history: list[dict[str, str]] | None = None,
         food_context: dict[str, Any] | None = None,
         assistant_context: dict[str, Any] | None = None,
+        assistant_persona: str = "secretary",
     ):
         compressed_context = self._compress_context(context_docs)
         messages = ContextBuilder.build_rag_messages(
-            system_prompt=RAG_ANSWER_SYSTEM_PROMPT,
+            system_prompt=apply_assistant_persona(RAG_ANSWER_SYSTEM_PROMPT, assistant_persona),
             query=query,
             chat_history=chat_history or [],
             compressed_context=compressed_context,
@@ -210,6 +211,7 @@ class RagAnswerChain:
         is_deep_search: bool = False,
         food_context: dict[str, Any] | None = None,
         assistant_context: dict[str, Any] | None = None,
+        assistant_persona: str = "secretary",
     ):
         def finalize_generation(final_answer: str, top_docs: list[Any], messages: list[dict[str, str]], retrieved_docs: list[Any], reranked_docs: list[Any], expanded_docs: list[Any]):
             est_p = len(" ".join([m["content"] for m in messages])) // 4
@@ -271,6 +273,7 @@ class RagAnswerChain:
                 chat_history=chat_history,
                 food_context=food_context,
                 assistant_context=assistant_context,
+                assistant_persona=assistant_persona,
             )
             metrics["compressed_context_len"] = len(compressed_context)
 

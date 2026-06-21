@@ -38,6 +38,7 @@ class FoodRecommendationChain:
         conversation_id: str | None = None,
         user_id: str | None = None,
         guest_id: str | None = None,
+        assistant_persona: str = "secretary",
     ):
         slots = slots_from_nlu(nlu_food_slots, raw_query=query)
         sse_steps: list[str] = []
@@ -236,6 +237,7 @@ class FoodRecommendationChain:
             food_context,
             chat_history,
             assistant_context=assistant_context,
+            assistant_persona=assistant_persona,
         )
         first_token_received = False
         answer_meta = None

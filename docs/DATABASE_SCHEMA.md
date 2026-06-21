@@ -748,6 +748,57 @@ Trace chi tiết cho mỗi request food recommendation.
 | `sse_events_json` | `Text`, JSON | Các step SSE đã phát. |
 | `created_at` | `DateTime`, index | Thời điểm request. |
 
+## Nhóm Notifications Và Assistant Persona
+
+### `user_assistant_settings`
+
+Lưu lựa chọn nhân cách AI cho user đăng nhập. Guest vẫn có thể dùng persona qua `localStorage` ở frontend và gửi kèm từng request chat, nhưng không ghi vào bảng này.
+
+| Trường | Kiểu | Tác dụng |
+| --- | --- | --- |
+| `id` | `String`, PK | Mã setting dạng `asstset_<uuid>`. |
+| `user_id` | `String`, FK `users.id`, unique, index | User sở hữu cấu hình. Mỗi user có tối đa một record. |
+| `assistant_persona` | `String`, index | Persona đang chọn, hiện hỗ trợ `secretary` và `butler`. |
+| `created_at` | `DateTime` | Thời điểm tạo cấu hình. |
+| `updated_at` | `DateTime`, index | Thời điểm cập nhật cấu hình gần nhất. |
+
+### `admin_notifications`
+
+Nguồn dữ liệu thông báo do admin tạo. FE user đọc bảng này qua `/api/notifications`, admin quản lý qua `/api/admin/notifications`.
+
+| Trường | Kiểu | Tác dụng |
+| --- | --- | --- |
+| `id` | `String`, PK | Mã thông báo dạng `notif_<uuid>` hoặc id seed cố định. |
+| `title` | `String` | Tiêu đề thông báo. |
+| `summary` | `Text` | Tóm tắt ngắn để hiển thị trong popup. |
+| `body` | `Text` | Nội dung chính của thông báo. |
+| `notification_type` | `String`, index | Loại thông báo: `feature_update`, `announcement`, `maintenance`, `warning`. |
+| `status` | `Enum(NotificationStatus)`, index | `draft`, `published`, `archived`. Chỉ `published` mới hiển thị với user. |
+| `audience` | `Enum(NotificationAudience)`, index | Hiện hỗ trợ `all_users`; có thể mở rộng segment sau. |
+| `priority` | `Integer`, index | Sắp xếp ưu tiên, số nhỏ hiện trước. |
+| `action_label` | `String` | Label nút CTA nếu có. |
+| `action_url` | `Text` | URL CTA nếu có, ví dụ `/chat`. |
+| `published_at` | `DateTime`, index | Thời điểm bắt đầu hiển thị. Nếu null và status published thì hiển thị ngay. |
+| `expires_at` | `DateTime`, index | Thời điểm hết hạn hiển thị. |
+| `created_by_admin_id` | `String`, FK `users.id` | Admin tạo thông báo. |
+| `created_at` | `DateTime`, index | Thời điểm tạo. |
+| `updated_at` | `DateTime`, index | Thời điểm cập nhật. |
+
+Migration `20260621_0002_notifications_and_personas` seed sẵn thông báo `notif_food_recommendation_launch` để báo user về tính năng gợi ý món ăn.
+
+### `notification_reads`
+
+Lưu trạng thái đã đọc theo từng user và từng thông báo.
+
+| Trường | Kiểu | Tác dụng |
+| --- | --- | --- |
+| `id` | `String`, PK | Mã read receipt dạng `notifread_<uuid>`. |
+| `notification_id` | `String`, FK `admin_notifications.id`, index | Thông báo đã đọc. |
+| `user_id` | `String`, FK `users.id`, index | User đã đọc. |
+| `read_at` | `DateTime`, index | Thời điểm đánh dấu đã đọc. |
+
+Ràng buộc unique `uq_notification_reads_notification_user` đảm bảo mỗi user chỉ có một read receipt cho một thông báo.
+
 ## Nhóm Evaluation
 
 ### `evaluation_runs`

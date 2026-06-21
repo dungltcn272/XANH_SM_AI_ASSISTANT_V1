@@ -61,6 +61,7 @@ class XanhSMAssistantOrchestrator:
         conversation_id: str | None = None,
         user_id: str | None = None,
         guest_id: str | None = None,
+        assistant_persona: str = "secretary",
     ):
         t_start = time.time()
         metrics = {
@@ -94,6 +95,7 @@ class XanhSMAssistantOrchestrator:
             query=query,
             payload={"normalized_query": normalized_query, "has_image": bool(image_base64), "is_deep_search": is_deep_search},
         )
+        metrics["assistant_persona"] = assistant_persona
 
         yield sse_pipeline_step("gateway_safety", "Đang kiểm tra an toàn nội dung...", 0.06)
         safety_res = self.gateway.safety_precheck(normalized_query)
@@ -211,6 +213,7 @@ class XanhSMAssistantOrchestrator:
                 conversation_id=conversation_id,
                 user_id=user_id,
                 guest_id=guest_id,
+                assistant_persona=assistant_persona,
             )
             return
 
@@ -307,6 +310,7 @@ class XanhSMAssistantOrchestrator:
             is_deep_search=is_deep_search,
             food_context=food_context,
             assistant_context=assistant_context,
+            assistant_persona=assistant_persona,
         )
 
     def run_debug(self, query: str, chat_history: list[dict[str, str]] | None = None) -> dict[str, Any]:

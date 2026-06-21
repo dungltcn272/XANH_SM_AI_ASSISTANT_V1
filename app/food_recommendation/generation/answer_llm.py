@@ -12,7 +12,7 @@ from app.food_recommendation.generation.payloads import (
     format_vnd,
 )
 from app.memory.context_builder import ContextBuilder
-from app.prompts import FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT
+from app.prompts import FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT, apply_assistant_persona
 
 CARD_START = "[[FOOD_CARD"
 
@@ -24,6 +24,7 @@ def stream_food_answer_with_llm(
     food_context: dict[str, Any] | None = None,
     chat_history: list[dict[str, str]] | None = None,
     assistant_context: dict[str, Any] | None = None,
+    assistant_persona: str = "secretary",
 ):
     fallback_answer = format_food_answer(items, slots.category)
     fallback = {
@@ -51,7 +52,7 @@ def stream_food_answer_with_llm(
         model_to_use = config.FOOD_ANSWER_MODEL
         client = get_llm_client(model_to_use)
         messages = ContextBuilder.build_food_messages(
-            system_prompt=FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT,
+            system_prompt=apply_assistant_persona(FOOD_RECOMMENDER_ANSWER_SYSTEM_PROMPT, assistant_persona),
             query=query,
             chat_history=chat_history or [],
             food_context=food_context,

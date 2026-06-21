@@ -11,6 +11,7 @@ import HistoryDashboard from './pages/HistoryDashboard';
 import DatabaseManager from './pages/DatabaseManager';
 import KnowledgeBuilder from './pages/KnowledgeBuilder';
 import UserReviews from './pages/UserReviews';
+import AdminNotifications from './pages/AdminNotifications';
 import MLControlCenter from './pages/MLControlCenter';
 import AdminLogin from './pages/AdminLogin';
 import LandingPage from './pages/LandingPage';
@@ -216,6 +217,9 @@ function MainLayout({ children }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -242,6 +246,51 @@ function MainLayout({ children }) {
       window.removeEventListener('refresh-conversations', fetchConvs);
     };
   }, [user]);
+
+  const refreshNotifications = () => {
+    if (user?.type !== 'user') {
+      setNotifications([]);
+      setNotificationUnreadCount(0);
+      return;
+    }
+    setNotificationsLoading(true);
+    api.getNotifications()
+      .then((data) => {
+        setNotifications(data.items || []);
+        setNotificationUnreadCount(data.unread_count || 0);
+      })
+      .catch(console.error)
+      .finally(() => setNotificationsLoading(false));
+  };
+
+  useEffect(() => {
+    refreshNotifications();
+  }, [user]);
+
+  const handleMarkNotificationRead = async (id) => {
+    setNotifications(prev => prev.map(item => item.id === id ? { ...item, is_read: true } : item));
+    setNotificationUnreadCount(prev => Math.max(0, prev - 1));
+    try {
+      await api.markNotificationRead(id);
+      refreshNotifications();
+    } catch (error) {
+      console.error(error);
+      refreshNotifications();
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    if (!notificationUnreadCount) return;
+    setNotifications(prev => prev.map(item => ({ ...item, is_read: true })));
+    setNotificationUnreadCount(0);
+    try {
+      await api.markAllNotificationsRead();
+      refreshNotifications();
+    } catch (error) {
+      console.error(error);
+      refreshNotifications();
+    }
+  };
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -371,7 +420,11 @@ function MainLayout({ children }) {
                     className={`p-2 rounded-full hover:bg-surface-variant text-on-surface-variant relative flex items-center justify-center border border-white/20 dark:border-white/10 shadow-xs bg-white/40 dark:bg-white/10 backdrop-blur-md transition-all ${showNotifications ? 'bg-surface-variant text-[#00c897]' : ''}`}
                   >
                     <Bell size={16} />
-                    <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] font-extrabold text-white flex items-center justify-center border border-surface scale-90">2</span>
+                    {notificationUnreadCount > 0 && (
+                      <span className="absolute top-0.5 right-0.5 min-w-3.5 h-3.5 px-1 bg-red-500 rounded-full text-[8px] font-extrabold text-white flex items-center justify-center border border-surface scale-90">
+                        {notificationUnreadCount > 9 ? '9+' : notificationUnreadCount}
+                      </span>
+                    )}
                   </button>
                 </div>
               )}
@@ -603,6 +656,11 @@ function MainLayout({ children }) {
         <NotificationDropdown 
           isOpen={showNotifications} 
           onClose={() => setShowNotifications(false)} 
+          notifications={notifications}
+          unreadCount={notificationUnreadCount}
+          loading={notificationsLoading}
+          onMarkRead={handleMarkNotificationRead}
+          onMarkAllRead={handleMarkAllNotificationsRead}
         />
       </div>
     </div>
@@ -637,6 +695,7 @@ function App() {
       }>
         <Route index element={<CommandCenter />} />
         <Route path="reviews" element={<UserReviews />} />
+        <Route path="notifications" element={<AdminNotifications />} />
         <Route path="eval" element={<AIEvalLab />} />
         <Route path="ml" element={<MLControlCenter />} />
         <Route path="knowledge-builder" element={<KnowledgeBuilder />} />
