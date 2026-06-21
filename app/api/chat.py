@@ -3,8 +3,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.db.models import Conversation, UserAssistantSetting
-from app.prompts import DEFAULT_ASSISTANT_PERSONA
+from app.db.models import Conversation
 from app.core.security import get_current_entity
 from app.assistant.pipeline import stream_chat_pipeline
 from app.core.logger import log_error
@@ -21,7 +20,6 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
     image_base64: Optional[str] = None
     deep_search: bool = False
-    assistant_persona: Optional[str] = None
 
 
 async def _run_stream_in_thread(gen_func, **kwargs) -> AsyncGenerator[str, None]:
@@ -104,11 +102,6 @@ async def chat_endpoint(
         conv_id = new_conv.id
 
     user_identifier = entity_obj.id if entity_obj else "anonymous"
-    assistant_persona = req.assistant_persona or DEFAULT_ASSISTANT_PERSONA
-    if entity_type == "user" and entity_obj and not req.assistant_persona:
-        setting = db.query(UserAssistantSetting).filter(UserAssistantSetting.user_id == entity_obj.id).first()
-        if setting:
-            assistant_persona = setting.assistant_persona
 
     return StreamingResponse(
         _run_stream_in_thread(
@@ -121,7 +114,6 @@ async def chat_endpoint(
             display_query=req.display_query,
             image_base64=req.image_base64,
             is_deep_search=req.deep_search,
-            assistant_persona=assistant_persona,
         ),
         media_type="text/event-stream",
         headers={

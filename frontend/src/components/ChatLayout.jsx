@@ -358,38 +358,10 @@ const SUGGESTION_CARDS = [
   }
 ];
 
-const PERSONA_OPTIONS = [
-  {
-    id: 'secretary',
-    label: 'Thư ký',
-    title: 'Cô thư ký dễ mến',
-    icon: Sparkles,
-  },
-  {
-    id: 'butler',
-    label: 'VIP Butler',
-    title: 'Quản gia VIP nghiêm cẩn',
-    icon: ShieldCheck,
-  },
-  {
-    id: 'driver',
-    label: 'Tài xế Xanh',
-    title: 'Anh tài xế Xanh nhiệt tình',
-    icon: Car,
-  },
-  {
-    id: 'expert',
-    label: 'Chuyên gia',
-    title: 'Chuyên gia tư vấn chính sách',
-    icon: Info,
-  },
-];
-
 export default function ChatLayout() {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [assistantPersona, setAssistantPersona] = useState(() => localStorage.getItem('assistant_persona') || 'secretary');
   const [imageBase64, setImageBase64] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
@@ -421,29 +393,6 @@ export default function ChatLayout() {
     }
   });
   const [explainingFood, setExplainingFood] = useState(null);
-
-  useEffect(() => {
-    if (user?.type !== 'user') return;
-    api.getPreferences()
-      .then((data) => {
-        const persona = data.assistant_persona || 'secretary';
-        setAssistantPersona(persona);
-        localStorage.setItem('assistant_persona', persona);
-      })
-      .catch(console.error);
-  }, [user]);
-
-  const handlePersonaChange = async (persona) => {
-    setAssistantPersona(persona);
-    localStorage.setItem('assistant_persona', persona);
-    if (user?.type === 'user') {
-      try {
-        await api.updatePreferences({ assistant_persona: persona });
-      } catch (error) {
-        console.error('Failed to save assistant persona', error);
-      }
-    }
-  };
 
   const handleReviewClick = async (messageId, rating) => {
     if (!messageId) return;
@@ -661,7 +610,7 @@ export default function ChatLayout() {
     setLoading(true);
 
     try {
-      const response = await api.chatStream(userQuery, currentConvIdRef.current, currentImageBase64, isDeepSearch, displayQuery !== userQuery ? displayQuery : null, assistantPersona);
+      const response = await api.chatStream(userQuery, currentConvIdRef.current, currentImageBase64, isDeepSearch, displayQuery !== userQuery ? displayQuery : null);
       if (!response.ok) throw new Error('API Error');
       
       setMessages(prev => [...prev, { role: 'assistant', content: '', latency_ms: null, metrics: null, created_at: new Date().toISOString() }]);
@@ -1473,28 +1422,6 @@ export default function ChatLayout() {
                 </button>
               </div>
             )}
-            <div className="flex items-center gap-1.5 px-1 pointer-events-auto">
-              {PERSONA_OPTIONS.map((persona) => {
-                const Icon = persona.icon;
-                const active = assistantPersona === persona.id;
-                return (
-                  <button
-                    key={persona.id}
-                    type="button"
-                    onClick={() => handlePersonaChange(persona.id)}
-                    title={persona.title}
-                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black transition-all active:scale-95 ${
-                      active
-                        ? 'border-[#00c897]/40 bg-[#00c897]/10 text-[#00a884] dark:text-[#00c897]'
-                        : 'border-transparent text-on-surface-variant/60 hover:bg-surface-variant/40 hover:text-on-surface-variant'
-                    }`}
-                  >
-                    <Icon size={12} />
-                    {persona.label}
-                  </button>
-                );
-              })}
-            </div>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}

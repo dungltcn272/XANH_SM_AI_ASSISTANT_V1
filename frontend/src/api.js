@@ -17,7 +17,7 @@ export const api = {
     return localStorage.getItem('access_token');
   },
 
-  chatStream: async (query, conversation_id = null, imageBase64 = null, isDeepSearch = false, displayQuery = null, assistantPersona = null) => {
+  chatStream: async (query, conversation_id = null, imageBase64 = null, isDeepSearch = false, displayQuery = null) => {
     const token = api.getAuthToken();
     const headers = { 'Content-Type': 'application/json' };
     if (token) {
@@ -27,9 +27,6 @@ export const api = {
     const body = { query, conversation_id, deep_search: isDeepSearch, display_query: displayQuery };
     if (imageBase64) {
       body.image_base64 = imageBase64;
-    }
-    if (assistantPersona) {
-      body.assistant_persona = assistantPersona;
     }
 
     return api._fetch(`${API_BASE}/chat`, {
@@ -57,22 +54,6 @@ export const api = {
     return res.json();
   },
 
-  getPreferences: async () => {
-    const res = await api._fetch(`${API_BASE}/preferences`);
-    if (!res.ok) throw new Error('API Error');
-    return res.json();
-  },
-
-  updatePreferences: async (payload) => {
-    const res = await api._fetch(`${API_BASE}/preferences`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error('API Error');
-    return res.json();
-  },
-  
   getDbStats: async () => {
     const res = await api._fetch(`${API_BASE}/admin/stats`);
     if (!res.ok) throw new Error('API Error');

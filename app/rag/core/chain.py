@@ -9,7 +9,7 @@ from app.assistant.events import sse_pipeline_step
 from app.core.config import settings as config
 from app.core.llm import get_llm_client
 from app.core.logger import log_warn, log_error
-from app.prompts import DEFAULT_ASSISTANT_PERSONA, RAG_ANSWER_SYSTEM_PROMPT, apply_assistant_persona
+from app.prompts import RAG_ANSWER_SYSTEM_PROMPT
 from app.rag.search.hybrid_search import XanhSMHybridSearch
 from app.rag.search.reranker import XanhSMReranker
 from app.rag.storage.trace_store import save_rag_request_log
@@ -38,10 +38,6 @@ class RagAnswerChain:
             "cost_usd": usd_total,
             "cost_vnd": usd_total * 25400,
         }
-
-    def _persona_cache_key(self, query: str, assistant_persona: str) -> str:
-        persona = (assistant_persona or DEFAULT_ASSISTANT_PERSONA).strip().lower()
-        return f"persona:{persona}::{query}"
 
     def _is_cacheable_answer(self, answer: str, metrics: dict[str, Any]) -> bool:
         clean = (answer or "").strip()
@@ -191,11 +187,10 @@ class RagAnswerChain:
         chat_history: list[dict[str, str]] | None = None,
         food_context: dict[str, Any] | None = None,
         assistant_context: dict[str, Any] | None = None,
-        assistant_persona: str = "secretary",
     ):
         compressed_context = self._compress_context(context_docs)
         messages = ContextBuilder.build_rag_messages(
-            system_prompt=apply_assistant_persona(RAG_ANSWER_SYSTEM_PROMPT, assistant_persona),
+            system_prompt=RAG_ANSWER_SYSTEM_PROMPT,
             query=query,
             chat_history=chat_history or [],
             compressed_context=compressed_context,
@@ -224,7 +219,6 @@ class RagAnswerChain:
         is_deep_search: bool = False,
         food_context: dict[str, Any] | None = None,
         assistant_context: dict[str, Any] | None = None,
-        assistant_persona: str = "secretary",
     ):
         def finalize_generation(final_answer: str, top_docs: list[Any], messages: list[dict[str, str]], retrieved_docs: list[Any], reranked_docs: list[Any], expanded_docs: list[Any]):
             est_p = len(" ".join([m["content"] for m in messages])) // 4
@@ -234,9 +228,9 @@ class RagAnswerChain:
             citations = self._build_citations(top_docs[:5])
             yield f'data: {json.dumps({"sources": citations})}\n\n'
             if self.cache and not bypass_cache and self._is_cacheable_answer(final_answer, metrics):
-                self.cache.set(self._persona_cache_key(normalized_query, assistant_persona), final_answer, citations)
+                self.cache.set(normalized_query, final_answer, citations)
                 if rewritten_query != normalized_query:
-                    self.cache.set(self._persona_cache_key(rewritten_query, assistant_persona), final_answer, citations)
+                    self.cache.set(rewritten_query, final_answer, citations)
             yield f'data: {json.dumps({"metrics": metrics})}\n\n'
             
             save_rag_request_log(
@@ -286,7 +280,6 @@ class RagAnswerChain:
                 chat_history=chat_history,
                 food_context=food_context,
                 assistant_context=assistant_context,
-                assistant_persona=assistant_persona,
             )
             metrics["compressed_context_len"] = len(compressed_context)
 

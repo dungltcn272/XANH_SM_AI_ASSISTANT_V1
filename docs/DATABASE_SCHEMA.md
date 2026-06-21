@@ -748,17 +748,17 @@ Trace chi tiết cho mỗi request food recommendation.
 | `sse_events_json` | `Text`, JSON | Các step SSE đã phát. |
 | `created_at` | `DateTime`, index | Thời điểm request. |
 
-## Nhóm Notifications Và Assistant Persona
+## Nhóm Notifications Và Legacy Assistant Settings
 
 ### `user_assistant_settings`
 
-Lưu lựa chọn nhân cách AI cho user đăng nhập. Guest vẫn có thể dùng persona qua `localStorage` ở frontend và gửi kèm từng request chat, nhưng không ghi vào bảng này.
+Bảng legacy từ thử nghiệm persona. Runtime hiện không đọc/ghi bảng này; assistant dùng giọng CSKH mặc định, xưng "em" và gọi người dùng là "anh/chị".
 
 | Trường | Kiểu | Tác dụng |
 | --- | --- | --- |
 | `id` | `String`, PK | Mã setting dạng `asstset_<uuid>`. |
 | `user_id` | `String`, FK `users.id`, unique, index | User sở hữu cấu hình. Mỗi user có tối đa một record. |
-| `assistant_persona` | `String`, index | Persona đang chọn, hiện hỗ trợ `secretary` và `butler`. |
+| `assistant_persona` | `String`, index | Giá trị persona legacy, hiện không còn được runtime sử dụng. |
 | `created_at` | `DateTime` | Thời điểm tạo cấu hình. |
 | `updated_at` | `DateTime`, index | Thời điểm cập nhật cấu hình gần nhất. |
 
