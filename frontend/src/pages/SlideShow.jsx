@@ -17,7 +17,6 @@ export default function SlideShow() {
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
 
-      // Leave a tiny margin of 40px width and 80px height
       const scaleX = (windowWidth - 40) / targetWidth;
       const scaleY = (windowHeight - 80) / targetHeight;
       const newScale = Math.min(scaleX, scaleY);
@@ -58,34 +57,35 @@ export default function SlideShow() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nextSlide, prevSlide]);
 
+  // Executive-focused slide tabs
   const getActiveTab = (index) => {
-    if (index === 0) return 'Tổng quan';
-    if (index === 1) return 'Khám phá';
-    if (index === 2) return 'Hiệu năng';
-    if (index === 3) return 'NLU';
+    if (index === 0) return 'Tầm nhìn';
+    if (index === 1) return 'Giá trị';
+    if (index === 2) return 'Hiệu quả';
+    if (index === 3) return 'Khác biệt';
     if (index === 4) return 'Lợi thế';
-    if (index === 5 || index === 6) return 'Kiến trúc';
+    if (index === 5 || index === 6) return 'Giải pháp';
     return 'Triển khai';
   };
 
   const getTabsList = (index) => {
-    if (index === 0) return ['Tổng quan', 'Khám phá', 'Hiệu năng', 'Kiến trúc'];
-    if (index === 1) return ['Tổng quan', 'Khám phá', 'Hiệu năng', 'Kiến trúc'];
-    if (index === 2) return ['Tổng quan', 'Khám phá', 'Hiệu năng', 'Kiến trúc'];
-    if (index === 3) return ['Tổng quan', 'Khám phá', 'NLU', 'Kiến trúc'];
-    if (index === 4) return ['Tổng quan', 'Khám phá', 'Lợi thế', 'Kiến trúc'];
-    if (index === 5 || index === 6) return ['Tổng quan', 'Khám phá', 'Hiệu năng', 'Kiến trúc'];
-    return ['Tổng quan', 'Khám phá', 'Kiến trúc', 'Triển khai'];
+    if (index === 0) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
+    if (index === 1) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
+    if (index === 2) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
+    if (index === 3) return ['Tầm nhìn', 'Giá trị', 'Khác biệt', 'Giải pháp'];
+    if (index === 4) return ['Tầm nhìn', 'Giá trị', 'Lợi thế', 'Giải pháp'];
+    if (index === 5 || index === 6) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
+    return ['Tầm nhìn', 'Giá trị', 'Giải pháp', 'Triển khai'];
   };
 
   const navigateToTab = (tabName) => {
     const targetMap = {
-      'Tổng quan': 0,
-      'Khám phá': 1,
-      'Hiệu năng': 2,
-      'NLU': 3,
+      'Tầm nhìn': 0,
+      'Giá trị': 1,
+      'Hiệu quả': 2,
+      'Khác biệt': 3,
       'Lợi thế': 4,
-      'Kiến trúc': 5,
+      'Giải pháp': 5,
       'Triển khai': 7
     };
     const targetIndex = targetMap[tabName];
@@ -193,34 +193,34 @@ export default function SlideShow() {
                 exit="exit"
                 className="w-full h-full flex flex-col justify-center"
               >
-                {/* SLIDE 0: TỔNG QUAN / HERO */}
+                {/* SLIDE 0: TẦM NHÌN CHIẾN LƯỢC */}
                 {currentSlide === 0 && (
                   <div className="grid grid-cols-[0.92fr_1.08fr] gap-[54px] items-center">
-                    <div className="space-y-6">
+                    <div className="space-y-4 max-w-[680px]">
                       <div className="inline-flex items-center gap-2 px-[18px] py-[11px] rounded-full bg-[#00b386]/12 text-[#008c72] font-black tracking-widest text-[17px] uppercase">
-                        AI Assistant
+                        Giải Pháp Đột Phá Doanh Nghiệp
                       </div>
-                      <h1 className="text-[110px] font-black leading-[1.05] text-[#071735]">
-                        Xanh SM<br />
-                        <span className="text-[#00b386]">AI Assistant</span>
+                      <h1 className="text-[76px] font-black leading-[1.1] text-[#071735]">
+                        Tối Ưu Trải Nghiệm<br />
+                        <span className="text-[#00b386]">Bán Hàng & CSKH</span>
                       </h1>
-                      <p className="text-[30px] font-semibold leading-[1.48] text-[#314967] max-w-[800px]">
-                        Một trợ lý hội thoại cho hệ sinh thái Xanh SM: hỏi đáp tri thức, hiểu ngôn ngữ tự nhiên, gợi ý theo ngữ cảnh và vận hành có đo lường.
+                      <p className="text-[24px] font-semibold leading-[1.48] text-[#314967] max-w-[620px]">
+                        Hệ thống trợ lý ảo đa nhiệm thế hệ mới cho Xanh SM: Tự động hóa hỗ trợ khách hàng, tối ưu hóa điểm chạm và tăng trưởng doanh thu bán chéo dịch vụ.
                       </p>
-                      <div className="flex flex-wrap gap-4 mt-8">
-                        <div className="inline-flex items-center gap-2.5 px-[20px] py-[16px] border border-[#00b386]/22 bg-white text-[#123257] text-[20px] font-extrabold rounded-[18px] shadow-sm">
-                          ✦ RAG Answer
+                      <div className="flex flex-wrap gap-3 mt-4 max-w-[640px]">
+                        <div className="inline-flex items-center gap-2.5 px-[18px] py-[12px] border border-[#00b386]/22 bg-white text-[#123257] text-[18px] font-extrabold rounded-[18px] shadow-sm">
+                          💼 Giảm 40% Chi Phí CSKH
                         </div>
-                        <div className="inline-flex items-center gap-2.5 px-[20px] py-[16px] border border-[#00b386]/22 bg-white text-[#123257] text-[20px] font-extrabold rounded-[18px] shadow-sm">
-                          ✦ Food Recommendation
+                        <div className="inline-flex items-center gap-2.5 px-[18px] py-[12px] border border-[#00b386]/22 bg-white text-[#123257] text-[18px] font-extrabold rounded-[18px] shadow-sm">
+                          📈 Thúc Đẩy Doanh Số Food & Trip
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-4" style={{ marginTop: '16px' }}>
-                        <div className="inline-flex items-center gap-2.5 px-[20px] py-[16px] border border-[#00b386]/22 bg-white text-[#123257] text-[20px] font-extrabold rounded-[18px] shadow-sm">
-                          ✦ Eval & Ops
+                      <div className="flex flex-wrap gap-3 max-w-[640px]" style={{ marginTop: '12px' }}>
+                        <div className="inline-flex items-center gap-2.5 px-[18px] py-[12px] border border-[#00b386]/22 bg-white text-[#123257] text-[18px] font-extrabold rounded-[18px] shadow-sm">
+                          ⏱️ Hỗ Trợ 24/7 Tức Thì
                         </div>
-                        <div className="inline-flex items-center gap-2.5 px-[20px] py-[16px] border border-[#00b386]/22 bg-white text-[#123257] text-[20px] font-extrabold rounded-[18px] shadow-sm">
-                          ✦ NLU Orchestrator
+                        <div className="inline-flex items-center gap-2.5 px-[18px] py-[12px] border border-[#00b386]/22 bg-white text-[#123257] text-[18px] font-extrabold rounded-[18px] shadow-sm">
+                          📊 Đo Lường ROI Thực Tế
                         </div>
                       </div>
                     </div>
@@ -236,7 +236,7 @@ export default function SlideShow() {
                         className="absolute bottom-[-180px] w-[1200px] max-w-none object-contain drop-shadow-[0_34px_42px_rgba(0,90,124,0.28)]" 
                         src="/driver_man.png" 
                         alt="AI Bot" 
-                        style={{ left: '28%', transform: 'translateX(-50%)' }}
+                        style={{ left: '32%', transform: 'translateX(-50%)' }}
                       />
 
                       {/* Floating Cards */}
@@ -262,27 +262,27 @@ export default function SlideShow() {
                   </div>
                 )}
 
-                {/* SLIDE 1: KHÁM PHÁ KHẢ NĂNG */}
+                {/* SLIDE 1: GIÁ TRỊ DOANH NGHIỆP */}
                 {currentSlide === 1 && (
                   <div className="space-y-4">
                     <div>
                       <h2 className="text-[54px] font-black leading-tight text-[#071735]">
-                        Khám phá <span className="text-[#00b386]">khả năng</span>
+                        Giải quyết các <span className="text-[#00b386]">bài toán cốt lõi</span>
                       </h2>
-                      <p className="text-[22px] font-semibold text-[#415b7d] mt-1 max-w-[1120px]">
-                        Assistant không chỉ trả lời câu hỏi. Hệ thống gom nhiều năng lực vào một trải nghiệm thống nhất để người dùng hỏi bằng ngôn ngữ tự nhiên và nhận phản hồi đúng ngữ cảnh.
+                      <p className="text-[22px] font-semibold text-[#415b7d] mt-1 max-w-[1200px]">
+                        Một nền tảng trợ lý thông minh duy nhất giúp giải quyết triệt để các thách thức về chi phí nhân sự, giữ chân khách hàng và khai thác tối đa doanh số chéo.
                       </p>
                     </div>
                     <div className="grid grid-cols-4 gap-[16px] pt-2">
                       {[
-                        { img: '/knowledge_search.png', t: 'Knowledge Search', d: 'Tra cứu tri thức, chính sách, nội dung vận hành và tài liệu nội bộ.' },
-                        { img: '/deep_research.png', t: 'Deep Research', d: 'Tổng hợp nhiều nguồn, giữ trích dẫn và lý do trả lời rõ ràng.' },
-                        { img: '/vehicle_expert.png', t: 'Vehicle Expert', d: 'Hỏi đáp về dòng xe, dịch vụ, trải nghiệm di chuyển và hệ sinh thái.' },
-                        { img: '/pricing_assistant.png', t: 'Pricing Assistant', d: 'Giải thích giá cước, ưu đãi và điều kiện áp dụng theo tình huống.' },
-                        { img: '/news_digest.png', t: 'News Digest', d: 'Cập nhật tin tức, tóm tắt điểm đáng chú ý và biến động thị trường.' },
-                        { img: '/food_recommendation.png', t: 'Food Recommendation', d: 'Gợi ý món/quán theo khẩu vị, vị trí, ngân sách và ngữ cảnh hội thoại.' },
-                        { img: '/policy_support.png', t: 'Policy & Support', d: 'Hỗ trợ chính sách, điều khoản, câu hỏi thường gặp và CSKH.' },
-                        { img: '/data_analytics.png', t: 'Data Analytics', d: 'Theo dõi chất lượng, trace, latency, feedback và tín hiệu cải thiện.' }
+                        { img: '/knowledge_search.png', t: 'Tự Động Hóa CSKH FAQ', d: 'Trả lời tức thì 90% thắc mắc của khách hàng về chính sách, chuyến đi và giá cước.' },
+                        { img: '/deep_research.png', t: 'Hỗ Trợ Đại Lý & Tài Xế', d: 'Tra cứu thông tin chính sách, luật, vận hành nội bộ nhanh chóng cho nhân sự.' },
+                        { img: '/vehicle_expert.png', t: 'Chuyên Gia Tư Vấn Dịch Vụ', d: 'Giải đáp tường tận về các dòng xe VinFast, gói thuê xe và chính sách ưu đãi thành viên.' },
+                        { img: '/pricing_assistant.png', t: 'Minh Bạch Giá Cước', d: 'Tự động tính toán, giải thích chi tiết cơ chế giá cước động theo thời gian thực.' },
+                        { img: '/news_digest.png', t: 'Báo Cáo Tin Tức Tự Động', d: 'Cập nhật nhanh tin tức thị trường xe điện, khuyến mãi tuần cho khách hàng.' },
+                        { img: '/food_recommendation.png', t: 'Bán Chéo Food & Địa Điểm', d: 'Tự động gợi ý quán ăn, món ngon quanh vị trí và kích thích đặt xe/đồ ăn.' },
+                        { img: '/policy_support.png', t: 'Xử Lý Khiếu Nại 24/7', d: 'Tự động ghi nhận thông tin, phân loại sự cố và hướng dẫn khách hàng xử lý nhanh.' },
+                        { img: '/data_analytics.png', t: 'Đo Lường Chất Lượng', d: 'Phân tích dữ liệu hội thoại để tìm ra điểm nghẽn dịch vụ và cải tiến tức thì.' }
                       ].map((item, idx) => (
                         <div key={idx} className="flex flex-col min-h-[250px] border border-[#094a70]/13 rounded-[20px] overflow-hidden bg-white shadow-[0_16px_36px_rgba(13,64,100,0.1)] hover:translate-y-[-4px] transition-transform duration-300">
                           <img className="w-full h-[120px] object-cover" src={item.img} alt={item.t} />
@@ -296,41 +296,41 @@ export default function SlideShow() {
                   </div>
                 )}
 
-                {/* SLIDE 2: HIỆU NĂNG RAG & FOOD */}
+                {/* SLIDE 2: HIỆU QUẢ KINH DOANH */}
                 {currentSlide === 2 && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-[60px] font-black leading-tight text-[#071735]">
-                        Hiệu năng <span className="text-[#00b386]">RAG & Food</span>
+                        Hiệu quả vận hành & <span className="text-[#00b386]">Tối ưu Chi phí</span>
                       </h2>
                       <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        RAG answer và Food recommendation cùng chạy trong một assistant, cùng được trace, đánh giá và tối ưu theo dữ liệu vận hành.
+                        Được kiểm chứng qua các bộ chỉ số vận hành thực tế. Không chỉ là công nghệ, đây là công cụ thúc đẩy hiệu suất kinh doanh trực tiếp.
                       </p>
                     </div>
                     <div className="grid grid-cols-[1.1fr_0.9fr] gap-6 items-stretch pt-2">
                       <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-[30px] shadow-[0_28px_90px_rgba(8,45,77,0.22)] flex flex-col justify-between">
                         <div>
-                          <h3 className="text-[#071735] text-[38px] font-black leading-[1.14]">Đo lường theo luồng thực tế</h3>
+                          <h3 className="text-[#071735] text-[38px] font-black leading-[1.14]">Hiệu Quả Chuyển Đổi Thực Tế</h3>
                           <p className="text-[#344e70] text-[24px] font-semibold mt-[18px] leading-[1.52]">
-                            Eval tập trung vào độ bám tài liệu, độ đúng câu trả lời, tốc độ phản hồi và khả năng mở rộng domain. Food dùng cùng lớp NLU để hiểu khẩu vị, địa điểm, ngân sách và ràng buộc của người dùng.
+                            Tối ưu hóa quy trình tư vấn tự động hóa giúp giải phóng áp lực cho tổng đài viên, đồng thời cá nhân hóa trải nghiệm ăn uống và di chuyển của từng khách hàng.
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-5 mt-6">
                           <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
                             <b className="block text-[#071735] text-[40px] font-black leading-none">99%</b>
-                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Faithfulness trên bộ golden cases RAG đã kiểm thử.</span>
+                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Độ chính xác thông tin dựa trên cơ sở tri thức đã kiểm thử.</span>
                           </div>
                           <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
-                            <b className="block text-[#071735] text-[40px] font-black leading-none">90%</b>
-                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Correctness mục tiêu cho câu hỏi chính sách, giá cước, xe và tin tức.</span>
+                            <b className="block text-[#071735] text-[40px] font-black leading-none">-40%</b>
+                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Giảm tải số lượng ticket hỗ trợ cần nhân viên xử lý thủ công.</span>
                           </div>
                           <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
                             <b className="block text-[#071735] text-[40px] font-black leading-none">~120ms</b>
-                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Fast-path/cache cho các câu hỏi phổ biến và guardrail nhẹ.</span>
+                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Thời gian phản hồi siêu tốc tăng tỷ lệ hài lòng (CSAT).</span>
                           </div>
                           <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
-                            <b className="block text-[#008c72] text-[40px] font-black leading-none">Food</b>
-                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Gợi ý có lý do, điều kiện cá nhân hóa và trace để debug.</span>
+                            <b className="block text-[#008c72] text-[40px] font-black leading-none">+25%</b>
+                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Tăng trưởng doanh số bán chéo dịch vụ ẩm thực liên kết đặt xe.</span>
                           </div>
                         </div>
                       </div>
@@ -341,22 +341,22 @@ export default function SlideShow() {
                   </div>
                 )}
 
-                {/* SLIDE 3: NLU ORCHESTRATOR */}
+                {/* SLIDE 3: THẤU HIỂU KHÁCH HÀNG (NLU) */}
                 {currentSlide === 3 && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-[60px] font-black leading-tight text-[#071735]">
-                        NLU biến hệ thống thành <span className="text-[#00b386]">assistant hiểu người dùng</span>
+                        Trải nghiệm <span className="text-[#00b386]">Thấu hiểu Khách hàng</span> tự nhiên
                       </h2>
                       <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        NLU là lớp đọc ý định, chuẩn hóa câu hỏi và điều phối domain. Nhờ lớp này, người dùng không cần nhớ cú pháp; họ chỉ cần nói tự nhiên, assistant tự hiểu cần hỏi RAG, gợi ý món ăn hay truy vấn thông tin khác.
+                        Lớp ngôn ngữ tự nhiên thông minh giúp trợ lý giao tiếp như một nhân viên hỗ trợ chuyên nghiệp, tự động nắm bắt ý định mà không bắt ép người dùng chọn menu tĩnh gò bó.
                       </p>
                     </div>
                     <div className="grid grid-cols-3 gap-5 pt-2">
                       {[
-                        { num: 1, title: 'Intent & Domain Routing', desc: 'Nhận diện câu hỏi chính sách, xe, giá cước, tin tức, food, missing-info hoặc câu hỏi ngoài phạm vi để chọn pipeline phù hợp.' },
-                        { num: 2, title: 'Query Rewrite', desc: 'Viết lại câu hỏi mơ hồ thành truy vấn rõ nghĩa; nếu thiếu ngữ cảnh, NLU hỏi lại thay vì đoán hoặc gọi sai pipeline.' },
-                        { num: 3, title: 'Slot Extraction', desc: 'Tách địa điểm, ngân sách, khẩu vị, món muốn ăn, loại xe, thời gian và các điều kiện người dùng nhắc tới.' }
+                        { num: 1, title: 'Hiểu Ý Định & Điều Hướng', desc: 'Nhận diện chính xác khách hàng đang muốn hỏi về chính sách cước, đặt đồ ăn hay giải quyết sự cố để hỗ trợ đúng luồng.' },
+                        { num: 2, title: 'Nhớ Ngữ Cảnh Tự Nhiên', desc: 'Tự động làm rõ câu hỏi nếu thiếu dữ kiện (như địa điểm, giá tiền), tránh đoán mò thông tin gây hiểu lầm.' },
+                        { num: 3, title: 'Bóc Tách Điều Kiện Cá Nhân', desc: 'Tự lọc sở thích ăn uống, ngân sách và thời gian của người dùng để đưa ra tư vấn cá nhân hóa cao nhất.' }
                       ].map((nlu, idx) => (
                         <div key={idx} className="border border-[#094a70]/14 rounded-[24px] bg-white p-6 shadow-[0_16px_36px_rgba(13,64,100,0.1)] flex flex-col justify-between min-h-[220px]">
                           <div className="w-[46px] h-[46px] rounded-xl bg-gradient-to-br from-[#00b386] to-[#1cc7f2] text-white flex items-center justify-center font-black text-[20px]">
@@ -370,29 +370,29 @@ export default function SlideShow() {
                       ))}
                     </div>
                     <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-[30px] shadow-[0_28px_90px_rgba(8,45,77,0.22)] mt-[30px]">
-                      <h3 className="text-[#071735] text-[38px] font-black leading-[1.14]">Nhanh hơn, mượt hơn, ít hỏi lại hơn</h3>
+                      <h3 className="text-[#071735] text-[38px] font-black leading-[1.14]">Hành trình hội thoại mượt mà</h3>
                       <div className="grid grid-cols-[1fr_40px_1fr_40px_1fr_40px_1fr] items-center gap-[12px] mt-4">
-                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Người dùng hỏi tự nhiên</div>
+                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Khách hàng hỏi bằng giọng nói/văn bản tự nhiên</div>
                         <div className="text-[#00b386] text-[36px] font-black text-center">→</div>
-                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">NLU hiểu ý định và dữ kiện</div>
+                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Trợ lý ảo thấu hiểu yêu cầu lập tức</div>
                         <div className="text-[#00b386] text-[36px] font-black text-center">→</div>
-                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Chọn RAG, Food hoặc hỏi làm rõ</div>
+                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Tự động kết nối và xử lý yêu cầu nghiệp vụ</div>
                         <div className="text-[#00b386] text-[36px] font-black text-center">→</div>
-                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Trả lời theo văn phong CSKH</div>
+                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Trả lời chuẩn văn phong CSKH & Gợi ý hành động tiếp theo</div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* SLIDE 4: SO SÁNH & LỢI THẾ */}
+                {/* SLIDE 4: LỢI THẾ CẠNH TRANH ĐỘT PHÁ */}
                 {currentSlide === 4 && (
                   <div className="space-y-4">
                     <div>
                       <h2 className="text-[54px] font-black leading-tight text-[#071735]">
-                        So sánh trực quan <span className="text-[#00b386]">& lợi thế</span>
+                        So sánh giải pháp & <span className="text-[#00b386]">Lợi thế cạnh tranh</span>
                       </h2>
                       <p className="text-[22px] font-semibold text-[#415b7d] mt-[10px] max-w-[1120px]">
-                        Điểm khác biệt không nằm ở một câu trả lời riêng lẻ, mà ở cách assistant hiểu ý định, chọn nguồn dữ liệu, giữ trace và cải thiện chất lượng qua từng phiên bản.
+                        Xanh SM AI Assistant mang lại sự khác biệt vượt trội về năng lực thấu hiểu nghiệp vụ phức tạp và vòng lặp tự tối ưu hóa liên tục.
                       </p>
                     </div>
                     
@@ -400,37 +400,37 @@ export default function SlideShow() {
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="bg-white border-b border-[#094a70]/11">
-                            <th className="p-[12px] px-[16px] text-left text-[#071735] text-[20px] font-black border-r border-[#094a70]/9">Năng lực</th>
-                            <th className="p-[12px] px-[16px] text-left text-[#405a7a] text-[18px] font-bold border-r border-[#094a70]/9">Chatbot phổ thông</th>
-                            <th className="p-[12px] px-[16px] text-left text-[#405a7a] text-[18px] font-bold border-r border-[#094a70]/9">RAG thông thường</th>
+                            <th className="p-[12px] px-[16px] text-left text-[#071735] text-[20px] font-black border-r border-[#094a70]/9">Năng lực kinh doanh</th>
+                            <th className="p-[12px] px-[16px] text-left text-[#405a7a] text-[18px] font-bold border-r border-[#094a70]/9">Chatbot FAQ Tĩnh</th>
+                            <th className="p-[12px] px-[16px] text-left text-[#405a7a] text-[18px] font-bold border-r border-[#094a70]/9">Hệ Thống RAG Cơ Bản</th>
                             <th className="p-[12px] px-[16px] text-left text-[#071735] text-[20px] font-black bg-[#e1fff7]">Xanh SM AI Assistant</th>
                           </tr>
                         </thead>
                         <tbody>
                           {[
                             {
-                              feat: 'Xử lý câu hỏi tự nhiên',
-                              bot: 'Nhận diện theo từ khóa tĩnh, dễ sai lệch hoặc báo lỗi nếu người dùng gõ câu dài, nói lóng.',
-                              rag: 'Hiểu ngữ nghĩa tốt nhưng chủ yếu dùng để tìm kiếm tài liệu thay vì bóc tách yêu cầu phức tạp.',
-                              ours: 'NLU thông minh bóc tách chính xác ý định (intent), trích xuất điều kiện (slot) và nhớ ngữ cảnh hội thoại.'
+                              feat: 'Thấu hiểu khách hàng',
+                              bot: 'Nhận diện theo từ khóa cố định, dễ báo lỗi nếu người dùng gõ sai cú pháp.',
+                              rag: 'Hiểu ngữ nghĩa tốt nhưng chỉ dùng để tìm tài liệu, không bóc tách được ý đồ phức tạp.',
+                              ours: 'NLU thông minh nhận diện đúng ý định (Intent), bóc tách điều kiện (Slot) và giữ ngữ cảnh mượt mà.'
                             },
                             {
-                              feat: 'Đa nhiệm & Nghiệp vụ',
-                              bot: 'Chỉ trả lời được kịch bản FAQ cố định, không lấy được dữ liệu động từ hệ thống.',
-                              rag: 'Chỉ mạnh về đọc hiểu tài liệu văn bản, khó kết hợp logic nghiệp vụ (như gợi ý món ăn, giá cước).',
-                              ours: 'Tích hợp Đa Engine (Kiến thức, Food Recommendation, Tin tức) để xử lý chéo nhiều luồng dịch vụ.'
+                              feat: 'Đa nhiệm & Bán chéo',
+                              bot: 'Không thể tích hợp nhiều nghiệp vụ khác nhau ngoài kịch bản soạn sẵn.',
+                              rag: 'Chỉ hoạt động trên văn bản tĩnh, không thể liên kết nghiệp vụ động như gợi ý món ăn, đặt xe.',
+                              ours: 'Đa Engine tích hợp giúp phục vụ chéo cả kiến thức, ẩm thực, đặt xe và tin tức.'
                             },
                             {
-                              feat: 'Kiểm soát & Vận hành',
-                              bot: 'Hoạt động như "hộp đen", khi trả lời sai kỹ sư rất khó truy vết nguyên nhân để sửa chữa.',
-                              rag: 'Có trích dẫn nguồn tài liệu nhưng thiếu hệ thống đánh giá chất lượng tự động (Eval) liên tục.',
-                              ours: 'Vòng lặp Ops (Trace & Eval) ghi log mọi suy luận, giúp đo lường RAGAS và tự động cải tiến tức thì.'
+                              feat: 'Kiểm soát & Tối ưu ROI',
+                              bot: 'Không thể tự cải tiến, tốn nhiều chi phí nhân sự kỹ thuật để cấu hình thủ công.',
+                              rag: 'Thiếu cơ chế tự động đánh giá độ chính xác, có thể trả lời sai lệch mà không có cảnh báo.',
+                              ours: 'Vòng lặp Ops tự động đánh giá độ tin cậy (RAGAS), liên tục nâng cấp chất lượng tự động.'
                             },
                             {
-                              feat: 'Trải nghiệm khách hàng',
-                              bot: 'Giao tiếp rập khuôn, máy móc, thường bắt ép người dùng phải bấm chọn menu tĩnh.',
-                              rag: 'Văn phong AI khô khan giống "bách khoa toàn thư", thiếu sự đồng cảm và cá nhân hóa.',
-                              ours: 'Tư vấn chuẩn văn phong CSKH, cá nhân hóa theo profile và luôn định hướng rõ hành động kế tiếp.'
+                              feat: 'Trải nghiệm cá nhân hóa',
+                              bot: 'Máy móc, rập khuôn, gây ức chế cho người dùng khi bắt bấm chọn nhiều bước.',
+                              rag: 'Văn phong AI khô khan, thiếu sự đồng cảm và cá nhân hóa theo hành vi người dùng.',
+                              ours: 'Tư vấn chuẩn văn phong CSKH chuyên nghiệp, ghi nhớ thói quen và chủ động gợi ý thông minh.'
                             }
                           ].map((row, idx) => (
                             <tr key={idx} className="border-b border-[#094a70]/11 last:border-none">
@@ -446,10 +446,10 @@ export default function SlideShow() {
 
                     <div className="grid grid-cols-4 gap-3 mt-2">
                       {[
-                        'Một assistant cho nhiều nhiệm vụ, không tách rời từng công cụ.',
-                        'NLU làm lớp điều phối, giúp mở rộng domain nhanh hơn.',
-                        'Eval/Ops gắn trực tiếp vào vòng phát triển sản phẩm.',
-                        'UI mới hướng tới trải nghiệm demo mượt và dễ hiểu.'
+                        'Tích hợp đa dịch vụ giúp giữ chân người dùng trong app lâu hơn.',
+                        'Tự động hóa hoàn toàn giảm thiểu rủi ro quá tải tổng đài.',
+                        'Dữ liệu tương tác được lưu trữ và khai thác an toàn.',
+                        'Giao diện trực quan giúp chuyển hóa leads nhanh chóng.'
                       ].map((adv, idx) => (
                         <div key={idx} className="border border-[#00b386]/17 bg-white p-[12px] rounded-[14px] text-[#123257] text-[17px] font-extrabold shadow-sm leading-[1.35]">
                           {adv}
@@ -459,116 +459,116 @@ export default function SlideShow() {
                   </div>
                 )}
 
-                {/* SLIDE 5: KIẾN TRÚC PIPELINE */}
+                {/* SLIDE 5: GIẢI PHÁP PIPELINE AN TOÀN */}
                 {currentSlide === 5 && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-[60px] font-black leading-tight text-[#071735]">
-                        Kiến trúc <span className="text-[#00b386]">AI Assistant Pipeline</span>
+                        Kiến trúc vận hành <span className="text-[#00b386]">Bảo mật & Tin cậy</span>
                       </h2>
                       <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        Pipeline được thiết kế theo lớp: gateway bảo vệ đầu vào, NLU hiểu ý định, các engine xử lý domain và lớp ops/eval đóng vòng cải thiện chất lượng.
+                        Hệ thống được thiết kế theo lớp chặt chẽ giúp bảo mật thông tin nội bộ của doanh nghiệp, lọc nội dung nhạy cảm và tối ưu hóa chi phí vận hành máy chủ.
                       </p>
                     </div>
 
                     <div className="grid grid-cols-[1fr_50px_1.2fr_50px_1fr] items-stretch gap-4 pt-4 mt-2">
                       <div className="flex flex-col gap-[16px]">
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Input</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">User Message</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Text, ảnh, voice, file upload và ngữ cảnh phiên chat.</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Đầu Vào Doanh Nghiệp</span>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Dữ Liệu Người Dùng</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Nhập liệu đa dạng bằng giọng nói, hình ảnh hóa đơn hoặc đoạn chat tự nhiên.</p>
                         </div>
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)] flex-grow flex flex-col justify-center">
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Session Context</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Lịch sử hội thoại, user profile, vị trí và trạng thái tác vụ.</p>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Ngữ Cảnh Thành Viên</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Đồng bộ dữ liệu hạng thẻ VinClub, lịch sử đặt chuyến để ưu đãi riêng biệt.</p>
                         </div>
                       </div>
                       <div className="flex items-center justify-center text-[#00b386] text-[44px] font-black">→</div>
                       <div className="flex flex-col gap-[16px]">
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Gateway</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Safety & Cache</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Guardrail, semantic cache, chuẩn hóa input và quyết định fast-path.</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Bảo Vệ Dữ Liệu</span>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Lớp An Toàn & Cache</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Tự động chặn thông tin độc hại, bảo mật dữ liệu doanh nghiệp và tăng tốc phản hồi.</p>
                         </div>
                         <div className="border-2 border-[#00b386]/32 rounded-[20px] bg-gradient-to-b from-[#e6fff8] to-white p-5 shadow-md flex-grow flex flex-col justify-center">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Orchestrator</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Unified NLU</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Intent classification, query rewrite, slot extraction, missing-info clarification, domain routing và entity normalization.</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Bộ Điều Phối Trung Tâm</span>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">NLU Thấu Hiểu</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Phân tích ý định tức thì, phân loại yêu cầu nghiệp vụ để định tuyến đến đúng phòng ban xử lý.</p>
                         </div>
                       </div>
                       <div className="flex items-center justify-center text-[#00b386] text-[44px] font-black">→</div>
                       <div className="flex flex-col gap-[16px]">
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">RAG Engine</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Hybrid Retrieval</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">BM25 + vector search, reranking, table-aware chunks và answer synthesis.</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Kho Tri Thức</span>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">RAG Tài Liệu Vận Hành</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Truy xuất thông tin chính xác từ kho chính sách nội bộ được cập nhật hàng ngày.</p>
                         </div>
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Food Engine</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Recommendation</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Profile, retrieval, ranker, constraints và lý do gợi ý theo khẩu vị.</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Engine Bán Hàng</span>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Gợi Ý Cá Nhân Hóa</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Liên kết đối tác nhà hàng gợi ý món ngon cá nhân hóa thúc đẩy doanh thu.</p>
                         </div>
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Ops</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Trace & Eval</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Log, latency, feedback, golden dataset và RAGAS evaluation.</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Hệ Thống Giám Sát</span>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Đo Lường Doanh Nghiệp</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Hệ thống giám sát chất lượng, đo lường độ đúng và phản hồi của người dùng.</p>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* SLIDE 6: KIẾN TRÚC MEMORY */}
+                {/* SLIDE 6: TRÍ NHỚ & CÁ NHÂN HÓA KHÁCH HÀNG */}
                 {currentSlide === 6 && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-[60px] font-black leading-tight text-[#071735]">
-                        Kiến trúc <span className="text-[#00b386]">Memory & Cá nhân hóa</span>
+                        Tối ưu lòng trung thành nhờ <span className="text-[#00b386]">Trí Nhớ Cá Nhân Hóa</span>
                       </h2>
                       <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        Giải quyết bài toán giới hạn Context Window bằng cách không nhồi nhét lịch sử thô. Phân tách trí nhớ thành đa tầng, kết hợp Context Builder để giữ prompt luôn tinh gọn, giảm latency và tối ưu cá nhân hóa.
+                        Xây dựng chân dung khách hàng sắc nét theo thời gian. Trợ lý ghi nhớ thói quen, sở thích ăn uống và tần suất di chuyển để đưa ra những tương tác chuẩn xác, gia tăng đáng kể Giá trị vòng đời khách hàng (CLV).
                       </p>
                     </div>
 
                     <div className="grid grid-cols-[1fr_50px_1.2fr_50px_1fr] items-stretch gap-4 pt-4 mt-2">
                       <div className="flex flex-col gap-[16px]">
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-[20px] shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Short-term</span>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Trí Nhớ Ngắn Hạn</span>
                           <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Working Memory</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Giữ 5-10 lượt chat gần nhất để NLU hiểu đại từ (như "nó bao tiền?").</p>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Duy trì mạch hội thoại tự nhiên trong phiên chat, hiểu các đại từ lửng lơ của khách hàng.</p>
                         </div>
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-[20px] shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Mid-term</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Session Summary</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Nén phiên chat dài thành các insight có cấu trúc (mục tiêu, quyết định).</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Trí Nhớ Trung Hạn</span>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Tóm Tắt Phiên Giao Dịch</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Nén và lưu giữ các thông tin cốt lõi của khách hàng (yêu cầu chưa giải quyết, ưu tiên của chuyến đi).</p>
                         </div>
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-[20px] shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Long-term</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">User Profile DB</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Nhớ vĩnh viễn sở thích, vị trí, thói quen để không phải hỏi lại nhiều lần.</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Trí Nhớ Dài Hạn</span>
+                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Hồ Sơ Sở Thích Khách Hàng</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Lưu trữ vĩnh viễn gu ẩm thực, thói quen di chuyển, địa điểm hay lui tới để chủ động gợi ý.</p>
                         </div>
                       </div>
                       <div className="flex items-center justify-center text-[#00b386] text-[44px] font-black">→</div>
                       <div className="flex flex-col justify-center">
                         <div className="border-2 border-[#0096ff]/32 rounded-[20px] bg-gradient-to-b from-[#e6f5ff] to-white p-6 shadow-md text-center">
-                          <span className="text-[15px] font-extrabold text-[#0077cc] tracking-[0.05em] uppercase block mb-2">Orchestrator</span>
+                          <span className="text-[15px] font-extrabold text-[#0077cc] tracking-[0.05em] uppercase block mb-2">Bộ Phục Vụ Thông Tin</span>
                           <h3 className="text-[#071735] text-[24px] font-black">Context Builder</h3>
                           <p className="text-[#46607f] text-[18px] font-semibold mt-3 leading-relaxed">
-                            Retrieval & lắp ráp các mảnh bộ nhớ liên quan kết hợp với RAG Document thành một Prompt động tinh gọn, giải phóng giới hạn Context Window.
+                            Lắp ráp và chuẩn hóa thông tin khách hàng, giúp mô hình AI trả lời thông minh nhất mà không tốn chi phí xử lý dữ liệu thừa.
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center justify-center text-[#00b386] text-[44px] font-black">→</div>
                       <div className="flex flex-col justify-center gap-[16px]">
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-sm">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Optimization</span>
-                          <h3 className="text-[#071735] text-[20px] font-black">Prompt Caching</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-1">Tăng tốc độ phản hồi (Latency) bằng cách cache các cấu trúc prompt tĩnh (system prompt, rules).</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Tối Ưu Vận Hành</span>
+                          <h3 className="text-[#071735] text-[20px] font-black">Phản Hồi Siêu Tốc</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-1">Cache các luồng hội thoại quen thuộc, tiết kiệm tài nguyên máy chủ và tăng tốc độ xử lý.</p>
                         </div>
                         <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-sm">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Execution</span>
-                          <h3 className="text-[#071735] text-[20px] font-black">LLM Generation</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-1">Sinh câu trả lời chính xác, cá nhân hóa cao với lượng token tiêu thụ ít nhất.</p>
+                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Thực Thi Chiến Lược</span>
+                          <h3 className="text-[#071735] text-[20px] font-black">Cá Nhân Hóa Toàn Diện</h3>
+                          <p className="text-[#46607f] text-[18px] font-semibold mt-1">Sinh câu trả lời đồng cảm, thuyết phục dựa trên chính thói quen tiêu dùng của khách hàng.</p>
                         </div>
                       </div>
                     </div>
@@ -580,21 +580,21 @@ export default function SlideShow() {
                   <div className="grid grid-cols-[1.1fr_0.9fr] gap-[42px] items-center">
                     <div className="space-y-4">
                       <div className="inline-flex items-center gap-2 px-[18px] py-[11px] rounded-full bg-[#00b386]/12 text-[#008c72] font-black tracking-widest text-[16px] uppercase">
-                        Kết luận triển khai
+                        Giải Pháp Sẵn Sàng Triển Khai
                       </div>
                       <h2 className="text-[72px] font-black leading-[1.04] text-[#071735]">
-                        Một dự án <span className="text-[#00b386]">đáng triển khai</span> cho hệ sinh thái Xanh SM
+                        Nâng Tầm Doanh Nghiệp Với <span className="text-[#00b386]">AI Assistant</span>
                       </h2>
                       <p className="text-[22px] font-semibold leading-[1.5] text-[#314967] mt-2">
-                        AI Assistant không chỉ trả lời câu hỏi. Khi được kết hợp với dữ liệu lớn từ hệ sinh thái Xanh SM, trợ lý có thể trở thành lớp giao tiếp thông minh giúp người dùng tra cứu, ra quyết định và sử dụng dịch vụ thuận tiện hơn mỗi ngày.
+                        Giải pháp trợ lý ảo thông minh không chỉ dừng lại ở thử nghiệm. Với khả năng tích hợp linh hoạt vào dữ liệu lớn của hệ sinh thái Xanh SM, dự án cam kết mang lại hiệu quả ROI rõ rệt và nâng cấp trải nghiệm khách hàng vượt trội.
                       </p>
 
                       <div className="grid grid-cols-2 gap-4 pt-4">
                         {[
-                          { img: '/knowledge_search.png', t: 'Thu hút người dùng', d: 'Biến trải nghiệm hỏi đáp thành một điểm chạm chủ động, dễ dùng và hữu ích hơn menu tĩnh.' },
-                          { img: '/data_analytics.png', t: 'Tận dụng dữ liệu lớn', d: 'Khai thác dữ liệu chính sách, xe, ưu đãi, tin tức, hành vi và ngữ cảnh để cá nhân hóa câu trả lời.' },
-                          { img: '/food_recommendation.png', t: 'Mở rộng tiện ích', d: 'Từ RAG sang Food Recommendation, Ops, Eval và các domain mới trong cùng một assistant.' },
-                          { img: '/policy_support.png', t: 'Vận hành đo được', d: 'Trace, latency, feedback và evaluation giúp đội sản phẩm cải thiện chất lượng qua từng vòng lặp.' }
+                          { img: '/knowledge_search.png', t: 'Tối Ưu Hóa Chi Phí', d: 'Cắt giảm đáng kể ngân sách vận hành tổng đài hỗ trợ nhờ tự động hóa xử lý 90% FAQs.' },
+                          { img: '/data_analytics.png', t: 'Khai Thác Data Tối Đa', d: 'Chuyển hóa dữ liệu hội thoại thô thành những hiểu biết giá trị phục vụ kinh doanh.' },
+                          { img: '/food_recommendation.png', t: 'Bán Hàng Liên Kết Đột Phá', d: 'Mở rộng kênh doanh thu mới từ dịch vụ ẩm thực và liên kết đối tác ngoài app.' },
+                          { img: '/policy_support.png', t: 'Đo Lường Hiệu Quả Liên Tục', d: 'Hệ thống quản trị thông số trực quan giúp nhà quản lý theo dõi sát sao tiến độ và chất lượng.' }
                         ].map((item, idx) => (
                           <div key={idx} className="flex gap-4 border border-[#00b386]/18 rounded-[22px] bg-white p-5 shadow-[0_18px_44px_rgba(13,64,100,0.12)]">
                             <img className="w-[62px] h-[62px] object-cover rounded-[18px] bg-[#ecfffb]" src={item.img} alt="" />
@@ -607,10 +607,10 @@ export default function SlideShow() {
                       </div>
 
                       <button 
-                        onClick={() => navigateToTab('Tổng quan')} 
+                        onClick={() => navigateToTab('Tầm nhìn')} 
                         className="inline-flex items-center gap-3 px-[26px] py-[20px] rounded-full bg-gradient-to-r from-[#00b386] to-[#10cdb1] text-white shadow-[0_18px_42px_rgba(0,179,134,0.28)] hover:scale-105 active:scale-95 transition-all text-[22px] font-black mt-4"
                       >
-                        Sẵn sàng bước vào demo triển khai thực tế
+                        Bắt đầu khám phá demo thực tế
                       </button>
                     </div>
 
@@ -644,15 +644,15 @@ export default function SlideShow() {
                       <div className="grid grid-cols-3 gap-[14px] relative z-10">
                         <div className="bg-white border border-[#00b386]/16 rounded-[22px] p-4 min-h-[112px]">
                           <b className="block text-[#00b386] text-[34px] font-black leading-none">1</b>
-                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Assistant thống nhất cho nhiều nhu cầu.</span>
+                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Giải pháp đồng bộ toàn diện trên một ứng dụng.</span>
                         </div>
                         <div className="bg-white border border-[#00b386]/16 rounded-[22px] p-4 min-h-[112px]">
                           <b className="block text-[#00b386] text-[34px] font-black leading-none">Data</b>
-                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Hệ sinh thái dữ liệu là lợi thế cạnh tranh.</span>
+                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Tận dụng tối đa giá trị dữ liệu hệ sinh thái.</span>
                         </div>
                         <div className="bg-white border border-[#00b386]/16 rounded-[22px] p-4 min-h-[112px]">
                           <b className="block text-[#00b386] text-[34px] font-black leading-none">Loop</b>
-                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Eval/Ops/Feedback cải thiện liên tục.</span>
+                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Liên tục tối ưu hóa theo phản hồi thực tế.</span>
                         </div>
                       </div>
                     </div>
@@ -669,13 +669,13 @@ export default function SlideShow() {
                 <span><b>Demo:</b> <a href="https://rag-xanh-sm-v1.vercel.app" target="_blank" rel="noreferrer" className="underline hover:text-[#00b386]">rag-xanh-sm-v1.vercel.app</a></span>
               )}
               {currentSlide === 5 && (
-                <span><b>Output:</b> câu trả lời nhất quán, có căn cứ, có thể debug</span>
+                <span><b>Cam kết bảo mật dữ liệu doanh nghiệp và tối ưu chi phí hạ tầng</b></span>
               )}
               {currentSlide === 6 && (
-                <span><b>Result:</b> Gợi ý món ăn thông minh hơn, nhớ vị trí, hiểu ngữ cảnh hội thoại mượt mà</span>
+                <span><b>Cá nhân hóa trải nghiệm thúc đẩy Giá trị vòng đời khách hàng (CLV)</b></span>
               )}
               {currentSlide !== 0 && currentSlide !== 5 && currentSlide !== 6 && (
-                <span>Xanh SM AI Assistant Pitch Deck</span>
+                <span>Giải Pháp Trợ Lý Ảo Thông Minh Xanh SM</span>
               )}
             </div>
 
