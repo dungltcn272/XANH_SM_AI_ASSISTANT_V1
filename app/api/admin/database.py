@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 import asyncio
 from typing import Optional
 
-from app.api.admin.utils import _iso, _json_text_with_defaults
+from app.api.admin.utils import _iso, _json_text_with_defaults, serialize_value
 from app.api.admin.serializers import (
     serialize_rag_log,
     serialize_basic_log,
@@ -55,7 +55,8 @@ def _hour_bucket(dt: datetime) -> datetime:
 
 
 def build_timeseries(db: Session) -> dict:
-    end = datetime.utcnow()
+    from app.db.models import get_vn_time
+    end = get_vn_time().replace(tzinfo=None)
     start = end - timedelta(hours=23)
     buckets = [_hour_bucket(start + timedelta(hours=i)) for i in range(24)]
     data = {
@@ -480,7 +481,10 @@ def get_table_data(
             
     rows = query.offset(offset).limit(limit).all()
     # Convert Row objects to dicts
-    data = [dict(row._mapping) for row in rows]
+    data = [
+        {key: serialize_value(value) for key, value in dict(row._mapping).items()}
+        for row in rows
+    ]
     
     # Extract dynamic metadata for unique choices (like levels or error types)
     extra_metadata = {}
