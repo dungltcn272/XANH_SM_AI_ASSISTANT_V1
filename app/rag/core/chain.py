@@ -9,7 +9,7 @@ from app.assistant.events import sse_pipeline_step
 from app.core.config import settings as config
 from app.core.llm import get_llm_client
 from app.core.logger import log_warn, log_error
-from app.prompts import RAG_ANSWER_SYSTEM_PROMPT, apply_assistant_persona
+from app.prompts import DEFAULT_ASSISTANT_PERSONA, RAG_ANSWER_SYSTEM_PROMPT, apply_assistant_persona
 from app.rag.search.hybrid_search import XanhSMHybridSearch
 from app.rag.search.reranker import XanhSMReranker
 from app.rag.storage.trace_store import save_rag_request_log
@@ -38,6 +38,19 @@ class RagAnswerChain:
             "cost_usd": usd_total,
             "cost_vnd": usd_total * 25400,
         }
+
+    def _persona_cache_key(self, query: str, assistant_persona: str) -> str:
+        persona = (assistant_persona or DEFAULT_ASSISTANT_PERSONA).strip().lower()
+        return f"persona:{persona}::{query}"
+
+    def _is_cacheable_answer(self, answer: str, metrics: dict[str, Any]) -> bool:
+        clean = (answer or "").strip()
+        if not clean or metrics.get("generation_truncated"):
+            return False
+        lowered = clean.lower()
+        if "hệ thống bị gián đoạn" in lowered or "câu trả lời có thể chưa hoàn chỉnh" in lowered:
+            return False
+        return clean[-1] in {".", "!", "?", "…", ")", "]", "}", '"', "'", "ạ"}
 
     def _compress_context(self, docs: list[Any]) -> str:
         formatted_blocks = []
@@ -220,10 +233,10 @@ class RagAnswerChain:
             metrics["cost_usd"] += self._calculate_llm_cost(est_p, est_c)["cost_usd"]
             citations = self._build_citations(top_docs[:5])
             yield f'data: {json.dumps({"sources": citations})}\n\n'
-            if self.cache and not bypass_cache and final_answer:
-                self.cache.set(normalized_query, final_answer, citations)
+            if self.cache and not bypass_cache and self._is_cacheable_answer(final_answer, metrics):
+                self.cache.set(self._persona_cache_key(normalized_query, assistant_persona), final_answer, citations)
                 if rewritten_query != normalized_query:
-                    self.cache.set(rewritten_query, final_answer, citations)
+                    self.cache.set(self._persona_cache_key(rewritten_query, assistant_persona), final_answer, citations)
             yield f'data: {json.dumps({"metrics": metrics})}\n\n'
             
             save_rag_request_log(
@@ -295,6 +308,11 @@ class RagAnswerChain:
             rag_cards: list[dict[str, Any]] = []
             try:
                 for chunk in response:
+                    finish_reason = getattr(chunk.choices[0], "finish_reason", None)
+                    if finish_reason:
+                        metrics["generation_finish_reason"] = finish_reason
+                        if finish_reason == "length":
+                            metrics["generation_truncated"] = True
                     if chunk.choices[0].delta.content:
                         if not first_token_received:
                             metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
@@ -329,6 +347,11 @@ class RagAnswerChain:
                         yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
             if rag_cards:
                 metrics["rag_cards"] = rag_cards
+
+            if metrics.get("generation_truncated"):
+                truncation_notice = "\n\n*(Câu trả lời bị cắt do giới hạn độ dài. Anh/chị có thể hỏi tiếp phần còn thiếu để em trả lời nốt.)*"
+                final_answer += truncation_notice
+                yield f"data: {truncation_notice.replace('\n', '\ndata: ')}\n\n"
 
             if stream_failed and not final_answer:
                 log_warn("CHAT", "Retrying generation once without streaming.")

@@ -361,15 +361,27 @@ const SUGGESTION_CARDS = [
 const PERSONA_OPTIONS = [
   {
     id: 'secretary',
-    label: 'Cô thư ký',
+    label: 'Thư ký',
     title: 'Cô thư ký dễ mến',
     icon: Sparkles,
   },
   {
     id: 'butler',
-    label: 'Quản gia',
-    title: 'Anh quản gia nghiêm khắc',
+    label: 'VIP Butler',
+    title: 'Quản gia VIP nghiêm cẩn',
     icon: ShieldCheck,
+  },
+  {
+    id: 'driver',
+    label: 'Tài xế Xanh',
+    title: 'Anh tài xế Xanh nhiệt tình',
+    icon: Car,
+  },
+  {
+    id: 'expert',
+    label: 'Chuyên gia',
+    title: 'Chuyên gia tư vấn chính sách',
+    icon: Info,
   },
 ];
 

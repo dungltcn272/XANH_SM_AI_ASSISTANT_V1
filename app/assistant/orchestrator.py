@@ -13,6 +13,7 @@ from app.core.logger import log_warn
 from app.assistant.system_log import save_system_log
 from app.nlu.classifier import XanhSMClassifier
 from app.rag.core.gateway import XanhSMGateway
+from app.prompts import DEFAULT_ASSISTANT_PERSONA
 class XanhSMAssistantOrchestrator:
     """
     Assistant-level orchestrator.
@@ -48,6 +49,10 @@ class XanhSMAssistantOrchestrator:
 
     def _is_greeting_or_thanks(self, query: str) -> dict[str, Any]:
         return self.gateway.is_greeting_or_thanks(query)
+
+    def _persona_cache_key(self, query: str, assistant_persona: str) -> str:
+        persona = (assistant_persona or DEFAULT_ASSISTANT_PERSONA).strip().lower()
+        return f"persona:{persona}::{query}"
 
     def stream_run(
         self,
@@ -107,7 +112,8 @@ class XanhSMAssistantOrchestrator:
 
         yield sse_pipeline_step("cache_lookup", "Đang kiểm tra câu trả lời đã có...", 0.1)
         if self.cache and not bypass_cache:
-            is_hit, hit_res, _hit_type = self.cache.get(normalized_query)
+            cache_key = self._persona_cache_key(normalized_query, assistant_persona)
+            is_hit, hit_res, _hit_type = self.cache.get(cache_key)
             if is_hit:
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                 metrics["intent"] = "faq"
@@ -283,7 +289,8 @@ class XanhSMAssistantOrchestrator:
             return
 
         if self.cache and not bypass_cache and rewritten_query != normalized_query:
-            is_hit, hit_res, _hit_type = self.cache.get(rewritten_query)
+            cache_key = self._persona_cache_key(rewritten_query, assistant_persona)
+            is_hit, hit_res, _hit_type = self.cache.get(cache_key)
             if is_hit:
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                 metrics["intent"] = "faq"

@@ -15,6 +15,18 @@ class XanhSMRAGCache:
     def __init__(self):
         self.embeddings = get_embedding_model()
 
+    def _is_probably_complete_answer(self, answer: str | None) -> bool:
+        if not answer:
+            return False
+        clean = answer.strip()
+        if not clean:
+            return False
+        lowered = clean.lower()
+        if "hệ thống bị gián đoạn" in lowered or "câu trả lời có thể chưa hoàn chỉnh" in lowered:
+            return False
+        terminal_chars = {".", "!", "?", "…", ")", "]", "}", '"', "'", "ạ"}
+        return clean[-1] in terminal_chars
+
     def get(self, query: str) -> Tuple[bool, Dict[str, Any], str]:
         q_clean = query.strip().lower()
         db: Session = SessionLocal()
@@ -23,8 +35,13 @@ class XanhSMRAGCache:
             exact_match = db.query(SemanticCache).filter(SemanticCache.query == q_clean).first()
             if exact_match:
                 payload = json.loads(exact_match.response)
+                answer = payload.get("answer")
+                if not self._is_probably_complete_answer(answer):
+                    db.delete(exact_match)
+                    db.commit()
+                    return False, {}, "invalid"
                 return True, {
-                    "answer": payload.get("answer"),
+                    "answer": answer,
                     "citations": payload.get("citations", []),
                     "cache_hit": "exact"
                 }, "exact"
@@ -45,6 +62,8 @@ class XanhSMRAGCache:
  
     def set(self, query: str, answer: str, citations: List[Dict[str, Any]]):
         q_clean = query.strip().lower()
+        if not self._is_probably_complete_answer(answer):
+            return
         db: Session = SessionLocal()
         try:
             # Check if exists

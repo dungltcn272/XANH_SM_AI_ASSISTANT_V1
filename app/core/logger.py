@@ -47,9 +47,15 @@ def log_event(
                 query=query,
                 intent=intent,
                 error_stage=phase.upper(),
-                error_cause=error_type or "",
-                message=message,
-                details=details_str
+                error_cause=message,
+                details_json=json.dumps(
+                    {
+                        "error_type": error_type or "",
+                        "details": details,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ) if details is not None or error_type else None,
             )
             db.add(db_log)
             db.commit()
