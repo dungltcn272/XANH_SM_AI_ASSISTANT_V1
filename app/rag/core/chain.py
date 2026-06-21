@@ -467,14 +467,24 @@ class RagAnswerChain:
                     yield f"data: {error_notice.replace('\n', '\ndata: ')}\n\n"
 
             if rag_card_buffer:
-                events, _ = self._split_rag_card_events("", rag_card_buffer + self.RAG_CARD_END if self.RAG_CARD_START in rag_card_buffer else rag_card_buffer, allowed_media_urls)
-                for event in events:
-                    if event["type"] == "text":
-                        final_answer += event["text"]
-                        yield f"data: {event['text'].replace('\n', '\ndata: ')}\n\n"
-                    elif event["type"] == "rag_card":
-                        rag_cards.append(event["card"])
-                        yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
+                if self.RAG_CARD_START in rag_card_buffer:
+                    events, remaining = self._split_rag_card_events("", rag_card_buffer + self.RAG_CARD_END, allowed_media_urls)
+                    for event in events:
+                        if event["type"] == "text":
+                            final_answer += event["text"]
+                            yield f"data: {event['text'].replace('\n', '\ndata: ')}\n\n"
+                        elif event["type"] == "rag_card":
+                            rag_cards.append(event["card"])
+                            yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
+                    if remaining:
+                        if remaining.endswith(self.RAG_CARD_END):
+                            remaining = remaining[:-len(self.RAG_CARD_END)]
+                        if remaining:
+                            final_answer += remaining
+                            yield f"data: {remaining.replace('\n', '\ndata: ')}\n\n"
+                else:
+                    final_answer += rag_card_buffer
+                    yield f"data: {rag_card_buffer.replace('\n', '\ndata: ')}\n\n"
             if rag_cards:
                 metrics["rag_cards"] = rag_cards
 

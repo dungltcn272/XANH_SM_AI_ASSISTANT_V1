@@ -68,7 +68,7 @@ class XanhSMRAGCache:
         try:
             # Check if exists
             existing = db.query(SemanticCache).filter(SemanticCache.query == q_clean).first()
-            payload = json.dumps({"answer": answer, "citations": citations})
+            payload = json.dumps({"answer": answer, "citations": citations}, ensure_ascii=False)
             if existing:
                 existing.response = payload
             else:
