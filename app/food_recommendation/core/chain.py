@@ -6,7 +6,7 @@ from typing import Any
 
 from app.core.config import settings as config
 from app.core.logger import log_info
-from app.assistant.system_log import save_system_log
+from app.assistant.system_log import log_stage, save_system_log
 from app.food_recommendation.generation.answer_llm import stream_food_answer_with_llm
 from app.food_recommendation.generation.payloads import (
     food_location_payload,
@@ -84,6 +84,16 @@ class FoodRecommendationChain:
             if geocode_target:
                 try:
                     sse_steps.append("food_geocode")
+                    log_stage(
+                        "food.geocode",
+                        "before_geocode",
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        guest_id=guest_id,
+                        query=query,
+                        intent="food_recommendation",
+                        address_text=geocode_target,
+                    )
                     yield sse_pipeline_step("food_geocode", "Đang xác định vị trí trên bản đồ...", 0.32, address_text=geocode_target)
                     geocoded = geocode_address(geocode_target)
                     if geocoded:
@@ -91,8 +101,33 @@ class FoodRecommendationChain:
                         slots.lng = float(geocoded["lng"])
                         metrics["food_geocoded_address"] = geocode_target
                         metrics["food_geocode_source"] = geocoded.get("source")
+                        log_stage(
+                            "food.geocode",
+                            "after_geocode",
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            guest_id=guest_id,
+                            query=query,
+                            intent="food_recommendation",
+                            address_text=geocode_target,
+                            lat=slots.lat,
+                            lng=slots.lng,
+                            source=geocoded.get("source"),
+                        )
                 except Exception as exc:
                     metrics["food_geocode_error"] = str(exc)
+                    log_stage(
+                        "food.geocode",
+                        "error",
+                        level="ERROR",
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        guest_id=guest_id,
+                        query=query,
+                        intent="food_recommendation",
+                        address_text=geocode_target,
+                        error=str(exc),
+                    )
 
         if slots.lat is None or slots.lng is None:
             answer = missing_location_answer()
@@ -166,6 +201,17 @@ class FoodRecommendationChain:
             if not items:
                 metrics["food_fallback"] = "expanded_radius"
                 sse_steps.append("food_candidate_filter")
+                log_stage(
+                    "food.filter",
+                    "expanded_radius",
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    guest_id=guest_id,
+                    query=query,
+                    intent="food_recommendation",
+                    radius_km=max(slots.max_distance_km, 25),
+                    category=slots.category,
+                )
                 yield sse_pipeline_step("food_candidate_filter", "Đang lọc quán theo vị trí, ngân sách và khẩu vị...", 0.52, radius_km=max(slots.max_distance_km, 25))
                 items = recommend_food(
                     lat=slots.lat,
@@ -185,6 +231,17 @@ class FoodRecommendationChain:
             if not items and slots.category:
                 metrics["food_fallback"] = "expanded_radius_relaxed_category"
                 sse_steps.append("food_ml_rank")
+                log_stage(
+                    "food.rank",
+                    "relaxed_category",
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    guest_id=guest_id,
+                    query=query,
+                    intent="food_recommendation",
+                    original_category=slots.category,
+                    radius_km=max(slots.max_distance_km, 25),
+                )
                 yield sse_pipeline_step("food_ml_rank", "Đang xếp hạng món ăn phù hợp nhất...", 0.62, relaxed_category=True)
                 items = recommend_food(
                     lat=slots.lat,
@@ -229,6 +286,18 @@ class FoodRecommendationChain:
 
         t_food_answer_start = time.time()
         metrics["answer_model"] = config.FOOD_ANSWER_MODEL
+        log_stage(
+            "food.answer_llm",
+            "before_answer",
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=query,
+            intent="food_recommendation",
+            model=config.FOOD_ANSWER_MODEL,
+            max_tokens=config.LLM_MAX_TOKENS,
+            item_count=len(items),
+        )
         answer_generator = stream_food_answer_with_llm(
             items,
             query,
@@ -246,6 +315,17 @@ class FoodRecommendationChain:
                     metrics["generation_latency_ms"] = metrics["ttft_ms"]
                     metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                     first_token_received = True
+                    log_stage(
+                        "food.answer_llm",
+                        "first_token",
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        guest_id=guest_id,
+                        query=query,
+                        intent="food_recommendation",
+                        ttft_ms=round(metrics["ttft_ms"], 2),
+                        model=config.FOOD_ANSWER_MODEL,
+                    )
                 text = chunk["text"]
                 yield f"data: {text.replace('\n', '\ndata: ')}\n\n"
             elif chunk["type"] == "food_card":
@@ -271,6 +351,19 @@ class FoodRecommendationChain:
         metrics["food_card_missing_from_llm"] = bool(items and metrics["food_card_count"] == 0)
         metrics["food_cards_source"] = answer_meta.get("food_cards_source")
         answer = answer_meta.get("answer") or format_food_answer(items, slots.category)
+        log_stage(
+            "food.answer_llm",
+            "after_answer",
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=query,
+            intent="food_recommendation",
+            llm_used=metrics.get("food_answer_llm_used"),
+            error=metrics.get("food_answer_llm_error"),
+            card_count=metrics.get("food_card_count"),
+            generation_total_latency_ms=round(metrics.get("generation_total_latency_ms", 0), 2),
+        )
         trace_id = save_food_request_log(
             conversation_id=conversation_id,
             user_id=user_id,

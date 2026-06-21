@@ -14,7 +14,9 @@ def log_event(
     error_type: Optional[str] = None, 
     details: Any = None,
     query: Optional[str] = None,
-    intent: Optional[str] = None
+    intent: Optional[str] = None,
+    conversation_id: Optional[str] = None,
+    user_id: Optional[str] = None
 ):
     # Tắt hoàn toàn việc log INFO theo yêu cầu của user
     if level.upper() == "INFO":
@@ -39,17 +41,26 @@ def log_event(
     # Save to database (ErrorLog table)
     try:
         from app.db.database import SessionLocal
-        from app.db.models import ErrorLog
+        from app.db.models import ErrorLog, get_vn_time
         
         db = SessionLocal()
         try:
             db_log = ErrorLog(
+                conversation_id=conversation_id,
+                user_id=user_id,
                 query=query,
                 intent=intent,
                 error_stage=phase.upper(),
-                error_cause=error_type or "",
-                message=message,
-                details=details_str
+                error_cause=message,
+                details_json=json.dumps(
+                    {
+                        "error_type": error_type or "",
+                        "details": details,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ) if details is not None or error_type else None,
+                created_at=get_vn_time(),
             )
             db.add(db_log)
             db.commit()
@@ -61,13 +72,13 @@ def log_event(
         pass
 
 
-def log_info(phase: str, message: str, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None):
+def log_info(phase: str, message: str, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None, conversation_id: Optional[str] = None, user_id: Optional[str] = None):
     # Sẽ bị ignore bên trong log_event, giữ lại hàm để tương thích mã cũ
-    log_event("INFO", phase, message, details=details, query=query, intent=intent)
+    log_event("INFO", phase, message, details=details, query=query, intent=intent, conversation_id=conversation_id, user_id=user_id)
 
-def log_warn(phase: str, message: str, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None):
-    log_event("WARN", phase, message, details=details, query=query, intent=intent)
+def log_warn(phase: str, message: str, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None, conversation_id: Optional[str] = None, user_id: Optional[str] = None):
+    log_event("WARN", phase, message, details=details, query=query, intent=intent, conversation_id=conversation_id, user_id=user_id)
 
-def log_error(phase: str, message: str, error_type: Optional[str] = None, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None):
-    log_event("ERROR", phase, message, error_type=error_type, details=details, query=query, intent=intent)
+def log_error(phase: str, message: str, error_type: Optional[str] = None, details: Any = None, query: Optional[str] = None, intent: Optional[str] = None, conversation_id: Optional[str] = None, user_id: Optional[str] = None):
+    log_event("ERROR", phase, message, error_type=error_type, details=details, query=query, intent=intent, conversation_id=conversation_id, user_id=user_id)
 

@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import Column, String, Text, DateTime, Float, ForeignKey, Integer, Enum, Boolean
+from sqlalchemy import Column, String, Text, DateTime, Float, ForeignKey, Integer, Enum, Boolean, UniqueConstraint
 from sqlalchemy.sql import func
 from datetime import datetime
 import pytz
@@ -24,6 +24,50 @@ class User(Base):
     name = Column(String)
     role = Column(Enum(UserRole), default=UserRole.USER)
     created_at = Column(DateTime(timezone=True), default=get_vn_time)
+
+class UserAssistantSetting(Base):
+    __tablename__ = "user_assistant_settings"
+    id = Column(String, primary_key=True, default=lambda: generate_id("asstset"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    assistant_persona = Column(String, default="secretary", nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time)
+    updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time, index=True)
+
+class NotificationStatus(str, enum.Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
+
+class NotificationAudience(str, enum.Enum):
+    ALL_USERS = "all_users"
+
+class AdminNotification(Base):
+    __tablename__ = "admin_notifications"
+    id = Column(String, primary_key=True, default=lambda: generate_id("notif"))
+    title = Column(String, nullable=False)
+    summary = Column(Text, nullable=True)
+    body = Column(Text, nullable=False)
+    notification_type = Column(String, default="announcement", nullable=False, index=True)
+    status = Column(Enum(NotificationStatus), default=NotificationStatus.DRAFT, nullable=False, index=True)
+    audience = Column(Enum(NotificationAudience), default=NotificationAudience.ALL_USERS, nullable=False, index=True)
+    priority = Column(Integer, default=100, nullable=False, index=True)
+    action_label = Column(String, nullable=True)
+    action_url = Column(Text, nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_by_admin_id = Column(String, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
+    updated_at = Column(DateTime(timezone=True), default=get_vn_time, onupdate=get_vn_time, index=True)
+
+class NotificationRead(Base):
+    __tablename__ = "notification_reads"
+    id = Column(String, primary_key=True, default=lambda: generate_id("notifread"))
+    notification_id = Column(String, ForeignKey("admin_notifications.id"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    read_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
+    __table_args__ = (
+        UniqueConstraint("notification_id", "user_id", name="uq_notification_reads_notification_user"),
+    )
 
 class GuestSession(Base):
     __tablename__ = "guest_sessions"

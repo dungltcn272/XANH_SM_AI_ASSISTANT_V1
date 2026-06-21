@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from app.assistant.events import sse_pipeline_step
+from app.assistant.system_log import log_stage
 from app.core.config import settings as config
 from app.core.llm import get_llm_client
 from app.core.logger import log_warn, log_error
@@ -38,6 +39,15 @@ class RagAnswerChain:
             "cost_usd": usd_total,
             "cost_vnd": usd_total * 25400,
         }
+
+    def _is_cacheable_answer(self, answer: str, metrics: dict[str, Any]) -> bool:
+        clean = (answer or "").strip()
+        if not clean or metrics.get("generation_truncated"):
+            return False
+        lowered = clean.lower()
+        if "hệ thống bị gián đoạn" in lowered or "câu trả lời có thể chưa hoàn chỉnh" in lowered:
+            return False
+        return clean[-1] in {".", "!", "?", "…", ")", "]", "}", '"', "'", "ạ"}
 
     def _compress_context(self, docs: list[Any]) -> str:
         formatted_blocks = []
@@ -218,7 +228,7 @@ class RagAnswerChain:
             metrics["cost_usd"] += self._calculate_llm_cost(est_p, est_c)["cost_usd"]
             citations = self._build_citations(top_docs[:5])
             yield f'data: {json.dumps({"sources": citations})}\n\n'
-            if self.cache and not bypass_cache and final_answer:
+            if self.cache and not bypass_cache and self._is_cacheable_answer(final_answer, metrics):
                 self.cache.set(normalized_query, final_answer, citations)
                 if rewritten_query != normalized_query:
                     self.cache.set(rewritten_query, final_answer, citations)
@@ -244,16 +254,60 @@ class RagAnswerChain:
             yield sse_pipeline_step("retrieval_search", "Đang tìm kiếm tài liệu...", 0.34, strategy=strategy)
             t_search_start = time.time()
             search_limit = config.DEEP_SEARCH_CANDIDATE_LIMIT if is_deep_search else config.RETRIEVAL_CANDIDATE_LIMIT
+            log_stage(
+                "rag.hybrid_search",
+                "before_search",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                strategy=strategy,
+                expanded_queries=expanded_queries,
+                candidate_limit=search_limit,
+                is_deep_search=is_deep_search,
+            )
             retrieved_candidates = self.search_engine.search(
                 query=rewritten_query,
                 limit=search_limit,
                 expanded_queries=expanded_queries,
             )
             metrics["search_latency_ms"] = (time.time() - t_search_start) * 1000
+            log_stage(
+                "rag.hybrid_search",
+                "after_search",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                result_count=len(retrieved_candidates),
+                latency_ms=round(metrics["search_latency_ms"], 2),
+                top_sources=[
+                    {
+                        "source": doc.metadata.get("source"),
+                        "section": doc.metadata.get("section"),
+                        "score": doc.metadata.get("score"),
+                    }
+                    for doc in retrieved_candidates[:5]
+                ],
+            )
 
             yield sse_pipeline_step("rerank_documents", "Đang xếp hạng tài liệu...", 0.52)
             t_rerank_start = time.time()
             rerank_top_n = config.DEEP_SEARCH_RERANK_TOP_N if is_deep_search else config.RERANK_TOP_N
+            log_stage(
+                "rag.rerank",
+                "before_rerank",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                input_count=len(retrieved_candidates),
+                top_n=rerank_top_n,
+                model=config.RERANKER_MODEL,
+            )
             reranked_docs = self.reranker.rerank(
                 query=rewritten_query,
                 docs=retrieved_candidates,
@@ -261,9 +315,58 @@ class RagAnswerChain:
             )
             metrics["rerank_latency_ms"] = (time.time() - t_rerank_start) * 1000
             metrics["num_chunks_before_expansion"] = len(reranked_docs)
+            log_stage(
+                "rag.rerank",
+                "after_rerank",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                result_count=len(reranked_docs),
+                latency_ms=round(metrics["rerank_latency_ms"], 2),
+                top_docs=[
+                    {
+                        "source": doc.metadata.get("source"),
+                        "section": doc.metadata.get("section"),
+                        "rerank_score": doc.metadata.get("rerank_score"),
+                        "parent_chunk_id": doc.metadata.get("parent_chunk_id"),
+                    }
+                    for doc in reranked_docs[:5]
+                ],
+            )
 
             yield sse_pipeline_step("context_expansion", "Đang gọi thêm tài liệu đầy đủ...", 0.64, top_docs=len(reranked_docs))
+            t_expansion_start = time.time()
+            log_stage(
+                "rag.parent_child",
+                "before_expand",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                input_count=len(reranked_docs),
+                threshold=config.CONTEXT_EXPANSION_THRESHOLD,
+            )
             expanded_docs = self.search_engine.expand_context(reranked_docs)
+            metrics["expansion_latency_ms"] = (time.time() - t_expansion_start) * 1000
+            log_stage(
+                "rag.parent_child",
+                "after_expand",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                result_count=len(expanded_docs),
+                latency_ms=round(metrics["expansion_latency_ms"], 2),
+                parent_ids=sorted({
+                    doc.metadata.get("parent_chunk_id")
+                    for doc in expanded_docs
+                    if doc.metadata.get("parent_chunk_id")
+                })[:20],
+            )
             allowed_media_urls = self._allowed_media_urls(expanded_docs)
             messages, compressed_context = self._build_prompt_messages(
                 query=rewritten_query,
@@ -278,6 +381,19 @@ class RagAnswerChain:
             t_gen_start = time.time()
             final_answer = ""
             metrics["answer_model"] = config.RAG_ANSWER_MODEL
+            log_stage(
+                "rag.answer_llm",
+                "before_answer",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                model=config.RAG_ANSWER_MODEL,
+                max_tokens=config.LLM_MAX_TOKENS,
+                message_count=len(messages),
+                compressed_context_len=len(compressed_context),
+            )
             client = get_llm_client(config.RAG_ANSWER_MODEL)
             response = client.chat.completions.create(
                 model=config.RAG_ANSWER_MODEL,
@@ -292,11 +408,27 @@ class RagAnswerChain:
             rag_cards: list[dict[str, Any]] = []
             try:
                 for chunk in response:
+                    finish_reason = getattr(chunk.choices[0], "finish_reason", None)
+                    if finish_reason:
+                        metrics["generation_finish_reason"] = finish_reason
+                        if finish_reason == "length":
+                            metrics["generation_truncated"] = True
                     if chunk.choices[0].delta.content:
                         if not first_token_received:
                             metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
                             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                             first_token_received = True
+                            log_stage(
+                                "rag.answer_llm",
+                                "first_token",
+                                conversation_id=conversation_id,
+                                user_id=user_id,
+                                guest_id=guest_id,
+                                query=rewritten_query,
+                                intent=metrics.get("intent", "rag"),
+                                ttft_ms=round(metrics["generation_latency_ms"], 2),
+                                model=config.RAG_ANSWER_MODEL,
+                            )
                         text = chunk.choices[0].delta.content
                         events, rag_card_buffer = self._split_rag_card_events(text, rag_card_buffer, allowed_media_urls)
                         for event in events:
@@ -308,7 +440,26 @@ class RagAnswerChain:
                                 yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
             except Exception as stream_error:
                 stream_failed = True
-                log_warn("CHAT", f"Streaming generation interrupted: {stream_error}")
+                log_warn(
+                    "CHAT",
+                    f"Streaming generation interrupted: {stream_error}",
+                    query=rewritten_query,
+                    intent=metrics.get("intent", "rag"),
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                )
+                log_stage(
+                    "rag.answer_llm",
+                    "stream_interrupted",
+                    level="WARN",
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    guest_id=guest_id,
+                    query=rewritten_query,
+                    intent=metrics.get("intent", "rag"),
+                    error=str(stream_error),
+                    partial_answer_chars=len(final_answer or ""),
+                )
                 if final_answer:
                     # Đã có nội dung nhưng bị gãy giữa chừng
                     error_notice = "\n\n*(Hệ thống bị gián đoạn kết nối, câu trả lời có thể chưa hoàn chỉnh. Vui lòng thử lại)*"
@@ -316,16 +467,43 @@ class RagAnswerChain:
                     yield f"data: {error_notice.replace('\n', '\ndata: ')}\n\n"
 
             if rag_card_buffer:
-                events, _ = self._split_rag_card_events("", rag_card_buffer + self.RAG_CARD_END if self.RAG_CARD_START in rag_card_buffer else rag_card_buffer, allowed_media_urls)
-                for event in events:
-                    if event["type"] == "text":
-                        final_answer += event["text"]
-                        yield f"data: {event['text'].replace('\n', '\ndata: ')}\n\n"
-                    elif event["type"] == "rag_card":
-                        rag_cards.append(event["card"])
-                        yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
+                if self.RAG_CARD_START in rag_card_buffer:
+                    events, remaining = self._split_rag_card_events("", rag_card_buffer + self.RAG_CARD_END, allowed_media_urls)
+                    for event in events:
+                        if event["type"] == "text":
+                            final_answer += event["text"]
+                            yield f"data: {event['text'].replace('\n', '\ndata: ')}\n\n"
+                        elif event["type"] == "rag_card":
+                            rag_cards.append(event["card"])
+                            yield f'data: {json.dumps({"type": "rag_card", "rag_card": event["card"]}, ensure_ascii=False)}\n\n'
+                    if remaining:
+                        if remaining.endswith(self.RAG_CARD_END):
+                            remaining = remaining[:-len(self.RAG_CARD_END)]
+                        if remaining:
+                            final_answer += remaining
+                            yield f"data: {remaining.replace('\n', '\ndata: ')}\n\n"
+                else:
+                    final_answer += rag_card_buffer
+                    yield f"data: {rag_card_buffer.replace('\n', '\ndata: ')}\n\n"
             if rag_cards:
                 metrics["rag_cards"] = rag_cards
+
+            if metrics.get("generation_truncated"):
+                truncation_notice = "\n\n*(Câu trả lời bị cắt do giới hạn độ dài. Anh/chị có thể hỏi tiếp phần còn thiếu để em trả lời nốt.)*"
+                final_answer += truncation_notice
+                log_stage(
+                    "rag.answer_llm",
+                    "truncated",
+                    level="WARN",
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    guest_id=guest_id,
+                    query=rewritten_query,
+                    intent=metrics.get("intent", "rag"),
+                    finish_reason=metrics.get("generation_finish_reason"),
+                    max_tokens=config.LLM_MAX_TOKENS,
+                )
+                yield f"data: {truncation_notice.replace('\n', '\ndata: ')}\n\n"
 
             if stream_failed and not final_answer:
                 log_warn("CHAT", "Retrying generation once without streaming.")
@@ -344,10 +522,43 @@ class RagAnswerChain:
             if not first_token_received:
                 metrics["generation_latency_ms"] = (time.time() - t_gen_start) * 1000
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+            log_stage(
+                "rag.answer_llm",
+                "final_answer",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                finish_reason=metrics.get("generation_finish_reason"),
+                truncated=bool(metrics.get("generation_truncated")),
+                answer_chars=len(final_answer or ""),
+                generation_latency_ms=round(metrics.get("generation_latency_ms", 0), 2),
+                total_latency_ms=round(metrics.get("total_latency_ms", 0), 2),
+                rag_card_count=len(rag_cards),
+            )
 
             yield from finalize_generation(final_answer, expanded_docs, messages, retrieved_candidates, reranked_docs, expanded_docs)
         except Exception as exc:
-            log_error("CHAT", f"RAG chain execution error: {exc}")
+            log_error(
+                "CHAT",
+                f"RAG chain execution error: {exc}",
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                conversation_id=conversation_id,
+                user_id=user_id,
+            )
+            log_stage(
+                "rag.error",
+                "exception",
+                level="ERROR",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=rewritten_query,
+                intent=metrics.get("intent", "rag"),
+                error=str(exc),
+            )
             metrics["total_latency_ms"] = (time.time() - t_start) * 1000
             yield "data: Xin loi, he thong dang ban. Vui long thu lai sau.\n\n"
             yield f'data: {json.dumps({"metrics": metrics})}\n\n'

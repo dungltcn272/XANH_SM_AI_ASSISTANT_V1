@@ -113,7 +113,7 @@ async def chat_endpoint(
             question=req.query,
             display_query=req.display_query,
             image_base64=req.image_base64,
-            is_deep_search=req.deep_search
+            is_deep_search=req.deep_search,
         ),
         media_type="text/event-stream",
         headers={

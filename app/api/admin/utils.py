@@ -1,9 +1,24 @@
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Any, Callable
 
+VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
+
 def _iso(value: Any) -> str | None:
-    return value.isoformat() if value else None
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=VN_TZ)
+        else:
+            value = value.astimezone(VN_TZ)
+    return value.isoformat()
+
+def serialize_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return _iso(value)
+    return value
 
 def parse_optional_datetime(value: Any) -> datetime | None:
     if not value:

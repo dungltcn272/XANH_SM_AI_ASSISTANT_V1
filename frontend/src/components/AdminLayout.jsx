@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Beaker, Database, History, Hammer, MessageSquareHeart, Bot } from 'lucide-react';
+import { LayoutDashboard, Beaker, Database, History, Hammer, MessageSquareHeart, Bot, Bell } from 'lucide-react';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -30,6 +30,7 @@ export default function AdminLayout() {
         { path: '/admin/db', label: 'Database Manager', icon: <Hammer size={18} /> },
         { path: '/admin/eval', label: 'AIEval Lab', icon: <Beaker size={18} /> },
         { path: '/admin/reviews', label: 'User Reviews', icon: <MessageSquareHeart size={18} /> },
+        { path: '/admin/notifications', label: 'Notifications', icon: <Bell size={18} /> },
         { path: '/admin/ml', label: 'AI Models (MLOps)', icon: <Bot size={18} /> },
       ]
     }

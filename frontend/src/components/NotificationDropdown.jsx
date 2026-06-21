@@ -1,175 +1,174 @@
 import { createPortal } from 'react-dom';
-import { Check, Camera, Search, Lightbulb } from 'lucide-react';
+import { Bell, Check, Megaphone, Sparkles, Wrench, AlertTriangle } from 'lucide-react';
 
-const NotificationDropdown = ({ isOpen, onClose }) => {
+const typeIcon = {
+  feature_update: Sparkles,
+  maintenance: Wrench,
+  warning: AlertTriangle,
+  announcement: Megaphone,
+};
+
+const typeLabel = {
+  feature_update: 'Tính năng mới',
+  maintenance: 'Bảo trì',
+  warning: 'Lưu ý',
+  announcement: 'Thông báo',
+};
+
+const formatDate = (value) => {
+  if (!value) return '';
+  try {
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value));
+  } catch {
+    return '';
+  }
+};
+
+const NotificationDropdown = ({
+  isOpen,
+  onClose,
+  notifications = [],
+  unreadCount = 0,
+  loading = false,
+  onMarkRead,
+  onMarkAllRead,
+}) => {
   if (!isOpen) return null;
 
   const content = (
     <div className="notification-portal-wrapper font-sans">
-      {/* Backdrop */}
-      <div 
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 999998,
-          backgroundColor: 'rgba(0, 0, 0, 0.6)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)'
-        }}
+      <div
+        className="fixed inset-0 z-[999998] bg-black/60 backdrop-blur-md"
         onClick={onClose}
       />
-      
-      {/* Dropdown Content - Centered with fixed constraints */}
-      <div 
-        className="bg-surface dark:bg-[#0c1618] text-on-surface"
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '90%',
-          maxWidth: '580px', // Adjusted to be more reasonable
-          maxHeight: '85vh',
-          zIndex: 999999, // Maximum priority
-          borderRadius: '32px',
-          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          border: '1px solid rgba(128, 128, 128, 0.2)',
-        }}
-        onClick={(e) => e.stopPropagation()}
+
+      <div
+        className="fixed left-1/2 top-1/2 z-[999999] flex max-h-[85vh] w-[92%] max-w-[640px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[28px] border border-black/10 bg-surface text-on-surface shadow-[0_25px_70px_rgba(0,0,0,0.45)] dark:border-white/10 dark:bg-[#0c1618]"
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Header */}
-        <div 
-          className="border-b border-outline/10 bg-surface-container-low dark:bg-white/5"
-          style={{
-            padding: '24px 32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="flex shrink-0 items-center justify-between border-b border-outline/10 bg-surface-container-low px-6 py-5 dark:bg-white/5 md:px-8">
+          <div className="flex items-center gap-3">
+            <h3 className="m-0 flex items-center gap-2 text-lg font-black">
               Thông báo
-              <span style={{ 
-                padding: '2px 8px', 
-                backgroundColor: '#ef4444', 
-                borderRadius: '99px', 
-                fontSize: '11px', 
-                fontWeight: 900, 
-                color: 'white'
-              }}>2</span>
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-black text-white">
+                  {unreadCount}
+                </span>
+              )}
             </h3>
           </div>
-          <button 
-            className="text-primary hover:underline"
-            style={{ fontSize: '12px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+          <button
+            type="button"
+            onClick={onMarkAllRead}
+            disabled={!unreadCount}
+            className="text-xs font-bold text-primary transition hover:underline disabled:cursor-not-allowed disabled:opacity-40"
           >
             Đánh dấu đã đọc
           </button>
         </div>
 
-        {/* Content */}
-        <div 
-          className="no-scrollbar"
-          style={{
-            padding: '32px',
-            overflowY: 'auto',
-            flexGrow: 1,
-            backgroundColor: 'transparent'
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
-                <span style={{ padding: '3px 10px', backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', fontSize: '10px', fontWeight: 900, borderRadius: '6px', flexShrink: 0, marginTop: '2px' }}>MỚI</span>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 900, lineHeight: 1.4 }}>
-                    🚀 Cập nhật Nhận diện Hình ảnh & Tìm kiếm Deep-Search
-                  </h4>
-                </div>
-              </div>
-
-              <div className="text-on-surface-variant" style={{ fontSize: '13px', lineHeight: 1.7, fontWeight: 500 }}>
-                <p style={{ margin: '0 0 20px 0' }}>Chúng tôi vừa nâng cấp hệ thống AI nhằm mang đến trải nghiệm hỗ trợ nhanh chóng và chính xác hơn:</p>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <div className="text-primary dark:text-[#FFCA00]" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 900, marginBottom: '10px' }}>
-                    <Camera size={16} />
-                    <span>Bổ sung tính năng thêm hình ảnh</span>
-                  </div>
-                  <p style={{ margin: '0 0 10px 0' }}>AI hiện có thể đọc hiểu hình ảnh bằng công nghệ Vision NLU để:</p>
-                  <ul style={{ margin: 0, paddingLeft: '24px', listStyleType: 'disc' }}>
-                    <li>Nhận diện chính xác lỗi xe điện, mã lỗi trên màn hình.</li>
-                    <li>Phân tích chi tiết tình trạng xe từ ảnh chụp trực tiếp.</li>
-                  </ul>
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <div className="text-primary dark:text-[#00c897]" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 900, marginBottom: '10px' }}>
-                    <Search size={16} />
-                    <span>Trải nghiệm tính năng Deep-Search</span>
-                  </div>
-                  <p style={{ margin: '0 0 10px 0' }}>Nghiên cứu chuyên sâu tài liệu phức tạp với sức mạnh vượt trội:</p>
-                  <ul style={{ margin: 0, paddingLeft: '24px', listStyleType: 'disc' }}>
-                    <li>Mở rộng vùng quét lên hàng trăm trang tài liệu cùng lúc.</li>
-                    <li>Tổng hợp dữ liệu đa chiều, chuyên sâu hơn.</li>
-                  </ul>
-                </div>
-
-                <div className="bg-amber-500/10 dark:bg-amber-500/5" style={{ padding: '16px', borderRadius: '20px', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', gap: '14px' }}>
-                  <Lightbulb size={18} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                  <p style={{ margin: 0, fontStyle: 'italic', fontWeight: 700 }}>
-                    Hãy thử tải lên một hình ảnh hoặc bật công tắc Deep-Search để trải nghiệm ngay sức mạnh mới của AI.
-                  </p>
-                </div>
-              </div>
+        <div className="no-scrollbar flex-1 overflow-y-auto p-5 md:p-8">
+          {loading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="h-24 animate-pulse rounded-2xl bg-black/5 dark:bg-white/5" />
+              ))}
             </div>
-
-            {/* Action Button */}
-            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '12px' }}>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                }}
-                style={{
-                  width: '100%',
-                  maxWidth: '240px',
-                  padding: '14px 0',
-                  borderRadius: '9999px',
-                  backgroundColor: '#00c897',
-                  color: 'white',
-                  fontWeight: 900,
-                  fontSize: '14px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 25px rgba(0, 200, 151, 0.4)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#00b084';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 200, 151, 0.5)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#00c897';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 200, 151, 0.4)';
-                }}
-              >
-                <Check size={18} />
-                Đã hiểu
-              </button>
+          ) : notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00c897]/10 text-[#00a884]">
+                <Bell size={24} />
+              </div>
+              <h4 className="text-base font-black">Chưa có thông báo mới</h4>
+              <p className="mt-2 max-w-sm text-sm font-medium leading-relaxed text-on-surface-variant/80">
+                Các cập nhật tính năng và thông tin vận hành sẽ xuất hiện tại đây.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {notifications.map((notification) => {
+                const Icon = typeIcon[notification.type] || Megaphone;
+                return (
+                  <article
+                    key={notification.id}
+                    className={`rounded-2xl border p-4 transition ${
+                      notification.is_read
+                        ? 'border-outline-variant/20 bg-white/45 dark:bg-white/[0.03]'
+                        : 'border-[#00c897]/30 bg-[#00c897]/10 dark:bg-[#00c897]/10'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00c897]/10 text-[#008f72] dark:text-[#00c897]">
+                        <Icon size={18} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          {!notification.is_read && (
+                            <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-blue-600 dark:text-blue-300">
+                              Mới
+                            </span>
+                          )}
+                          <span className="text-[10px] font-black uppercase tracking-wide text-[#008f72]">
+                            {typeLabel[notification.type] || typeLabel.announcement}
+                          </span>
+                          <span className="text-[11px] font-semibold text-on-surface-variant/55">
+                            {formatDate(notification.published_at || notification.created_at)}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-black leading-snug">{notification.title}</h4>
+                        {notification.summary && (
+                          <p className="mt-2 text-sm font-semibold leading-relaxed text-on-surface-variant/90">
+                            {notification.summary}
+                          </p>
+                        )}
+                        <p className="mt-3 whitespace-pre-line text-sm font-medium leading-relaxed text-on-surface-variant">
+                          {notification.body}
+                        </p>
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          {notification.action_url && (
+                            <a
+                              href={notification.action_url}
+                              onClick={() => onMarkRead?.(notification.id)}
+                              className="rounded-full bg-[#00c897] px-4 py-2 text-xs font-black text-white shadow-[0_8px_18px_rgba(0,200,151,0.25)] transition hover:bg-[#00b084]"
+                            >
+                              {notification.action_label || 'Mở'}
+                            </a>
+                          )}
+                          {!notification.is_read && (
+                            <button
+                              type="button"
+                              onClick={() => onMarkRead?.(notification.id)}
+                              className="flex items-center gap-1.5 rounded-full border border-outline-variant/30 px-3 py-2 text-xs font-bold text-on-surface-variant transition hover:border-[#00c897]/40 hover:text-[#00a884]"
+                            >
+                              <Check size={14} />
+                              Đã đọc
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="flex shrink-0 justify-center border-t border-outline/10 bg-surface-container-low px-6 py-4 dark:bg-white/5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex w-full max-w-[220px] items-center justify-center gap-2 rounded-full bg-[#00c897] py-3 text-sm font-black text-white shadow-[0_8px_25px_rgba(0,200,151,0.35)] transition hover:bg-[#00b084]"
+          >
+            <Check size={18} />
+            Đã hiểu
+          </button>
         </div>
       </div>
     </div>

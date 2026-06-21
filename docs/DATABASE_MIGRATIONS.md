@@ -107,6 +107,13 @@ migration trên staging, rồi mới deploy production.
 
 ## Một số lệnh hay dùng
 
+## Migration hiện tại
+
+- `20260620_0001_initial_schema`: baseline đầu tiên, dùng `Base.metadata.create_all()`.
+- `20260621_0002_notifications_and_personas`: thêm `user_assistant_settings`, `admin_notifications`, `notification_reads`; đồng thời seed thông báo `notif_food_recommendation_launch` về tính năng gợi ý món ăn.
+
+Lưu ý: migration `20260621_0002` có kiểm tra bảng/index tồn tại trước khi tạo để tương thích với baseline `create_all()` hiện tại.
+
 Xem revision hiện tại của database:
 
 ```bash

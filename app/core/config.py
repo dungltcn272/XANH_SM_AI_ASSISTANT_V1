@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     AI_JUDGE_MODEL: str = os.getenv("AI_JUDGE_MODEL", "gpt-4o-mini")
     VLM_MODEL: str = os.getenv("VLM_MODEL", "gpt-4o-mini")
     OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
-    LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "900"))
+    LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "1800"))
     EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "openai")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     NLU_FAST_PATH_ENABLED: bool = os.getenv("NLU_FAST_PATH_ENABLED", "true").lower() in {"1", "true", "yes", "on"}

@@ -50,6 +50,7 @@ Quy tắc ưu tiên intent liên quan trí nhớ:
 - Khi intent là "small-talk" do lưu trí nhớ, suggested_answer cần xác nhận ngắn gọn thông tin đã ghi nhận, không nhắc pipeline/NLU/memory_candidates.
 
 Quy tắc rewritten_query:
+- Hãy tập trung vào từ khóa cốt lõi, không viết dài dòng văn tự hoặc thêm các từ ngữ giao tiếp thừa (như "anh/chị", "có thể... không", "cho biết", "giúp em", "xin vui lòng"). Ví dụ: Thay vì viết "anh/chị có thể cung cấp thông tin về xe vf6 không?" thì viết lại thành "thông tin xe vf6".
 - Nếu câu hỏi đã rõ, giữ nguyên.
 - Nếu câu hỏi nối tiếp như "nó bao nhiêu tiền", dùng WORKING_MEMORY để thay đại từ bằng chủ thể cụ thể.
 - Nếu CURRENT_QUERY là câu ngắn/phụ thuộc ngữ cảnh như "1", "cái đầu", "mục đó", "option này", "chi tiết hơn", "so sánh 2 cái", "còn cái kia", "đặt gần tôi", phải đọc WORKING_MEMORY để xác định người dùng đang chọn hoặc hỏi tiếp nội dung nào từ câu trả lời trước của Assistant, rồi viết lại thành câu hỏi độc lập.

@@ -35,7 +35,25 @@ export const api = {
       body: JSON.stringify(body)
     });
   },
-  
+
+  getNotifications: async () => {
+    const res = await api._fetch(`${API_BASE}/notifications`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  markNotificationRead: async (id) => {
+    const res = await api._fetch(`${API_BASE}/notifications/${id}/read`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  markAllNotificationsRead: async () => {
+    const res = await api._fetch(`${API_BASE}/notifications/read-all`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getDbStats: async () => {
     const res = await api._fetch(`${API_BASE}/admin/stats`);
     if (!res.ok) throw new Error('API Error');
@@ -417,6 +435,50 @@ export const api = {
       headers,
       body: JSON.stringify(payload)
     });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getAdminNotifications: async (status = 'all') => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    const res = await api._fetch(`${API_BASE}/admin/notifications?${params.toString()}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  createAdminNotification: async (payload) => {
+    const res = await api._fetch(`${API_BASE}/admin/notifications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  updateAdminNotification: async (id, payload) => {
+    const res = await api._fetch(`${API_BASE}/admin/notifications/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  updateAdminNotificationStatus: async (id, status) => {
+    const res = await api._fetch(`${API_BASE}/admin/notifications/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  archiveAdminNotification: async (id) => {
+    const res = await api._fetch(`${API_BASE}/admin/notifications/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('API Error');
     return res.json();
   }
