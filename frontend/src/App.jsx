@@ -667,6 +667,7 @@ function MainLayout({ children }) {
   );
 }
 import PresentationFlow from './pages/PresentationFlow';
+import SlideShow from './pages/SlideShow';
 
 function App() {
   return (
@@ -676,6 +677,9 @@ function App() {
 
       {/* Presentation Route */}
       <Route path="/presentation" element={<PresentationFlow />} />
+
+      {/* Slide Route */}
+      <Route path="/slide" element={<SlideShow />} />
 
       {/* Landing Route */}
       <Route path="/" element={<LandingPage />} />
