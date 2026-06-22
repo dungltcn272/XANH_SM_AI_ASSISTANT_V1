@@ -12,6 +12,7 @@ class FoodSlots:
     lng: float | None = None
     category: str | None = None
     taste_tags: list[str] = field(default_factory=list)
+    negative_taste_tags: list[str] = field(default_factory=list)
     budget_min: int | None = None
     budget_max: int | None = None
     meal_time: str | None = None
@@ -36,6 +37,7 @@ def slots_from_nlu(food_slots: dict[str, Any] | None, raw_query: str | None = No
         lng=lng,
         category=food_slots.get("dish_or_category") or food_slots.get("category"),
         taste_tags=_ensure_string_list(food_slots.get("taste_tags")),
+        negative_taste_tags=_ensure_string_list(food_slots.get("negative_taste_tags")),
         budget_min=_int_or_none(food_slots.get("budget_min")),
         budget_max=_int_or_none(food_slots.get("budget_max")),
         meal_time=food_slots.get("meal_time"),

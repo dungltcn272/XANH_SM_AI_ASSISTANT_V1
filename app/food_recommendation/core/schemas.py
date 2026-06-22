@@ -8,7 +8,8 @@ class FoodRecommendationRequest(BaseModel):
     lng: float
     query_text: str | None = None
     category: str | None = None
-    taste_tags: list[str] | None = None
+    taste_tags: list[str] = Field(default_factory=list)
+    negative_taste_tags: list[str] = Field(default_factory=list)
     budget_min: int | None = None
     budget_max: int | None = None
     meal_time: str | None = None
