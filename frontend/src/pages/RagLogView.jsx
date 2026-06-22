@@ -252,9 +252,9 @@ export default function RagLogView() {
                   <span className="text-[10px] font-bold text-[#8b5cf6] uppercase tracking-wider">Final Answer</span>
                   <Activity size={14} className="text-[#8b5cf6]" />
                 </div>
-                <p className="text-sm text-[#e2e8f0] mb-4 flex-1 line-clamp-4">
+                <div className="text-sm text-[#e2e8f0] mb-4 flex-1 overflow-y-auto max-h-32 custom-scrollbar whitespace-pre-wrap">
                   {selectedLog.final_answer || <span className="italic text-[#64748b]">No final answer generated.</span>}
-                </p>
+                </div>
                 <div className="flex gap-6 text-xs text-[#94a3b8] mt-auto">
                   <span>Model: <span className="text-[#cbd5e1] font-mono">Llama-3</span></span>
                   <span>Generated at: <span className="text-[#cbd5e1]">{new Date(selectedLog.created_at).toLocaleTimeString()}</span></span>

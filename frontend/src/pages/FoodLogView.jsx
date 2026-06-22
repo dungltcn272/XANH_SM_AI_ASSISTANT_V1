@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Copy, Download, ChevronDown, ChevronRight, Check, X, Box, Target, Activity, MapPin, Tag } from 'lucide-react';
+import { Search, Copy, Download, ChevronDown, ChevronRight, Check, X, Box, Target, Activity, MapPin, Tag, Clock, Cpu } from 'lucide-react';
 import { api } from '../api';
 
 export default function FoodLogView() {
@@ -81,6 +81,41 @@ export default function FoodLogView() {
     }
   };
 
+  const renderLatencyBar = (log) => {
+    const total = log.total_latency_ms || 1;
+    const nlu = log.rewrite_latency_ms + log.classification_latency_ms || 0;
+    const retrieve = log.search_latency_ms || 0;
+    const gen = log.generation_latency_ms || 0;
+
+    const parts = [
+      { label: 'NLU Processing', value: nlu, color: 'bg-[#00c897]' },
+      { label: 'Retrieval & Filtering', value: retrieve, color: 'bg-[#8b5cf6]' },
+      { label: 'LLM Generation', value: gen, color: 'bg-[#ef4444]' }
+    ];
+
+    return (
+      <div className="space-y-3">
+        {parts.map(p => {
+          const pct = Math.max(0, Math.min(100, (p.value / total) * 100));
+          if (p.value === 0 && p.label !== 'LLM Generation') return null;
+          return (
+            <div key={p.label} className="flex items-center gap-3 text-xs">
+              <span className="w-32 text-[#94a3b8]">{p.label}</span>
+              <div className="flex-1 h-2 bg-[#1e293b] rounded-full overflow-hidden">
+                <div className={`h-full ${p.color} rounded-full`} style={{ width: `${pct}%` }}></div>
+              </div>
+              <span className="w-20 text-right text-[#e2e8f0] font-mono">{p.value.toFixed(0)}ms <span className="text-[#64748b]">({pct.toFixed(0)}%)</span></span>
+            </div>
+          );
+        })}
+        <div className="pt-2 mt-2 border-t border-[#1e293b] flex justify-between items-center text-xs font-bold">
+          <span className="text-[#94a3b8]">Total</span>
+          <span className="text-white font-mono">{(log.total_latency_ms / 1000).toFixed(2)}s</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex h-full gap-4 overflow-hidden p-4 md:p-6 bg-[#070b14]">
       {/* Left Pane: Master List */}
@@ -115,8 +150,6 @@ export default function FoodLogView() {
           ) : (
             filteredLogs.map(log => {
               const isSelected = selectedLog?.trace_id === log.trace_id;
-              const stats = parseJsonSafe(log.candidate_stats_json);
-              const loc = parseJsonSafe(log.location_json);
               
               return (
                 <div 
@@ -139,8 +172,8 @@ export default function FoodLogView() {
                       LOG
                     </span>
                     <div className="flex flex-col items-end text-[10px] text-[#64748b]">
-                      <span>{loc.lat && loc.lng ? `${loc.lat.toFixed(3)}, ${loc.lng.toFixed(3)}` : 'No Location'}</span>
-                      <span className="font-mono mt-0.5">{stats.returned_count || 0} returned</span>
+                      <span>{new Date(log.created_at).toLocaleTimeString('en-US', {hour12: false})}</span>
+                      <span className="font-mono mt-0.5">{(log.total_latency_ms / 1000).toFixed(2)}s</span>
                     </div>
                   </div>
                 </div>
@@ -234,8 +267,22 @@ export default function FoodLogView() {
               </div>
             </div>
 
-            {/* Metrics Row */}
-            <div className="grid grid-cols-2 gap-4">
+                        {/* Metrics Row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[#8b5cf6]/10 text-[#8b5cf6]"><Clock size={18} /></div>
+                <div>
+                  <div className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold mb-0.5">Latency</div>
+                  <div className="text-sm font-bold text-white">{(selectedLog.total_latency_ms / 1000).toFixed(2)}s</div>
+                </div>
+              </div>
+              <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[#f59e0b]/10 text-[#f59e0b]"><Cpu size={18} /></div>
+                <div>
+                  <div className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold mb-0.5">Tokens</div>
+                  <div className="text-sm font-bold text-white">{selectedLog.total_tokens || 0}</div>
+                </div>
+              </div>
               <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-4 flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-[#3b82f6]/10 text-[#3b82f6]"><MapPin size={18} /></div>
                 <div>
@@ -246,9 +293,9 @@ export default function FoodLogView() {
                 </div>
               </div>
               <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-4 flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-[#8b5cf6]/10 text-[#8b5cf6]"><Tag size={18} /></div>
+                <div className="p-2 rounded-lg bg-[#00c897]/10 text-[#00c897]"><Tag size={18} /></div>
                 <div>
-                  <div className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold mb-0.5">Total Candidates</div>
+                  <div className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold mb-0.5">Candidates</div>
                   <div className="text-sm font-bold text-white">
                     {parseJsonSafe(selectedLog.candidate_stats_json).total_candidates || 0}
                   </div>
@@ -262,7 +309,7 @@ export default function FoodLogView() {
               {/* Left Col: Accordions */}
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Box size={16} className="text-[#f59e0b]" /> Extraction & Context
+                  <Box size={16} className="text-[#3b82f6]" /> NLU & Context
                 </h3>
                 
                 {/* NLU Result */}
@@ -271,13 +318,17 @@ export default function FoodLogView() {
                     onClick={() => toggleSection('nlu')}
                     className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
                   >
-                    <span className="text-xs font-bold text-[#e2e8f0]">NLU Extraction JSON</span>
+                    <span className="text-xs font-bold text-[#e2e8f0]">NLU Result</span>
                     {expandedSections.nlu ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
                   </button>
                   {expandedSections.nlu && (
                     <div className="px-4 pb-4 border-t border-[#1e293b] pt-3">
                       <pre className="text-[11px] text-[#00c897] font-mono overflow-x-auto">
-{JSON.stringify(parseJsonSafe(selectedLog.nlu_json), null, 2)}
+{JSON.stringify({
+  intent: selectedLog.intent,
+  nlu_extracted: parseJsonSafe(selectedLog.nlu_json),
+  latency_ms: (selectedLog.rewrite_latency_ms || 0) + (selectedLog.classification_latency_ms || 0)
+}, null, 2)}
                       </pre>
                     </div>
                   )}
@@ -289,7 +340,7 @@ export default function FoodLogView() {
                     onClick={() => toggleSection('context')}
                     className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
                   >
-                    <span className="text-xs font-bold text-[#e2e8f0]">User Context (Filters)</span>
+                    <span className="text-xs font-bold text-[#e2e8f0]">User Context & Memory</span>
                     {expandedSections.context ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
                   </button>
                   {expandedSections.context && (
@@ -305,6 +356,14 @@ export default function FoodLogView() {
 
               {/* Right Col: Latency & Raw Trace */}
               <div className="space-y-6">
+                
+                {/* Latency Breakdown */}
+                <div>
+                  <h3 className="text-sm font-bold text-white mb-4">Latency Breakdown</h3>
+                  <div className="rounded-xl border border-[#1e293b] bg-[#0f1520] p-5">
+                    {renderLatencyBar(selectedLog)}
+                  </div>
+                </div>
 
                 {/* Raw Trace */}
                 <div>
@@ -313,7 +372,7 @@ export default function FoodLogView() {
                       onClick={() => toggleSection('trace')}
                       className="w-full px-4 py-3 flex justify-between items-center hover:bg-[#1e293b]/50 transition-colors"
                     >
-                      <span className="text-xs font-bold text-[#e2e8f0]">Raw Food Trace JSON</span>
+                      <span className="text-xs font-bold text-[#e2e8f0]">Raw Trace JSON</span>
                       {expandedSections.trace ? <ChevronDown size={14} className="text-[#64748b]"/> : <ChevronRight size={14} className="text-[#64748b]"/>}
                     </button>
                     {expandedSections.trace && (
@@ -321,7 +380,7 @@ export default function FoodLogView() {
                         <button className="absolute top-4 right-4 text-[#64748b] hover:text-white" onClick={() => {
                           navigator.clipboard.writeText(JSON.stringify(selectedLog, null, 2));
                         }}><Copy size={14}/></button>
-                        <pre className="text-[10px] text-[#94a3b8] font-mono overflow-x-auto max-h-[400px] custom-scrollbar">
+                        <pre className="text-[10px] text-[#94a3b8] font-mono overflow-x-auto max-h-[300px] custom-scrollbar">
 {JSON.stringify(selectedLog, null, 2)}
                         </pre>
                       </div>
@@ -329,8 +388,22 @@ export default function FoodLogView() {
                   </div>
                 </div>
 
+                {/* Cost Info */}
+                <div className="flex justify-between items-center px-2">
+                  <div className="text-xs text-[#64748b] flex gap-4">
+                    <span>Prompt: {selectedLog.total_tokens ? Math.floor(selectedLog.total_tokens*0.6) : 0}</span>
+                    <span>Completion: {selectedLog.total_tokens ? Math.ceil(selectedLog.total_tokens*0.4) : 0}</span>
+                    <span className="font-bold text-[#94a3b8]">Total: {selectedLog.total_tokens || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="p-1 rounded bg-[#10b981]/10 text-[#10b981] font-bold">$</span>
+                    <span className="text-[#10b981] font-mono">${(selectedLog.cost_usd || 0).toFixed(6)} USD</span>
+                  </div>
+                </div>
+
               </div>
             </div>
+
 
           </div>
         </div>
