@@ -123,10 +123,23 @@ class XanhSMClassifier:
                     kwargs["response_format"] = {"type": "json_object"}
                     
                 response = client.chat.completions.create(**kwargs)
-                res_content = response.choices[0].message.content.strip()
-                res_content = re.sub(r"```json|```", "", res_content).strip()
+                res_content = response.choices[0].message.content or ""
+                res_content = res_content.strip()
+                
+                # Robust JSON extraction
+                match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", res_content, re.DOTALL)
+                if match:
+                    json_str = match.group(1)
+                else:
+                    start = res_content.find('{')
+                    end = res_content.rfind('}')
+                    if start != -1 and end != -1 and end > start:
+                        json_str = res_content[start:end+1]
+                    else:
+                        json_str = "{}" # Fallback if no JSON found
+                
                 return {
-                    "result": json.loads(res_content),
+                    "result": json.loads(json_str),
                     "usage": {
                         "prompt_tokens": response.usage.prompt_tokens,
                         "completion_tokens": response.usage.completion_tokens,
