@@ -21,8 +21,23 @@ export const parseFoodInlineParts = (text) => {
 
   const tail = text.slice(cursor);
   const partialStart = tail.lastIndexOf('[[FOOD_CARD');
-  if (partialStart !== -1 && tail.indexOf(']]', partialStart) === -1) {
-    const visibleTail = tail.slice(0, partialStart);
+
+  
+  const partials = [
+    '[', '[[', '[[F', '[[FO', '[[FOO', '[[FOOD', '[[FOOD_',
+    '[[FOOD_C', '[[FOOD_CA', '[[FOOD_CAR', '[[FOOD_CARD'
+  ];
+  let tailMatchIndex = -1;
+  for (const p of partials) {
+    if (tail.endsWith(p)) {
+      tailMatchIndex = tail.length - p.length;
+      break;
+    }
+  }
+
+  if ((partialStart !== -1 && tail.indexOf(']]', partialStart) === -1) || tailMatchIndex !== -1) {
+    const cutoff = partialStart !== -1 ? partialStart : tailMatchIndex;
+    const visibleTail = tail.slice(0, cutoff);
     if (visibleTail) parts.push({ type: 'text', text: visibleTail });
     parts.push({ type: 'food_loading' });
   } else if (tail) {

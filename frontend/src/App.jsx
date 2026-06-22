@@ -264,7 +264,9 @@ function MainLayout({ children }) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleMarkNotificationRead = async (id) => {
@@ -400,7 +402,7 @@ function MainLayout({ children }) {
                       <path d="m9 11 2 2 4-4"/>
                     </svg>
                   </div>
-                  <span className="text-[10px] text-on-surface-variant/30 font-medium mt-0.5 italic">Dữ liệu cập nhật 05/06/2026</span>
+                  <span className="text-[10px] text-on-surface-variant/30 font-medium mt-0.5 italic">Dữ liệu cập nhật 20/06/2026</span>
                 </div>
               </div>
             </div>
@@ -668,6 +670,7 @@ function MainLayout({ children }) {
 }
 import PresentationFlow from './pages/PresentationFlow';
 import SlideShow from './pages/SlideShow';
+import TechPresentation from './pages/TechPresentation';
 
 function App() {
   return (
@@ -675,11 +678,10 @@ function App() {
       {/* Login Route */}
       <Route path="/admin-login" element={<AdminLogin />} />
 
-      {/* Presentation Route */}
+      {/* Presentation Routes */}
       <Route path="/presentation" element={<PresentationFlow />} />
-
-      {/* Slide Route */}
       <Route path="/slide" element={<SlideShow />} />
+      <Route path="/tech" element={<TechPresentation />} />
 
       {/* Landing Route */}
       <Route path="/" element={<LandingPage />} />

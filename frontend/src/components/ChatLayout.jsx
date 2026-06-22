@@ -784,9 +784,10 @@ export default function ChatLayout() {
   };
 
   const handleKeyDown = (e) => {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      handleSubmit(e);
     }
   };
 
@@ -1197,7 +1198,7 @@ export default function ChatLayout() {
                   <span className="text-[#00c897]">Tôi có thể giúp gì cho bạn?</span>
                 </h1>
                 <p className="text-xs md:text-sm text-on-surface-variant/80 mt-2 max-w-lg leading-relaxed font-medium">
-                  Tôi có thể giúp bạn tìm hiểu dịch vụ, giá cước, xe điện, ưu đãi và chính sách của Xanh SM.
+                  Tôi có thể giúp bạn tìm hiểu dịch vụ, giá cước, xe điện, ưu đãi, gợi ý món ăn ngon và giải đáp chính sách của Xanh SM.
                 </p>
               </div>
               
@@ -1452,7 +1453,7 @@ export default function ChatLayout() {
                 {/* Deep Search Toggle */}
                 <button
                   onClick={() => {
-                    if (user?.type === 'guest') {
+                    if (!user || (!user.email && !user.name)) {
                       alert("Vui lòng đăng nhập để sử dụng tính năng Tìm kiếm chuyên sâu (Deep Search).");
                       return;
                     }
