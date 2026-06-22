@@ -115,6 +115,7 @@ graph TD
 
 * Chi tiết cấu trúc thư mục dự án xem tại: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 * Chi tiết nguyên lý hoạt động và chi tiết từng Node xử lý xem tại: [`docs/PIPELINE.md`](docs/PIPELINE.md)
+* Chi tiết luồng xử lý Food Recommendation và thiết kế ML-Ready xem tại: [`docs/FOOD_PIPLINE.md`](docs/FOOD_PIPLINE.md)
 * Database diagram, class diagram và giải thích chi tiết từng bảng xem tại: [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md)
 * Quy trình thay đổi schema database bằng Alembic xem tại: [`docs/DATABASE_MIGRATIONS.md`](docs/DATABASE_MIGRATIONS.md)
 
