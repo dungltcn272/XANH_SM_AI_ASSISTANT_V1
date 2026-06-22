@@ -1,13 +1,18 @@
 import json
 import re
 from typing import Any, Dict, List
+import concurrent.futures
 
 from app.core.config import settings as config
 from app.core.llm import get_llm_client, has_api_key_for_model, select_model_for_multimodal
 from app.core.logger import log_warn
 from app.memory.context_builder import ContextBuilder
 from app.nlu.memory_extractor import MemorySignalExtractor
-from app.prompts import UNIFIED_NLU_PROMPT
+from app.prompts.system_prompts import (
+    NLU_INTENT_REWRITE_PROMPT,
+    NLU_FOOD_EXTRACTION_PROMPT,
+    NLU_MEMORY_EXTRACTION_PROMPT
+)
 
 
 class XanhSMClassifier:
@@ -59,9 +64,9 @@ class XanhSMClassifier:
     ) -> Dict[str, Any]:
         """
         Unified NLU analyzer:
-        1. Context-aware rewrite.
-        2. Intent classification.
-        3. Local memory signal correction.
+        1. Context-aware rewrite & Intent classification (Call 1)
+        2. Local memory signal correction & LLM memory extraction (Call 2 - Async)
+        3. Food Slot extraction (Call 3 - Only if intent is food_recommendation)
         """
         model_to_use = config.NLU_MODEL
         include_image = False
@@ -94,36 +99,55 @@ class XanhSMClassifier:
         if "gpt-4o-mini" not in models_to_try:
             models_to_try.append("gpt-4o-mini")
 
-        result_payload = None
-        for model_name in models_to_try:
-            if not has_api_key_for_model(model_name):
-                continue
-            if config.EMBEDDING_PROVIDER == "mock":
-                continue
+        def _call_llm_json(system_prompt: str, max_tokens: int, target_model: str) -> dict:
             try:
-                client = get_llm_client(model_name)
-
+                client = get_llm_client(target_model)
                 messages = ContextBuilder.build_nlu_messages(
-                    system_prompt=UNIFIED_NLU_PROMPT,
+                    system_prompt=system_prompt,
                     query=query,
                     chat_history=chat_history or [],
                     food_context=food_context,
                     assistant_context=assistant_context,
                     image_base64=image_base64 if include_image else None,
                 )
-
                 response = client.chat.completions.create(
-                    model=model_name,
+                    model=target_model,
                     messages=messages,
                     temperature=0.0,
-                    max_tokens=1000 if include_image else 650,
+                    max_tokens=max_tokens,
                     response_format={"type": "json_object"},
                 )
                 res_content = response.choices[0].message.content.strip()
                 res_content = re.sub(r"```json|```", "", res_content).strip()
-                result = json.loads(res_content)
+                return {
+                    "result": json.loads(res_content),
+                    "usage": {
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                    }
+                }
+            except Exception as exc:
+                log_warn("NLU", f"Unified NLU LLM Call failed for model {target_model}: {exc}.")
+                return {"result": {}, "usage": {"prompt_tokens": 0, "completion_tokens": 0}, "error": str(exc)}
 
-                intent = result.get("intent", "rag")
+        result_payload = None
+        for model_name in models_to_try:
+            if not has_api_key_for_model(model_name):
+                continue
+            if config.EMBEDDING_PROVIDER == "mock":
+                continue
+            
+            # Using ThreadPoolExecutor to run Memory Extraction and Intent Classification concurrently
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                future_intent = executor.submit(_call_llm_json, NLU_INTENT_REWRITE_PROMPT, 650 if include_image else 300, model_name)
+                future_memory = executor.submit(_call_llm_json, NLU_MEMORY_EXTRACTION_PROMPT, 500, model_name)
+                
+                intent_resp = future_intent.result()
+                if "error" in intent_resp:
+                    continue # Try next model if intent classification failed
+                
+                intent_data = intent_resp["result"]
+                intent = intent_data.get("intent", "rag")
                 if intent == "food-recommend":
                     intent = "food_recommendation"
                 if intent in ["miss-info", "missing-info", "missinginfo"]:
@@ -131,15 +155,34 @@ class XanhSMClassifier:
                 if intent not in ["small-talk", "rag", "sensitive", "missing_info", "food_recommendation"]:
                     intent = "rag"
 
-                rewritten_query = result.get("rewritten_query", query)
-                suggested_answer = result.get("suggested_answer")
-                food_slots = result.get("food_slots")
-                user_context = result.get("user_context")
-                missing_fields = result.get("missing_fields") or []
-                ui_form = result.get("ui_form")
-                memory_candidates = result.get("memory_candidates") or []
+                rewritten_query = intent_data.get("rewritten_query", query)
+                suggested_answer = intent_data.get("suggested_answer")
+                
+                # Fetch memory result
+                memory_resp = future_memory.result()
+                memory_data = memory_resp.get("result", {})
+                memory_candidates = memory_data.get("memory_candidates") or []
                 if not isinstance(memory_candidates, list):
                     memory_candidates = []
+                
+                # If intent is food, we do a sequential 3rd call for slots
+                food_slots = None
+                missing_fields = []
+                ui_form = None
+                food_usage = {"prompt_tokens": 0, "completion_tokens": 0}
+                if intent == "food_recommendation":
+                    food_resp = _call_llm_json(NLU_FOOD_EXTRACTION_PROMPT, 500, model_name)
+                    food_data = food_resp.get("result", {})
+                    food_slots = food_data.get("food_slots")
+                    missing_fields = food_data.get("missing_fields") or []
+                    ui_form = food_data.get("ui_form")
+                    food_usage = food_resp.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+                
+                # Usage aggregation
+                total_prompt_tokens = intent_resp["usage"]["prompt_tokens"] + memory_resp["usage"]["prompt_tokens"] + food_usage["prompt_tokens"]
+                total_completion_tokens = intent_resp["usage"]["completion_tokens"] + memory_resp["usage"]["completion_tokens"] + food_usage["completion_tokens"]
+
+                # Process local memory overrides
                 memory_candidates = self._merge_memory_candidates(
                     memory_candidates,
                     self._local_memory_candidates(query),
@@ -164,20 +207,18 @@ class XanhSMClassifier:
                     "expanded_queries": expanded,
                     "suggested_answer": suggested_answer,
                     "food_slots": food_slots,
-                    "user_context": user_context,
+                    "user_context": food_slots, # Keep compatible with old logic if needed
                     "missing_fields": missing_fields,
                     "ui_form": ui_form,
                     "memory_candidates": memory_candidates,
                     "usage": {
-                        "prompt_tokens": response.usage.prompt_tokens,
-                        "completion_tokens": response.usage.completion_tokens,
+                        "prompt_tokens": total_prompt_tokens,
+                        "completion_tokens": total_completion_tokens,
                     },
                     "fast_path": False,
                     "nlu_model_used": model_name,
                 }
                 break
-            except Exception as exc:
-                log_warn("NLU", f"Unified NLU LLM Call failed for model {model_name}: {exc}.")
 
         if result_payload is not None:
             return result_payload
