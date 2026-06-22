@@ -58,42 +58,31 @@ export default function SlideShow() {
   }, [nextSlide, prevSlide]);
 
   // Executive-focused slide tabs
+  const ALL_TABS = [
+    'Tầm nhìn',
+    'Hiện trạng',
+    'Hiệu quả',
+    'Kiến trúc',
+    'Cơ hội',
+    'Khoảng cách',
+    'Nâng cấp',
+    'Lời kết'
+  ];
+
   const getActiveTab = (index) => {
-    if (index === 0) return 'Tầm nhìn';
-    if (index === 1) return 'Giá trị';
-    if (index === 2) return 'Hiệu quả';
-    if (index === 3) return 'Khác biệt';
-    if (index === 4) return 'Lợi thế';
-    if (index === 5 || index === 6) return 'Giải pháp';
-    if (index === 7) return 'Triển khai';
-    if (index === 8) return 'Nâng cấp';
-    return 'Cảm ơn';
+    return ALL_TABS[index] || ALL_TABS[0];
   };
 
   const getTabsList = (index) => {
-    if (index === 0 || index === 1 || index === 2) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
-    if (index === 3) return ['Tầm nhìn', 'Giá trị', 'Khác biệt', 'Giải pháp'];
-    if (index === 4) return ['Tầm nhìn', 'Giá trị', 'Lợi thế', 'Giải pháp'];
-    if (index === 5 || index === 6) return ['Tầm nhìn', 'Giá trị', 'Hiệu quả', 'Giải pháp'];
-    if (index === 7) return ['Giá trị', 'Giải pháp', 'Triển khai', 'Nâng cấp'];
-    if (index === 8) return ['Giải pháp', 'Triển khai', 'Nâng cấp', 'Cảm ơn'];
-    return ['Triển khai', 'Nâng cấp', 'Cảm ơn'];
+    let start = index - 1;
+    if (start < 0) start = 0;
+    if (start + 4 > ALL_TABS.length) start = ALL_TABS.length - 4;
+    return ALL_TABS.slice(start, start + 4);
   };
 
   const navigateToTab = (tabName) => {
-    const targetMap = {
-      'Tầm nhìn': 0,
-      'Giá trị': 1,
-      'Hiệu quả': 2,
-      'Khác biệt': 3,
-      'Lợi thế': 4,
-      'Giải pháp': 5,
-      'Triển khai': 7,
-      'Nâng cấp': 8,
-      'Cảm ơn': 9
-    };
-    const targetIndex = targetMap[tabName];
-    if (targetIndex !== undefined) {
+    const targetIndex = ALL_TABS.indexOf(tabName);
+    if (targetIndex !== -1) {
       setDirection(targetIndex > currentSlide ? 1 : -1);
       setCurrentSlide(targetIndex);
     }
@@ -307,8 +296,8 @@ export default function SlideShow() {
                       <h2 className="text-[60px] font-black leading-tight text-[#071735]">
                         Hiệu quả vận hành & <span className="text-[#00b386]">Tối ưu Chi phí</span>
                       </h2>
-                      <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        Được kiểm chứng qua các bộ chỉ số vận hành thực tế. Không chỉ là công nghệ, đây là công cụ thúc đẩy hiệu suất kinh doanh trực tiếp.
+                      <p className="text-[24px] font-semibold text-[#415b7d] mt-[10px] max-w-[1120px]">
+                        Đánh giá nghiêm túc dưới góc độ CTO/Head of AI Product: Xanh SM AI đang định hình rõ thế mạnh ở mảng Knowledge Assistant, sẵn sàng đối trọng với siêu ứng dụng Grab.
                       </p>
                     </div>
                     <div className="grid grid-cols-[1.1fr_0.9fr] gap-6 items-stretch pt-2">
@@ -384,76 +373,112 @@ export default function SlideShow() {
 
                 {/* SLIDE 5: VỊ THẾ XANH SM TRÊN BẢN ĐỒ AI */}
                 {currentSlide === 4 && (
-                  <div className="space-y-4">
-                    <div>
-                      <h2 className="text-[54px] font-black leading-tight text-[#071735]">
-                        Bản đồ AI Assistant & <span className="text-[#00b386]">Sức Mạnh Cốt Lõi</span>
+                  <div className="space-y-4 w-full">
+                    <div className="text-center mb-10">
+                      <div className="inline-flex items-center gap-2 px-[18px] py-[11px] rounded-full bg-[#00b386]/12 text-[#008c72] font-black tracking-widest text-[17px] uppercase mb-4 shadow-sm border border-[#00b386]/20">
+                        Thực Trạng Thị Trường & Cơ Hội
+                      </div>
+                      <h2 className="text-[58px] font-black leading-tight text-[#071735]">
+                        Cơ Hội Vàng Tại <span className="text-[#00b386]">Thị Trường Việt Nam</span>
                       </h2>
-                      <p className="text-[24px] font-semibold text-[#415b7d] mt-[10px] max-w-[1120px]">
-                        Xanh SM AI đang dẫn đầu mảng <b>Enterprise Knowledge AI</b> (95/100 điểm), vượt xa các đối thủ về độ tin cậy, chống Hallucination và khả năng quản trị tri thức.
+                      <p className="text-[22px] font-medium text-[#415b7d] mt-4 max-w-[1000px] mx-auto">
+                        Thực tế tại Việt Nam hiện vẫn chưa có bất kỳ đối thủ nào phổ cập rộng rãi một AI Assistant đa năng cho hệ sinh thái. Chúng ta đang mở đường, không phải đang chạy theo!
                       </p>
                     </div>
-                    
-                    <div className="grid grid-cols-[1fr_1.5fr] gap-8 mt-8">
-                      {/* Left: AI Landscape */}
-                      <div className="border border-[#094a70]/11 rounded-[24px] bg-white shadow-[0_28px_90px_rgba(8,45,77,0.22)] p-8 flex flex-col">
-                        <h3 className="text-[#071735] text-[28px] font-black mb-6 border-b border-slate-100 pb-4">Điểm Đánh Giá Kiến Trúc AI</h3>
-                        <div className="space-y-6 flex-grow justify-center flex flex-col">
-                          {[
-                            { name: 'Knowledge Assistant', xanh: 95, grab: 100 },
-                            { name: 'Customer Support AI', xanh: 90, grab: 95 },
-                            { name: 'Enterprise RAG & Eval', xanh: 95, grab: 80 },
-                            { name: 'Hallucination Control', xanh: 90, grab: 60 }
-                          ].map(item => (
-                            <div key={item.name}>
-                              <div className="flex justify-between text-[20px] font-bold text-[#071735] mb-2">
-                                <span>{item.name}</span>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <div className="text-[16px] font-bold w-[120px] text-[#00b386]">Xanh SM: {item.xanh}</div>
-                                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className="h-full bg-[#00b386] rounded-full" style={{ width: `${item.xanh}%` }}></div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4 mt-2">
-                                <div className="text-[16px] font-bold w-[120px] text-[#00a5cf]">Grab: {item.grab}</div>
-                                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className="h-full bg-[#00a5cf] rounded-full" style={{ width: `${item.grab}%` }}></div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+
+                    <div className="grid grid-cols-4 gap-6 px-4">
+                      {/* GRAB CARD */}
+                      <div className="border border-[#00a5cf]/20 rounded-[32px] bg-gradient-to-b from-white to-[#f0f9ff]/50 shadow-[0_24px_50px_rgba(0,165,207,0.08)] p-8 flex flex-col relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_34px_60px_rgba(0,165,207,0.15)] transition-all duration-300">
+                        <div className="absolute -right-10 -top-10 w-40 h-40 bg-[#00a5cf]/5 rounded-full blur-2xl group-hover:bg-[#00a5cf]/10 transition-colors"></div>
+                        <div className="flex items-center justify-between mb-8">
+                          <a href="https://www.grab.com/my/press/others/grab-unveils-13-ai-powered-experiences-at-grabx-2026-as-southeast-asias-intelligent-everyday-guide/" target="_blank" rel="noreferrer" className="text-[#00a5cf] text-[38px] font-black hover:text-[#0082a3] flex items-center gap-2 drop-shadow-sm">
+                            Grab <span className="text-[20px] bg-white/80 p-2 rounded-full shadow-sm">🔗</span>
+                          </a>
+                        </div>
+                        <div className="space-y-6">
+                          <div>
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Có AI Assistant?</p>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-[#00b386]/10 border border-[#00b386]/20 text-[#008c72] rounded-2xl font-bold shadow-sm"><span className="text-[22px]">✅</span> Có</div>
+                          </div>
+                          <div>
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Đã rollout tại VN?</p>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl font-bold shadow-sm"><span className="text-[22px]">❌</span> Chưa (Sing)</div>
+                          </div>
+                          <div className="pt-2 border-t border-[#00a5cf]/10">
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">User VN thấy không?</p>
+                            <div className="inline-flex items-center gap-2.5 px-5 py-3 bg-slate-100/80 border border-slate-200 text-slate-600 rounded-2xl font-bold shadow-inner"><span className="text-[22px] grayscale">🚫</span> Hoàn toàn không</div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Right: What we are better at */}
-                      <div className="border border-[#094a70]/11 rounded-[24px] bg-white shadow-[0_28px_90px_rgba(8,45,77,0.22)] p-8">
-                        <h3 className="text-[#00b386] text-[32px] font-black mb-6 flex items-center gap-3">
-                          🏆 Điểm Xanh SM Đang Vượt Trội 
-                        </h3>
-                        <ul className="space-y-6 text-[20px] text-[#405a7a] font-medium leading-[1.6]">
-                          <li className="flex gap-4">
-                            <span className="text-[#00b386] text-[28px] mt-1">●</span>
-                            <div>
-                              <strong className="text-[#071735] text-[24px] block mb-1">Kiến trúc RAG Tiêu chuẩn Doanh nghiệp</strong>
-                              Xanh SM sở hữu luồng Hybrid Retrieval kết hợp Reranker và Context Expansion mạnh mẽ hơn hầu hết Chatbot CSKH hiện tại của Grab/Uber.
-                            </div>
-                          </li>
-                          <li className="flex gap-4">
-                            <span className="text-[#00b386] text-[28px] mt-1">●</span>
-                            <div>
-                              <strong className="text-[#071735] text-[24px] block mb-1">Kiểm soát Hallucination & Trích dẫn minh bạch</strong>
-                              Hệ thống có độ chính xác (Faithfulness) chạm ngưỡng 99%. Trả lời hoàn toàn dựa trên tài liệu Xanh SM, cho phép truy vết (Tracing) rõ ràng, ngược lại với mô hình "Hộp đen suy luận" của Grab.
-                            </div>
-                          </li>
-                          <li className="flex gap-4">
-                            <span className="text-[#00b386] text-[28px] mt-1">●</span>
-                            <div>
-                              <strong className="text-[#071735] text-[24px] block mb-1">Đánh Giá Bằng RAGAS</strong>
-                              Xanh SM AI được tích hợp hệ thống Evaluation tự động theo thời gian thực (Correctness, Faithfulness). Đây là tiêu chuẩn vàng mà đa số AI trên thị trường chưa publish.
-                            </div>
-                          </li>
-                        </ul>
+                      {/* UBER CARD */}
+                      <div className="border border-slate-200 rounded-[32px] bg-gradient-to-b from-white to-slate-50/50 shadow-[0_24px_50px_rgba(0,0,0,0.04)] p-8 flex flex-col relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_34px_60px_rgba(0,0,0,0.08)] transition-all duration-300">
+                        <div className="flex items-center justify-between mb-8">
+                          <a href="https://techcrunch.com/2026/02/11/uber-eats-launches-ai-assistant-to-help-with-grocery-cart-creation/" target="_blank" rel="noreferrer" className="text-[#111827] text-[38px] font-black hover:text-[#374151] flex items-center gap-2 drop-shadow-sm">
+                            Uber <span className="text-[20px] bg-white p-2 rounded-full shadow-sm border border-slate-100">🔗</span>
+                          </a>
+                        </div>
+                        <div className="space-y-6">
+                          <div>
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Có AI Assistant?</p>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl font-bold shadow-sm"><span className="text-[22px]">⚠️</span> Có 1 phần</div>
+                          </div>
+                          <div>
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Đã rollout tại VN?</p>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl font-bold shadow-sm"><span className="text-[22px]">❌</span> Không</div>
+                          </div>
+                          <div className="pt-2 border-t border-slate-200">
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">User VN thấy không?</p>
+                            <div className="inline-flex items-center gap-2.5 px-5 py-3 bg-slate-100/80 border border-slate-200 text-slate-600 rounded-2xl font-bold shadow-inner"><span className="text-[22px] grayscale">🚫</span> Hoàn toàn không</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* LYFT CARD */}
+                      <div className="border border-[#ec4899]/20 rounded-[32px] bg-gradient-to-b from-white to-[#fdf2f8]/60 shadow-[0_24px_50px_rgba(236,72,153,0.06)] p-8 flex flex-col relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_34px_60px_rgba(236,72,153,0.12)] transition-all duration-300">
+                        <div className="absolute -left-10 -top-10 w-40 h-40 bg-[#ec4899]/5 rounded-full blur-2xl group-hover:bg-[#ec4899]/10 transition-colors"></div>
+                        <div className="flex items-center justify-between mb-8 z-10 relative">
+                          <a href="https://www.businessinsider.com/lyft-ai-tool-earnings-assistant-helps-drivers-find-rides-2026-5" target="_blank" rel="noreferrer" className="text-[#ec4899] text-[38px] font-black hover:text-[#be185d] flex items-center gap-2 drop-shadow-sm">
+                            Lyft <span className="text-[20px] bg-white/80 p-2 rounded-full shadow-sm">🔗</span>
+                          </a>
+                        </div>
+                        <div className="space-y-6 z-10 relative">
+                          <div>
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Có AI Assistant?</p>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl font-bold shadow-sm"><span className="text-[22px]">⚠️</span> Chỉ Driver AI</div>
+                          </div>
+                          <div>
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Đã rollout tại VN?</p>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl font-bold shadow-sm"><span className="text-[22px]">❌</span> K.Hoạt Động</div>
+                          </div>
+                          <div className="pt-2 border-t border-[#ec4899]/10">
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">User VN thấy không?</p>
+                            <div className="inline-flex items-center gap-2.5 px-5 py-3 bg-slate-100/80 border border-slate-200 text-slate-600 rounded-2xl font-bold shadow-inner"><span className="text-[22px] grayscale">🚫</span> Hoàn toàn không</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SHOPEE CARD */}
+                      <div className="border border-[#f97316]/20 rounded-[32px] bg-gradient-to-b from-white to-[#fff7ed]/80 shadow-[0_24px_50px_rgba(249,115,22,0.08)] p-8 flex flex-col relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_34px_60px_rgba(249,115,22,0.15)] transition-all duration-300">
+                        <div className="flex items-center justify-between mb-8">
+                          <a href="https://banhang.shopee.vn/edu/article/22401" target="_blank" rel="noreferrer" className="text-[#f97316] text-[38px] font-black hover:text-[#c2410c] flex items-center gap-2 drop-shadow-sm">
+                            Shopee <span className="text-[20px] bg-white/80 p-2 rounded-full shadow-sm">🔗</span>
+                          </a>
+                        </div>
+                        <div className="space-y-6">
+                          <div>
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Có AI Assistant?</p>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-[#00b386]/10 border border-[#00b386]/20 text-[#008c72] rounded-2xl font-bold shadow-sm"><span className="text-[22px]">✅</span> Có</div>
+                          </div>
+                          <div>
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Đã rollout tại VN?</p>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-[#00b386]/10 border border-[#00b386]/20 text-[#008c72] rounded-2xl font-bold shadow-sm"><span className="text-[22px]">✅</span> Có (Cho Seller)</div>
+                          </div>
+                          <div className="pt-2 border-t border-[#f97316]/10">
+                            <p className="text-[14px] text-slate-400 uppercase font-bold tracking-widest mb-3">Buyer VN thấy không?</p>
+                            <div className="inline-flex items-center gap-2.5 px-5 py-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl font-bold shadow-sm"><span className="text-[22px]">❌</span> Không thấy</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -461,67 +486,119 @@ export default function SlideShow() {
 
                 {/* SLIDE 6: PHÂN TÍCH KHOẢNG CÁCH */}
                 {currentSlide === 5 && (
-                  <div className="space-y-4">
-                    <div>
-                      <h2 className="text-[54px] font-black leading-tight text-[#071735]">
-                        Cuộc Đua Tới <span className="text-[#00b386]">AI Concierge</span>
-                      </h2>
-                      <p className="text-[24px] font-semibold text-[#415b7d] mt-[10px] max-w-[1120px]">
-                        Xanh SM đang nằm ở bước <b>Knowledge Assistant</b>. Để bắt kịp hệ sinh thái của Grab, chúng ta cần chuyển mình thành <b>Life Assistant / Action Agent</b>.
-                      </p>
+                  <div className="space-y-4 w-full">
+                    <div className="flex items-end justify-between mb-4 px-2">
+                      <div>
+                        <h2 className="text-[54px] font-black leading-tight text-[#071735]">
+                          Khoảng Cách Tới <span className="text-[#00b386]">Action Agent Toàn Cầu</span>
+                        </h2>
+                        <p className="text-[22px] font-medium text-[#415b7d] mt-2 max-w-[900px]">
+                          So với mô hình tham chiếu toàn cầu (Mỹ, Sing), Xanh SM vẫn còn thiếu những năng lực "Thực Chiến" đa tác vụ và can thiệp sâu vào hệ sinh thái.
+                        </p>
+                      </div>
+                      <div className="px-5 py-3 rounded-[20px] bg-rose-50 border border-rose-100 text-rose-600 font-bold text-[18px] shadow-sm">
+                        🚨 Cảnh báo tụt hậu
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-[1.5fr_1fr] gap-8 mt-8">
-                      {/* Left: What Grab is better at */}
-                      <div className="border border-[#094a70]/11 rounded-[24px] bg-white shadow-[0_28px_90px_rgba(8,45,77,0.22)] p-8">
-                        <h3 className="text-[#e11d48] text-[32px] font-black mb-6 flex items-center gap-3">
-                          📉 Những Điểm Grab Bỏ Xa Xanh SM
-                        </h3>
-                        <ul className="space-y-6 text-[20px] text-[#405a7a] font-medium leading-[1.6]">
-                          <li className="flex gap-4">
-                            <span className="text-[#e11d48] text-[28px] mt-1">●</span>
-                            <div>
-                              <strong className="text-[#071735] text-[24px] block mb-1">Thiếu Dữ Liệu Hành Vi & Cá Nhân Hóa Sâu</strong>
-                              Grab sở hữu hàng trăm triệu giao dịch đa dịch vụ (ăn uống, đi lại, thanh toán). AI Recommendation của họ ăn đứt mọi startup nhờ lịch sử này. (Grab: 100 vs Xanh: 50).
-                            </div>
-                          </li>
-                          <li className="flex gap-4">
-                            <span className="text-[#e11d48] text-[28px] mt-1">●</span>
-                            <div>
-                              <strong className="text-[#071735] text-[24px] block mb-1">Chưa Trở Thành "Agent Thực Chiến" Đa Bước</strong>
-                              Grab AI có thể nhận lệnh: <i className="text-slate-500">"Tổ chức sinh nhật 10 người, ngân sách 3 triệu"</i> &rarr; Tự tìm quán &rarr; Đặt bàn &rarr; Gọi xe trong 1 cuộc trò chuyện duy nhất. Xanh SM vẫn là dạng "Hỏi - Đáp - Tool Calling đơn giản".
-                            </div>
-                          </li>
-                          <li className="flex gap-4">
-                            <span className="text-[#e11d48] text-[28px] mt-1">●</span>
-                            <div>
-                              <strong className="text-[#071735] text-[24px] block mb-1">Giao Tiếp Đa Phương Thức (Voice Native)</strong>
-                              Grab đã hỗ trợ Voice Notes và thao tác bằng giọng nói xuyên suốt. Chúng ta hiện chưa có hệ sinh thái Voice-First thực sự trơn tru.
-                            </div>
-                          </li>
-                        </ul>
+                    <div className="grid grid-cols-3 gap-8 mt-6">
+                      {/* GRAB SING CARD */}
+                      <div className="border border-[#00a5cf]/15 rounded-[32px] bg-white shadow-[0_20px_50px_rgba(8,45,77,0.06)] p-8 flex flex-col relative group hover:shadow-[0_30px_70px_rgba(0,165,207,0.12)] hover:-translate-y-1 transition-all duration-300">
+                        <div className="flex justify-between items-start border-b border-[#00a5cf]/10 pb-5 mb-6">
+                          <div>
+                            <a href="https://www.grab.com/my/press/others/grab-unveils-13-ai-powered-experiences-at-grabx-2026-as-southeast-asias-intelligent-everyday-guide/" target="_blank" rel="noreferrer" className="text-[#00a5cf] text-[34px] font-black flex items-center gap-2 hover:underline">Grab Sing <span className="text-[18px] bg-slate-50 p-2 rounded-full border border-slate-100">🔗</span></a>
+                            <span className="inline-block mt-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[13px] font-black uppercase tracking-widest">Super App AI</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex-grow">
+                          <h4 className="text-[16px] font-black text-[#071735] mb-4 flex items-center gap-3 uppercase tracking-wide">
+                            <span className="w-2 h-6 bg-rose-500 rounded-full block"></span> Năng lực Xanh SM thiếu hụt
+                          </h4>
+                          <ul className="space-y-4 mb-8">
+                            <li className="flex items-start gap-3 bg-rose-50/60 p-4 rounded-2xl border border-rose-100/50">
+                               <span className="text-rose-500 font-black text-[20px] leading-none">×</span>
+                               <span className="text-[#405a7a] font-medium leading-snug text-[17px]"><strong className="text-[#071735]">AI Concierge:</strong> Lập kế hoạch đa bước xuyên suốt hệ sinh thái.</span>
+                            </li>
+                            <li className="flex items-start gap-3 bg-rose-50/60 p-4 rounded-2xl border border-rose-100/50">
+                               <span className="text-rose-500 font-black text-[20px] leading-none">×</span>
+                               <span className="text-[#405a7a] font-medium leading-snug text-[17px]"><strong className="text-[#071735]">Voice & Shopping:</strong> Giao tiếp Voice Notes, ảnh giỏ hàng.</span>
+                            </li>
+                          </ul>
+                        </div>
+                        
+                        <div className="bg-gradient-to-br from-[#f0f9ff] to-[#e0f2fe] rounded-[24px] p-6 border border-[#00a5cf]/15 mt-auto">
+                          <h4 className="text-[15px] font-black text-[#00a5cf] mb-3 uppercase tracking-wider flex items-center gap-2">💡 Ví dụ thực tế</h4>
+                          <p className="text-[#314967] text-[17px] font-medium bg-white p-3 rounded-xl border border-white/50 shadow-sm mb-3">Nhận lệnh: <i className="text-slate-500">"Tổ chức sinh nhật 10 người, ngân sách 3 triệu"</i></p>
+                          <div className="text-[#0082a3] font-bold text-[18px] leading-snug flex items-start gap-2">
+                            <span className="text-[20px] leading-none mt-0.5">⚡</span>
+                            <span>Tự lọc menu &rarr; Đặt bàn &rarr; Gọi xe (Chỉ trong 1 lượt chat).</span>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Right: Path to victory */}
-                      <div className="border border-[#094a70]/11 rounded-[24px] bg-[#e1fff7] shadow-[0_28px_90px_rgba(8,45,77,0.22)] p-8 flex flex-col justify-center border-l-[8px] border-l-[#00b386]">
-                        <h3 className="text-[#071735] text-[32px] font-black mb-6">Chiến Lược Bứt Phá 🚀</h3>
-                        <div className="space-y-5 text-[22px] font-bold text-[#405a7a]">
-                          <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#00b386] border border-[#00b386]">1</span>
-                            Hoàn thiện Food Recommendation Engine
+                      {/* UBER US CARD */}
+                      <div className="border border-slate-200 rounded-[32px] bg-white shadow-[0_20px_50px_rgba(8,45,77,0.06)] p-8 flex flex-col relative group hover:shadow-[0_30px_70px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
+                        <div className="flex justify-between items-start border-b border-slate-100 pb-5 mb-6">
+                          <div>
+                            <a href="https://techcrunch.com/2026/02/11/uber-eats-launches-ai-assistant-to-help-with-grocery-cart-creation/" target="_blank" rel="noreferrer" className="text-[#111827] text-[34px] font-black flex items-center gap-2 hover:underline">Uber US <span className="text-[18px] bg-slate-50 p-2 rounded-full border border-slate-100">🔗</span></a>
+                            <span className="inline-block mt-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[13px] font-black uppercase tracking-widest">Ecosystem AI</span>
                           </div>
-                          <div className="flex justify-center my-2 text-[#00b386]">↓</div>
-                          <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#00b386] border border-[#00b386]">2</span>
-                            Tích hợp Preference Memory Dài Hạn
+                        </div>
+                        
+                        <div className="flex-grow">
+                          <h4 className="text-[16px] font-black text-[#071735] mb-4 flex items-center gap-3 uppercase tracking-wide">
+                            <span className="w-2 h-6 bg-rose-500 rounded-full block"></span> Năng lực Xanh SM thiếu hụt
+                          </h4>
+                          <ul className="space-y-4 mb-8">
+                            <li className="flex items-start gap-3 bg-rose-50/60 p-4 rounded-2xl border border-rose-100/50">
+                               <span className="text-rose-500 font-black text-[20px] leading-none">×</span>
+                               <span className="text-[#405a7a] font-medium leading-snug text-[17px]"><strong className="text-[#071735]">Commerce Action:</strong> Tự động hóa quá trình nhặt đồ mua sắm, ăn uống.</span>
+                            </li>
+                            <li className="flex items-start gap-3 bg-rose-50/60 p-4 rounded-2xl border border-rose-100/50">
+                               <span className="text-rose-500 font-black text-[20px] leading-none">×</span>
+                               <span className="text-[#405a7a] font-medium leading-snug text-[17px]"><strong className="text-[#071735]">Meal Planning:</strong> Trực tiếp lên thực đơn thay vì chỉ gợi ý nhà hàng.</span>
+                            </li>
+                          </ul>
+                        </div>
+                        
+                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-[24px] p-6 border border-slate-200 mt-auto">
+                          <h4 className="text-[15px] font-black text-[#475569] mb-3 uppercase tracking-wider flex items-center gap-2">💡 Ví dụ thực tế</h4>
+                          <a href="https://www.axios.com/2026/02/11/uber-eats-ai-grocery-cart-assistant" target="_blank" rel="noreferrer" className="block text-[#314967] text-[17px] font-medium bg-white p-3 rounded-xl border border-white/50 shadow-sm mb-3 hover:underline">Gửi ảnh danh sách đồ ăn / hàng tạp hóa cần mua</a>
+                          <div className="text-[#111827] font-bold text-[18px] leading-snug flex items-start gap-2">
+                            <span className="text-[20px] leading-none mt-0.5">⚡</span>
+                            <span>AI tự nhận diện nét chữ/ảnh &rarr; Thêm trực tiếp sản phẩm vào giỏ hàng.</span>
                           </div>
-                          <div className="flex justify-center my-2 text-[#00b386]">↓</div>
-                          <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#00b386] border border-[#00b386]">3</span>
-                            Phát triển Multi-Agent Planning
+                        </div>
+                      </div>
+
+                      {/* LYFT US CARD */}
+                      <div className="border border-[#ec4899]/15 rounded-[32px] bg-white shadow-[0_20px_50px_rgba(8,45,77,0.06)] p-8 flex flex-col relative group hover:shadow-[0_30px_70px_rgba(236,72,153,0.12)] hover:-translate-y-1 transition-all duration-300">
+                        <div className="flex justify-between items-start border-b border-[#ec4899]/10 pb-5 mb-6">
+                          <div>
+                            <a href="https://www.businessinsider.com/lyft-ai-tool-earnings-assistant-helps-drivers-find-rides-2026-5" target="_blank" rel="noreferrer" className="text-[#ec4899] text-[34px] font-black flex items-center gap-2 hover:underline">Lyft US <span className="text-[18px] bg-slate-50 p-2 rounded-full border border-slate-100">🔗</span></a>
+                            <span className="inline-block mt-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[13px] font-black uppercase tracking-widest">Operational AI</span>
                           </div>
-                          <div className="mt-8 pt-6 border-t border-[#00b386]/30 text-[20px] text-[#071735] leading-[1.6]">
-                            Chỉ cần hoàn thành luồng này, Xanh SM sẽ tiến thẳng từ mốc <b>60 điểm</b> lên <b>90 điểm</b> AI Concierge, tạo thế đối trọng sòng phẳng với Grab!
+                        </div>
+                        
+                        <div className="flex-grow">
+                          <h4 className="text-[16px] font-black text-[#071735] mb-4 flex items-center gap-3 uppercase tracking-wide">
+                            <span className="w-2 h-6 bg-rose-500 rounded-full block"></span> Năng lực Xanh SM thiếu hụt
+                          </h4>
+                          <ul className="space-y-4 mb-8">
+                            <li className="flex items-start gap-3 bg-rose-50/60 p-4 rounded-2xl border border-rose-100/50">
+                               <span className="text-rose-500 font-black text-[20px] leading-none">×</span>
+                               <span className="text-[#405a7a] font-medium leading-snug text-[17px]"><strong className="text-[#071735]">Earnings Assistant:</strong> AI phân tích sự kiện, giao thông để tối ưu thu nhập tài xế tự động.</span>
+                            </li>
+                          </ul>
+                        </div>
+                        
+                        <div className="bg-gradient-to-br from-[#fdf2f8] to-[#fce7f3] rounded-[24px] p-6 border border-[#ec4899]/15 mt-auto">
+                          <h4 className="text-[15px] font-black text-[#db2777] mb-3 uppercase tracking-wider flex items-center gap-2">💡 Ví dụ thực tế</h4>
+                          <p className="text-[#314967] text-[17px] font-medium bg-white p-3 rounded-xl border border-white/50 shadow-sm mb-3">Dự báo Blackpink Concert chuẩn bị kết thúc lúc 10h tối.</p>
+                          <div className="text-[#be185d] font-bold text-[18px] leading-snug flex items-start gap-2">
+                            <span className="text-[20px] leading-none mt-0.5">⚡</span>
+                            <span>Chỉ đường/Gợi ý tài xế di chuyển sớm đến vị trí cổng chính để đón khách.</span>
                           </div>
                         </div>
                       </div>
@@ -531,74 +608,88 @@ export default function SlideShow() {
 
                 {/* SLIDE 7: NÂNG CẤP HỆ SINH THÁI */}
                 {currentSlide === 6 && (
-                  <div className="space-y-6">
+                  <div className="space-y-5">
                     <div>
-                      <h2 className="text-[60px] font-black leading-tight text-[#071735]">
-                        Tầm nhìn <span className="text-[#00b386]">Nâng Cấp Hệ Sinh Thái</span>
+                      <h2 className="text-[52px] font-black leading-tight text-[#071735]">
+                        Lộ Trình <span className="text-[#00b386]">Nâng Cấp Hệ Sinh Thái</span>
                       </h2>
-                      <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        Xanh SM AI Assistant liên tục mở rộng tiện ích nhằm mang lại trải nghiệm tối ưu nhất cho Đối tác Tài xế và Nhà hàng, thúc đẩy doanh số và hiệu suất.
+                      <p className="text-[22px] font-semibold text-[#415b7d] mt-[10px] max-w-[1120px]">
+                        Trước khi tiến tới Action Agent toàn diện, chúng ta cần hoàn thiện vững chắc nền móng tri thức và ưu tiên giải quyết các pain-points cốt lõi của Tài xế & Nhà hàng.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8 pt-4">
+                    {/* Giải thích nguyên nhân */}
+                    <div className="border-l-[6px] border-amber-400 bg-amber-50/80 p-5 rounded-r-[20px] shadow-sm mb-2 flex gap-4 items-start">
+                      <div className="text-[32px] leading-none">💡</div>
+                      <div>
+                        <strong className="text-[#92400e] text-[20px] block mb-1">Tại sao Xanh SM chưa vội vã triển khai Action Agent như Grab/Uber?</strong>
+                        <p className="text-[#b45309] text-[17px] leading-snug font-medium">
+                          <b className="text-[#92400e]">1. Rủi ro hệ thống:</b> Việc cho phép AI tự động gọi xe, thanh toán đòi hỏi Deep API Integration với độ bảo mật tuyệt đối. Chúng ta chọn ưu tiên an toàn (Guardrails 99%) thay vì vội vàng ra mắt tính năng tiềm ẩn lỗi.<br/>
+                          <b className="text-[#92400e]">2. Xây móng vững chắc:</b> Cần làm chủ hoàn toàn lớp Knowledge Assistant (CSKH, Chính sách) trước khi dạy AI tự động hóa chuỗi hành động phức tạp.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6 pt-2">
                       {/* Cột Tài xế */}
-                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-[30px] shadow-[0_16px_36px_rgba(13,64,100,0.1)]">
-                        <div className="flex items-center gap-4 mb-6">
-                          <div className="w-[60px] h-[60px] rounded-2xl bg-gradient-to-br from-[#00b386] to-[#10cdb1] flex items-center justify-center text-white text-[32px]">🚘</div>
-                          <h3 className="text-[#071735] text-[34px] font-black leading-[1.2]">Đối tác Tài xế (Drivers)</h3>
+                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-6 shadow-[0_12px_30px_rgba(13,64,100,0.06)] relative overflow-hidden group hover:shadow-xl transition-all">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-[#00b386]/10 to-transparent rounded-bl-full"></div>
+                        <div className="flex items-center gap-4 mb-5 relative z-10">
+                          <div className="w-[50px] h-[50px] rounded-2xl bg-gradient-to-br from-[#00b386] to-[#10cdb1] flex items-center justify-center text-white text-[24px]">🚘</div>
+                          <h3 className="text-[#071735] text-[28px] font-black leading-[1.2]">Driver AI (Tài xế)</h3>
                         </div>
-                        <ul className="space-y-4">
-                          <li className="flex gap-4">
-                            <span className="text-[#00b386] text-[24px]">✓</span>
+                        <ul className="space-y-4 relative z-10">
+                          <li className="flex gap-3">
+                            <span className="text-[#00b386] text-[20px] font-black">✓</span>
                             <div>
-                              <strong className="text-[#071735] text-[20px]">Trợ Lý Rảnh Tay (Voice-First):</strong>
-                              <p className="text-[#405a7a] text-[18px] mt-1">Hỏi doanh thu, kiểm tra thưởng, báo cáo sự cố bằng giọng nói, không cần chạm màn hình.</p>
+                              <strong className="text-[#071735] text-[18px]">Trợ Lý Rảnh Tay (Voice-First):</strong>
+                              <p className="text-[#405a7a] text-[16px] mt-1 leading-snug">Hỏi doanh thu, báo cáo sự cố bằng giọng nói, đảm bảo an toàn lái xe.</p>
                             </div>
                           </li>
-                          <li className="flex gap-4">
-                            <span className="text-[#00b386] text-[24px]">✓</span>
+                          <li className="flex gap-3">
+                            <span className="text-[#00b386] text-[20px] font-black">✓</span>
                             <div>
-                              <strong className="text-[#071735] text-[20px]">Tối Ưu Hóa Trạm Sạc V-GREEN:</strong>
-                              <p className="text-[#405a7a] text-[18px] mt-1">Gợi ý trạm sạc gần nhất có trụ trống và giá tối ưu theo thời gian thực.</p>
+                              <strong className="text-[#071735] text-[18px]">Tối Ưu Trạm Sạc V-GREEN:</strong>
+                              <p className="text-[#405a7a] text-[16px] mt-1 leading-snug">Gợi ý trạm sạc gần nhất có trụ trống theo thời gian thực.</p>
                             </div>
                           </li>
-                          <li className="flex gap-4">
-                            <span className="text-[#00b386] text-[24px]">✓</span>
+                          <li className="flex gap-3">
+                            <span className="text-[#00b386] text-[20px] font-black">✓</span>
                             <div>
-                              <strong className="text-[#071735] text-[20px]">Heatmap & Điều Hướng:</strong>
-                              <p className="text-[#405a7a] text-[18px] mt-1">Dự báo điểm nóng nhu cầu cao để điều phối xe, tối đa hóa thu nhập.</p>
+                              <strong className="text-[#071735] text-[18px]">Heatmap & Điều Hướng:</strong>
+                              <p className="text-[#405a7a] text-[16px] mt-1 leading-snug">Dự báo điểm nóng nhu cầu cao để điều phối xe, tối đa thu nhập.</p>
                             </div>
                           </li>
                         </ul>
                       </div>
 
                       {/* Cột Nhà hàng */}
-                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-[30px] shadow-[0_16px_36px_rgba(13,64,100,0.1)]">
-                        <div className="flex items-center gap-4 mb-6">
-                          <div className="w-[60px] h-[60px] rounded-2xl bg-gradient-to-br from-[#ff9900] to-[#ffb84d] flex items-center justify-center text-white text-[32px]">🍜</div>
-                          <h3 className="text-[#071735] text-[34px] font-black leading-[1.2]">Cửa hàng (Merchants)</h3>
+                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-6 shadow-[0_12px_30px_rgba(13,64,100,0.06)] relative overflow-hidden group hover:shadow-xl transition-all">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-[#ff9900]/10 to-transparent rounded-bl-full"></div>
+                        <div className="flex items-center gap-4 mb-5 relative z-10">
+                          <div className="w-[50px] h-[50px] rounded-2xl bg-gradient-to-br from-[#ff9900] to-[#ffb84d] flex items-center justify-center text-white text-[24px]">🍜</div>
+                          <h3 className="text-[#071735] text-[28px] font-black leading-[1.2]">Seller AI (Cửa hàng)</h3>
                         </div>
-                        <ul className="space-y-4">
-                          <li className="flex gap-4">
-                            <span className="text-[#ff9900] text-[24px]">✓</span>
+                        <ul className="space-y-4 relative z-10">
+                          <li className="flex gap-3">
+                            <span className="text-[#ff9900] text-[20px] font-black">✓</span>
                             <div>
-                              <strong className="text-[#071735] text-[20px]">Dự Báo Nhu Cầu & Tồn Kho:</strong>
-                              <p className="text-[#405a7a] text-[18px] mt-1">Phân tích thời tiết, sự kiện để dự báo đơn hàng, tối ưu nhập nguyên liệu.</p>
+                              <strong className="text-[#071735] text-[18px]">Dự Báo Nhu Cầu & Tồn Kho:</strong>
+                              <p className="text-[#405a7a] text-[16px] mt-1 leading-snug">Phân tích dữ liệu để dự báo lượng khách, tối ưu nhập nguyên liệu.</p>
                             </div>
                           </li>
-                          <li className="flex gap-4">
-                            <span className="text-[#ff9900] text-[24px]">✓</span>
+                          <li className="flex gap-3">
+                            <span className="text-[#ff9900] text-[20px] font-black">✓</span>
                             <div>
-                              <strong className="text-[#071735] text-[20px]">Tự Động Trả Lời Đánh Giá:</strong>
-                              <p className="text-[#405a7a] text-[18px] mt-1">Tạo phản hồi chuẩn mực, cá nhân hóa cho từng review, tiết kiệm CSKH.</p>
+                              <strong className="text-[#071735] text-[18px]">Trả Lời Đánh Giá Tự Động:</strong>
+                              <p className="text-[#405a7a] text-[16px] mt-1 leading-snug">Tạo phản hồi cá nhân hóa cho từng review, tiết kiệm 80% thời gian.</p>
                             </div>
                           </li>
-                          <li className="flex gap-4">
-                            <span className="text-[#ff9900] text-[24px]">✓</span>
+                          <li className="flex gap-3">
+                            <span className="text-[#ff9900] text-[20px] font-black">✓</span>
                             <div>
-                              <strong className="text-[#071735] text-[20px]">Đề Xuất Khuyến Mãi:</strong>
-                              <p className="text-[#405a7a] text-[18px] mt-1">Gợi ý tạo combo flash sale vào khung giờ thấp điểm nhằm kích cầu.</p>
+                              <strong className="text-[#071735] text-[18px]">Đề Xuất Khuyến Mãi Cục Bộ:</strong>
+                              <p className="text-[#405a7a] text-[16px] mt-1 leading-snug">Gợi ý tạo combo flash sale vào khung giờ thấp điểm để kích cầu.</p>
                             </div>
                           </li>
                         </ul>
