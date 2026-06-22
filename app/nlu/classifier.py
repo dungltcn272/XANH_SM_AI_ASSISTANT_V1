@@ -110,13 +110,19 @@ class XanhSMClassifier:
                     assistant_context=assistant_context,
                     image_base64=image_base64 if include_image else None,
                 )
-                response = client.chat.completions.create(
-                    model=target_model,
-                    messages=messages,
-                    temperature=0.0,
-                    max_tokens=max_tokens,
-                    response_format={"type": "json_object"},
-                )
+                kwargs = {
+                    "model": target_model,
+                    "messages": messages,
+                    "temperature": 0.0,
+                    "max_tokens": max_tokens,
+                }
+                
+                # An toàn: Chỉ ép response_format JSON cho các model của OpenAI (hỗ trợ tốt chuẩn này).
+                # Các model Open-source (Qwen, Llama...) qua OpenRouter có thể không hỗ trợ hoặc lỗi validate JSON.
+                if "gpt" in target_model.lower():
+                    kwargs["response_format"] = {"type": "json_object"}
+                    
+                response = client.chat.completions.create(**kwargs)
                 res_content = response.choices[0].message.content.strip()
                 res_content = re.sub(r"```json|```", "", res_content).strip()
                 return {
