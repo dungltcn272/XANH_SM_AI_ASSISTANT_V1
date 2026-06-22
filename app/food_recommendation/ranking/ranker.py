@@ -138,6 +138,20 @@ def hard_filter(item: FoodCatalogEntry, request: FoodRecommendationRequest, dist
         if any(d.get("item_id") == item.item_id for d in disliked_foods):
             return False
             
+    if request.negative_taste_tags:
+        haystack = " ".join(
+            normalize_text(part)
+            for part in [
+                item.name, item.description, item.category, item.cuisine,
+                " ".join(item.taste_tags), " ".join(item.ingredient_tags),
+            ]
+            if part
+        )
+        if haystack:
+            for tag in request.negative_taste_tags:
+                if normalize_text(tag) in haystack:
+                    return False
+                    
     return True
 
 def calculate_personalization_score(item: FoodCatalogEntry, food_context: dict | None) -> float:

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import 'regenerator-runtime/runtime';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import ReactMarkdown from 'react-markdown';
@@ -1577,7 +1577,7 @@ export default function ChatLayout() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Bình luận thêm (không bắt bu"c)</label>
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Bình luận thêm (không bắt buộc)</label>
                 <textarea
                   value={feedbackComment}
                   onChange={e => setFeedbackComment(e.target.value)}
