@@ -17,9 +17,23 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _has_column(table_name: str, column_name: str) -> bool:
+    from alembic import context
+    if context.is_offline_mode():
+        return False
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    try:
+        columns = [col["name"] for col in inspector.get_columns(table_name)]
+        return column_name in columns
+    except Exception:
+        return False
+
 def upgrade() -> None:
-    op.add_column('conversation_summaries', sa.Column('summary_json', sa.Text(), nullable=True))
+    if not _has_column('conversation_summaries', 'summary_json'):
+        op.add_column('conversation_summaries', sa.Column('summary_json', sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column('conversation_summaries', 'summary_json')
+    if _has_column('conversation_summaries', 'summary_json'):
+        op.drop_column('conversation_summaries', 'summary_json')
