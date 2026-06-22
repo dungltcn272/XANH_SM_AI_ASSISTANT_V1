@@ -271,31 +271,31 @@ export default function SlideShow() {
                       {[
                         { 
                           img: '/knowledge_search.png', t: 'Tự Động Hóa CSKH FAQ', d: 'Trả lời tức thì 90% thắc mắc của khách hàng về chính sách, chuyến đi và giá cước.',
-                          dialog: { user: 'Cho mình hỏi giá cước xe VF8 sân bay Nội Bài về Cầu Giấy là bao nhiêu? Có bị tính phí cầu đường không?', ai: 'Dạ, giá cước VF8 chặng sân bay Nội Bài - Cầu Giấy hiện dao động từ 300.000đ - 350.000đ. Khách hàng sẽ cần thanh toán thêm phí cầu đường khoảng 15.000đ ạ.' }
+                          dialog: { user: 'Cho mình hỏi giá cước xe VF8 sân bay Nội Bài về Cầu Giấy là bao nhiêu?', ai: 'Dạ, giá cước VF8 chặng sân bay Nội Bài - Cầu Giấy hiện dao động từ 300.000đ - 350.000đ. Khách hàng sẽ cần thanh toán thêm phí cầu đường khoảng 15.000đ ạ.' }
                         },
                         { 
                           img: '/deep_research.png', t: 'Hỗ Trợ Đại Lý & Tài Xế', d: 'Tra cứu thông tin chính sách, luật, vận hành nội bộ nhanh chóng cho nhân sự.',
-                          dialog: { user: 'Quy trình xử lý khách hàng quên đồ trên xe như thế nào?', ai: 'Dạ, tài xế cần báo cáo ngay trên app Driver, chọn mục "Khách quên đồ" -> điền thông tin và chụp ảnh hiện vật -> Giao nộp tại trạm điều hành gần nhất trong 24h.' }
+                          dialog: { user: 'Quy trình xử lý khách hàng quên đồ trên xe như thế nào?', ai: 'Dạ: 1. Gọi ngay cho tài xế qua lịch sử chuyến. 2. Nếu không được, gọi Hotline 1555 cung cấp thông tin chuyến đi để CSKH hỗ trợ liên hệ tài xế ngay lập tức.' }
                         },
                         { 
                           img: '/vehicle_expert.png', t: 'Chuyên Gia Tư Vấn Dịch Vụ', d: 'Giải đáp tường tận về các dòng xe VinFast, gói thuê xe và chính sách ưu đãi thành viên.',
-                          dialog: { user: 'Gói thuê xe 1 ngày đi Mộc Châu cho gia đình 4 người thì xe nào phù hợp?', ai: 'Dạ, cho hành trình đi tỉnh như Mộc Châu, gia đình 4 người nên chọn VF8. Gói thuê VF8 1 ngày đi tỉnh hiện đang là 1.500.000đ/ngày (Giới hạn 200km).' }
+                          dialog: { user: 'Gói thuê xe 1 ngày đi Mộc Châu cho gia đình 4 người thì xe nào phù hợp?', ai: 'Dạ, đi Mộc Châu gia đình 4 người, anh/chị có thể tham khảo Gói Xanh 1 (50km/4h) hoặc Gói Xanh 2 (100km/8h) với giá từ 630.000đ. Tùy thuộc kế hoạch di chuyển để chọn gói phù hợp ạ.' }
                         },
                         { 
                           img: '/pricing_assistant.png', t: 'Minh Bạch Giá Cước', d: 'Tự động tính toán, giải thích chi tiết cơ chế giá cước động theo thời gian thực.',
-                          dialog: { user: 'Sao giá cước hôm nay từ Mỹ Đình về Hoàn Kiếm lại cao hơn hôm qua 50k thế?', ai: 'Dạ, hiện tại khu vực Hoàn Kiếm đang có sự kiện lớn dẫn tới nhu cầu đặt xe tăng vọt 300%. Hệ thống áp dụng phụ phí giờ cao điểm 50.000đ để thu hút thêm tài xế phục vụ ạ.' }
+                          dialog: { user: 'Sao giá cước hôm nay từ Mỹ Đình về Hoàn Kiếm lại cao hơn hôm qua 50k thế?', ai: 'Dạ, giá cước cao hơn có thể do tình trạng giao thông đông đúc, sự cố, hoặc hệ thống đang điều chỉnh giá linh hoạt theo nhu cầu thực tế lúc đặt xe ạ.' }
                         },
                         { 
                           img: '/news_digest.png', t: 'Báo Cáo Tin Tức Tự Động', d: 'Cập nhật nhanh tin tức thị trường xe điện, khuyến mãi tuần cho khách hàng.',
-                          dialog: { user: 'Tin tức mới nhất cho bác tài!', ai: 'Dạ, tuần này Xanh SM đang hợp tác với VIB, giảm ngay 30% (Tối đa 50k) cho các chuyến đi thứ 6, thứ 7 ạ.' }
+                          dialog: { user: 'Tin tức mới nhất cho bác tài!', ai: 'Dạ, tin tức mới nhất: 1. Vận doanh an toàn trong mưa lớn. 2. Chương trình "Thưởng chồng thưởng" áp dụng tại miền Nam, TP.HCM và Hà Nội. Chúc Bác Tài vận doanh an toàn!' }
                         },
                         { 
                           img: '/food_recommendation.png', t: 'Bán Chéo Food & Địa Điểm', d: 'Tự động gợi ý quán ăn, món ngon quanh vị trí và kích thích đặt xe/đồ ăn.',
-                          dialog: { user: 'Quanh Ngõ 67 Phùng Khoang có quán phở nào ngon, đang mở cửa mà có xe Xanh SM chờ sẵn không?', ai: 'Dạ, ngay phố Bát Đàn có Phở Gia Truyền đang mở cửa, cách vị trí của bạn 1.5km. Hiện có 5 xe Xanh SM đang chờ quanh quán. Bạn có muốn đặt xe luôn không?' }
+                          dialog: { user: 'Quanh Hồ Gươm có quán phở nào ngon, đang mở cửa mà có xe Xanh SM chờ sẵn không?', ai: 'Dạ, ngay phố Bát Đàn có Phở Gia Truyền đang mở cửa. Hiện có 5 xe Xanh SM đang chờ quanh quán. Bạn có muốn đặt xe luôn không?' }
                         },
                         { 
                           img: '/policy_support.png', t: 'Xử Lý Khiếu Nại 24/7', d: 'Tự động ghi nhận thông tin, phân loại sự cố và hướng dẫn khách hàng xử lý nhanh.',
-                          dialog: { user: 'Tài xế đi nhầm đường làm tôi lỡ chuyến bay, tôi muốn khiếu nại!', ai: 'Dạ Xanh SM vô cùng xin lỗi. Hệ thống ghi nhận lộ trình có sai lệch. Chúng tôi đã hoàn 100% cước phí chuyến đi vào ví Xanh SM và gửi mã giảm 100k đền bù cho bạn ạ.' }
+                          dialog: { user: 'Tài xế đi nhầm đường làm tôi lỡ chuyến bay, tôi muốn khiếu nại!', ai: 'Dạ Green SM rất tiếc về sự bất tiện này. Anh/chị vui lòng gửi yêu cầu qua "Trung tâm hỗ trợ" trên app hoặc liên hệ tổng đài 1900 2088 để được giải quyết ngay lập tức ạ.' }
                         },
                         { 
                           img: '/data_analytics.png', t: 'Đo Lường Chất Lượng', d: 'Phân tích dữ liệu hội thoại để tìm ra điểm nghẽn dịch vụ và cải tiến tức thì.'
