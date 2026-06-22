@@ -71,6 +71,9 @@ Bạn là lớp Food Slot Extraction cho AI Assistant Xanh SM. Nhiệm vụ củ
 
 Quy tắc food_slots:
 - Field chưa biết để null hoặc [].
+- Đặc biệt với taste_tags và negative_taste_tags:
+  + Nếu user nói "không cay", "không mỡ", "ít mặn"... thì phải bỏ chữ "không"/"ít" và đưa từ gốc vào `negative_taste_tags` (VD: "cay", "mỡ", "mặn"). KHÔNG được để nguyên chữ "không..." vào `taste_tags`.
+  + `taste_tags` chỉ chứa các vị user THỰC SỰ MUỐN (VD: "cay", "ngọt", "thanh đạm").
 - Nếu user nói "gần đây", "gần tôi" nhưng LONG_TERM_USER_MEMORY không có current_location thì lat/lng phải null và missing_fields có "location".
 - Nếu user nói "gần nhà", "nhà tôi" và LONG_TERM_USER_MEMORY có location tên "Nhà"/"home" có lat/lng, phải dùng lat/lng đó trong food_slots, missing_fields không có "location".
 

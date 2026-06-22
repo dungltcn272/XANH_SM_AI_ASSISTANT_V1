@@ -7,7 +7,7 @@ export default function SlideShow() {
   const [direction, setDirection] = useState(0); // -1 for left/prev, 1 for right/next
   const [scale, setScale] = useState(1);
 
-  const TOTAL_SLIDES = 10;
+  const TOTAL_SLIDES = 8;
 
   // Dynamic scaling to fit 1920x1080 design in viewport
   useEffect(() => {
@@ -213,18 +213,18 @@ export default function SlideShow() {
                       </p>
                       <div className="flex flex-wrap gap-3 mt-4 max-w-[640px]">
                         <div className="inline-flex items-center gap-2.5 px-[18px] py-[12px] border border-[#00b386]/22 bg-white text-[#123257] text-[18px] font-extrabold rounded-[18px] shadow-sm">
-                          💼 Giảm 40% Chi Phí CSKH
+                          ✅ Độ trung thực 99%
                         </div>
                         <div className="inline-flex items-center gap-2.5 px-[18px] py-[12px] border border-[#00b386]/22 bg-white text-[#123257] text-[18px] font-extrabold rounded-[18px] shadow-sm">
-                          📈 Thúc Đẩy Doanh Số Food & Trip
+                          🎯 Chính xác 90%
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-3 max-w-[640px]" style={{ marginTop: '12px' }}>
                         <div className="inline-flex items-center gap-2.5 px-[18px] py-[12px] border border-[#00b386]/22 bg-white text-[#123257] text-[18px] font-extrabold rounded-[18px] shadow-sm">
-                          ⏱️ Hỗ Trợ 24/7 Tức Thì
+                          🛡️ Bảo mật & Tin cậy
                         </div>
                         <div className="inline-flex items-center gap-2.5 px-[18px] py-[12px] border border-[#00b386]/22 bg-white text-[#123257] text-[18px] font-extrabold rounded-[18px] shadow-sm">
-                          📊 Đo Lường ROI Thực Tế
+                          🚀 RAG & Food NLU
                         </div>
                       </div>
                     </div>
@@ -321,20 +321,20 @@ export default function SlideShow() {
                         </div>
                         <div className="grid grid-cols-2 gap-5 mt-6">
                           <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
+                            <b className="block text-[#071735] text-[34px] font-black leading-tight">Guardrails</b>
+                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[4px] leading-[1.4]">Chặn đứng &gt;99% các câu hỏi tấn công (Prompt Injection) & độc hại.</span>
+                          </div>
+                          <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
                             <b className="block text-[#071735] text-[40px] font-black leading-none">99%</b>
-                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Độ chính xác thông tin dựa trên cơ sở tri thức đã kiểm thử.</span>
+                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Tỉ lệ phản hồi trung thực (Faithfulness) trên tập kiểm thử.</span>
                           </div>
                           <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
-                            <b className="block text-[#071735] text-[40px] font-black leading-none">-40%</b>
-                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Giảm tải số lượng ticket hỗ trợ cần nhân viên xử lý thủ công.</span>
+                            <b className="block text-[#071735] text-[40px] font-black leading-none">~5s</b>
+                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Thời gian phản hồi toàn bộ Pipeline (NLU + RAG + LLM) cho truy vấn phức tạp.</span>
                           </div>
                           <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
-                            <b className="block text-[#071735] text-[40px] font-black leading-none">~120ms</b>
-                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Thời gian phản hồi siêu tốc tăng tỷ lệ hài lòng (CSAT).</span>
-                          </div>
-                          <div className="border border-[#00b386]/18 bg-white p-5 rounded-[20px] shadow-sm">
-                            <b className="block text-[#008c72] text-[40px] font-black leading-none">+25%</b>
-                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Tăng trưởng doanh số bán chéo dịch vụ ẩm thực liên kết đặt xe.</span>
+                            <b className="block text-[#008c72] text-[40px] font-black leading-none">90%</b>
+                            <span className="block text-[#3d5574] text-[18px] font-semibold mt-[8px] leading-[1.4]">Tỉ lệ trả lời chính xác (Correctness) trên toàn bộ domain.</span>
                           </div>
                         </div>
                       </div>
@@ -345,326 +345,192 @@ export default function SlideShow() {
                   </div>
                 )}
 
-                {/* SLIDE 3: THẤU HIỂU KHÁCH HÀNG (NLU) */}
+                {/* SLIDE 3: KIẾN TRÚC CÔNG NGHỆ (Gộp NLU, Pipeline, Memory) */}
                 {currentSlide === 3 && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-[60px] font-black leading-tight text-[#071735]">
-                        Trải nghiệm <span className="text-[#00b386]">Thấu hiểu Khách hàng</span> tự nhiên
+                        Kiến trúc <span className="text-[#00b386]">AI Assistant Pipeline</span> tinh gọn
                       </h2>
                       <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        Lớp ngôn ngữ tự nhiên thông minh giúp trợ lý giao tiếp như một nhân viên hỗ trợ chuyên nghiệp, tự động nắm bắt ý định mà không bắt ép người dùng chọn menu tĩnh gò bó.
+                        Một hệ thống duy nhất xử lý thông minh: NLU đọc ý định khách hàng, Multi-agent Pipeline điều phối RAG/Food, và Memory lưu giữ ngữ cảnh xuyên suốt.
                       </p>
                     </div>
                     <div className="grid grid-cols-3 gap-5 pt-2">
-                      {[
-                        { num: 1, title: 'Hiểu Ý Định & Điều Hướng', desc: 'Nhận diện chính xác khách hàng đang muốn hỏi về chính sách cước, đặt đồ ăn hay giải quyết sự cố để hỗ trợ đúng luồng.' },
-                        { num: 2, title: 'Nhớ Ngữ Cảnh Tự Nhiên', desc: 'Tự động làm rõ câu hỏi nếu thiếu dữ kiện (như địa điểm, giá tiền), tránh đoán mò thông tin gây hiểu lầm.' },
-                        { num: 3, title: 'Bóc Tách Điều Kiện Cá Nhân', desc: 'Tự lọc sở thích ăn uống, ngân sách và thời gian của người dùng để đưa ra tư vấn cá nhân hóa cao nhất.' }
-                      ].map((nlu, idx) => (
-                        <div key={idx} className="border border-[#094a70]/14 rounded-[24px] bg-white p-6 shadow-[0_16px_36px_rgba(13,64,100,0.1)] flex flex-col justify-between min-h-[220px]">
-                          <div className="w-[46px] h-[46px] rounded-xl bg-gradient-to-br from-[#00b386] to-[#1cc7f2] text-white flex items-center justify-center font-black text-[20px]">
-                            {nlu.num}
-                          </div>
-                          <div className="mt-4 flex-grow">
-                            <h3 className="text-[#071735] text-[28px] font-black leading-[1.2]">{nlu.title}</h3>
-                            <p className="text-[#405a7a] text-[20px] font-semibold mt-2 leading-[1.4]">{nlu.desc}</p>
-                          </div>
+                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-6 shadow-[0_16px_36px_rgba(13,64,100,0.1)] flex flex-col justify-between min-h-[220px]">
+                        <div className="w-[46px] h-[46px] rounded-xl bg-gradient-to-br from-[#00b386] to-[#1cc7f2] text-white flex items-center justify-center font-black text-[20px]">1</div>
+                        <div className="mt-4 flex-grow">
+                          <h3 className="text-[#071735] text-[28px] font-black leading-[1.2]">Parallel NLU</h3>
+                          <p className="text-[#405a7a] text-[20px] font-semibold mt-2 leading-[1.4]">Phân tích đa luồng song song: bóc tách Intent, trích xuất Slot và nhận diện Missing-info siêu tốc.</p>
                         </div>
-                      ))}
-                    </div>
-                    <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-[30px] shadow-[0_28px_90px_rgba(8,45,77,0.22)] mt-[30px]">
-                      <h3 className="text-[#071735] text-[38px] font-black leading-[1.14]">Hành trình hội thoại mượt mà</h3>
-                      <div className="grid grid-cols-[1fr_40px_1fr_40px_1fr_40px_1fr] items-center gap-[12px] mt-4">
-                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Khách hàng hỏi bằng giọng nói/văn bản tự nhiên</div>
-                        <div className="text-[#00b386] text-[36px] font-black text-center">→</div>
-                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Trợ lý ảo thấu hiểu yêu cầu lập tức</div>
-                        <div className="text-[#00b386] text-[36px] font-black text-center">→</div>
-                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Tự động kết nối và xử lý yêu cầu nghiệp vụ</div>
-                        <div className="text-[#00b386] text-[36px] font-black text-center">→</div>
-                        <div className="border border-[#00b386]/18 bg-white p-4 rounded-[18px] text-[#071735] text-[22px] font-extrabold text-center shadow-xs">Trả lời chuẩn văn phong CSKH & Gợi ý hành động tiếp theo</div>
+                      </div>
+                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-6 shadow-[0_16px_36px_rgba(13,64,100,0.1)] flex flex-col justify-between min-h-[220px]">
+                        <div className="w-[46px] h-[46px] rounded-xl bg-gradient-to-br from-[#00b386] to-[#1cc7f2] text-white flex items-center justify-center font-black text-[20px]">2</div>
+                        <div className="mt-4 flex-grow">
+                          <h3 className="text-[#071735] text-[28px] font-black leading-[1.2]">Hybrid RAG & Food</h3>
+                          <p className="text-[#405a7a] text-[20px] font-semibold mt-2 leading-[1.4]">Kết hợp Sparse/Dense Retrieval và Agentic Routing để gợi ý quán ăn, xe cộ chuẩn xác 90%.</p>
+                        </div>
+                      </div>
+                      <div className="border border-[#094a70]/14 rounded-[24px] bg-white p-6 shadow-[0_16px_36px_rgba(13,64,100,0.1)] flex flex-col justify-between min-h-[220px]">
+                        <div className="w-[46px] h-[46px] rounded-xl bg-gradient-to-br from-[#00b386] to-[#1cc7f2] text-white flex items-center justify-center font-black text-[20px]">3</div>
+                        <div className="mt-4 flex-grow">
+                          <h3 className="text-[#071735] text-[28px] font-black leading-[1.2]">Context Memory</h3>
+                          <p className="text-[#405a7a] text-[20px] font-semibold mt-2 leading-[1.4]">Ghi nhớ sở thích, ngữ cảnh phiên chat giúp Assistant luôn đưa ra phản hồi mang tính cá nhân hóa.</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* SLIDE 4: LỢI THẾ CẠNH TRANH ĐỘT PHÁ */}
+                {/* SLIDE 5: VỊ THẾ XANH SM TRÊN BẢN ĐỒ AI */}
                 {currentSlide === 4 && (
                   <div className="space-y-4">
                     <div>
                       <h2 className="text-[54px] font-black leading-tight text-[#071735]">
-                        So sánh giải pháp & <span className="text-[#00b386]">Lợi thế cạnh tranh</span>
+                        Bản đồ AI Assistant & <span className="text-[#00b386]">Sức Mạnh Cốt Lõi</span>
                       </h2>
-                      <p className="text-[22px] font-semibold text-[#415b7d] mt-[10px] max-w-[1120px]">
-                        Xanh SM AI Assistant mang lại sự khác biệt vượt trội về năng lực thấu hiểu nghiệp vụ phức tạp và vòng lặp tự tối ưu hóa liên tục.
+                      <p className="text-[24px] font-semibold text-[#415b7d] mt-[10px] max-w-[1120px]">
+                        Xanh SM AI đang dẫn đầu mảng <b>Enterprise Knowledge AI</b> (95/100 điểm), vượt xa các đối thủ về độ tin cậy, chống Hallucination và khả năng quản trị tri thức.
                       </p>
                     </div>
                     
-                    <div className="border border-[#094a70]/11 rounded-[24px] bg-white shadow-[0_28px_90px_rgba(8,45,77,0.22)] overflow-hidden">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-white border-b border-[#094a70]/11">
-                            <th className="p-[12px] px-[16px] text-left text-[#071735] text-[20px] font-black border-r border-[#094a70]/9">Năng lực kinh doanh</th>
-                            <th className="p-[12px] px-[16px] text-left text-[#405a7a] text-[18px] font-bold border-r border-[#094a70]/9">Chatbot FAQ Tĩnh</th>
-                            <th className="p-[12px] px-[16px] text-left text-[#405a7a] text-[18px] font-bold border-r border-[#094a70]/9">Hệ Thống RAG Cơ Bản</th>
-                            <th className="p-[12px] px-[16px] text-left text-[#071735] text-[20px] font-black bg-[#e1fff7]">Xanh SM AI Assistant</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                    <div className="grid grid-cols-[1fr_1.5fr] gap-8 mt-8">
+                      {/* Left: AI Landscape */}
+                      <div className="border border-[#094a70]/11 rounded-[24px] bg-white shadow-[0_28px_90px_rgba(8,45,77,0.22)] p-8 flex flex-col">
+                        <h3 className="text-[#071735] text-[28px] font-black mb-6 border-b border-slate-100 pb-4">Điểm Đánh Giá Kiến Trúc AI</h3>
+                        <div className="space-y-6 flex-grow justify-center flex flex-col">
                           {[
-                            {
-                              feat: 'Thấu hiểu khách hàng',
-                              bot: 'Nhận diện theo từ khóa cố định, dễ báo lỗi nếu người dùng gõ sai cú pháp.',
-                              rag: 'Hiểu ngữ nghĩa tốt nhưng chỉ dùng để tìm tài liệu, không bóc tách được ý đồ phức tạp.',
-                              ours: 'NLU thông minh nhận diện đúng ý định (Intent), bóc tách điều kiện (Slot) và giữ ngữ cảnh mượt mà.'
-                            },
-                            {
-                              feat: 'Đa nhiệm & Bán chéo',
-                              bot: 'Không thể tích hợp nhiều nghiệp vụ khác nhau ngoài kịch bản soạn sẵn.',
-                              rag: 'Chỉ hoạt động trên văn bản tĩnh, không thể liên kết nghiệp vụ động như gợi ý món ăn, đặt xe.',
-                              ours: 'Đa Engine tích hợp giúp phục vụ chéo cả kiến thức, ẩm thực, đặt xe và tin tức.'
-                            },
-                            {
-                              feat: 'Kiểm soát & Tối ưu ROI',
-                              bot: 'Không thể tự cải tiến, tốn nhiều chi phí nhân sự kỹ thuật để cấu hình thủ công.',
-                              rag: 'Thiếu cơ chế tự động đánh giá độ chính xác, có thể trả lời sai lệch mà không có cảnh báo.',
-                              ours: 'Vòng lặp Ops tự động đánh giá độ tin cậy (RAGAS), liên tục nâng cấp chất lượng tự động.'
-                            },
-                            {
-                              feat: 'Trải nghiệm cá nhân hóa',
-                              bot: 'Máy móc, rập khuôn, gây ức chế cho người dùng khi bắt bấm chọn nhiều bước.',
-                              rag: 'Văn phong AI khô khan, thiếu sự đồng cảm và cá nhân hóa theo hành vi người dùng.',
-                              ours: 'Tư vấn chuẩn văn phong CSKH chuyên nghiệp, ghi nhớ thói quen và chủ động gợi ý thông minh.'
-                            }
-                          ].map((row, idx) => (
-                            <tr key={idx} className="border-b border-[#094a70]/11 last:border-none">
-                              <td className="p-[12px] px-[16px] font-black text-[#071735] text-[18px] border-r border-[#094a70]/9">{row.feat}</td>
-                              <td className="p-[12px] px-[16px] font-medium text-[#405a7a] text-[17px] border-r border-[#094a70]/9 leading-[1.35]">{row.bot}</td>
-                              <td className="p-[12px] px-[16px] font-medium text-[#405a7a] text-[17px] border-r border-[#094a70]/9 leading-[1.35]">{row.rag}</td>
-                              <td className="p-[12px] px-[16px] font-extrabold text-[#071735] text-[17px] bg-[#e1fff7] leading-[1.35]">{row.ours}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-3 mt-2">
-                      {[
-                        'Tích hợp đa dịch vụ giúp giữ chân người dùng trong app lâu hơn.',
-                        'Tự động hóa hoàn toàn giảm thiểu rủi ro quá tải tổng đài.',
-                        'Dữ liệu tương tác được lưu trữ và khai thác an toàn.',
-                        'Giao diện trực quan giúp chuyển hóa leads nhanh chóng.'
-                      ].map((adv, idx) => (
-                        <div key={idx} className="border border-[#00b386]/17 bg-white p-[12px] rounded-[14px] text-[#123257] text-[17px] font-extrabold shadow-sm leading-[1.35]">
-                          {adv}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* SLIDE 5: GIẢI PHÁP PIPELINE AN TOÀN */}
-                {currentSlide === 5 && (
-                  <div className="space-y-6">
-                    <div>
-                      <h2 className="text-[60px] font-black leading-tight text-[#071735]">
-                        Kiến trúc vận hành <span className="text-[#00b386]">Bảo mật & Tin cậy</span>
-                      </h2>
-                      <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        Hệ thống được thiết kế theo lớp chặt chẽ giúp bảo mật thông tin nội bộ của doanh nghiệp, lọc nội dung nhạy cảm và tối ưu hóa chi phí vận hành máy chủ.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-[1fr_50px_1.2fr_50px_1fr] items-stretch gap-4 pt-4 mt-2">
-                      <div className="flex flex-col gap-[16px]">
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Đầu Vào Doanh Nghiệp</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Dữ Liệu Người Dùng</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Nhập liệu đa dạng bằng giọng nói, hình ảnh hóa đơn hoặc đoạn chat tự nhiên.</p>
-                        </div>
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)] flex-grow flex flex-col justify-center">
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Ngữ Cảnh Thành Viên</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Đồng bộ dữ liệu hạng thẻ VinClub, lịch sử đặt chuyến để ưu đãi riêng biệt.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-center text-[#00b386] text-[44px] font-black">→</div>
-                      <div className="flex flex-col gap-[16px]">
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Bảo Vệ Dữ Liệu</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Lớp An Toàn & Cache</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Tự động chặn thông tin độc hại, bảo mật dữ liệu doanh nghiệp và tăng tốc phản hồi.</p>
-                        </div>
-                        <div className="border-2 border-[#00b386]/32 rounded-[20px] bg-gradient-to-b from-[#e6fff8] to-white p-5 shadow-md flex-grow flex flex-col justify-center">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Bộ Điều Phối Trung Tâm</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">NLU Thấu Hiểu</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Phân tích ý định tức thì, phân loại yêu cầu nghiệp vụ để định tuyến đến đúng phòng ban xử lý.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-center text-[#00b386] text-[44px] font-black">→</div>
-                      <div className="flex flex-col gap-[16px]">
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Kho Tri Thức</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">RAG Tài Liệu Vận Hành</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Truy xuất thông tin chính xác từ kho chính sách nội bộ được cập nhật hàng ngày.</p>
-                        </div>
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Engine Bán Hàng</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Gợi Ý Cá Nhân Hóa</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Liên kết đối tác nhà hàng gợi ý món ngon cá nhân hóa thúc đẩy doanh thu.</p>
-                        </div>
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Hệ Thống Giám Sát</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Đo Lường Doanh Nghiệp</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Hệ thống giám sát chất lượng, đo lường độ đúng và phản hồi của người dùng.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* SLIDE 6: TRÍ NHỚ & CÁ NHÂN HÓA KHÁCH HÀNG */}
-                {currentSlide === 6 && (
-                  <div className="space-y-6">
-                    <div>
-                      <h2 className="text-[60px] font-black leading-tight text-[#071735]">
-                        Tối ưu lòng trung thành nhờ <span className="text-[#00b386]">Trí Nhớ Cá Nhân Hóa</span>
-                      </h2>
-                      <p className="text-[26px] font-semibold text-[#415b7d] mt-[16px] max-w-[1120px]">
-                        Xây dựng chân dung khách hàng sắc nét theo thời gian. Trợ lý ghi nhớ thói quen, sở thích ăn uống và tần suất di chuyển để đưa ra những tương tác chuẩn xác, gia tăng đáng kể Giá trị vòng đời khách hàng (CLV).
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-[1fr_50px_1.2fr_50px_1fr] items-stretch gap-4 pt-4 mt-2">
-                      <div className="flex flex-col gap-[16px]">
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-[20px] shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Trí Nhớ Ngắn Hạn</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Working Memory</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Duy trì mạch hội thoại tự nhiên trong phiên chat, hiểu các đại từ lửng lơ của khách hàng.</p>
-                        </div>
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-[20px] shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Trí Nhớ Trung Hạn</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Tóm Tắt Phiên Giao Dịch</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Nén và lưu giữ các thông tin cốt lõi của khách hàng (yêu cầu chưa giải quyết, ưu tiên của chuyến đi).</p>
-                        </div>
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-[20px] shadow-[0_12px_28px_rgba(13,64,100,0.1)]">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Trí Nhớ Dài Hạn</span>
-                          <h3 className="text-[#071735] text-[24px] font-black leading-[1.2]">Hồ Sơ Sở Thích Khách Hàng</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-[8px] leading-[1.4]">Lưu trữ vĩnh viễn gu ẩm thực, thói quen di chuyển, địa điểm hay lui tới để chủ động gợi ý.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-center text-[#00b386] text-[44px] font-black">→</div>
-                      <div className="flex flex-col justify-center">
-                        <div className="border-2 border-[#0096ff]/32 rounded-[20px] bg-gradient-to-b from-[#e6f5ff] to-white p-6 shadow-md text-center">
-                          <span className="text-[15px] font-extrabold text-[#0077cc] tracking-[0.05em] uppercase block mb-2">Bộ Phục Vụ Thông Tin</span>
-                          <h3 className="text-[#071735] text-[24px] font-black">Context Builder</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-3 leading-relaxed">
-                            Lắp ráp và chuẩn hóa thông tin khách hàng, giúp mô hình AI trả lời thông minh nhất mà không tốn chi phí xử lý dữ liệu thừa.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-center text-[#00b386] text-[44px] font-black">→</div>
-                      <div className="flex flex-col justify-center gap-[16px]">
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-sm">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Tối Ưu Vận Hành</span>
-                          <h3 className="text-[#071735] text-[20px] font-black">Phản Hồi Siêu Tốc</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-1">Cache các luồng hội thoại quen thuộc, tiết kiệm tài nguyên máy chủ và tăng tốc độ xử lý.</p>
-                        </div>
-                        <div className="border border-[#094a70]/14 rounded-[20px] bg-white p-5 shadow-sm">
-                          <span className="text-[15px] font-extrabold text-[#008c72] tracking-[0.05em] uppercase block mb-2">Thực Thi Chiến Lược</span>
-                          <h3 className="text-[#071735] text-[20px] font-black">Cá Nhân Hóa Toàn Diện</h3>
-                          <p className="text-[#46607f] text-[18px] font-semibold mt-1">Sinh câu trả lời đồng cảm, thuyết phục dựa trên chính thói quen tiêu dùng của khách hàng.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* SLIDE 7: TRIỂN KHAI / KẾT LUẬN */}
-                {currentSlide === 7 && (
-                  <div className="grid grid-cols-[1.1fr_0.9fr] gap-[42px] items-center">
-                    <div className="space-y-4">
-                      <div className="inline-flex items-center gap-2 px-[18px] py-[11px] rounded-full bg-[#00b386]/12 text-[#008c72] font-black tracking-widest text-[16px] uppercase">
-                        Giải Pháp Sẵn Sàng Triển Khai
-                      </div>
-                      <h2 className="text-[72px] font-black leading-[1.04] text-[#071735]">
-                        Nâng Tầm Doanh Nghiệp Với <span className="text-[#00b386]">AI Assistant</span>
-                      </h2>
-                      <p className="text-[22px] font-semibold leading-[1.5] text-[#314967] mt-2">
-                        Giải pháp trợ lý ảo thông minh không chỉ dừng lại ở thử nghiệm. Với khả năng tích hợp linh hoạt vào dữ liệu lớn của hệ sinh thái Xanh SM, dự án cam kết mang lại hiệu quả ROI rõ rệt và nâng cấp trải nghiệm khách hàng vượt trội.
-                      </p>
-
-                      <div className="grid grid-cols-2 gap-4 pt-4">
-                        {[
-                          { img: '/knowledge_search.png', t: 'Tối Ưu Hóa Chi Phí', d: 'Cắt giảm đáng kể ngân sách vận hành tổng đài hỗ trợ nhờ tự động hóa xử lý 90% FAQs.' },
-                          { img: '/data_analytics.png', t: 'Khai Thác Data Tối Đa', d: 'Chuyển hóa dữ liệu hội thoại thô thành những hiểu biết giá trị phục vụ kinh doanh.' },
-                          { img: '/food_recommendation.png', t: 'Bán Hàng Liên Kết Đột Phá', d: 'Mở rộng kênh doanh thu mới từ dịch vụ ẩm thực và liên kết đối tác ngoài app.' },
-                          { img: '/policy_support.png', t: 'Đo Lường Hiệu Quả Liên Tục', d: 'Hệ thống quản trị thông số trực quan giúp nhà quản lý theo dõi sát sao tiến độ và chất lượng.' }
-                        ].map((item, idx) => (
-                          <div key={idx} className="flex gap-4 border border-[#00b386]/18 rounded-[22px] bg-white p-5 shadow-[0_18px_44px_rgba(13,64,100,0.12)]">
-                            <img className="w-[62px] h-[62px] object-cover rounded-[18px] bg-[#ecfffb]" src={item.img} alt="" />
-                            <div>
-                              <h3 className="text-[#071735] text-[24px] font-black leading-[1.18]">{item.t}</h3>
-                              <p className="text-[#405a7a] text-[18px] font-semibold mt-1 leading-[1.38]">{item.d}</p>
+                            { name: 'Knowledge Assistant', xanh: 95, grab: 100 },
+                            { name: 'Customer Support AI', xanh: 90, grab: 95 },
+                            { name: 'Enterprise RAG & Eval', xanh: 95, grab: 80 },
+                            { name: 'Hallucination Control', xanh: 90, grab: 60 }
+                          ].map(item => (
+                            <div key={item.name}>
+                              <div className="flex justify-between text-[20px] font-bold text-[#071735] mb-2">
+                                <span>{item.name}</span>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="text-[16px] font-bold w-[120px] text-[#00b386]">Xanh SM: {item.xanh}</div>
+                                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-[#00b386] rounded-full" style={{ width: `${item.xanh}%` }}></div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 mt-2">
+                                <div className="text-[16px] font-bold w-[120px] text-[#00a5cf]">Grab: {item.grab}</div>
+                                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-[#00a5cf] rounded-full" style={{ width: `${item.grab}%` }}></div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
 
-                      <button 
-                        onClick={() => navigateToTab('Tầm nhìn')} 
-                        className="inline-flex items-center gap-3 px-[26px] py-[20px] rounded-full bg-gradient-to-r from-[#00b386] to-[#10cdb1] text-white shadow-[0_18px_42px_rgba(0,179,134,0.28)] hover:scale-105 active:scale-95 transition-all text-[22px] font-black mt-4"
-                      >
-                        Bắt đầu khám phá demo thực tế
-                      </button>
+                      {/* Right: What we are better at */}
+                      <div className="border border-[#094a70]/11 rounded-[24px] bg-white shadow-[0_28px_90px_rgba(8,45,77,0.22)] p-8">
+                        <h3 className="text-[#00b386] text-[32px] font-black mb-6 flex items-center gap-3">
+                          🏆 Điểm Xanh SM Đang Vượt Trội 
+                        </h3>
+                        <ul className="space-y-6 text-[20px] text-[#405a7a] font-medium leading-[1.6]">
+                          <li className="flex gap-4">
+                            <span className="text-[#00b386] text-[28px] mt-1">●</span>
+                            <div>
+                              <strong className="text-[#071735] text-[24px] block mb-1">Kiến trúc RAG Tiêu chuẩn Doanh nghiệp</strong>
+                              Xanh SM sở hữu luồng Hybrid Retrieval kết hợp Reranker và Context Expansion mạnh mẽ hơn hầu hết Chatbot CSKH hiện tại của Grab/Uber.
+                            </div>
+                          </li>
+                          <li className="flex gap-4">
+                            <span className="text-[#00b386] text-[28px] mt-1">●</span>
+                            <div>
+                              <strong className="text-[#071735] text-[24px] block mb-1">Kiểm soát Hallucination & Trích dẫn minh bạch</strong>
+                              Hệ thống có độ chính xác (Faithfulness) chạm ngưỡng 99%. Trả lời hoàn toàn dựa trên tài liệu Xanh SM, cho phép truy vết (Tracing) rõ ràng, ngược lại với mô hình "Hộp đen suy luận" của Grab.
+                            </div>
+                          </li>
+                          <li className="flex gap-4">
+                            <span className="text-[#00b386] text-[28px] mt-1">●</span>
+                            <div>
+                              <strong className="text-[#071735] text-[24px] block mb-1">Đánh Giá Bằng RAGAS</strong>
+                              Xanh SM AI được tích hợp hệ thống Evaluation tự động theo thời gian thực (Correctness, Faithfulness). Đây là tiêu chuẩn vàng mà đa số AI trên thị trường chưa publish.
+                            </div>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SLIDE 6: PHÂN TÍCH KHOẢNG CÁCH */}
+                {currentSlide === 5 && (
+                  <div className="space-y-4">
+                    <div>
+                      <h2 className="text-[54px] font-black leading-tight text-[#071735]">
+                        Cuộc Đua Tới <span className="text-[#00b386]">AI Concierge</span>
+                      </h2>
+                      <p className="text-[24px] font-semibold text-[#415b7d] mt-[10px] max-w-[1120px]">
+                        Xanh SM đang nằm ở bước <b>Knowledge Assistant</b>. Để bắt kịp hệ sinh thái của Grab, chúng ta cần chuyển mình thành <b>Life Assistant / Action Agent</b>.
+                      </p>
                     </div>
 
-                    <div className="relative min-h-[760px] border border-white/70 bg-gradient-to-b from-white to-[#dcfff8] rounded-[38px] shadow-[0_28px_90px_rgba(8,45,77,0.22)] overflow-hidden flex flex-col justify-between p-8">
-                      <div className="absolute inset-[34px] border border-white/72 rounded-[30px] pointer-events-none" />
-
-                      <div className="relative flex-grow">
-                        {/* Bot is positioned absolute on top-right exactly like HTML */}
-                        <img 
-                          className="absolute z-2 right-[96px] top-[108px] w-[360px] object-contain drop-shadow-[0_34px_60px_rgba(4,50,82,0.24)]" 
-                          src="/Bot.png" 
-                          alt="Xanh SM AI Assistant" 
-                        />
-                        
-                        <div className="absolute flex items-center gap-3 min-w-[198px] p-4 border border-white/78 bg-white backdrop-blur-md rounded-[26px] shadow-md text-[#071735] text-[18px] font-black left-[76px] top-[112px]">
-                          <img className="w-[42px] h-[42px] object-cover rounded-xl" src="/vehicle_expert.png" alt="" />
-                          Vehicle Expert
-                        </div>
-
-                        <div className="absolute flex items-center gap-3 min-w-[198px] p-4 border border-white/78 bg-white backdrop-blur-md rounded-[26px] shadow-md text-[#071735] text-[18px] font-black left-[96px] bottom-[198px]">
-                          <img className="w-[42px] h-[42px] object-cover rounded-xl" src="/pricing_assistant.png" alt="" />
-                          Pricing & Offer
-                        </div>
-
-                        <div className="absolute flex items-center gap-3 min-w-[198px] p-4 border border-white/78 bg-white backdrop-blur-md rounded-[26px] shadow-md text-[#071735] text-[18px] font-black right-[62px] bottom-[220px]">
-                          <img className="w-[42px] h-[42px] object-cover rounded-xl" src="/deep_research.png" alt="" />
-                          Deep Research
-                        </div>
+                    <div className="grid grid-cols-[1.5fr_1fr] gap-8 mt-8">
+                      {/* Left: What Grab is better at */}
+                      <div className="border border-[#094a70]/11 rounded-[24px] bg-white shadow-[0_28px_90px_rgba(8,45,77,0.22)] p-8">
+                        <h3 className="text-[#e11d48] text-[32px] font-black mb-6 flex items-center gap-3">
+                          📉 Những Điểm Grab Bỏ Xa Xanh SM
+                        </h3>
+                        <ul className="space-y-6 text-[20px] text-[#405a7a] font-medium leading-[1.6]">
+                          <li className="flex gap-4">
+                            <span className="text-[#e11d48] text-[28px] mt-1">●</span>
+                            <div>
+                              <strong className="text-[#071735] text-[24px] block mb-1">Thiếu Dữ Liệu Hành Vi & Cá Nhân Hóa Sâu</strong>
+                              Grab sở hữu hàng trăm triệu giao dịch đa dịch vụ (ăn uống, đi lại, thanh toán). AI Recommendation của họ ăn đứt mọi startup nhờ lịch sử này. (Grab: 100 vs Xanh: 50).
+                            </div>
+                          </li>
+                          <li className="flex gap-4">
+                            <span className="text-[#e11d48] text-[28px] mt-1">●</span>
+                            <div>
+                              <strong className="text-[#071735] text-[24px] block mb-1">Chưa Trở Thành "Agent Thực Chiến" Đa Bước</strong>
+                              Grab AI có thể nhận lệnh: <i className="text-slate-500">"Tổ chức sinh nhật 10 người, ngân sách 3 triệu"</i> &rarr; Tự tìm quán &rarr; Đặt bàn &rarr; Gọi xe trong 1 cuộc trò chuyện duy nhất. Xanh SM vẫn là dạng "Hỏi - Đáp - Tool Calling đơn giản".
+                            </div>
+                          </li>
+                          <li className="flex gap-4">
+                            <span className="text-[#e11d48] text-[28px] mt-1">●</span>
+                            <div>
+                              <strong className="text-[#071735] text-[24px] block mb-1">Giao Tiếp Đa Phương Thức (Voice Native)</strong>
+                              Grab đã hỗ trợ Voice Notes và thao tác bằng giọng nói xuyên suốt. Chúng ta hiện chưa có hệ sinh thái Voice-First thực sự trơn tru.
+                            </div>
+                          </li>
+                        </ul>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-[14px] relative z-10">
-                        <div className="bg-white border border-[#00b386]/16 rounded-[22px] p-4 min-h-[112px]">
-                          <b className="block text-[#00b386] text-[34px] font-black leading-none">1</b>
-                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Giải pháp đồng bộ toàn diện trên một ứng dụng.</span>
-                        </div>
-                        <div className="bg-white border border-[#00b386]/16 rounded-[22px] p-4 min-h-[112px]">
-                          <b className="block text-[#00b386] text-[34px] font-black leading-none">Data</b>
-                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Tận dụng tối đa giá trị dữ liệu hệ sinh thái.</span>
-                        </div>
-                        <div className="bg-white border border-[#00b386]/16 rounded-[22px] p-4 min-h-[112px]">
-                          <b className="block text-[#00b386] text-[34px] font-black leading-none">Loop</b>
-                          <span className="block text-[#34506f] text-[16px] font-bold mt-1 leading-[1.32]">Liên tục tối ưu hóa theo phản hồi thực tế.</span>
+                      {/* Right: Path to victory */}
+                      <div className="border border-[#094a70]/11 rounded-[24px] bg-[#e1fff7] shadow-[0_28px_90px_rgba(8,45,77,0.22)] p-8 flex flex-col justify-center border-l-[8px] border-l-[#00b386]">
+                        <h3 className="text-[#071735] text-[32px] font-black mb-6">Chiến Lược Bứt Phá 🚀</h3>
+                        <div className="space-y-5 text-[22px] font-bold text-[#405a7a]">
+                          <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#00b386] border border-[#00b386]">1</span>
+                            Hoàn thiện Food Recommendation Engine
+                          </div>
+                          <div className="flex justify-center my-2 text-[#00b386]">↓</div>
+                          <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#00b386] border border-[#00b386]">2</span>
+                            Tích hợp Preference Memory Dài Hạn
+                          </div>
+                          <div className="flex justify-center my-2 text-[#00b386]">↓</div>
+                          <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#00b386] border border-[#00b386]">3</span>
+                            Phát triển Multi-Agent Planning
+                          </div>
+                          <div className="mt-8 pt-6 border-t border-[#00b386]/30 text-[20px] text-[#071735] leading-[1.6]">
+                            Chỉ cần hoàn thành luồng này, Xanh SM sẽ tiến thẳng từ mốc <b>60 điểm</b> lên <b>90 điểm</b> AI Concierge, tạo thế đối trọng sòng phẳng với Grab!
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* SLIDE 8: NÂNG CẤP HỆ SINH THÁI */}
-                {currentSlide === 8 && (
+                {/* SLIDE 7: NÂNG CẤP HỆ SINH THÁI */}
+                {currentSlide === 6 && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-[60px] font-black leading-tight text-[#071735]">
@@ -741,8 +607,8 @@ export default function SlideShow() {
                   </div>
                 )}
 
-                {/* SLIDE 9: CẢM ƠN */}
-                {currentSlide === 9 && (
+                {/* SLIDE 8: CẢM ƠN */}
+                {currentSlide === 7 && (
                   <div className="flex flex-col items-center justify-center h-full text-center space-y-8">
                     <img src="/logo.svg" alt="Green SM" className="h-[120px] mb-4 drop-shadow-xl" />
                     <h1 className="text-[86px] font-black leading-[1.1] text-[#071735]">
@@ -759,7 +625,7 @@ export default function SlideShow() {
                     </button>
                   </div>
                 )}
-              </motion.div>
+</motion.div>
             </AnimatePresence>
           </div>
 
@@ -769,22 +635,12 @@ export default function SlideShow() {
               {currentSlide === 0 && (
                 <span><b>Demo:</b> <a href="https://rag-xanh-sm-v1.vercel.app" target="_blank" rel="noreferrer" className="underline hover:text-[#00b386]">rag-xanh-sm-v1.vercel.app</a></span>
               )}
-              {currentSlide === 5 && (
-                <span><b>Cam kết bảo mật dữ liệu doanh nghiệp và tối ưu chi phí hạ tầng</b></span>
-              )}
-              {currentSlide === 6 && (
-                <span><b>Cá nhân hóa trải nghiệm thúc đẩy Giá trị vòng đời khách hàng (CLV)</b></span>
-              )}
-              {currentSlide === 7 && (
-                <span><b>Giải Pháp Trợ Lý Ảo Thông Minh Xanh SM</b></span>
-              )}
-              {currentSlide === 8 && (
-                <span><b>Tối ưu Hệ sinh thái với AI - Đa dạng hóa dịch vụ Đối tác</b></span>
-              )}
-              {currentSlide === 9 && (
-                <span><b>Xanh SM - Vươn tầm Trí tuệ Việt</b></span>
-              )}
-              {currentSlide !== 0 && currentSlide !== 5 && currentSlide !== 6 && currentSlide !== 7 && currentSlide !== 8 && currentSlide !== 9 && (
+              
+              
+              
+              
+              
+              {currentSlide !== 0 && currentSlide !== 6 && currentSlide !== 7 && (
                 <span>Giải Pháp Trợ Lý Ảo Thông Minh Xanh SM</span>
               )}
             </div>
