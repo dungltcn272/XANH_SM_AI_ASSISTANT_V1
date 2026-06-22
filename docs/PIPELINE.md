@@ -15,7 +15,7 @@ graph TD
 
     C -- "Cache Hit (~5ms)" --> Out([Stream Answer + Citations])
     C -- "Cache Miss" --> LC[Load User Context: Memory & Profile]
-    LC --> D[Unified LLM NLU Orchestrator]
+    LC --> D[Parallel NLU Orchestrator]
     
     D --> E{Intent Classification}
     E -- "small-talk" --> Stalk[Return NLU suggested_answer]
@@ -80,14 +80,18 @@ Hệ thống được cấu trúc thành một chuỗi tuần tự gồm các No
 * **Logic xử lý**: Thực hiện đối sánh chuỗi chính xác (Exact Match) giữa câu hỏi thô của người dùng với cơ sở dữ liệu `SemanticCache`.
 * **Thông số kỹ thuật**: Độ trễ **~5-10ms**. Nếu xảy ra Cache Hit (đã có câu trả lời hợp lệ và còn hiệu lực TTL), hệ thống trả kết quả ngay lập tức về client, bỏ qua toàn bộ các bước RAG sau đó.
 
-### 3. NODE 3: Unified NLU Orchestrator (Bộ não điều phối)
-* **Công nghệ áp dụng**: Mô hình LLM phân loại intent thông qua function calling / structured JSON output (Llama 3.3 70B hoặc GPT-4o-mini).
-* **Logic xử lý**: Nhận câu hỏi thô, Working Memory và lịch sử trò chuyện để phân loại vào 1 trong 5 Intent chính:
+### 3. NODE 3: Parallel NLU Orchestrator (Bộ não điều phối song song)
+* **Công nghệ áp dụng**: Mô hình LLM phân loại intent thông qua function calling / structured JSON output (Llama 3.3 70B hoặc GPT-4o-mini) kết hợp **Multi-threading (ThreadPoolExecutor)**.
+* **Logic xử lý**: Nhận câu hỏi thô, Working Memory và lịch sử trò chuyện để phân loại vào 1 trong 5 Intent chính, đồng thời trích xuất ký ức (Memory) song song:
+  * **Luồng 1 (Intent & Rewrite)**: Thực hiện siêu tốc việc phân loại vào 5 Intent (small-talk, sensitive, missing_info, rag, food_recommendation) và viết lại câu.
+  * **Luồng 2 (Memory Extraction)**: Chạy song song với Luồng 1 để trích xuất các sở thích/nhu cầu của người dùng lưu vào Database.
+  * **Luồng 3 (Food Slots)**: Chỉ được kích hoạt tuần tự nếu Luồng 1 xác định Intent là `food_recommendation` để bóc tách (budget, time, address, dish) và rẽ nhánh vào luồng gợi ý món ăn.
+* Ghi chú các Intent:
   * `small-talk`: Chào hỏi đời thường, lấy luôn `suggested_answer` để trả về cho người dùng nhanh chóng.
   * `sensitive`: Phát hiện câu hỏi vi phạm nhạy cảm, sinh `suggested_answer` lịch sự từ chối thay vì chặn ngang.
   * `missing_info`: Câu hỏi quá thiếu thông tin hoặc câu nối tiếp không thể resolve chắc chắn từ lịch sử; NLU sinh `suggested_answer` để hỏi lại đúng phần còn thiếu, không gọi RAG/Food.
   * `rag`: Rẽ nhánh vào luồng tìm kiếm RAG chính sách/tài liệu Qdrant.
-  * `food_recommendation`: Bóc tách slot (budget, time, address, dish) và rẽ nhánh vào luồng gợi ý món ăn.
+  * `food_recommendation`: Rẽ nhánh vào luồng gợi ý món ăn.
 * **Ghi chú NLU follow-up**: Các câu ngắn như `cái đầu`, `mục đó`, `chi tiết hơn`, `so sánh 2 cái`, hoặc lựa chọn bằng số/tên rút gọn sẽ được resolve bằng Working Memory trước. Nếu chưa đủ chắc chắn, hệ thống trả `missing_info` để hỏi rõ thay vì đoán bừa hoặc rơi nhầm vào `sensitive`.
 * Hệ thống không sử dụng fast-path rule-based cứng nhắc. Mọi truy vấn đều qua mô hình NLU này để đảm bảo độ chuẩn xác cao.
 * Không yêu cầu khóa API Google Maps cho Geocode: Hệ thống sử dụng OpenStreetMap Nominatim/Photon miễn phí.
