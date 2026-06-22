@@ -6,6 +6,7 @@ export default function SlideShow() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(0); // -1 for left/prev, 1 for right/next
   const [scale, setScale] = useState(1);
+  const [activeDialog, setActiveDialog] = useState(null);
 
   const TOTAL_SLIDES = 8;
 
@@ -263,29 +264,110 @@ export default function SlideShow() {
                         Giải quyết các <span className="text-[#00b386]">bài toán cốt lõi</span>
                       </h2>
                       <p className="text-[22px] font-semibold text-[#415b7d] mt-1 max-w-[1200px]">
-                        Một nền tảng trợ lý thông minh duy nhất giúp giải quyết triệt để các thách thức về chi phí nhân sự, giữ chân khách hàng và khai thác tối đa doanh số chéo.
+                        Một nền tảng trợ lý thông minh duy nhất giúp giải quyết triệt để các thách thức về chi phí nhân sự, giữ chân khách hàng và khai thác tối đa doanh số chéo. Click vào các thẻ để xem ví dụ thực tế.
                       </p>
                     </div>
                     <div className="grid grid-cols-4 gap-[16px] pt-2">
                       {[
-                        { img: '/knowledge_search.png', t: 'Tự Động Hóa CSKH FAQ', d: 'Trả lời tức thì 90% thắc mắc của khách hàng về chính sách, chuyến đi và giá cước.' },
-                        { img: '/deep_research.png', t: 'Hỗ Trợ Đại Lý & Tài Xế', d: 'Tra cứu thông tin chính sách, luật, vận hành nội bộ nhanh chóng cho nhân sự.' },
-                        { img: '/vehicle_expert.png', t: 'Chuyên Gia Tư Vấn Dịch Vụ', d: 'Giải đáp tường tận về các dòng xe VinFast, gói thuê xe và chính sách ưu đãi thành viên.' },
-                        { img: '/pricing_assistant.png', t: 'Minh Bạch Giá Cước', d: 'Tự động tính toán, giải thích chi tiết cơ chế giá cước động theo thời gian thực.' },
-                        { img: '/news_digest.png', t: 'Báo Cáo Tin Tức Tự Động', d: 'Cập nhật nhanh tin tức thị trường xe điện, khuyến mãi tuần cho khách hàng.' },
-                        { img: '/food_recommendation.png', t: 'Bán Chéo Food & Địa Điểm', d: 'Tự động gợi ý quán ăn, món ngon quanh vị trí và kích thích đặt xe/đồ ăn.' },
-                        { img: '/policy_support.png', t: 'Xử Lý Khiếu Nại 24/7', d: 'Tự động ghi nhận thông tin, phân loại sự cố và hướng dẫn khách hàng xử lý nhanh.' },
-                        { img: '/data_analytics.png', t: 'Đo Lường Chất Lượng', d: 'Phân tích dữ liệu hội thoại để tìm ra điểm nghẽn dịch vụ và cải tiến tức thì.' }
-                      ].map((item, idx) => (
-                        <div key={idx} className="flex flex-col min-h-[250px] border border-[#094a70]/13 rounded-[20px] overflow-hidden bg-white shadow-[0_16px_36px_rgba(13,64,100,0.1)] hover:translate-y-[-4px] transition-transform duration-300">
-                          <img className="w-full h-[120px] object-cover" src={item.img} alt={item.t} />
+                        { 
+                          img: '/knowledge_search.png', t: 'Tự Động Hóa CSKH FAQ', d: 'Trả lời tức thì 90% thắc mắc của khách hàng về chính sách, chuyến đi và giá cước.',
+                          dialog: { user: 'Cho mình hỏi giá cước xe VF8 sân bay Nội Bài về Cầu Giấy là bao nhiêu? Có bị tính phí cầu đường không?', ai: 'Dạ, giá cước VF8 chặng sân bay Nội Bài - Cầu Giấy hiện dao động từ 300.000đ - 350.000đ. Khách hàng sẽ cần thanh toán thêm phí cầu đường khoảng 15.000đ ạ.' }
+                        },
+                        { 
+                          img: '/deep_research.png', t: 'Hỗ Trợ Đại Lý & Tài Xế', d: 'Tra cứu thông tin chính sách, luật, vận hành nội bộ nhanh chóng cho nhân sự.',
+                          dialog: { user: 'Quy trình xử lý khách hàng quên đồ trên xe như thế nào?', ai: 'Dạ, tài xế cần báo cáo ngay trên app Driver, chọn mục "Khách quên đồ" -> điền thông tin và chụp ảnh hiện vật -> Giao nộp tại trạm điều hành gần nhất trong 24h.' }
+                        },
+                        { 
+                          img: '/vehicle_expert.png', t: 'Chuyên Gia Tư Vấn Dịch Vụ', d: 'Giải đáp tường tận về các dòng xe VinFast, gói thuê xe và chính sách ưu đãi thành viên.',
+                          dialog: { user: 'Gói thuê xe 1 ngày đi Mộc Châu cho gia đình 4 người thì xe nào phù hợp?', ai: 'Dạ, cho hành trình đi tỉnh như Mộc Châu, gia đình 4 người nên chọn VF8. Gói thuê VF8 1 ngày đi tỉnh hiện đang là 1.500.000đ/ngày (Giới hạn 200km).' }
+                        },
+                        { 
+                          img: '/pricing_assistant.png', t: 'Minh Bạch Giá Cước', d: 'Tự động tính toán, giải thích chi tiết cơ chế giá cước động theo thời gian thực.',
+                          dialog: { user: 'Sao giá cước hôm nay từ Mỹ Đình về Hoàn Kiếm lại cao hơn hôm qua 50k thế?', ai: 'Dạ, hiện tại khu vực Hoàn Kiếm đang có sự kiện lớn dẫn tới nhu cầu đặt xe tăng vọt 300%. Hệ thống áp dụng phụ phí giờ cao điểm 50.000đ để thu hút thêm tài xế phục vụ ạ.' }
+                        },
+                        { 
+                          img: '/news_digest.png', t: 'Báo Cáo Tin Tức Tự Động', d: 'Cập nhật nhanh tin tức thị trường xe điện, khuyến mãi tuần cho khách hàng.',
+                          dialog: { user: 'Tin tức mới nhất cho bác tài!', ai: 'Dạ, tuần này Xanh SM đang hợp tác với VIB, giảm ngay 30% (Tối đa 50k) cho các chuyến đi thứ 6, thứ 7 ạ.' }
+                        },
+                        { 
+                          img: '/food_recommendation.png', t: 'Bán Chéo Food & Địa Điểm', d: 'Tự động gợi ý quán ăn, món ngon quanh vị trí và kích thích đặt xe/đồ ăn.',
+                          dialog: { user: 'Quanh Ngõ 67 Phùng Khoang có quán phở nào ngon, đang mở cửa mà có xe Xanh SM chờ sẵn không?', ai: 'Dạ, ngay phố Bát Đàn có Phở Gia Truyền đang mở cửa, cách vị trí của bạn 1.5km. Hiện có 5 xe Xanh SM đang chờ quanh quán. Bạn có muốn đặt xe luôn không?' }
+                        },
+                        { 
+                          img: '/policy_support.png', t: 'Xử Lý Khiếu Nại 24/7', d: 'Tự động ghi nhận thông tin, phân loại sự cố và hướng dẫn khách hàng xử lý nhanh.',
+                          dialog: { user: 'Tài xế đi nhầm đường làm tôi lỡ chuyến bay, tôi muốn khiếu nại!', ai: 'Dạ Xanh SM vô cùng xin lỗi. Hệ thống ghi nhận lộ trình có sai lệch. Chúng tôi đã hoàn 100% cước phí chuyến đi vào ví Xanh SM và gửi mã giảm 100k đền bù cho bạn ạ.' }
+                        },
+                        { 
+                          img: '/data_analytics.png', t: 'Đo Lường Chất Lượng', d: 'Phân tích dữ liệu hội thoại để tìm ra điểm nghẽn dịch vụ và cải tiến tức thì.'
+                        }
+                      ].map((item, idx) => {
+                        const hasDialog = !!item.dialog;
+                        return (
+                        <div 
+                          key={idx} 
+                          onClick={() => hasDialog && setActiveDialog(item)}
+                          className={`flex flex-col min-h-[250px] border border-[#094a70]/13 rounded-[20px] overflow-hidden bg-white shadow-[0_16px_36px_rgba(13,64,100,0.1)] transition-all duration-300 ${hasDialog ? 'cursor-pointer hover:-translate-y-2 hover:shadow-[0_24px_50px_rgba(0,179,134,0.2)] group' : ''}`}
+                        >
+                          <div className="relative overflow-hidden h-[120px]">
+                            <img className={`w-full h-full object-cover transition-transform duration-500 ${hasDialog ? 'group-hover:scale-105' : ''}`} src={item.img} alt={item.t} />
+                            {hasDialog && (
+                            <div className="absolute inset-0 bg-[#00b386]/0 group-hover:bg-[#00b386]/10 transition-colors duration-300 flex items-center justify-center">
+                              <span className="opacity-0 group-hover:opacity-100 bg-[#00b386] text-white px-4 py-2 rounded-full font-bold text-[14px] shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">Click xem ví dụ</span>
+                            </div>
+                            )}
+                          </div>
                           <div className="p-4 flex-grow flex flex-col justify-between">
-                            <h3 className="text-[#071735] text-[22px] font-black leading-[1.15]">{item.t}</h3>
+                            <h3 className={`text-[#071735] text-[22px] font-black leading-[1.15] transition-colors ${hasDialog ? 'group-hover:text-[#00b386]' : ''}`}>{item.t}</h3>
                             <p className="text-[#365071] text-[17px] font-semibold mt-[6px] leading-[1.4]">{item.d}</p>
                           </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
+
+                    <AnimatePresence>
+                      {activeDialog && (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                          className="absolute inset-0 z-50 flex items-center justify-center bg-[#071735]/40 backdrop-blur-sm rounded-[28px]"
+                          onClick={() => setActiveDialog(null)}
+                        >
+                          <div 
+                            className="w-[800px] bg-white rounded-[24px] shadow-[0_40px_100px_rgba(0,0,0,0.2)] overflow-hidden border border-white"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50">
+                              <h3 className="text-[24px] font-black text-[#071735]">{activeDialog.t}</h3>
+                              <button 
+                                onClick={() => setActiveDialog(null)}
+                                className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center hover:bg-rose-100 hover:text-rose-600 transition-colors font-bold text-[18px]"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <div className="p-8 space-y-6 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(240,250,248,1))]">
+                              {/* User Chat Bubble */}
+                              <div className="flex gap-4 items-start">
+                                <div className="w-[48px] h-[48px] rounded-full bg-slate-200 flex items-center justify-center text-[24px] shadow-sm flex-shrink-0">👤</div>
+                                <div className="bg-white border border-slate-200 p-5 rounded-[20px] rounded-tl-none shadow-sm max-w-[85%]">
+                                  <p className="text-[#071735] text-[18px] font-medium leading-[1.5]">{activeDialog.dialog.user}</p>
+                                </div>
+                              </div>
+                              
+                              {/* AI Chat Bubble */}
+                              <div className="flex gap-4 items-start flex-row-reverse">
+                                <div className="w-[48px] h-[48px] rounded-full bg-[#00b386] flex items-center justify-center text-[24px] shadow-sm flex-shrink-0">🤖</div>
+                                <div className="bg-gradient-to-br from-[#00b386] to-[#10cdb1] text-white p-5 rounded-[20px] rounded-tr-none shadow-[0_12px_24px_rgba(0,179,134,0.2)] max-w-[85%]">
+                                  <p className="text-white text-[18px] font-medium leading-[1.5]">{activeDialog.dialog.ai}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
 
