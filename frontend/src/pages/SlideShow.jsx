@@ -207,7 +207,7 @@ export default function SlideShow() {
                         <ul className="space-y-3 mt-4">
                           <li className="flex items-start gap-3">
                             <span className="text-[#00b386] text-[24px] font-black leading-none mt-1">✓</span>
-                            <span className="text-[#415b7d] text-[20px] font-semibold"><strong className="text-[#071735]">Hiểu Sâu Ngữ Cảnh:</strong> NLU độc quyền xử lý mượt mà từ khóa đa dạng, ngữ pháp phức tạp.</span>
+                            <span className="text-[#415b7d] text-[20px] font-semibold"><strong className="text-[#071735]">Hiểu Sâu Ngữ Cảnh:</strong> NLU xử lý mượt mà từ khóa đa dạng, ngữ pháp phức tạp.</span>
                           </li>
                           <li className="flex items-start gap-3">
                             <span className="text-[#00b386] text-[24px] font-black leading-none mt-1">✓</span>
@@ -215,7 +215,7 @@ export default function SlideShow() {
                           </li>
                           <li className="flex items-start gap-3">
                             <span className="text-[#00b386] text-[24px] font-black leading-none mt-1">✓</span>
-                            <span className="text-[#415b7d] text-[20px] font-semibold"><strong className="text-[#071735]">Bảo Mật Tiên Tiến:</strong> Guardrails chặn 99% Prompt Injection, đảm bảo an toàn thương hiệu.</span>
+                            <span className="text-[#415b7d] text-[20px] font-semibold"><strong className="text-[#071735]">Bảo Mật:</strong> Guardrails chặn 99% Prompt Injection, các câu hỏi lặp lại và small-talk đảm bảo an toàn thương hiệu.</span>
                           </li>
                         </ul>
                       </div>
@@ -225,7 +225,7 @@ export default function SlideShow() {
                           Chính xác &gt; 90%
                         </div>
                         <div className="inline-flex items-center justify-center bg-white border-2 border-[#00b386]/20 text-[#071735] px-8 py-4 rounded-[20px] font-black text-[20px]">
-                          Tốc độ phản hồi &lt; 2s
+                          Tốc độ phản hồi nhanh
                         </div>
                       </div>
                     </div>
