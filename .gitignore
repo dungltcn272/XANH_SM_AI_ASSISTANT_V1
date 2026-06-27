@@ -56,7 +56,8 @@ data/food_catalog/*
 !/data/food_catalog/shopeefood_crawl_metadata.json
 /logs/
 # Plan
-PLAN.md 
+# PLAN.md 
+# NEW_DB_SCHEMA.md
 
 # Evaluation results
 evaluation_report.json

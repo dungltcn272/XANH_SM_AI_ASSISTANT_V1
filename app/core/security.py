@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.db.models import User, GuestSession
+from app.db.models import Actor, ActorIdentity
 from app.core.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)
@@ -25,14 +25,23 @@ def get_current_entity(token: str = Depends(oauth2_scheme), db: Session = Depend
         entity_id = payload.get("sub")
         
         if entity_type == "user":
-            user = db.query(User).filter(User.id == entity_id).first()
+            user = db.query(Actor).filter(Actor.id == entity_id).first()
             if user:
                 return {"type": "user", "entity": user}
                 
         elif entity_type == "guest":
-            session = db.query(GuestSession).filter(GuestSession.session_token == entity_id).first()
-            if session:
-                return {"type": "guest", "entity": session}
+            identity = (
+                db.query(ActorIdentity)
+                .filter(
+                    ActorIdentity.provider == "guest",
+                    ActorIdentity.provider_subject == entity_id,
+                )
+                .first()
+            )
+            if identity:
+                actor = db.query(Actor).filter(Actor.id == identity.actor_id).first()
+                if actor:
+                    return {"type": "guest", "entity": actor}
                 
     except JWTError:
         pass

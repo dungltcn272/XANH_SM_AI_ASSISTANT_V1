@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.db.models import UserFoodProfile
+from app.db.models import ProfileSnapshot as UserFoodProfile
 
 
 def _json_or_default(value: str | None, default: Any) -> Any:
@@ -29,9 +29,12 @@ def _append_unique_place(items: list[dict[str, Any]] | None, value: dict[str, An
 
 
 def _profile_identity(user_id: str | None = None, guest_id: str | None = None) -> dict[str, str | None]:
+    normalized_user_id = user_id if user_id and user_id != "anonymous" else None
+    normalized_guest_id = guest_id if guest_id and guest_id != "anonymous" else None
     return {
-        "user_id": user_id if user_id and user_id != "anonymous" else None,
-        "guest_id": guest_id if guest_id and guest_id != "anonymous" else None,
+        "user_id": normalized_user_id,
+        "guest_id": normalized_guest_id,
+        "actor_id": normalized_user_id or normalized_guest_id,
     }
 
 
@@ -42,17 +45,17 @@ def get_or_create_food_profile(
 ) -> UserFoodProfile:
     identity = _profile_identity(user_id, guest_id)
     query = db.query(UserFoodProfile)
-    if identity["user_id"]:
-        row = query.filter(UserFoodProfile.user_id == identity["user_id"]).first()
-    elif identity["guest_id"]:
-        row = query.filter(UserFoodProfile.guest_id == identity["guest_id"]).first()
+    if identity["actor_id"]:
+        row = query.filter(UserFoodProfile.actor_id == identity["actor_id"]).first()
     else:
         row = None
 
     if row:
         return row
+    if not identity["actor_id"]:
+        return UserFoodProfile(actor_id="anonymous", profile_json=json.dumps({}, ensure_ascii=False))
 
-    row = UserFoodProfile(user_id=identity["user_id"], guest_id=identity["guest_id"])
+    row = UserFoodProfile(actor_id=identity["actor_id"], profile_json=json.dumps({}, ensure_ascii=False))
     db.add(row)
     db.commit()
     db.refresh(row)

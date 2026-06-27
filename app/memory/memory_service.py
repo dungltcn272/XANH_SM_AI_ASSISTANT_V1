@@ -29,9 +29,12 @@ def _dump_json(value: Any) -> str:
 
 
 def _identity(user_id: str | None = None, guest_id: str | None = None) -> dict[str, str | None]:
+    normalized_user_id = user_id if user_id and user_id != "anonymous" else None
+    normalized_guest_id = guest_id if guest_id and guest_id != "anonymous" else None
     return {
-        "user_id": user_id if user_id and user_id != "anonymous" else None,
-        "guest_id": guest_id if guest_id and guest_id != "anonymous" else None,
+        "user_id": normalized_user_id,
+        "guest_id": normalized_guest_id,
+        "actor_id": normalized_user_id or normalized_guest_id,
     }
 
 
@@ -82,18 +85,14 @@ class MemoryService:
         guest_id: str | None = None,
     ) -> UserProfile | None:
         ident = _identity(user_id, guest_id)
-        if not ident["user_id"] and not ident["guest_id"]:
+        if not ident["actor_id"]:
             return None
 
-        query = self.db.query(UserProfile)
-        if ident["user_id"]:
-            row = query.filter(UserProfile.user_id == ident["user_id"]).first()
-        else:
-            row = query.filter(UserProfile.guest_id == ident["guest_id"]).first()
+        row = self.db.query(UserProfile).filter(UserProfile.actor_id == ident["actor_id"]).first()
         if row:
             return row
 
-        row = UserProfile(user_id=ident["user_id"], guest_id=ident["guest_id"])
+        row = UserProfile(actor_id=ident["actor_id"], profile_json=_dump_json({}))
         self.db.add(row)
         self.db.commit()
         self.db.refresh(row)
@@ -107,15 +106,16 @@ class MemoryService:
         profile = self.get_or_create_user_profile(user_id=user_id, guest_id=guest_id)
         if not profile:
             return {}
+        payload = _json_or_default(profile.profile_json, {})
         return {
             "profile_cache_note": "Derived from active user_memories; user_memories remain the source of truth.",
-            "display_name": profile.display_name,
-            "facts": _json_or_default(profile.facts_json, []),
-            "preferences": _json_or_default(profile.preferences_json, []),
-            "goals": _json_or_default(profile.goals_json, []),
-            "constraints": _json_or_default(profile.constraints_json, []),
-            "behaviors": _json_or_default(getattr(profile, "behaviors_json", None), []),
-            "profile_stats": _json_or_default(profile.profile_stats_json, {}),
+            "display_name": payload.get("display_name"),
+            "facts": payload.get("facts", []),
+            "preferences": payload.get("preferences", []),
+            "goals": payload.get("goals", []),
+            "constraints": payload.get("constraints", []),
+            "behaviors": payload.get("behaviors", []),
+            "profile_stats": payload.get("profile_stats", {}),
         }
 
     def get_conversation_summary(self, conversation_id: str | None) -> dict[str, Any]:
@@ -138,14 +138,11 @@ class MemoryService:
         limit: int = 8,
     ) -> list[dict[str, Any]]:
         ident = _identity(user_id, guest_id)
-        if not ident["user_id"] and not ident["guest_id"]:
+        if not ident["actor_id"]:
             return []
 
         db_query = self.db.query(UserMemory).filter(UserMemory.status == "active")
-        if ident["user_id"]:
-            db_query = db_query.filter(UserMemory.user_id == ident["user_id"])
-        else:
-            db_query = db_query.filter(UserMemory.guest_id == ident["guest_id"])
+        db_query = db_query.filter(UserMemory.actor_id == ident["actor_id"])
 
         terms = _query_terms(query)
         if terms:
@@ -191,7 +188,7 @@ class MemoryService:
         source: str = "nlu",
     ) -> list[UserMemory]:
         ident = _identity(user_id, guest_id)
-        if not candidates or (not ident["user_id"] and not ident["guest_id"]):
+        if not candidates or not ident["actor_id"]:
             return []
 
         saved: list[UserMemory] = []
@@ -213,7 +210,7 @@ class MemoryService:
             if confidence < 0.55:
                 continue
 
-            existing = self._find_existing_memory(content, ident["user_id"], ident["guest_id"])
+            existing = self._find_existing_memory(content, ident["actor_id"])
             if existing:
                 existing.scope = scope
                 existing.memory_type = memory_type
@@ -225,8 +222,7 @@ class MemoryService:
                 saved.append(existing)
             else:
                 row = UserMemory(
-                    user_id=ident["user_id"],
-                    guest_id=ident["guest_id"],
+                    actor_id=ident["actor_id"],
                     conversation_id=conversation_id,
                     message_id=message_id,
                     scope=scope,
@@ -243,7 +239,7 @@ class MemoryService:
             self.db.commit()
             for row in saved:
                 self.db.refresh(row)
-            self._refresh_profile_from_memories(ident["user_id"], ident["guest_id"])
+            self._refresh_profile_from_memories(ident["actor_id"])
             self._sync_location_candidates_to_food_profile(candidates, ident["user_id"], ident["guest_id"])
         return saved
 
@@ -281,25 +277,21 @@ class MemoryService:
     def _find_existing_memory(
         self,
         normalized_content: str,
-        user_id: str | None,
-        guest_id: str | None,
+        actor_id: str,
     ) -> UserMemory | None:
         query = self.db.query(UserMemory).filter(UserMemory.status == "active")
-        if user_id:
-            query = query.filter(UserMemory.user_id == user_id)
-        else:
-            query = query.filter(UserMemory.guest_id == guest_id)
+        query = query.filter(UserMemory.actor_id == actor_id)
         for row in query.order_by(UserMemory.updated_at.desc()).limit(120).all():
             if _normalize_text(row.content) == normalized_content:
                 return row
         return None
 
-    def _refresh_profile_from_memories(self, user_id: str | None, guest_id: str | None) -> None:
-        profile = self.get_or_create_user_profile(user_id=user_id, guest_id=guest_id)
+    def _refresh_profile_from_memories(self, actor_id: str) -> None:
+        profile = self.get_or_create_user_profile(user_id=actor_id)
         if not profile:
             return
 
-        memories = self.get_long_term_memory(user_id=user_id, guest_id=guest_id, limit=80)
+        memories = self.get_long_term_memory(user_id=actor_id, limit=80)
         grouped = {
             "facts": [],
             "preferences": [],
@@ -307,7 +299,8 @@ class MemoryService:
             "constraints": [],
             "behaviors": [],
         }
-        display_name = profile.display_name
+        current_payload = _json_or_default(profile.profile_json, {})
+        display_name = current_payload.get("display_name")
         for memory in memories:
             item = {
                 "content": memory["content"],
@@ -331,17 +324,21 @@ class MemoryService:
             if not display_name:
                 display_name = self._display_name_from_memory(memory)
 
-        profile.display_name = display_name
-        profile.facts_json = _dump_json(grouped["facts"][:24])
-        profile.preferences_json = _dump_json(grouped["preferences"][:24])
-        profile.goals_json = _dump_json(grouped["goals"][:12])
-        profile.constraints_json = _dump_json(grouped["constraints"][:24])
-        if hasattr(profile, "behaviors_json"):
-            profile.behaviors_json = _dump_json(grouped["behaviors"][:24])
-        profile.profile_stats_json = _dump_json({
-            "memory_count": len(memories),
-            "profile_source": "derived_from_user_memories",
-        })
+        profile.profile_json = _dump_json(
+            {
+                "display_name": display_name,
+                "facts": grouped["facts"][:24],
+                "preferences": grouped["preferences"][:24],
+                "goals": grouped["goals"][:12],
+                "constraints": grouped["constraints"][:24],
+                "behaviors": grouped["behaviors"][:24],
+                "profile_stats": {
+                    "memory_count": len(memories),
+                    "profile_source": "derived_from_memories",
+                },
+            }
+        )
+        profile.source_memory_ids_json = _dump_json([memory["id"] for memory in memories])
         self.db.commit()
 
     @staticmethod

@@ -4,9 +4,10 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from google.oauth2 import id_token
 from google.auth.transport import requests
+import json
 
 from app.db.database import get_db
-from app.db.models import GuestSession, User, UserRole
+from app.db.models import Actor, ActorIdentity, UserRole
 from app.core.security import create_access_token
 from app.core.config import settings
 
@@ -18,11 +19,37 @@ router = APIRouter()
 class GoogleAuthRequest(BaseModel):
     token: str
 
+
+def _create_actor_identity(
+    db: Session,
+    *,
+    actor: Actor,
+    provider: str,
+    provider_subject: str,
+    metadata: dict | None = None,
+) -> ActorIdentity:
+    identity = ActorIdentity(
+        actor_id=actor.id,
+        provider=provider,
+        provider_subject=provider_subject,
+        metadata_json=json.dumps(metadata or {}, ensure_ascii=False),
+    )
+    db.add(identity)
+    return identity
+
 @router.post("/guest")
 def create_guest_session(db: Session = Depends(get_db)):
     session_token = str(uuid.uuid4())
-    guest = GuestSession(session_token=session_token)
+    guest = Actor(actor_type="guest", display_name="Guest")
     db.add(guest)
+    db.flush()
+    _create_actor_identity(
+        db,
+        actor=guest,
+        provider="guest",
+        provider_subject=session_token,
+        metadata={"session_token": session_token},
+    )
     db.commit()
     db.refresh(guest)
     
@@ -46,11 +73,19 @@ def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
         if not email:
             raise HTTPException(status_code=400, detail="Google token does not contain email")
             
-        # Check if user exists
-        user = db.query(User).filter(User.email == email).first()
+        # Check if actor exists
+        user = db.query(Actor).filter(Actor.email == email).first()
         if not user:
-            user = User(email=email, name=name, role=UserRole.USER)
+            user = Actor(email=email, display_name=name, actor_type="customer")
             db.add(user)
+            db.flush()
+            _create_actor_identity(
+                db,
+                actor=user,
+                provider="google",
+                provider_subject=idinfo.get("sub") or email,
+                metadata={"email": email, "picture": picture},
+            )
             db.commit()
             db.refresh(user)
             
@@ -84,10 +119,18 @@ def admin_login(req: AdminLoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid admin credentials")
         
     admin_email = f"{req.username}@system.admin"
-    user = db.query(User).filter(User.email == admin_email).first()
+    user = db.query(Actor).filter(Actor.email == admin_email).first()
     if not user:
-        user = User(email=admin_email, name="System Admin", role=UserRole.ADMIN)
+        user = Actor(email=admin_email, display_name="System Admin", actor_type="admin")
         db.add(user)
+        db.flush()
+        _create_actor_identity(
+            db,
+            actor=user,
+            provider="admin_password",
+            provider_subject=req.username,
+            metadata={"username": req.username},
+        )
         db.commit()
         db.refresh(user)
     elif user.role != UserRole.ADMIN:

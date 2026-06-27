@@ -40,7 +40,7 @@ except Exception:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, chat, conversations, reviews, food, notifications
+from app.api import auth, chat, conversations, reviews, food, notifications, personas
 from app.api.admin import router as admin_router
 
 app = FastAPI(
@@ -69,6 +69,7 @@ app.include_router(conversations.router, prefix="/api/conversations", tags=["con
 app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
 app.include_router(food.router, prefix="/api/food", tags=["food"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
+app.include_router(personas.router, prefix="/api/personas", tags=["personas"])
 app.include_router(admin_router, prefix="/api/admin")
 
 @app.get("/")

@@ -15,10 +15,13 @@ def _entity_id(current_entity: dict) -> tuple[str, str | None]:
 def get_conversations(db: Session = Depends(get_db), current_entity: dict = Depends(get_current_entity)):
     entity_type, entity_id = _entity_id(current_entity)
     
-    if entity_type == "user" and entity_id:
-        return db.query(Conversation).filter(Conversation.user_id == entity_id).order_by(Conversation.created_at.desc()).all()
-    if entity_type == "guest" and entity_id:
-        return db.query(Conversation).filter(Conversation.guest_id == entity_id).order_by(Conversation.created_at.desc()).all()
+    if entity_type in {"user", "guest"} and entity_id:
+        return (
+            db.query(Conversation)
+            .filter(Conversation.actor_id == entity_id)
+            .order_by(Conversation.created_at.desc())
+            .all()
+        )
     return []
 
 @router.get("/{conversation_id}/messages")
@@ -30,9 +33,7 @@ def get_messages(conversation_id: str, db: Session = Depends(get_db), current_en
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
         
-    if entity_type == "user" and entity_id and conv.user_id == entity_id:
-        pass
-    elif entity_type == "guest" and entity_id and conv.guest_id == entity_id:
+    if entity_type in {"user", "guest"} and entity_id and conv.actor_id == entity_id:
         pass
     else:
         raise HTTPException(status_code=403, detail="Not authorized")

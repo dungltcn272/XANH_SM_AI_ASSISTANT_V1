@@ -61,6 +61,7 @@ class XanhSMAssistantOrchestrator:
         conversation_id: str | None = None,
         user_id: str | None = None,
         guest_id: str | None = None,
+        persona: str = "customer",
     ):
         t_start = time.time()
         metrics = {
@@ -76,6 +77,7 @@ class XanhSMAssistantOrchestrator:
             "rewritten_query": "",
             "num_chunks_before_expansion": 0,
             "compressed_context_len": 0,
+            "persona": persona,
         }
 
         if is_deep_search:

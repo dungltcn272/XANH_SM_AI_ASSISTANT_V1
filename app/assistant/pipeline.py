@@ -6,7 +6,17 @@ from app.rag.security.guardrail import OutputGuardrail
 from app.core.logger import log_info, log_warn
 import json
 
-def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, question: str, image_base64: str = None, is_deep_search: bool = False, entity_type: str = "anonymous", display_query: str = None):
+def stream_chat_pipeline(
+    db: Session,
+    user_id: str,
+    conversation_id: str,
+    question: str,
+    image_base64: str = None,
+    is_deep_search: bool = False,
+    entity_type: str = "anonymous",
+    display_query: str = None,
+    persona: str = "customer",
+):
     # Lấy lịch sử 3 lượt gần nhất
     memory_service = MemoryService(db)
     raw_history = memory_service.get_recent_messages(conversation_id, limit=12)  # Increased from 6 to 12
@@ -53,7 +63,8 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
         "generation_latency_ms": 0,
         "total_latency_ms": 0,
         "total_tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "persona": persona,
     }
     
     # First yield conversation_id so frontend can track history
@@ -70,6 +81,7 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
         conversation_id=conversation_id,
         user_id=user_id if entity_type == "user" else None,
         guest_id=user_id if entity_type == "guest" else None,
+        persona=persona,
     )):
         if "Nội dung vi phạm" in event:
             is_blocked = True
