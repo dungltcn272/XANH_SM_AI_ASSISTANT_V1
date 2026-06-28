@@ -3,8 +3,9 @@ from __future__ import annotations
 import io
 import os
 import sys
+from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,7 +23,42 @@ for stream_name in ("stdout", "stderr"):
         pass
 
 
-load_dotenv(override=True)
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+ROOT_ENV_FILE = PROJECT_ROOT / ".env"
+BACKEND_ENV_FILE = BACKEND_ROOT / ".env"
+ENV_FILE_OVERRIDE_KEYS = {
+    "OPENAI_API_KEY",
+    "GROQ_API_KEY",
+    "COHERE_API_KEY",
+    "GOOGLE_CLIENT_ID",
+    "EMBEDDING_PROVIDER",
+    "EMBEDDING_MODEL",
+    "RAG_ANSWER_MODEL",
+    "NLU_MODEL",
+    "FOOD_ANSWER_MODEL",
+    "AI_JUDGE_MODEL",
+    "VLM_MODEL",
+    "RERANKER_PROVIDER",
+    "RERANKER_MODEL",
+    "OPENAI_TIMEOUT_SECONDS",
+    "LLM_MAX_TOKENS",
+}
+
+
+def _load_env_files() -> None:
+    for env_file in (ROOT_ENV_FILE, BACKEND_ENV_FILE):
+        if not env_file.exists():
+            continue
+        for key, value in dotenv_values(env_file).items():
+            if value is None:
+                continue
+            if key in os.environ and key not in ENV_FILE_OVERRIDE_KEYS:
+                continue
+            os.environ[key] = value
+
+
+_load_env_files()
 
 
 class Settings(BaseSettings):
@@ -63,7 +99,7 @@ class Settings(BaseSettings):
 
     DATA_DIR: str = os.getenv("DATA_DIR", "./data")
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(extra="ignore")
 
 
 settings = Settings()

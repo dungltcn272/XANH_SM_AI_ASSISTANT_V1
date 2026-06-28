@@ -51,6 +51,16 @@ def _contains_temporal_context(text: str) -> bool:
     return any(word in lowered for word in TEMPORAL_WORDS)
 
 
+def is_cache_safe_query(user_query: str, intent: str | None) -> bool:
+    if _contains_private_or_secret_data(user_query):
+        return False
+    if _contains_temporal_context(user_query):
+        return False
+    if (intent or "").strip() in REALTIME_INTENTS:
+        return False
+    return True
+
+
 def analyze_faq_candidate(
     user_query: str,
     answer: str | None,

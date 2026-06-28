@@ -18,6 +18,8 @@ import LandingPage from './pages/LandingPage';
 import { Moon, Sun, LogOut, Plus, User, HelpCircle, X, Menu, ChevronLeft, ChevronRight, MoreHorizontal, Bell, ChevronDown, MessageSquare, Search } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="p-8 text-on-surface-variant animate-pulse font-semibold">Loading authorization state...</div>;
@@ -476,19 +478,21 @@ function MainLayout({ children }) {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <GoogleLogin
-                    onSuccess={async (credentialResponse) => {
-                      const success = await loginWithGoogle(credentialResponse.credential);
-                      if (success) {
-                        api.getConversations().then(setConversations).catch(console.error);
-                      }
-                    }}
-                    onError={() => console.error('Đăng nhập Google thất bại')}
-                    shape="pill"
-                    theme={theme === 'dark' ? 'filled_blue' : 'outline'}
-                    size="medium"
-                    text="signin_with"
-                  />
+                  {GOOGLE_CLIENT_ID ? (
+                    <GoogleLogin
+                      onSuccess={async (credentialResponse) => {
+                        const success = await loginWithGoogle(credentialResponse.credential);
+                        if (success) {
+                          api.getConversations().then(setConversations).catch(console.error);
+                        }
+                      }}
+                      onError={() => console.error('Đăng nhập Google thất bại')}
+                      shape="pill"
+                      theme={theme === 'dark' ? 'filled_blue' : 'outline'}
+                      size="medium"
+                      text="signin_with"
+                    />
+                  ) : null}
                 </div>
               )}
             </div>

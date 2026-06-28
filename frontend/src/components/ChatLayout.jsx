@@ -577,22 +577,26 @@ export default function ChatLayout() {
         // Load history
         api.getConversationMessages(activeConversationId).then(msgs => {
           const formatted = msgs.map(m => {
-            let parsedTrace = null;
-            if (m.pipeline_trace) {
+            let metadata = m.metadata || null;
+            if (!metadata && typeof m.pipeline_trace === 'string') {
               try {
-                parsedTrace = JSON.parse(m.pipeline_trace);
+                metadata = JSON.parse(m.pipeline_trace);
               } catch {
                 // Ignore JSON parse errors for legacy data
               }
             }
+            const metrics = m.metrics || metadata?.metrics || null;
             const parsedRagParts = m.role === 'assistant' ? parseRagInlineParts(m.content) : [];
             const markerRagCards = ragInlineCards(parsedRagParts);
             const parsedFoodParts = m.role === 'assistant' ? parseFoodInlineParts(m.content) : [];
             return {
+              id: m.id,
               role: m.role, 
               content: m.role === 'assistant' ? ragInlineText(parsedRagParts) : m.content,
               created_at: m.created_at,
-              ragCards: parsedTrace?.rag_cards || (markerRagCards.length ? markerRagCards : null),
+              metrics,
+              latency_ms: metrics?.total_latency_ms || null,
+              ragCards: metadata?.rag_cards || (markerRagCards.length ? markerRagCards : null),
               foodInlineParts: parsedFoodParts.some(part => part.type !== 'text') ? parsedFoodParts : null
             };
           });

@@ -28,7 +28,7 @@ Acceptance:
 
 Mục tiêu: runtime cũ vẫn chạy được trên schema mới.
 
-- [ ] Thay toàn bộ compatibility `users`/`guest_sessions` bằng `actors`/`actor_identities` ở các module còn lại.
+- [x] Thay toàn bộ compatibility `users`/`guest_sessions` bằng `actors`/`actor_identities` ở các module còn lại.
 - [x] Refactor `/api/auth/guest`, `/api/auth/google`, `/api/auth/admin-login`.
 - [x] Refactor `get_current_entity()` trả về actor thay vì legacy user/guest.
 - [x] Refactor `conversations` dùng `actor_id`, `persona_id`, `channel`, `status`.
@@ -69,10 +69,10 @@ Mục tiêu: bỏ cache prompt user trực tiếp, chuyển sang FAQ curated hyb
 - [x] Tạo `hybrid_cache_matcher.py`.
 - [x] Tạo `faq_cache.py`.
 - [x] Tạo `faq_repository.py`.
-- [ ] Tích hợp FAQ cache vào RAG gateway trước khi gọi full pipeline.
-- [ ] Tạo `faq_candidates` sau assistant run nếu câu hỏi đủ chuẩn.
-- [ ] Không cache câu hỏi realtime hoặc câu hỏi chứa dữ liệu cá nhân.
-- [ ] Thêm admin/eval flow để publish FAQ.
+- [x] Tích hợp FAQ cache vào RAG gateway trước khi gọi full pipeline.
+- [x] Tạo `faq_candidates` sau assistant run nếu câu hỏi đủ chuẩn.
+- [x] Không cache câu hỏi realtime hoặc câu hỏi chứa dữ liệu cá nhân.
+- [x] Thêm admin/eval flow để publish FAQ.
 
 Acceptance:
 
@@ -87,9 +87,9 @@ Mục tiêu: memory chuẩn theo actor/persona/scope.
 - [x] Refactor `MemoryService` dùng `memories`.
 - [x] Tạo `assistant/memory/context_builder.py`.
 - [x] Tạo `behavioral_memory.py`.
-- [ ] Tạo profile snapshot refresh sang `profile_snapshots`.
-- [ ] Hỗ trợ memory lifecycle: `active`, `superseded`, `deleted`, `expired`.
-- [ ] Hỗ trợ lệnh quên/sửa memory.
+- [x] Tạo profile snapshot refresh sang `profile_snapshots`.
+- [x] Hỗ trợ memory lifecycle: `active`, `superseded`, `deleted`, `expired`.
+- [x] Hỗ trợ lệnh quên/sửa memory.
 
 Acceptance:
 
@@ -110,6 +110,7 @@ Mục tiêu: tách logic nghiệp vụ khỏi API và orchestrator.
 - [x] Tạo `domains/executive_copilot`.
 - [x] Tạo `tools/registry.py`.
 - [x] Tạo tool specs typed bằng Pydantic.
+- [x] Chuẩn hóa tool layer theo LangChain `@tool` + Pydantic `args_schema`.
 - [x] Nạp công nghệ RAG thật: heading/table-aware chunking, hybrid retrieval, Cohere rerank, OpenAI synthesis.
 - [x] Nạp công nghệ Food thật: DB/JSONL candidate retrieval, BM25, geo/rating/price ranking, OpenAI answer.
 
@@ -162,6 +163,7 @@ Mục tiêu: frontend chuyển sang contract `/api/v1` trước khi xóa legacy 
 - [x] Thêm persona switcher gửi field `persona` vào `/api/v1/chat`.
 - [x] Thêm smoke test FE gọi `/api/v1/personas` và `/api/v1/chat`.
 - [x] Build frontend sau khi hoàn thiện persona UI.
+- [x] Thêm FE API helpers cho RAG ingest/stream, Ride, Memory lifecycle, FAQ candidate publish.
 
 Acceptance:
 
@@ -177,7 +179,7 @@ Mục tiêu: dọn legacy và ổn định production-like.
 - [x] Tách file lớn trên 300 dòng.
 - [x] Chuẩn hóa Alembic naming cho migration mới.
 - [x] Clear legacy public API routes sau khi frontend chuyển sang `/api/v1`.
-- [ ] Thêm smoke tests cho auth/chat/cache/memory.
+- [x] Thêm smoke tests cho auth/chat/cache/memory.
 - [x] Cập nhật README/docs architecture và API contract cho FE.
 
 Acceptance:

@@ -3,7 +3,6 @@ builder = "DOCKERFILE"
 
 watchPatterns = [
   "backend/**",
-  "app/**",
   "alembic/**",
   "alembic.ini",
   "requirements.txt",

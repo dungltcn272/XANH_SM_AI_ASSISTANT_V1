@@ -46,5 +46,18 @@ def list_messages(conversation_id: str, db: Session = Depends(get_db), current_e
                 metadata = json.loads(row.metadata_json)
             except json.JSONDecodeError:
                 metadata = {}
-        result.append({"id": row.id, "role": row.role, "content": row.content, "content_type": row.content_type, "metadata": metadata, "pipeline_trace": row.metadata_json, "created_at": row.created_at})
+        metrics = metadata.get("metrics") if isinstance(metadata, dict) else None
+        result.append(
+            {
+                "id": row.id,
+                "role": row.role,
+                "content": row.content,
+                "content_type": row.content_type,
+                "metadata": metadata,
+                "metrics": metrics,
+                "tool_results": metadata.get("tool_results") if isinstance(metadata, dict) else None,
+                "pipeline_trace": metrics.get("pipeline_trace") if isinstance(metrics, dict) else None,
+                "created_at": row.created_at,
+            }
+        )
     return result

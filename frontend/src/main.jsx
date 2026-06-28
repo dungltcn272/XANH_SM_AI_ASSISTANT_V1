@@ -6,17 +6,17 @@ import { AuthProvider } from './AuthContext'
 import './index.css'
 import App from './App.jsx'
 
-// Fallback for development if .env is not set
-const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
+const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const app = (
+  <BrowserRouter>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </BrowserRouter>
+);
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={clientId}>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    {clientId ? <GoogleOAuthProvider clientId={clientId}>{app}</GoogleOAuthProvider> : app}
   </StrictMode>,
 )

@@ -67,6 +67,72 @@ export const api = {
     return res.json();
   },
 
+  ragAnswerStream: async (query, personaId = 'customer', topK = null) => {
+    const params = new URLSearchParams({ q: query, persona_id: personaId });
+    if (topK) params.set('top_k', String(topK));
+    return api._fetch(`${API_BASE}/rag/answer/stream?${params.toString()}`);
+  },
+
+  ingestRagDocument: async (payload) => {
+    const res = await api._fetch(`${API_BASE}/rag/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getMemories: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.persona_id) params.set('persona_id', filters.persona_id);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.limit) params.set('limit', String(filters.limit));
+    const qs = params.toString();
+    const res = await api._fetch(`${API_BASE}/memories${qs ? `?${qs}` : ''}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  forgetMemory: async (memoryId) => {
+    const res = await api._fetch(`${API_BASE}/memories/${memoryId}/forget`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  updateMemory: async (memoryId, content) => {
+    const res = await api._fetch(`${API_BASE}/memories/${memoryId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  getFaqCandidates: async (status = 'candidate', limit = 50) => {
+    const params = new URLSearchParams({ status, limit: String(limit) });
+    const res = await api._fetch(`${API_BASE}/admin/faq-candidates?${params.toString()}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  publishFaqCandidate: async (candidateId, payload = {}) => {
+    const res = await api._fetch(`${API_BASE}/admin/faq-candidates/${candidateId}/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  rejectFaqCandidate: async (candidateId) => {
+    const res = await api._fetch(`${API_BASE}/admin/faq-candidates/${candidateId}/reject`, { method: 'POST' });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getNotifications: async () => {
     const res = await api._fetch(`${API_BASE}/notifications`);
     if (!res.ok) throw new Error('API Error');

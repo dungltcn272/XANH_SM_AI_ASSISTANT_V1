@@ -24,6 +24,9 @@ def _actor_id(current_entity: dict) -> str | None:
 def _stream_result(result: dict, *, conversation_id: str) -> Iterator[str]:
     yield f"data: {json.dumps({'conversation_id': conversation_id, 'run_id': result['run_id'], 'persona': result['persona']}, ensure_ascii=False)}\n\n"
     yield f"data: {json.dumps({'step': 'intent', 'intent': result['intent'], 'persona': result['persona']}, ensure_ascii=False)}\n\n"
+    for event in result.get("metrics", {}).get("pipeline_trace", []):
+        message = f"{event.get('node')}:{event.get('event')}"
+        yield f"data: {json.dumps({'step': event.get('node'), 'event': event.get('event'), 'message': message, 'elapsed_ms': event.get('elapsed_ms')}, ensure_ascii=False)}\n\n"
     for line in result["answer"].splitlines():
         yield f"data: {line}\n\n"
     yield f"data: {json.dumps({'metrics': result['metrics'], 'tool_results': result['tool_results']}, ensure_ascii=False, default=str)}\n\n"

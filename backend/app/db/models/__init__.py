@@ -17,22 +17,6 @@ from .operations import FraudSignal, OperationalMetricSnapshot
 from .analytics import EvaluationRun, ExecutiveInsightReport
 from .engagement import Notification, NotificationRead, Payment, UserFeedback
 
-# Compatibility names used by legacy modules during the refactor window.
-User = Actor
-GuestSession = Actor
-UserMemory = Memory
-UserProfile = ProfileSnapshot
-AdminNotification = Notification
-UserReview = UserFeedback
-CrawlSource = KnowledgeSource
-FoodCatalog = MerchantMenuItem
-SemanticCache = FaqEntry
-RagRequestLog = AssistantRun
-BasicRequestLog = AssistantRun
-FoodRequestLog = AssistantRun
-SystemLog = AiTraceEvent
-ErrorLog = AiTraceEvent
-
 
 def actor_identity_subject(entity: object) -> str:
     return getattr(entity, "provider_subject", "") or getattr(entity, "id", "")
@@ -81,19 +65,5 @@ __all__ = [
     "NotificationRead",
     "UserFeedback",
     "EvaluationRun",
-    "User",
-    "GuestSession",
-    "UserMemory",
-    "UserProfile",
-    "AdminNotification",
-    "UserReview",
-    "CrawlSource",
-    "FoodCatalog",
-    "SemanticCache",
-    "RagRequestLog",
-    "BasicRequestLog",
-    "FoodRequestLog",
-    "SystemLog",
-    "ErrorLog",
     "actor_identity_subject",
 ]

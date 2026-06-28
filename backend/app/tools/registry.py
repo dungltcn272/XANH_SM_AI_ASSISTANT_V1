@@ -17,6 +17,14 @@ def list_tools_for_persona(persona_id: str) -> list[ToolSpec]:
     return [tool for tool in _TOOL_REGISTRY.values() if can_use_tool(persona_id, tool.name)]
 
 
+def list_langchain_tools_for_persona(persona_id: str) -> list:
+    return [
+        tool.langchain_tool
+        for tool in _TOOL_REGISTRY.values()
+        if tool.langchain_tool is not None and can_use_tool(persona_id, tool.name)
+    ]
+
+
 def list_persona_tool_matrix() -> dict[str, list[str]]:
     return {
         persona.persona_id.value: [

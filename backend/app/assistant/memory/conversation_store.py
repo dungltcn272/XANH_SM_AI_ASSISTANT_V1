@@ -4,7 +4,14 @@ import json
 
 from sqlalchemy.orm import Session
 
-from app.db.models import Conversation, Message
+from app.db.models import Conversation, Message, get_vn_time
+
+
+def _conversation_title(content: str, limit: int = 64) -> str:
+    title = " ".join((content or "").split())
+    if len(title) <= limit:
+        return title
+    return f"{title[: limit - 3].rstrip()}..."
 
 
 def get_or_create_conversation(db: Session, *, conversation_id: str | None, actor_id: str | None, persona_id: str) -> Conversation:
@@ -39,6 +46,11 @@ def save_message(
         metadata_json=json.dumps(metadata, ensure_ascii=False, default=str) if metadata is not None else None,
     )
     db.add(row)
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if conversation:
+        conversation.updated_at = get_vn_time()
+        if role == "user" and not conversation.title:
+            conversation.title = _conversation_title(content)
     db.commit()
     db.refresh(row)
     return row

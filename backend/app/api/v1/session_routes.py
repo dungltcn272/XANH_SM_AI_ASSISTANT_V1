@@ -12,6 +12,7 @@ from app.core.security import create_access_token
 from app.core.security.password import verify_plain_password
 from app.db.models import Actor, ActorIdentity, UserRole
 from app.db.session import get_db
+from app.integrations.google_client import verify_google_credential
 
 
 router = APIRouter()
@@ -47,7 +48,39 @@ def create_guest_session(db: Session = Depends(get_db)) -> dict:
 
 @router.post("/google")
 def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)) -> dict:
-    raise HTTPException(status_code=501, detail="Google auth client verification will be added in integrations/google_client.py")
+    if not settings.GOOGLE_CLIENT_ID or settings.GOOGLE_CLIENT_ID == "your-google-client-id-here":
+        raise HTTPException(status_code=503, detail="GOOGLE_CLIENT_ID is not configured")
+    profile = verify_google_credential(req.token)
+    if profile is None:
+        raise HTTPException(status_code=401, detail="Google token verification failed")
+
+    identity = db.query(ActorIdentity).filter(ActorIdentity.provider == "google", ActorIdentity.provider_subject == profile["sub"]).first()
+    if identity:
+        actor = db.query(Actor).filter(Actor.id == identity.actor_id).first()
+    else:
+        actor = db.query(Actor).filter(Actor.email == profile.get("email")).first() if profile.get("email") else None
+        if not actor:
+            actor = Actor(actor_type="customer", display_name=profile.get("name"), email=profile.get("email"), status="active")
+            db.add(actor)
+            db.flush()
+        _create_identity(db, actor=actor, provider="google", subject=profile["sub"], metadata=profile)
+    if not actor:
+        raise HTTPException(status_code=401, detail="Google actor could not be resolved")
+    actor.display_name = profile.get("name") or actor.display_name
+    if profile.get("email") and not actor.email:
+        actor.email = profile["email"]
+    db.commit()
+    db.refresh(actor)
+    return {
+        "access_token": create_access_token({"sub": actor.id, "type": "user"}),
+        "token_type": "bearer",
+        "user_id": actor.id,
+        "email": actor.email,
+        "name": actor.name,
+        "avatar_url": profile.get("picture"),
+        "role": actor.role.value,
+        "type": "user",
+    }
 
 
 @router.post("/admin-login")

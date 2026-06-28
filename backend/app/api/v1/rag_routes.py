@@ -16,8 +16,8 @@ router = APIRouter()
 
 
 @router.get("/answer")
-def answer(q: str, db: Session = Depends(get_db), top_k: int | None = None) -> dict:
-    return answer_from_knowledge(q, db=db, top_k=top_k)
+def answer(q: str, db: Session = Depends(get_db), top_k: int | None = None, persona_id: str = "customer") -> dict:
+    return answer_from_knowledge(q, db=db, top_k=top_k, persona_id=persona_id, intent="rag")
 
 
 def _sse(events):
@@ -36,9 +36,9 @@ def _sse(events):
 
 
 @router.get("/answer/stream")
-def answer_stream(q: str, db: Session = Depends(get_db), top_k: int | None = None) -> StreamingResponse:
+def answer_stream(q: str, db: Session = Depends(get_db), top_k: int | None = None, persona_id: str = "customer") -> StreamingResponse:
     return StreamingResponse(
-        _sse(stream_answer_from_knowledge(q, db=db, top_k=top_k)),
+        _sse(stream_answer_from_knowledge(q, db=db, top_k=top_k, persona_id=persona_id, intent="rag")),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )

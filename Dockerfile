@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 
 ENV TZ=Asia/Ho_Chi_Minh \
-    PGTZ=Asia/Ho_Chi_Minh
+    PGTZ=Asia/Ho_Chi_Minh \
+    PYTHONPATH=/app/backend
 
 WORKDIR /app
 

@@ -2,6 +2,63 @@
 
 ## 0. Sơ đồ luồng hệ thống
 
+### 0.1 Chat runtime flow hiện tại
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant FE as Frontend Chat UI
+    participant ChatAPI as POST /api/v1/chat
+    participant Auth as Auth Dependency
+    participant History as conversation_store
+    participant Brain as XanhSMAssistantOrchestrator
+    participant Trace as PipelineTracer
+    participant NLU as LLM NLU Intent
+    participant Planner as task_planner
+    participant Tool as tool_executor
+    participant Domain as RAG/Food/Ride Domain
+    participant DB as PostgreSQL
+    participant SSE as SSE Stream
+
+    FE->>ChatAPI: query + conversation_id + persona
+    ChatAPI->>Auth: resolve actor/user/guest
+    ChatAPI->>History: get_or_create_conversation()
+    History->>DB: upsert conversation
+    ChatAPI->>History: save user message
+    History->>DB: insert message + update title/updated_at
+
+    ChatAPI->>Brain: run(query, persona, actor_id, conversation_id)
+    Brain->>Trace: api:run_start
+    Trace->>DB: assistant_runs + ai_trace_events
+    Brain->>Trace: context:start/done
+    Brain->>NLU: analyze_intent() via LLM JSON
+    NLU-->>Brain: intent + rewritten_query + confidence + suggested_answer
+    Brain->>Trace: nlu:done
+
+    alt Direct answer
+        Brain->>Trace: direct_response:used
+        Brain-->>ChatAPI: answer + metrics.pipeline_trace
+    else Needs capability
+        Brain->>Planner: plan_tools(intent, persona)
+        Planner-->>Brain: planned_tools
+        Brain->>Trace: planner:done
+        loop for each tool
+            Brain->>Tool: execute_tool(tool_name, rewritten_query)
+            Tool->>Domain: call RAG/Food/Ride service
+            Domain-->>Tool: grounded result/card/booking payload
+            Tool-->>Brain: tool_result
+            Brain->>Trace: tool:done/error
+        end
+        Brain->>Trace: compose:start/done
+        Brain-->>ChatAPI: answer + tool_results + metrics.pipeline_trace
+    end
+
+    ChatAPI->>History: save assistant message
+    History->>DB: insert assistant message metadata(metrics/tool_results)
+    ChatAPI->>SSE: conversation_id, trace steps, answer, metrics
+    SSE-->>FE: render answer + Pipeline chip
+```
+
 ```mermaid
 flowchart TD
     FE[Frontend / Client] -->|POST /api/v1/chat<br/>SSE response| APIChat[api/v1/chat_routes.py]

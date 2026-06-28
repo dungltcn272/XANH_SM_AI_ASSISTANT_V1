@@ -1,34 +1,55 @@
 # Xanh SM Modular Backend
 
-Source chính nằm trong `backend/app`.
+Source chinh nam trong `backend/app`.
 
 ## Runtime Layers
 
-- `api/v1`: route mỏng, chỉ validate request và gọi service/runtime.
-- `assistant`: AI Brain gồm orchestrator, persona, memory, NLU, policy, prompt.
-- `domains`: business logic theo RAG, food, ride, driver, merchant, operator, executive, travel, commerce, user.
-- `tools`: adapter cho agent gọi domain service.
-- `integrations`: client ra dịch vụ ngoài.
-- `db`: session, model, repository, seed/migration boundary.
-- `schemas`: Pydantic request/response contract.
-- `voice`, `realtime`, `ml`, `vectorstore`, `cache`, `workers`: module mở rộng đúng kiến trúc mục tiêu.
+- `api/v1`: FastAPI routes.
+- `assistant`: orchestrator, NLU, memory, persona, prompt, policy.
+- `domains`: RAG, food, ride, driver, merchant, operator, executive.
+- `tools`: LangChain/tool adapters over domain services.
+- `integrations`: OpenAI, Groq, Cohere, Google, external clients.
+- `db`: SQLAlchemy session, models, repositories.
+- `schemas`: Pydantic request/response contracts.
+- `cache`, `vectorstore`, `voice`, `realtime`, `workers`: supporting runtime modules.
 
 ## API Contract
 
-FE đọc [docs/API_CONTRACT.md](docs/API_CONTRACT.md).
+FE doc: [docs/API_CONTRACT.md](docs/API_CONTRACT.md).
 
-## Run
+## Run Local
+
+Run from repo root:
 
 ```powershell
-.\venv\Scripts\uvicorn.exe app.main:app --reload --host 127.0.0.1 --port 8000
+cd backend
+..\venv\Scripts\uvicorn.exe app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+For LAN access:
+
+```powershell
+cd backend
+..\venv\Scripts\uvicorn.exe app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## Migrations
+
+Run Alembic from repo root:
+
+```powershell
+.\venv\Scripts\alembic.exe upgrade head
+```
+
+`alembic/env.py` adds `backend/` to `sys.path`, so imports resolve to `backend/app`.
 
 ## Docker
 
-Dockerfile hiện đặt ở repo root để Railway/Docker build lấy được `requirements.txt`, `alembic`, shim `app/` và source `backend/app` trong cùng build context. Nếu tách backend thành repo riêng sau này thì mới nên chuyển Dockerfile vào `backend/`.
+Dockerfile stays at repo root for Railway/Docker build context, but runtime imports come from `backend/app` via `PYTHONPATH=/app/backend`. There is no root `app/` shim anymore.
 
 ## Verify
 
 ```powershell
-.\venv\Scripts\python.exe -m compileall app backend/app
+cd backend
+..\venv\Scripts\python.exe -m compileall app
 ```

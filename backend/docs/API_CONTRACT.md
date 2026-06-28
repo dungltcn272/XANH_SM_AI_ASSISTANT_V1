@@ -138,6 +138,30 @@ Response:
 ]
 ```
 
+## Memories
+
+### GET `/memories?persona_id=customer&status=active`
+
+Returns scoped memories for the authenticated actor.
+
+### PUT `/memories/{memory_id}`
+
+Supersedes an existing memory and creates a new active version.
+
+```json
+{
+  "content": "Anh/chị thích món ít cay."
+}
+```
+
+### POST `/memories/{memory_id}/forget`
+
+Marks a memory as `deleted`.
+
+### POST `/memories/{memory_id}/expire`
+
+Marks a memory as `expired`.
+
 ### GET `/conversations/{conversation_id}/messages`
 
 Response:
@@ -212,6 +236,14 @@ data: {"answer":"Nội dung đang...","sources":[...],"retrieved_count":12,"rera
 event: done
 data: [DONE]
 ```
+
+RAG media cards:
+
+- Backend/LLM có thể stream marker `[[RAG_CARD {...}]]` trực tiếp trong text.
+- Frontend phải ẩn marker khỏi nội dung hội thoại.
+- Khi thấy marker bắt đầu bằng `[[RAG_CARD` nhưng chưa đủ `]]`, frontend hiển thị shimmer card.
+- Khi marker hoàn chỉnh, frontend parse JSON bên trong marker và render card.
+- Backend không bắt buộc chuyển marker thành `{"rag_card": ...}` metadata; key này chỉ giữ để tương thích nếu sau này có stream metadata riêng.
 
 ### POST `/rag/ingest`
 
@@ -426,3 +458,23 @@ Response:
   "version": "modular-v1"
 }
 ```
+
+### GET `/admin/faq-candidates?status=candidate`
+
+Lists FAQ candidates generated after grounded RAG answers.
+
+### POST `/admin/faq-candidates/{candidate_id}/publish`
+
+Publishes a curated FAQ entry. Only published FAQ entries are used by the FAQ cache.
+
+```json
+{
+  "scope": "public",
+  "source_type": "assistant_candidate",
+  "status": "published"
+}
+```
+
+### POST `/admin/faq-candidates/{candidate_id}/reject`
+
+Rejects a FAQ candidate.

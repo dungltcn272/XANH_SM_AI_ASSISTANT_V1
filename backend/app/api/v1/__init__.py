@@ -8,6 +8,7 @@ from .driver_routes import router as driver_router
 from .executive_routes import router as executive_router
 from .food_routes import router as food_router
 from .merchant_routes import router as merchant_router
+from .memory_routes import router as memory_router
 from .notification_routes import router as notification_router
 from .operator_routes import router as operator_router
 from .persona_routes import router as persona_router
@@ -20,6 +21,7 @@ router = APIRouter()
 router.include_router(session_router, prefix="/auth", tags=["v1-auth"])
 router.include_router(chat_router, prefix="/chat", tags=["v1-chat"])
 router.include_router(conversation_router, prefix="/conversations", tags=["v1-conversations"])
+router.include_router(memory_router, prefix="/memories", tags=["v1-memories"])
 router.include_router(persona_router, prefix="/personas", tags=["v1-personas"])
 router.include_router(rag_router, prefix="/rag", tags=["v1-rag"])
 router.include_router(review_router, prefix="/reviews", tags=["v1-reviews"])

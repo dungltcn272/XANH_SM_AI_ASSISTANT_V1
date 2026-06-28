@@ -156,7 +156,8 @@ QDRANT_URL=http://localhost:6333
 
 3. **Chạy Server FastAPI:**
 ```bash
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+cd backend
+..\venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port 8000
 ```
 Khi chạy backend local sau khi đổi schema, chạy `alembic upgrade head` trước. Khi deploy Docker, lệnh này được chạy tự động trước khi start API.
 
