@@ -28,6 +28,7 @@ export const MessageBubble = ({
     msg.foodInlineParts ||
     msg.foodRecommendations ||
     msg.ragCards ||
+    msg.ragCardLoading ||
     (msg.sources && msg.sources.length > 0)
   );
 
@@ -139,6 +140,14 @@ export const MessageBubble = ({
                 )}
                 {msg.ragCards && RagCardList && (
                   <RagCardList cards={msg.ragCards} />
+                )}
+                {msg.ragCardLoading && (
+                  <div className="w-full max-w-sm animate-pulse rounded-xl border border-[#00c897]/20 bg-white/70 p-3 dark:bg-white/10">
+                    <div className="h-28 rounded-lg bg-[#00c897]/10" />
+                    <div className="mt-3 h-3 w-2/3 rounded bg-[#00c897]/20" />
+                    <div className="mt-2 h-3 w-full rounded bg-slate-200 dark:bg-white/10" />
+                    <div className="mt-2 h-3 w-4/5 rounded bg-slate-200 dark:bg-white/10" />
+                  </div>
                 )}
               </div>
             )}

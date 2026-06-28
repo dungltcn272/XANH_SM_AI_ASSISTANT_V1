@@ -1,5 +1,67 @@
 # Kế Hoạch Tái Cấu Trúc Modular AI Assistant Platform
 
+## 0. Sơ đồ luồng hệ thống
+
+```mermaid
+flowchart TD
+    FE[Frontend / Client] -->|POST /api/v1/chat<br/>SSE response| APIChat[api/v1/chat_routes.py]
+    FE -->|GET /api/v1/rag/answer/stream<br/>SSE token stream| APIRAG[api/v1/rag_routes.py]
+    FE -->|GET /api/v1/food/recommendations| APIFood[api/v1/food_routes.py]
+    Admin[Admin / Worker] -->|POST /api/v1/rag/ingest| IngestAPI[api/v1/rag_routes.py]
+
+    APIChat --> Auth[core/security + dependency]
+    APIChat --> Memory[assistant/memory<br/>conversation_store]
+    APIChat --> Brain[assistant/orchestrator<br/>AI Brain]
+
+    Brain --> Safety[assistant/policies<br/>safety + permission]
+    Brain --> NLU[assistant/nlu<br/>rewrite + intent + slots]
+    Brain --> Planner[assistant/orchestrator<br/>task_planner]
+    Planner --> ToolExec[assistant/orchestrator<br/>tool_executor]
+
+    ToolExec -->|rag tool| RAGAnswerer[assistant/orchestrator<br/>rag_answerer]
+    APIRAG --> RAGAnswerer
+    RAGAnswerer -->|build context only| RAGContext[domains/rag/services<br/>context_service]
+    RAGContext --> Retriever[domains/rag/retrievers<br/>hybrid_retriever]
+    Retriever --> Qdrant[(Qdrant<br/>dense vectors)]
+    Retriever --> KnowledgeDB[(PostgreSQL<br/>document_chunks BM25)]
+    RAGContext --> Reranker[domains/rag/rerankers<br/>Cohere rerank]
+    RAGAnswerer -->|prompt + stream/complete| OpenAI[OpenAI Chat API]
+    RAGAnswerer -->|sources/token/answer/done| APIRAG
+
+    IngestAPI --> Ingestion[domains/rag/ingestion<br/>ingestion_service]
+    Ingestion --> Chunker[domains/rag/chunking<br/>heading/table-aware chunking]
+    Chunker --> KnowledgeDB
+    Ingestion -->|embeddings| OpenAIEmbed[OpenAI Embeddings]
+    Ingestion --> Qdrant
+    Crawler[crawler/<br/>HTML/PDF/Markdown loaders] --> Ingestion
+
+    ToolExec -->|food tool| FoodService[domains/food<br/>recommendation_service]
+    APIFood --> FoodService
+    FoodService --> FoodCandidates[domains/food<br/>candidate_generator]
+    FoodCandidates --> FoodDB[(PostgreSQL<br/>merchant_menu_items)]
+    FoodCandidates --> FoodJSONL[(data/food_catalog<br/>JSONL fallback)]
+    FoodService --> Geo[domains/food/geocode<br/>Nominatim]
+    FoodService --> FoodRanker[domains/food/ranker<br/>BM25 + distance + rating + price]
+    FoodService -->|answer synthesis| OpenAI
+
+    ToolExec --> Ride[domains/ride]
+    ToolExec --> Driver[domains/driver_copilot]
+    ToolExec --> Merchant[domains/merchant_copilot]
+    ToolExec --> Operator[domains/operator_copilot]
+    ToolExec --> Executive[domains/executive_copilot]
+
+    Brain --> Composer[assistant/orchestrator<br/>response_composer]
+    Composer --> APIChat
+    APIChat -->|SSE chunks + metrics| FE
+
+    Memory --> AppDB[(PostgreSQL<br/>actors/conversations/messages/memories/traces)]
+    Brain --> AppDB
+    Auth --> AppDB
+
+    Cache[cache/<br/>exact + semantic + FAQ] -. planned/partial .-> Brain
+    Workers[workers/<br/>ingestion/embedding/analytics] -. async .-> Ingestion
+```
+
 ## 1. Mục tiêu
 
 Dự án sẽ được nâng từ một AI Assistant phục vụ chat/RAG/food recommendation thành một **Modular AI Assistant Platform** cho hệ sinh thái Xanh SM/Vin. Hệ thống có một **AI Brain** dùng chung, nhưng được cấu hình khác nhau theo persona:
@@ -292,7 +354,7 @@ backend/
   README.md
 ```
 
-Ghi chú cho repo hiện tại: vì backend hiện đang nằm trực tiếp trong `app/`, bước đầu có thể tạo cấu trúc mới trong `app/` trước, sau đó mới cân nhắc đổi root thành `backend/` nếu cần tách monorepo rõ hơn.
+Ghi chú cho repo hiện tại: source backend chính đã chuyển sang `backend/app`; thư mục root `app/` chỉ còn vai trò shim tương thích. Dockerfile vẫn nên đặt ở repo root trong giai đoạn monorepo để build context lấy được `requirements.txt`, `alembic`, shim `app/`, `backend/app` và cấu hình deploy.
 
 ## 4. Trách nhiệm từng lớp
 

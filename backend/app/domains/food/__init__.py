@@ -1,0 +1,1 @@
+"""Food recommendation domain boundary."""

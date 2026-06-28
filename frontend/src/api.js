@@ -1,4 +1,4 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api/v1';
 
 export const api = {
     _fetch: async (url, options = {}) => {
@@ -17,14 +17,18 @@ export const api = {
     return localStorage.getItem('access_token');
   },
 
-  chatStream: async (query, conversation_id = null, imageBase64 = null, isDeepSearch = false, displayQuery = null) => {
+  chatStream: async (query, conversation_id = null, imageBase64 = null, isDeepSearch = false, displayQuery = null, persona = 'customer', context = {}) => {
     const token = api.getAuthToken();
     const headers = { 'Content-Type': 'application/json' };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const body = { query, conversation_id, deep_search: isDeepSearch, display_query: displayQuery };
+    const body = { query, conversation_id, deep_search: isDeepSearch, display_query: displayQuery, persona };
+    if (context.lat !== undefined && context.lat !== null) body.lat = context.lat;
+    if (context.lng !== undefined && context.lng !== null) body.lng = context.lng;
+    if (context.address) body.address = context.address;
+    if (context.budget_vnd !== undefined && context.budget_vnd !== null) body.budget_vnd = context.budget_vnd;
     if (imageBase64) {
       body.image_base64 = imageBase64;
     }
@@ -34,6 +38,33 @@ export const api = {
       headers,
       body: JSON.stringify(body)
     });
+  },
+
+  estimateRide: async (payload) => {
+    const res = await api._fetch(`${API_BASE}/booking/estimate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  createRideBooking: async (payload) => {
+    const res = await api._fetch(`${API_BASE}/booking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  previewRide: async (pickup, dropoff, serviceType = 'xanh_car') => {
+    const params = new URLSearchParams({ pickup, dropoff, service_type: serviceType });
+    const res = await api._fetch(`${API_BASE}/booking/preview?${params.toString()}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
   },
 
   getNotifications: async () => {

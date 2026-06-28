@@ -1,0 +1,4 @@
+KNOWLEDGE_COLLECTION = "xanhsm_knowledge"
+FAQ_COLLECTION = "xanhsm_faq"
+
+DEFAULT_COLLECTIONS = {"knowledge": KNOWLEDGE_COLLECTION, "faq": FAQ_COLLECTION}

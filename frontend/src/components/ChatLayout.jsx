@@ -10,6 +10,7 @@ import { useAuth } from '../AuthContext';
 import { FoodCardShimmer, FoodExplanationModal, FoodRecommendationRow } from './chat/FoodInlineCards';
 import { foodInlineRecommendations, foodInlineText, parseFoodInlineParts } from './chat/FoodInlineParts';
 import { MessageBubble } from './chat/MessageBubble';
+import { parseRagInlineParts, ragInlineCards, ragInlineLoading, ragInlineText } from './chat/RagInlineParts';
 
 const stripNode = (props) => {
   const rest = { ...props };
@@ -358,6 +359,14 @@ const SUGGESTION_CARDS = [
   }
 ];
 
+const PERSONA_OPTIONS = [
+  { id: 'customer', label: 'Customer', icon: User },
+  { id: 'driver', label: 'Driver', icon: Car },
+  { id: 'merchant', label: 'Merchant', icon: Utensils },
+  { id: 'operator', label: 'Operator', icon: ShieldCheck },
+  { id: 'executive', label: 'Executive', icon: Sparkles },
+];
+
 export default function ChatLayout() {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -368,6 +377,7 @@ export default function ChatLayout() {
   const [loading, setLoading] = useState(false);
   const [pipelineStep, setPipelineStep] = useState(null);
   const [isDeepSearch, setIsDeepSearch] = useState(false);
+  const [activePersona, setActivePersona] = useState('customer');
   
   // Feedback States
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
@@ -548,7 +558,7 @@ export default function ChatLayout() {
     if (!lastMessage) return 'empty';
 
     const streamingMarker = loading
-      ? `${lastMessage.content?.length || 0}:${lastMessage.foodInlineParts?.length || 0}:${lastMessage.ragCards?.length || 0}`
+      ? `${lastMessage.content?.length || 0}:${lastMessage.foodInlineParts?.length || 0}:${lastMessage.ragCards?.length || 0}:${lastMessage.ragCardLoading ? 1 : 0}`
       : 'idle';
 
     return `${messages.length}:${lastMessage.role}:${streamingMarker}`;
@@ -575,12 +585,15 @@ export default function ChatLayout() {
                 // Ignore JSON parse errors for legacy data
               }
             }
+            const parsedRagParts = m.role === 'assistant' ? parseRagInlineParts(m.content) : [];
+            const markerRagCards = ragInlineCards(parsedRagParts);
+            const parsedFoodParts = m.role === 'assistant' ? parseFoodInlineParts(m.content) : [];
             return {
               role: m.role, 
-              content: m.content,
+              content: m.role === 'assistant' ? ragInlineText(parsedRagParts) : m.content,
               created_at: m.created_at,
-              ragCards: parsedTrace?.rag_cards,
-              foodInlineParts: m.role === 'assistant' ? parseFoodInlineParts(m.content) : null
+              ragCards: parsedTrace?.rag_cards || (markerRagCards.length ? markerRagCards : null),
+              foodInlineParts: parsedFoodParts.some(part => part.type !== 'text') ? parsedFoodParts : null
             };
           });
           setMessages(formatted);
@@ -610,7 +623,14 @@ export default function ChatLayout() {
     setLoading(true);
 
     try {
-      const response = await api.chatStream(userQuery, currentConvIdRef.current, currentImageBase64, isDeepSearch, displayQuery !== userQuery ? displayQuery : null);
+      const response = await api.chatStream(
+        userQuery,
+        currentConvIdRef.current,
+        currentImageBase64,
+        isDeepSearch,
+        displayQuery !== userQuery ? displayQuery : null,
+        activePersona
+      );
       if (!response.ok) throw new Error('API Error');
       
       setMessages(prev => [...prev, { role: 'assistant', content: '', latency_ms: null, metrics: null, created_at: new Date().toISOString() }]);
@@ -627,6 +647,7 @@ export default function ChatLayout() {
       let streamFoodInlineParts = null;
       let streamFoodLocationRequest = null;
       let streamRagCards = [];
+      let streamRagCardLoading = false;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -723,9 +744,14 @@ export default function ChatLayout() {
           
           if (!isStep && !isMetrics && textData.length > 0) {
              rawStreamReply += textData;
-             streamFoodInlineParts = parseFoodInlineParts(rawStreamReply);
-             streamReply = foodInlineText(streamFoodInlineParts);
-             streamFoodRecommendations = foodInlineRecommendations(streamFoodInlineParts, userQuery, streamFoodRecommendations?.trace_id);
+             const parsedFoodParts = parseFoodInlineParts(rawStreamReply);
+             streamFoodInlineParts = parsedFoodParts.some(part => part.type !== 'text') ? parsedFoodParts : null;
+             const visibleAfterFoodMarkers = streamFoodInlineParts ? foodInlineText(parsedFoodParts) : rawStreamReply;
+             const parsedRagParts = parseRagInlineParts(visibleAfterFoodMarkers);
+             streamReply = ragInlineText(parsedRagParts);
+             streamRagCards = ragInlineCards(parsedRagParts);
+             streamRagCardLoading = ragInlineLoading(parsedRagParts);
+             streamFoodRecommendations = streamFoodInlineParts ? foodInlineRecommendations(streamFoodInlineParts, userQuery, streamFoodRecommendations?.trace_id) : null;
              setPipelineStep(null);
           }
           
@@ -738,6 +764,7 @@ export default function ChatLayout() {
             if (streamRagCards.length) {
               newMsgs[newMsgs.length - 1].ragCards = streamRagCards;
             }
+            newMsgs[newMsgs.length - 1].ragCardLoading = streamRagCardLoading;
             // Store metrics if received
             if (streamMetrics) {
               newMsgs[newMsgs.length - 1].metrics = streamMetrics;
@@ -1178,9 +1205,40 @@ export default function ChatLayout() {
           scrollbar-width: none;
         }
       `}</style>
-      
+
+      <div className="absolute top-3 left-1/2 z-20 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 pointer-events-none">
+        <div className="flex items-center justify-between gap-3">
+          <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto no-scrollbar rounded-2xl border border-white/20 bg-white/80 p-1 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0c1618]/80">
+            {PERSONA_OPTIONS.map((personaOption) => {
+              const PersonaIcon = personaOption.icon;
+              const isActive = activePersona === personaOption.id;
+              return (
+                <button
+                  key={personaOption.id}
+                  type="button"
+                  onClick={() => setActivePersona(personaOption.id)}
+                  disabled={loading}
+                  title={personaOption.label}
+                  className={`flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[11px] font-black transition-all disabled:cursor-not-allowed disabled:opacity-60 md:px-3 ${
+                    isActive
+                      ? 'bg-[#00c897] text-white shadow-sm'
+                      : 'text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface'
+                  }`}
+                >
+                  <PersonaIcon size={14} />
+                  <span className="hidden sm:inline">{personaOption.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="pointer-events-auto hidden rounded-2xl border border-white/20 bg-white/75 px-3 py-2 text-xs font-black text-on-surface shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0c1618]/75 md:block">
+            {PERSONA_OPTIONS.find((item) => item.id === activePersona)?.label || 'Customer'}
+          </div>
+        </div>
+      </div>
+       
       {/* Scrollable content container */}
-      <div className="flex-1 overflow-y-auto w-full px-4 md:px-8 pt-6 pb-44 md:pb-52 no-scrollbar flex flex-col items-center">
+      <div className="flex-1 overflow-y-auto w-full px-4 md:px-8 pt-20 pb-44 md:pb-52 no-scrollbar flex flex-col items-center">
         
         {/* Empty State Hero */}
         {messages.length === 0 && (
@@ -1473,6 +1531,12 @@ export default function ChatLayout() {
                 {/* Horizontally scrollable suggestion pills */}
 
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 select-none">
+                  <button 
+                    onClick={(e) => handleSubmit(e, "Đặt xe từ Vinhomes Central Park đến Sân bay Tân Sơn Nhất")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <Car size={12} /> Đặt xe
+                  </button>
                   <button 
                     onClick={(e) => handleSubmit(e, "Giá cước Xanh Car và Xanh Bike ở các khu vực")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"

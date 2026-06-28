@@ -1,0 +1,1 @@
+"""Merchant Copilot domain boundary."""

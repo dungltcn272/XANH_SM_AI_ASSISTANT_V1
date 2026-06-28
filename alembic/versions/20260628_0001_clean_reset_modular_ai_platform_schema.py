@@ -105,6 +105,18 @@ def _drop_legacy_and_partial_platform_tables() -> None:
         _drop_table_if_exists(table_name, existing_tables)
 
 
+def _set_database_timezone() -> None:
+    if context.is_offline_mode():
+        return
+    bind = op.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    database_name = bind.execute(sa.text("select current_database()")).scalar()
+    safe_database_name = str(database_name).replace('"', '""')
+    op.execute(sa.text(f'ALTER DATABASE "{safe_database_name}" SET timezone TO \'Asia/Ho_Chi_Minh\''))
+    op.execute(sa.text("SET TIME ZONE 'Asia/Ho_Chi_Minh'"))
+
+
 def _create_identity_tables() -> None:
     op.create_table(
         "actors",
@@ -752,6 +764,7 @@ def _seed_base_personas() -> None:
 
 
 def upgrade() -> None:
+    _set_database_timezone()
     _drop_legacy_and_partial_platform_tables()
     _create_identity_tables()
     _create_conversation_runtime_tables()

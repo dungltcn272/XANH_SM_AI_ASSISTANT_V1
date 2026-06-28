@@ -264,7 +264,7 @@ export default function AIEvalLab() {
     ]);
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
+      const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api/v1';
       const response = await fetch(`${apiBase}/admin/evaluate`, {
         method: 'POST',
         headers: {
