@@ -1,4 +1,4 @@
-export const parseFoodInlineParts = (text) => {
+export const parseFoodInlineParts = (text, { showPartialLoading = false } = {}) => {
   const parts = [];
   const completeMarker = /\[\[FOOD_CARD\s+({[\s\S]*?})\]\]/g;
   let cursor = 0;
@@ -24,7 +24,7 @@ export const parseFoodInlineParts = (text) => {
 
   
   const partials = [
-    '[', '[[', '[[F', '[[FO', '[[FOO', '[[FOOD', '[[FOOD_',
+    '[[F', '[[FO', '[[FOO', '[[FOOD', '[[FOOD_',
     '[[FOOD_C', '[[FOOD_CA', '[[FOOD_CAR', '[[FOOD_CARD'
   ];
   let tailMatchIndex = -1;
@@ -35,7 +35,9 @@ export const parseFoodInlineParts = (text) => {
     }
   }
 
-  if ((partialStart !== -1 && tail.indexOf(']]', partialStart) === -1) || tailMatchIndex !== -1) {
+  const hasPartialMarker = (partialStart !== -1 && tail.indexOf(']]', partialStart) === -1) || tailMatchIndex !== -1;
+
+  if (showPartialLoading && hasPartialMarker) {
     const cutoff = partialStart !== -1 ? partialStart : tailMatchIndex;
     const visibleTail = tail.slice(0, cutoff);
     if (visibleTail) parts.push({ type: 'text', text: visibleTail });

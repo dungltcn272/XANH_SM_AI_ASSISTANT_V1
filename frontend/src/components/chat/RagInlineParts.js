@@ -1,4 +1,4 @@
-export const parseRagInlineParts = (text) => {
+export const parseRagInlineParts = (text, { showPartialLoading = false } = {}) => {
   const parts = [];
   const completeMarker = /\[\[RAG_CARD\s+({[\s\S]*?})\]\]/g;
   let cursor = 0;
@@ -37,7 +37,9 @@ export const parseRagInlineParts = (text) => {
     const cutoff = partialStart !== -1 ? partialStart : tailMatchIndex;
     const visibleTail = tail.slice(0, cutoff);
     if (visibleTail) parts.push({ type: 'text', text: visibleTail });
-    parts.push({ type: 'rag_loading' });
+    if (showPartialLoading) {
+      parts.push({ type: 'rag_loading' });
+    }
   } else if (tail) {
     parts.push({ type: 'text', text: tail });
   }

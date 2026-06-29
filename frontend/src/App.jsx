@@ -48,8 +48,9 @@ const getGroupedConversations = (conversations) => {
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   conversations.forEach(conv => {
-    if (!conv.created_at) return;
-    const date = new Date(conv.created_at);
+    const timestamp = conv.created_at || conv.updated_at;
+    if (!timestamp) return;
+    const date = new Date(timestamp);
     if (date >= startOfToday) {
       groups.today.push(conv);
     } else if (date >= startOfYesterday) {

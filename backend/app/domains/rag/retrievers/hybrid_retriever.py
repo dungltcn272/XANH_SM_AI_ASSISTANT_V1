@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -12,6 +13,10 @@ from app.config.settings import settings
 from app.db.models import DocumentChunk
 from app.vectorstore.collections import KNOWLEDGE_COLLECTION
 from app.vectorstore.vector_repository import search_vectors
+
+
+_DENSE_SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="rag_dense")
+RRF_K = 60
 
 
 @dataclass
@@ -59,25 +64,62 @@ def _sql_bm25_search(db: Session, query: str, *, limit: int) -> list[RetrievedCh
     return docs
 
 
+def _dense_chunks(items: list[dict]) -> list[RetrievedChunk]:
+    chunks = []
+    for item in items:
+        metadata = item.get("metadata") or {}
+        chunks.append(
+            RetrievedChunk(
+                content=item.get("content", ""),
+                metadata=metadata,
+                score=float(item.get("score") or 0),
+                retrieval_source=item.get("retrieval_source") or "qdrant_dense",
+            )
+        )
+    return chunks
+
+
+def _chunk_key(chunk: RetrievedChunk) -> str:
+    return str(chunk.metadata.get("chunk_id") or chunk.content[:80])
+
+
+def _rrf_fuse(*ranked_lists: list[RetrievedChunk], limit: int, rrf_k: int = RRF_K) -> list[RetrievedChunk]:
+    fused: dict[str, RetrievedChunk] = {}
+    scores: dict[str, float] = {}
+    sources: dict[str, list[str]] = {}
+
+    for ranked in ranked_lists:
+        for rank, chunk in enumerate(ranked, start=1):
+            key = _chunk_key(chunk)
+            scores[key] = scores.get(key, 0.0) + 1.0 / (rrf_k + rank)
+            sources.setdefault(key, [])
+            if chunk.retrieval_source not in sources[key]:
+                sources[key].append(chunk.retrieval_source)
+            if key not in fused or chunk.score > fused[key].score:
+                fused[key] = chunk
+
+    output = []
+    for key, chunk in fused.items():
+        chunk.score = scores[key]
+        chunk.metadata["rrf_score"] = scores[key]
+        chunk.metadata["retrieval_sources"] = sources[key]
+        chunk.retrieval_source = "+".join(sources[key])
+        output.append(chunk)
+
+    output.sort(key=lambda chunk: chunk.score, reverse=True)
+    return output[:limit]
+
+
 def retrieve(query: str, *, db: Session, top_k: int | None = None) -> list[RetrievedChunk]:
     limit = top_k or settings.RETRIEVAL_CANDIDATE_LIMIT
-    docs_by_id: dict[str, RetrievedChunk] = {}
 
-    for item in search_vectors(query, collection=KNOWLEDGE_COLLECTION, limit=limit):
-        metadata = item.get("metadata") or {}
-        chunk_id = metadata.get("chunk_id") or item.get("content", "")[:80]
-        docs_by_id[chunk_id] = RetrievedChunk(
-            content=item.get("content", ""),
-            metadata=metadata,
-            score=float(item.get("score") or 0),
-            retrieval_source=item.get("retrieval_source") or "qdrant_dense",
-        )
+    dense_future = _DENSE_SEARCH_EXECUTOR.submit(search_vectors, query, collection=KNOWLEDGE_COLLECTION, limit=limit)
+    sparse_docs = _sql_bm25_search(db, query, limit=limit)
 
-    for doc in _sql_bm25_search(db, query, limit=limit):
-        chunk_id = doc.metadata.get("chunk_id") or doc.content[:80]
-        if chunk_id not in docs_by_id or doc.score > docs_by_id[chunk_id].score:
-            docs_by_id[chunk_id] = doc
+    try:
+        dense_items = dense_future.result()
+    except Exception:
+        dense_items = []
 
-    docs = list(docs_by_id.values())
-    docs.sort(key=lambda doc: doc.score, reverse=True)
-    return docs[:limit]
+    dense_docs = _dense_chunks(dense_items)
+    return _rrf_fuse(dense_docs, sparse_docs, limit=limit)

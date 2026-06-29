@@ -4,6 +4,8 @@ from dataclasses import dataclass
 import json
 import logging
 import re
+from threading import Lock
+import time
 from typing import Any
 
 from app.assistant.prompts.nlu_prompts import NLU_INTENT_REWRITE_PROMPT
@@ -11,6 +13,8 @@ from app.config.settings import settings
 
 
 logger = logging.getLogger(__name__)
+_chat_model_instance = None
+_chat_model_lock = Lock()
 
 VALID_INTENTS = {
     "small_talk",
@@ -35,7 +39,6 @@ ALIASES = {
     "driver": "driver_support",
 }
 
-
 @dataclass(frozen=True)
 class NLUResult:
     intent: str
@@ -58,30 +61,70 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 def _chat_model():
+    global _chat_model_instance
+    if _chat_model_instance is not None:
+        return _chat_model_instance
     try:
         from langchain_openai import ChatOpenAI
     except ModuleNotFoundError:
         return None
 
     model = settings.NLU_MODEL or settings.RAG_ANSWER_MODEL
-    if settings.GROQ_API_KEY and any(token in model.lower() for token in ("llama", "mixtral", "gemma")):
-        return ChatOpenAI(
-            api_key=settings.GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1",
-            model=model,
-            temperature=0,
-            max_tokens=600,
-            timeout=settings.OPENAI_TIMEOUT_SECONDS,
+    with _chat_model_lock:
+        if _chat_model_instance is not None:
+            return _chat_model_instance
+        if settings.GROQ_API_KEY:
+            _chat_model_instance = ChatOpenAI(
+                api_key=settings.GROQ_API_KEY,
+                base_url="https://api.groq.com/openai/v1",
+                model=model,
+                temperature=0,
+                max_tokens=600,
+                timeout=settings.OPENAI_TIMEOUT_SECONDS,
+            )
+        elif settings.OPENAI_API_KEY:
+            _chat_model_instance = ChatOpenAI(
+                api_key=settings.OPENAI_API_KEY,
+                model=model,
+                temperature=0,
+                max_tokens=600,
+                timeout=settings.OPENAI_TIMEOUT_SECONDS,
+            )
+        return _chat_model_instance
+
+
+def warmup_nlu() -> bool:
+    chat = _chat_model()
+    if chat is None:
+        logger.info("Skipping NLU warmup because no chat model is configured.")
+        return False
+    try:
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        started = time.perf_counter()
+        response = chat.invoke(
+            [
+                SystemMessage(content=NLU_INTENT_REWRITE_PROMPT),
+                HumanMessage(
+                    content=json.dumps(
+                        {
+                            "persona": "customer",
+                            "recent_turns": [],
+                            "memories": [],
+                            "profile": {},
+                            "CURRENT_QUERY": "Xin chào",
+                        },
+                        ensure_ascii=False,
+                    )
+                ),
+            ]
         )
-    if settings.OPENAI_API_KEY:
-        return ChatOpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            model=model,
-            temperature=0,
-            max_tokens=600,
-            timeout=settings.OPENAI_TIMEOUT_SECONDS,
-        )
-    return None
+        _extract_json(str(response.content or ""))
+        logger.info("NLU model warmed up in %.1fms.", (time.perf_counter() - started) * 1000)
+        return True
+    except Exception as exc:
+        logger.warning("NLU warmup failed: %s", exc)
+        return False
 
 
 def analyze_intent(

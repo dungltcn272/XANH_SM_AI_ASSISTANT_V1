@@ -49,8 +49,8 @@ def _tool_envelope(tool_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     return {"tool_name": tool_name, **filtered}
 
 
-def _rag(envelope: dict, *, persona: str, db: Session | None, **_: Any) -> dict:
-    return answer_from_knowledge(envelope.get("query") or "", db=db, persona_id=persona, intent="rag", top_k=envelope.get("top_k"))
+def _rag(envelope: dict, *, persona: str, db: Session | None, run_id: str | None = None, **_: Any) -> dict:
+    return answer_from_knowledge(envelope.get("query") or "", db=db, persona_id=persona, intent="rag", top_k=envelope.get("top_k"), run_id=run_id)
 
 
 def _food(envelope: dict, *, actor_id: str | None, db: Session | None, **_: Any) -> dict:
@@ -157,6 +157,7 @@ def execute_tool(
     lng: float | None = None,
     address: str | None = None,
     budget_vnd: int | None = None,
+    run_id: str | None = None,
 ) -> dict:
     try:
         assert_tool_allowed(persona, tool_name)
@@ -177,7 +178,7 @@ def execute_tool(
     if handler is None:
         return {"tool_name": tool_name, "output": {"status": "not_implemented", "envelope": envelope}}
     try:
-        output = handler(envelope, persona=persona, actor_id=actor_id, db=db)
+        output = handler(envelope, persona=persona, actor_id=actor_id, db=db, run_id=run_id)
     except Exception as exc:
         raise ToolExecutionError(f"Tool {tool_name} failed: {exc}") from exc
     return {"tool_name": tool_name, "input": envelope, "output": output}

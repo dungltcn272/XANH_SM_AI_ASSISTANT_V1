@@ -24,7 +24,15 @@ def list_conversations(db: Session = Depends(get_db), current_entity: dict = Dep
         query = query.filter(Conversation.actor_id == actor_id)
     rows = query.order_by(Conversation.updated_at.desc()).limit(50).all()
     return [
-        {"id": row.id, "title": row.title, "persona_id": row.persona_id, "channel": row.channel, "status": row.status, "updated_at": row.updated_at}
+        {
+            "id": row.id,
+            "title": row.title,
+            "persona_id": row.persona_id,
+            "channel": row.channel,
+            "status": row.status,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
         for row in rows
     ]
 

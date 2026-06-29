@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from functools import lru_cache
 import logging
+from threading import Lock
+import time
 
 from app.config.settings import settings
 
 
 logger = logging.getLogger(__name__)
 _openai_disabled_reason: str | None = None
+_embedding_model_instance = None
+_embedding_model_lock = Lock()
 
 
 def openai_configured() -> bool:
@@ -31,18 +36,24 @@ def _chat_model(*, model: str | None = None, temperature: float = 0.2, max_token
 
 
 def _embedding_model():
+    global _embedding_model_instance
     if not openai_configured():
         return None
+    if _embedding_model_instance is not None:
+        return _embedding_model_instance
     try:
         from langchain_openai import OpenAIEmbeddings
     except ModuleNotFoundError:
         return None
-    return OpenAIEmbeddings(
-        api_key=settings.OPENAI_API_KEY,
-        model=settings.EMBEDDING_MODEL,
-        dimensions=settings.EMBEDDING_DIMENSIONS,
-        timeout=settings.OPENAI_TIMEOUT_SECONDS,
-    )
+    with _embedding_model_lock:
+        if _embedding_model_instance is None:
+            _embedding_model_instance = OpenAIEmbeddings(
+                api_key=settings.OPENAI_API_KEY,
+                model=settings.EMBEDDING_MODEL,
+                dimensions=settings.EMBEDDING_DIMENSIONS,
+                timeout=settings.OPENAI_TIMEOUT_SECONDS,
+            )
+        return _embedding_model_instance
 
 
 def _handle_openai_error(exc: Exception) -> None:
@@ -56,16 +67,48 @@ def _handle_openai_error(exc: Exception) -> None:
     logger.warning("OpenAI request failed: %s", exc)
 
 
+@lru_cache(maxsize=2048)
+def _embed_single_text_cached(text: str) -> tuple[float, ...]:
+    embeddings = _embedding_model()
+    if embeddings is None:
+        return ()
+    vector = embeddings.embed_query(text or "")
+    return tuple(float(value) for value in vector)
+
+
 def embed_texts(texts: Iterable[str]) -> list[list[float]]:
     items = [text or "" for text in texts]
+    if not items:
+        return []
+    if len(items) == 1:
+        try:
+            return [list(_embed_single_text_cached(items[0]))]
+        except Exception as exc:
+            _handle_openai_error(exc)
+            return [[]]
+
     embeddings = _embedding_model()
-    if embeddings is None or not items:
+    if embeddings is None:
         return [[] for _ in items]
     try:
         return embeddings.embed_documents(items)
     except Exception as exc:
         _handle_openai_error(exc)
         return [[] for _ in items]
+
+
+def warmup_embeddings() -> bool:
+    if not openai_configured():
+        logger.info("Skipping OpenAI embeddings warmup because OpenAI is not configured.")
+        return False
+    started = time.perf_counter()
+    vector = embed_texts(["xanh sm embeddings warmup"])[0]
+    latency_ms = (time.perf_counter() - started) * 1000
+    if vector:
+        logger.info("OpenAI embeddings warmed up in %.1fms.", latency_ms)
+        return True
+    logger.warning("OpenAI embeddings warmup did not return a vector after %.1fms.", latency_ms)
+    return False
 
 
 def complete_text(

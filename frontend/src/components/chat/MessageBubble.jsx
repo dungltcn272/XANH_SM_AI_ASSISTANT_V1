@@ -1,4 +1,4 @@
-import { Link2, CheckCheck, ThumbsUp, ThumbsDown, ShieldCheck, Activity } from 'lucide-react';
+import { Link2, CheckCheck, ThumbsUp, ThumbsDown, ShieldCheck } from 'lucide-react';
 import { FoodLocationRequestCard, FoodLocationConfirmedCard } from './FoodLocationPrompt';
 import { FoodRecommendationList } from './FoodInlineCards';
 
@@ -31,12 +31,6 @@ export const MessageBubble = ({
     msg.ragCardLoading ||
     (msg.sources && msg.sources.length > 0)
   );
-  const pipelineTrace = Array.isArray(msg.metrics?.pipeline_trace) ? msg.metrics.pipeline_trace : [];
-  const activeLayers = Array.isArray(msg.metrics?.active_layers)
-    ? msg.metrics.active_layers
-    : [...new Set(pipelineTrace.map(item => item.node).filter(Boolean))];
-  const layerLabel = activeLayers.length ? activeLayers.join(' -> ') : null;
-
   if (msg.role === 'assistant' && (!hasAssistantPayload || (!msg.content && loading))) return null;
 
   return (
@@ -182,17 +176,6 @@ export const MessageBubble = ({
                 </div>
               );
             })()}
-
-            {msg.role === 'assistant' && layerLabel && (
-              <div
-                className="mt-1 flex items-center gap-2 overflow-hidden rounded-lg border border-[#00c897]/15 bg-[#00c897]/5 px-2.5 py-1.5 text-[10px] font-bold text-[#008f72]"
-                title={JSON.stringify(pipelineTrace, null, 2)}
-              >
-                <Activity size={12} className="shrink-0" />
-                <span className="shrink-0">Pipeline</span>
-                <span className="truncate">{layerLabel}</span>
-              </div>
-            )}
 
             {/* Assistant Footer */}
             {msg.role === 'assistant' && (

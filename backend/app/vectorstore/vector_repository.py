@@ -9,6 +9,9 @@ from app.vectorstore.collections import KNOWLEDGE_COLLECTION
 from app.vectorstore.qdrant_client import get_qdrant_client
 
 
+VECTOR_NAME = "dense"
+
+
 def ensure_collection(collection: str = KNOWLEDGE_COLLECTION) -> bool:
     client = get_qdrant_client()
     if client is None:
@@ -21,7 +24,7 @@ def ensure_collection(collection: str = KNOWLEDGE_COLLECTION) -> bool:
             return True
         client.create_collection(
             collection_name=collection,
-            vectors_config=models.VectorParams(size=settings.EMBEDDING_DIMENSIONS, distance=models.Distance.COSINE),
+            vectors_config={VECTOR_NAME: models.VectorParams(size=settings.EMBEDDING_DIMENSIONS, distance=models.Distance.COSINE)},
         )
         return True
     except Exception:
@@ -42,7 +45,7 @@ def upsert_texts(items: list[dict[str, Any]], *, collection: str = KNOWLEDGE_COL
         points = [
             models.PointStruct(
                 id=ids[index],
-                vector=vectors[index],
+                vector={VECTOR_NAME: vectors[index]},
                 payload={"page_content": items[index]["text"], "metadata": items[index].get("metadata", {})},
             )
             for index in range(len(items))
@@ -53,6 +56,26 @@ def upsert_texts(items: list[dict[str, Any]], *, collection: str = KNOWLEDGE_COL
         return []
 
 
+def _query_points(client: Any, *, collection: str, vector: list[float], limit: int) -> list[Any]:
+    if hasattr(client, "query_points"):
+        try:
+            return list(client.query_points(collection_name=collection, query=vector, using=VECTOR_NAME, limit=limit, with_payload=True).points)
+        except Exception:
+            try:
+                return list(client.query_points(collection_name=collection, query=vector, limit=limit, with_payload=True).points)
+            except Exception:
+                return []
+    if hasattr(client, "search"):
+        try:
+            return list(client.search(collection_name=collection, query_vector=(VECTOR_NAME, vector), limit=limit, with_payload=True))
+        except Exception:
+            try:
+                return list(client.search(collection_name=collection, query_vector=vector, limit=limit, with_payload=True))
+            except Exception:
+                return []
+    return []
+
+
 def search_vectors(query: str, *, collection: str = KNOWLEDGE_COLLECTION, limit: int = 25) -> list[dict]:
     client = get_qdrant_client()
     if client is None:
@@ -60,10 +83,7 @@ def search_vectors(query: str, *, collection: str = KNOWLEDGE_COLLECTION, limit:
     vector = embed_texts([query])[0]
     if not vector:
         return []
-    try:
-        results = client.search(collection_name=collection, query_vector=vector, limit=limit, with_payload=True)
-    except Exception:
-        return []
+    results = _query_points(client, collection=collection, vector=vector, limit=limit)
     docs = []
     for item in results:
         payload = item.payload or {}

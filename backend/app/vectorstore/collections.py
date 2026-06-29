@@ -1,4 +1,7 @@
-KNOWLEDGE_COLLECTION = "xanhsm_knowledge"
-FAQ_COLLECTION = "xanhsm_faq"
+import os
+
+
+KNOWLEDGE_COLLECTION = os.getenv("QDRANT_KNOWLEDGE_COLLECTION", "greensm_knowledge")
+FAQ_COLLECTION = os.getenv("QDRANT_FAQ_COLLECTION", "xanhsm_faq")
 
 DEFAULT_COLLECTIONS = {"knowledge": KNOWLEDGE_COLLECTION, "faq": FAQ_COLLECTION}

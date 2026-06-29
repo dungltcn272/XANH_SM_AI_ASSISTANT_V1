@@ -33,9 +33,11 @@ const parseSseMetadata = (data) => {
       'food_location_request',
       'message_id',
       'metrics',
+      'content',
       'rag_card',
       'sources',
       'step',
+      'tool_results',
       'type',
     ];
     return knownMetadataKeys.some((key) => Object.prototype.hasOwnProperty.call(parsed, key)) ? parsed : null;
@@ -570,6 +572,10 @@ export default function ChatLayout() {
 
   useEffect(() => {
     if (activeConversationId !== lastProcessedActiveConvIdRef.current) {
+      if (loading && activeConversationId && activeConversationId === currentConvIdRef.current) {
+        lastProcessedActiveConvIdRef.current = activeConversationId;
+        return;
+      }
       lastProcessedActiveConvIdRef.current = activeConversationId;
       currentConvIdRef.current = activeConversationId;
       foodImpressionLoggedRef.current = new Set();
@@ -586,6 +592,7 @@ export default function ChatLayout() {
               }
             }
             const metrics = m.metrics || metadata?.metrics || null;
+            const firstToolOutput = Array.isArray(metadata?.tool_results) ? metadata.tool_results[0]?.output : null;
             const parsedRagParts = m.role === 'assistant' ? parseRagInlineParts(m.content) : [];
             const markerRagCards = ragInlineCards(parsedRagParts);
             const parsedFoodParts = m.role === 'assistant' ? parseFoodInlineParts(m.content) : [];
@@ -596,6 +603,7 @@ export default function ChatLayout() {
               created_at: m.created_at,
               metrics,
               latency_ms: metrics?.total_latency_ms || null,
+              sources: Array.isArray(firstToolOutput?.sources) ? firstToolOutput.sources : null,
               ragCards: metadata?.rag_cards || (markerRagCards.length ? markerRagCards : null),
               foodInlineParts: parsedFoodParts.some(part => part.type !== 'text') ? parsedFoodParts : null
             };
@@ -609,7 +617,7 @@ export default function ChatLayout() {
         }, 0);
       }
     }
-  }, [activeConversationId]);
+  }, [activeConversationId, loading]);
 
   const handleSubmit = async (e, directQuery = null, displayQuery = null) => {
     e?.preventDefault();
@@ -652,6 +660,7 @@ export default function ChatLayout() {
       let streamFoodLocationRequest = null;
       let streamRagCards = [];
       let streamRagCardLoading = false;
+      let streamIntent = null;
 
       while (true) {
         const { value, done } = await reader.read();
@@ -696,6 +705,21 @@ export default function ChatLayout() {
                     isStep = true;
                     handledAsMetadata = true;
                   } 
+                  if (parsed.type === 'progress') {
+                    setPipelineStep(parsed.message || parsed.step || 'Đang xử lý...');
+                    isStep = true;
+                    handledAsMetadata = true;
+                  }
+                  if (parsed.type === 'intent') {
+                    streamIntent = parsed.intent || streamIntent;
+                    setPipelineStep(parsed.message || 'Đã xác định ý định');
+                    isStep = true;
+                    handledAsMetadata = true;
+                  }
+                  if (parsed.type === 'token') {
+                    textDataParts.push(parsed.content || '');
+                    handledAsMetadata = true;
+                  }
                   if (parsed.metrics) {
                     streamMetrics = parsed.metrics;
                     isMetrics = true;
@@ -744,11 +768,13 @@ export default function ChatLayout() {
             }
           }
           
-          const textData = textDataParts.join('\n');
+          const textData = textDataParts.join('');
           
           if (!isStep && !isMetrics && textData.length > 0) {
              rawStreamReply += textData;
-             const parsedFoodParts = parseFoodInlineParts(rawStreamReply);
+             const parsedFoodParts = parseFoodInlineParts(rawStreamReply, {
+               showPartialLoading: streamIntent === 'food_recommendation'
+             });
              streamFoodInlineParts = parsedFoodParts.some(part => part.type !== 'text') ? parsedFoodParts : null;
              const visibleAfterFoodMarkers = streamFoodInlineParts ? foodInlineText(parsedFoodParts) : rawStreamReply;
              const parsedRagParts = parseRagInlineParts(visibleAfterFoodMarkers);
