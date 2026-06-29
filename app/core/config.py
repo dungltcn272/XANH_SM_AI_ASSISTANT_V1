@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     NLU_FAST_PATH_ENABLED: bool = os.getenv("NLU_FAST_PATH_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
     NLU_FAST_PATH_MIN_CHARS: int = int(os.getenv("NLU_FAST_PATH_MIN_CHARS", "28"))
+    SEMANTIC_CACHE_ENABLED: bool = os.getenv("SEMANTIC_CACHE_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+    SEMANTIC_CACHE_HYBRID_THRESHOLD: float = float(os.getenv("SEMANTIC_CACHE_HYBRID_THRESHOLD", "0.90"))
+    SEMANTIC_CACHE_DENSE_WEIGHT: float = float(os.getenv("SEMANTIC_CACHE_DENSE_WEIGHT", "0.78"))
+    SEMANTIC_CACHE_MAX_ROWS: int = int(os.getenv("SEMANTIC_CACHE_MAX_ROWS", "500"))
 
     # Retrieval tuning
     RETRIEVAL_CANDIDATE_LIMIT: int = int(os.getenv("RETRIEVAL_CANDIDATE_LIMIT", "25"))

@@ -85,19 +85,23 @@ export default function FoodLogView() {
     const total = log.total_latency_ms || 1;
     const nlu = log.rewrite_latency_ms + log.classification_latency_ms || 0;
     const retrieve = log.search_latency_ms || 0;
+    const cache = log.cache_latency_ms || 0;
     const gen = log.generation_latency_ms || 0;
+    const overhead = Math.max(0, total - (nlu + retrieve + cache + gen));
 
     const parts = [
+      { label: 'Semantic Caching', value: cache, color: 'bg-[#64748b]' },
       { label: 'NLU Processing', value: nlu, color: 'bg-[#00c897]' },
       { label: 'Retrieval & Filtering', value: retrieve, color: 'bg-[#8b5cf6]' },
-      { label: 'LLM Generation', value: gen, color: 'bg-[#ef4444]' }
+      { label: 'LLM Generation', value: gen, color: 'bg-[#ef4444]' },
+      { label: 'System Overhead', value: overhead, color: 'bg-[#475569]' }
     ];
 
     return (
       <div className="space-y-3">
         {parts.map(p => {
           const pct = Math.max(0, Math.min(100, (p.value / total) * 100));
-          if (p.value === 0 && p.label !== 'LLM Generation') return null;
+          if (p.value === 0 && !['LLM Generation', 'Semantic Caching'].includes(p.label)) return null;
           return (
             <div key={p.label} className="flex items-center gap-3 text-xs">
               <span className="w-32 text-[#94a3b8]">{p.label}</span>

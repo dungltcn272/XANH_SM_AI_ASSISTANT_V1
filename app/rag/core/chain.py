@@ -49,6 +49,47 @@ class RagAnswerChain:
             return False
         return clean[-1] in {".", "!", "?", "…", ")", "]", "}", '"', "'", "ạ"}
 
+    def _cache_policy_for_rag(
+        self,
+        *,
+        rewritten_query: str,
+        final_answer: str,
+        citations: list[dict[str, Any]],
+        metrics: dict[str, Any],
+        bypass_cache: bool,
+        is_deep_search: bool = False,
+    ) -> dict[str, Any]:
+        nlu_policy = metrics.get("cache_policy") or {}
+        answer_cacheable = self._is_cacheable_answer(final_answer, metrics)
+        eligible = (
+            not bypass_cache
+            and not is_deep_search
+            and bool(nlu_policy.get("eligible"))
+            and answer_cacheable
+            and bool(citations)
+            and metrics.get("intent") == "rag"
+        )
+        blocked_by = []
+        if bypass_cache:
+            blocked_by.append("bypass_cache")
+        if is_deep_search:
+            blocked_by.append("deep_search")
+        if not nlu_policy.get("eligible"):
+            blocked_by.append(f"nlu:{nlu_policy.get('reason', 'ineligible')}")
+        if not answer_cacheable:
+            blocked_by.append("answer_not_cacheable")
+        if not citations:
+            blocked_by.append("no_citations")
+        if metrics.get("intent") != "rag":
+            blocked_by.append("non_rag_intent")
+        return {
+            "eligible": eligible,
+            "reason": "nlu_and_rag_cacheable" if eligible else "blocked_by_policy",
+            "blocked_by": blocked_by,
+            "canonical_query": (nlu_policy.get("canonical_query") or rewritten_query or "").strip(),
+            "intent": metrics.get("intent"),
+        }
+
     def _compress_context(self, docs: list[Any]) -> str:
         formatted_blocks = []
         for doc in docs:
@@ -228,10 +269,17 @@ class RagAnswerChain:
             metrics["cost_usd"] += self._calculate_llm_cost(est_p, est_c)["cost_usd"]
             citations = self._build_citations(top_docs[:5])
             yield f'data: {json.dumps({"sources": citations})}\n\n'
-            if self.cache and not bypass_cache and self._is_cacheable_answer(final_answer, metrics):
-                self.cache.set(normalized_query, final_answer, citations)
-                if rewritten_query != normalized_query:
-                    self.cache.set(rewritten_query, final_answer, citations)
+            cache_policy = self._cache_policy_for_rag(
+                rewritten_query=rewritten_query,
+                final_answer=final_answer,
+                citations=citations,
+                metrics=metrics,
+                bypass_cache=bypass_cache,
+                is_deep_search=is_deep_search,
+            )
+            metrics["cache_save_policy"] = cache_policy
+            if self.cache and cache_policy.get("eligible"):
+                self.cache.set(cache_policy["canonical_query"], final_answer, citations, cache_policy=cache_policy)
             yield f'data: {json.dumps({"metrics": metrics})}\n\n'
             
             save_rag_request_log(
@@ -757,11 +805,15 @@ class XanhSMRAGPipeline(RagAnswerChain):
         total_comp = completion_tokens + nlu_usage.get("completion_tokens", 0)
         cost_info = self._calculate_llm_cost(total_prompt, total_comp)
 
-        # Save to Cache
-        if self.cache and not bypass_cache:
-            self.cache.set(normalized_query, final_answer, citations)
-            if rewritten_query != normalized_query:
-                self.cache.set(rewritten_query, final_answer, citations)
+        cache_policy = self._cache_policy_for_rag(
+            rewritten_query=rewritten_query,
+            final_answer=final_answer,
+            citations=citations,
+            metrics={"intent": intent, "cache_policy": nlu_res.get("cache_policy"), "generation_truncated": False},
+            bypass_cache=bypass_cache,
+        )
+        if self.cache and cache_policy.get("eligible"):
+            self.cache.set(cache_policy["canonical_query"], final_answer, citations, cache_policy=cache_policy)
 
         return {
             "query": query,

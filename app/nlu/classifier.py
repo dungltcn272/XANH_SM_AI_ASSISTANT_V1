@@ -91,6 +91,28 @@ class XanhSMClassifier:
             slots["lng"] = float(coord_match.group(2))
         return slots
 
+    def _cache_policy_for_nlu(self, query: str, rewritten_query: str, intent: str, missing_fields: list[str] | None = None) -> dict[str, Any]:
+        canonical = (rewritten_query or query or "").strip()
+        normalized = self._memory_normalize(canonical)
+        tokens = normalized.split()
+        vague_terms = {"nay", "do", "kia", "no", "cai", "do la", "gan toi", "o day"}
+        is_supported_intent = intent in {"rag"}
+        eligible = (
+            is_supported_intent
+            and len(canonical) >= 12
+            and len(tokens) >= 4
+            and not missing_fields
+            and not any(term in normalized for term in vague_terms)
+            and not self.is_memory_related_query(query)
+        )
+        reason = "clear_rewritten_rag_query" if eligible else "not_clear_or_not_rag"
+        return {
+            "eligible": eligible,
+            "reason": reason,
+            "canonical_query": canonical,
+            "intent": intent,
+        }
+
     def _merge_memory_candidates(
         self,
         llm_candidates: list[dict[str, Any]],
@@ -282,6 +304,7 @@ class XanhSMClassifier:
                     "missing_fields": missing_fields,
                     "ui_form": ui_form,
                     "memory_candidates": memory_candidates,
+                    "cache_policy": self._cache_policy_for_nlu(query, rewritten_query, intent, missing_fields),
                     "usage": {
                         "prompt_tokens": total_prompt_tokens,
                         "completion_tokens": total_completion_tokens,
@@ -319,6 +342,7 @@ class XanhSMClassifier:
                 "map_required": True,
             } if intent == "food_recommendation" else None,
             "memory_candidates": [],
+            "cache_policy": self._cache_policy_for_nlu(query, rewritten_query, intent, ["location"] if intent == "food_recommendation" else []),
             "usage": {"prompt_tokens": 0, "completion_tokens": 0},
             "fast_path": True,
             "fast_path_reason": "rule_based_fallback",

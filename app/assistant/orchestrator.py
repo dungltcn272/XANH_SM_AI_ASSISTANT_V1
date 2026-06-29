@@ -92,6 +92,7 @@ class XanhSMAssistantOrchestrator:
             "classification_latency_ms": 0,
             "expansion_latency_ms": 0,
             "rerank_latency_ms": 0,
+            "cache_latency_ms": 0,
             "total_tokens": 0,
             "cost_usd": 0.0,
             "expanded_queries": [],
@@ -127,7 +128,9 @@ class XanhSMAssistantOrchestrator:
 
         yield sse_pipeline_step("cache_lookup", "Đang kiểm tra câu trả lời đã có...", 0.1)
         if self.cache and not bypass_cache:
+            t_cache_start = time.time()
             is_hit, hit_res, _hit_type = self.cache.get(normalized_query)
+            metrics["cache_latency_ms"] = (time.time() - t_cache_start) * 1000
             if is_hit:
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                 metrics["intent"] = "faq"
@@ -342,7 +345,9 @@ class XanhSMAssistantOrchestrator:
             return
 
         if self.cache and not bypass_cache and rewritten_query != normalized_query:
+            t_cache_start2 = time.time()
             is_hit, hit_res, _hit_type = self.cache.get(rewritten_query)
+            metrics["cache_latency_ms"] += (time.time() - t_cache_start2) * 1000
             if is_hit:
                 metrics["total_latency_ms"] = (time.time() - t_start) * 1000
                 metrics["intent"] = "faq"

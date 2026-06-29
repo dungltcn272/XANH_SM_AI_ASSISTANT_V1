@@ -80,18 +80,22 @@ export default function BasicLogView() {
   const renderLatencyBar = (log) => {
     const total = log.total_latency_ms || 1; // Prevent div by 0
     const nlu = log.nlu_latency_ms || 0;
-    const gen = Math.max(0, total - nlu);
+    const cache = log.cache_latency_ms || 0;
+    const gen = log.generation_latency_ms || 0;
+    const overhead = Math.max(0, total - (nlu + cache + gen));
 
     const parts = [
+      { label: 'Semantic Caching', value: cache, color: 'bg-[#64748b]' },
       { label: 'NLU Processing', value: nlu, color: 'bg-[#3b82f6]' },
-      { label: 'Other/Generation', value: gen, color: 'bg-[#00c897]' }
+      { label: 'Other/Generation', value: gen, color: 'bg-[#00c897]' },
+      { label: 'System Overhead', value: overhead, color: 'bg-[#475569]' }
     ];
 
     return (
       <div className="space-y-3">
         {parts.map(p => {
           const pct = Math.max(0, Math.min(100, (p.value / total) * 100));
-          if (p.value === 0 && p.label !== 'LLM Generation') return null;
+          if (p.value === 0 && !['Other/Generation', 'Semantic Caching'].includes(p.label)) return null;
           return (
             <div key={p.label} className="flex items-center gap-3 text-xs">
               <span className="w-32 text-[#94a3b8]">{p.label}</span>
