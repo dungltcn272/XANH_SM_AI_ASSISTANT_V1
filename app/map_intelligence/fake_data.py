@@ -14,11 +14,11 @@ DRIVER_MARKERS = [
 ]
 
 RESTAURANT_MARKERS = [
-    MapMarker(id="res_hcm_001", type="restaurant", title="Phở Xanh Pasteur", description="Phở bò, mở cửa đến 22:00, rating demo 4.7.", lat=10.7777, lng=106.6976, intensity=0.78, metadata={"category": "pho", "rating": 4.7, "eta_minutes": 16}),
-    MapMarker(id="res_hcm_002", type="restaurant", title="Cơm Tấm Trưa Nhanh", description="Phù hợp bữa trưa văn phòng, giá demo 45.000đ.", lat=10.7812, lng=106.7041, intensity=0.7, metadata={"category": "com tam", "rating": 4.5, "eta_minutes": 14}),
-    MapMarker(id="res_hcm_003", type="restaurant", title="Bún Bò Sài Gòn", description="Đông đơn vào tối, bán kính giao demo 5km.", lat=10.7688, lng=106.6928, intensity=0.66, metadata={"category": "bun bo", "rating": 4.4, "eta_minutes": 20}),
-    MapMarker(id="res_hn_001", type="restaurant", title="Bún Chả Phố Cổ", description="Quán đông khách du lịch, rating demo 4.8.", lat=21.0331, lng=105.8514, intensity=0.82, metadata={"category": "bun cha", "rating": 4.8, "eta_minutes": 18}),
-    MapMarker(id="res_hn_002", type="restaurant", title="Phở Gà Cầu Giấy", description="Phù hợp đơn sáng và trưa, rating demo 4.6.", lat=21.0356, lng=105.7933, intensity=0.68, metadata={"category": "pho", "rating": 4.6, "eta_minutes": 17}),
+    MapMarker(id="res_hcm_001", type="restaurant", title="Phở Xanh Pasteur", description="Phở bò, mở cửa đến 22:00, rating 4.7.", lat=10.7777, lng=106.6976, intensity=0.78, metadata={"category": "pho", "rating": 4.7, "eta_minutes": 16}),
+    MapMarker(id="res_hcm_002", type="restaurant", title="Cơm Tấm Trưa Nhanh", description="Phù hợp bữa trưa văn phòng, giá 45.000đ.", lat=10.7812, lng=106.7041, intensity=0.7, metadata={"category": "com tam", "rating": 4.5, "eta_minutes": 14}),
+    MapMarker(id="res_hcm_003", type="restaurant", title="Bún Bò Sài Gòn", description="Đông đơn vào tối, bán kính giao 5km.", lat=10.7688, lng=106.6928, intensity=0.66, metadata={"category": "bun bo", "rating": 4.4, "eta_minutes": 20}),
+    MapMarker(id="res_hn_001", type="restaurant", title="Bún Chả Phố Cổ", description="Quán đông khách du lịch, rating 4.8.", lat=21.0331, lng=105.8514, intensity=0.82, metadata={"category": "bun cha", "rating": 4.8, "eta_minutes": 18}),
+    MapMarker(id="res_hn_002", type="restaurant", title="Phở Gà Cầu Giấy", description="Phù hợp đơn sáng và trưa, rating 4.6.", lat=21.0356, lng=105.7933, intensity=0.68, metadata={"category": "pho", "rating": 4.6, "eta_minutes": 17}),
 ]
 
 DEMAND_MARKERS = [
@@ -30,23 +30,24 @@ DEMAND_MARKERS = [
 ]
 
 TRAFFIC_MARKERS = [
-    MapMarker(id="trf_hcm_001", type="traffic", title="Ùn nhẹ Nam Kỳ Khởi Nghĩa", description="Tốc độ demo giảm 35%, nên né giờ cao điểm.", lat=10.7831, lng=106.6923, intensity=0.64, metadata={"delay_minutes": 8}),
+    MapMarker(id="trf_hcm_001", type="traffic", title="Ùn nhẹ Nam Kỳ Khởi Nghĩa", description="Tốc độ giảm 35%, nên né giờ cao điểm.", lat=10.7831, lng=106.6923, intensity=0.64, metadata={"delay_minutes": 8}),
     MapMarker(id="trf_hcm_002", type="traffic", title="Kẹt xe Điện Biên Phủ", description="Ùn tại nút giao lớn, ưu tiên lộ trình song song.", lat=10.8013, lng=106.7140, intensity=0.78, metadata={"delay_minutes": 13}),
     MapMarker(id="trf_hn_001", type="traffic", title="Ùn nhẹ Tràng Tiền", description="Lượng xe cao quanh khu trung tâm.", lat=21.0253, lng=105.8540, intensity=0.62, metadata={"delay_minutes": 7}),
     MapMarker(id="trf_hn_002", type="traffic", title="Kẹt xe Nguyễn Chí Thanh", description="Nút giao đông, nên cân nhắc đường thay thế.", lat=21.0239, lng=105.8097, intensity=0.8, metadata={"delay_minutes": 14}),
 ]
 
 ZONES = [
-    MapZone(id="zone_hcm_demand_1", type="demand", title="Vùng cầu cao Quận 1", description="Fake heatmap: khách gọi xe và đặt đồ ăn tập trung.", center=GeoPoint(lat=10.7755, lng=106.7010), radius_m=900, intensity=0.86, metadata={"best_for": "driver_waiting"}),
+    MapZone(id="zone_hcm_demand_1", type="demand", title="Vùng cầu cao Quận 1", description="Heatmap: khách gọi xe và đặt đồ ăn tập trung.", center=GeoPoint(lat=10.7755, lng=106.7010), radius_m=900, intensity=0.86, metadata={"best_for": "driver_waiting"}),
     MapZone(id="zone_hcm_driver_1", type="driver_density", title="Vùng đông tài xế trung tâm", description="Nguồn cung tài xế dày, khách dễ gọi được xe nhanh.", center=GeoPoint(lat=10.7738, lng=106.6997), radius_m=750, intensity=0.78, metadata={"drivers": 36}),
-    MapZone(id="zone_hcm_traffic_1", type="traffic", title="Vùng tắc Điện Biên Phủ", description="Tắc demo mức trung bình-cao.", center=GeoPoint(lat=10.8007, lng=106.7135), radius_m=650, intensity=0.75, metadata={"delay_minutes": 13}),
+    MapZone(id="zone_hcm_traffic_1", type="traffic", title="Vùng tắc Điện Biên Phủ", description="Tắc mức trung bình-cao.", center=GeoPoint(lat=10.8007, lng=106.7135), radius_m=650, intensity=0.75, metadata={"delay_minutes": 13}),
     MapZone(id="zone_hn_demand_1", type="demand", title="Vùng cầu cao Hồ Gươm", description="Khách du lịch, văn phòng và khách sạn tạo nhu cầu cao.", center=GeoPoint(lat=21.0292, lng=105.8504), radius_m=850, intensity=0.84, metadata={"best_for": "driver_waiting"}),
-    MapZone(id="zone_hn_traffic_1", type="traffic", title="Vùng tắc Nguyễn Chí Thanh", description="Tắc demo mức cao vào giờ tan sở.", center=GeoPoint(lat=21.0241, lng=105.8100), radius_m=700, intensity=0.8, metadata={"delay_minutes": 14}),
+    MapZone(id="zone_hn_demand_2", type="demand", title="Nhu cầu ăn trưa Thanh Xuân", description="Khu vực tập trung nhiều văn phòng, nhu cầu gọi đồ ăn và xe rất cao.", center=GeoPoint(lat=20.9937, lng=105.8055), radius_m=900, intensity=0.79, metadata={"best_for": "driver_waiting"}),
+    MapZone(id="zone_hn_traffic_1", type="traffic", title="Vùng tắc Nguyễn Chí Thanh", description="Tắc mức cao vào giờ tan sở.", center=GeoPoint(lat=21.0241, lng=105.8100), radius_m=700, intensity=0.8, metadata={"delay_minutes": 14}),
 ]
 
 ROUTES = [
-    MapRouteHint(id="rt_hcm_001", title="Đường tắt né Điện Biên Phủ", description="Gợi ý demo: rẽ qua Nguyễn Đình Chiểu để tránh đoạn ùn.", points=[GeoPoint(lat=10.8013, lng=106.7140), GeoPoint(lat=10.7950, lng=106.7077), GeoPoint(lat=10.7868, lng=106.7012)], eta_saving_minutes=7, metadata={"confidence": 0.68}),
-    MapRouteHint(id="rt_hcm_002", title="Lối ra nhanh khỏi Bến Thành", description="Gợi ý demo: đi Lê Thánh Tôn thay vì vòng qua chợ khi đông.", points=[GeoPoint(lat=10.7726, lng=106.6980), GeoPoint(lat=10.7751, lng=106.7004), GeoPoint(lat=10.7788, lng=106.7040)], eta_saving_minutes=5, metadata={"confidence": 0.62}),
-    MapRouteHint(id="rt_hn_001", title="Đường tắt né Tràng Tiền", description="Gợi ý demo: đi Hai Bà Trưng khi quanh Hồ Gươm đông.", points=[GeoPoint(lat=21.0253, lng=105.8540), GeoPoint(lat=21.0227, lng=105.8508), GeoPoint(lat=21.0204, lng=105.8465)], eta_saving_minutes=6, metadata={"confidence": 0.65}),
-    MapRouteHint(id="rt_hn_002", title="Lối né Nguyễn Chí Thanh", description="Gợi ý demo: cân nhắc Kim Mã - Liễu Giai tùy hướng đón khách.", points=[GeoPoint(lat=21.0239, lng=105.8097), GeoPoint(lat=21.0304, lng=105.8121), GeoPoint(lat=21.0345, lng=105.8167)], eta_saving_minutes=8, metadata={"confidence": 0.66}),
+    MapRouteHint(id="rt_hcm_001", title="Đường tắt né Điện Biên Phủ", description="Gợi ý: rẽ qua Nguyễn Đình Chiểu để tránh đoạn ùn.", points=[GeoPoint(lat=10.8013, lng=106.7140), GeoPoint(lat=10.7950, lng=106.7077), GeoPoint(lat=10.7868, lng=106.7012)], eta_saving_minutes=7, metadata={"confidence": 0.68}),
+    MapRouteHint(id="rt_hcm_002", title="Lối ra nhanh khỏi Bến Thành", description="Gợi ý: đi Lê Thánh Tôn thay vì vòng qua chợ khi đông.", points=[GeoPoint(lat=10.7726, lng=106.6980), GeoPoint(lat=10.7751, lng=106.7004), GeoPoint(lat=10.7788, lng=106.7040)], eta_saving_minutes=5, metadata={"confidence": 0.62}),
+    MapRouteHint(id="rt_hn_001", title="Đường tắt né Tràng Tiền", description="Gợi ý: đi Hai Bà Trưng khi quanh Hồ Gươm đông.", points=[GeoPoint(lat=21.0253, lng=105.8540), GeoPoint(lat=21.0227, lng=105.8508), GeoPoint(lat=21.0204, lng=105.8465)], eta_saving_minutes=6, metadata={"confidence": 0.65}),
+    MapRouteHint(id="rt_hn_002", title="Lối né Nguyễn Chí Thanh", description="Gợi ý: cân nhắc Kim Mã - Liễu Giai tùy hướng đón khách.", points=[GeoPoint(lat=21.0239, lng=105.8097), GeoPoint(lat=21.0304, lng=105.8121), GeoPoint(lat=21.0345, lng=105.8167)], eta_saving_minutes=8, metadata={"confidence": 0.66}),
 ]

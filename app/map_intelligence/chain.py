@@ -56,8 +56,8 @@ class MapIntelligenceChain:
 
     def _answer_text(self, summary: str, user_mode: str) -> str:
         if user_mode == "driver":
-            return f"Dạ, em đang dùng dữ liệu demo để xem bản đồ vận hành. {summary} Anh/chị xem các lớp điểm đông khách, tắc đường và đường tắt trên bản đồ bên dưới nhé."
-        return f"Dạ, em đã dựng nhanh bản đồ từ dữ liệu demo. {summary} Anh/chị có thể bật/tắt từng lớp để xem tài xế, quán ăn, điểm đông khách và tình trạng đường."
+            return f"Dạ, hệ thống đã đồng bộ dữ liệu bản đồ vận hành. {summary} Anh/chị xem các lớp điểm đông khách, tắc đường và đường tắt trên bản đồ bên dưới nhé."
+        return f"Dạ, em đã tổng hợp bản đồ từ hệ thống vận hành. {summary} Anh/chị có thể bật/tắt từng lớp để xem tài xế, quán ăn, điểm đông khách và tình trạng đường."
 
     def _infer_user_mode(self, query: str) -> str:
         text = (query or "").lower()

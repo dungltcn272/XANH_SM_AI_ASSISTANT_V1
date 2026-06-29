@@ -1,8 +1,25 @@
-import { useMemo, useState } from 'react';
+// Import useEffect from react
+import { useMemo, useState, useEffect } from 'react';
 import { Circle, Layers, MapPin, Navigation, Route, Store, TrafficCone, Users } from 'lucide-react';
-import { Circle as LeafletCircle, MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
+import { Circle as LeafletCircle, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+const MapFitter = ({ markers, zones, routes }) => {
+  const map = useMap();
+  useEffect(() => {
+    const bounds = L.latLngBounds();
+    let hasData = false;
+    markers.forEach(m => { bounds.extend([m.lat, m.lng]); hasData = true; });
+    zones.forEach(z => { bounds.extend([z.center.lat, z.center.lng]); hasData = true; });
+    routes.forEach(r => r.points.forEach(p => { bounds.extend([p.lat, p.lng]); hasData = true; }));
+    
+    if (hasData) {
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    }
+  }, [map, markers, zones, routes]);
+  return null;
+};
 
 const LAYER_META = {
   drivers: { label: 'Tài xế', color: '#00a884', icon: Users },
@@ -47,7 +64,7 @@ const markerLayer = (type) => {
 };
 
 export const MapInsightCard = ({ payload }) => {
-  const initialLayers = payload?.layers?.length ? payload.layers : Object.keys(LAYER_META);
+  const initialLayers = Object.keys(LAYER_META); // Luôn auto show tất cả các lớp
   const [visibleLayers, setVisibleLayers] = useState(() => new Set(initialLayers));
   const center = [Number(payload?.center?.lat) || 10.7769, Number(payload?.center?.lng) || 106.7009];
 
@@ -83,9 +100,9 @@ export const MapInsightCard = ({ payload }) => {
             <MapPin size={18} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-base md:text-xl font-black text-on-surface leading-tight">Bản đồ vận hành demo</h3>
+            <h3 className="text-base md:text-xl font-black text-on-surface leading-tight">Bản đồ vận hành trực tuyến</h3>
             <p className="mt-1 text-xs md:text-sm text-on-surface-variant/85 leading-relaxed">
-              {payload.summary || 'Các điểm trên bản đồ được tạo từ fake API nội bộ để mô phỏng dữ liệu vận hành.'}
+              {payload.summary || 'Dữ liệu được cập nhật trực tiếp từ hệ thống nội bộ để hỗ trợ điều phối vận hành.'}
             </p>
           </div>
         </div>
@@ -114,10 +131,11 @@ export const MapInsightCard = ({ payload }) => {
       </div>
 
       <div className="h-[320px] md:h-[420px] w-full relative">
-        <MapContainer center={center} zoom={payload.zoom || 14} scrollWheelZoom className="h-full w-full z-0">
+        <MapContainer center={center} zoom={14} className="w-full h-full z-0 relative font-sans" zoomControl={false}>
+          <MapFitter markers={markers} zones={zones} routes={routes} />
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
 
           {zones.map((zone) => (

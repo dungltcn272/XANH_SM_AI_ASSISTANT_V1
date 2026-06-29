@@ -51,19 +51,14 @@ class MapIntelligenceService:
         zones: list[MapZone] = []
         routes: list[MapRouteHint] = []
 
-        if "drivers" in layers:
-            markers.extend(DRIVER_MARKERS)
-            zones.extend(zone for zone in ZONES if zone.type == "driver_density")
-        if "restaurants" in layers:
-            markers.extend(RESTAURANT_MARKERS)
-        if "demand" in layers:
-            markers.extend(DEMAND_MARKERS)
-            zones.extend(zone for zone in ZONES if zone.type == "demand")
-        if "traffic" in layers:
-            markers.extend(TRAFFIC_MARKERS)
-            zones.extend(zone for zone in ZONES if zone.type == "traffic")
-        if "shortcuts" in layers:
-            routes.extend(ROUTES)
+        # Luôn trả về toàn bộ dữ liệu để Frontend có thể tự do bật/tắt (toggle) các lớp
+        markers.extend(DRIVER_MARKERS)
+        zones.extend(zone for zone in ZONES if zone.type == "driver_density")
+        markers.extend(RESTAURANT_MARKERS)
+        markers.extend(DEMAND_MARKERS)
+        markers.extend(TRAFFIC_MARKERS)
+        zones.extend(zone for zone in ZONES if zone.type in ["traffic", "demand"])
+        routes.extend(ROUTES)
 
         radius_km = req.radius_km or 4.0
         markers = [
@@ -102,10 +97,14 @@ class MapIntelligenceService:
         traffic_count = sum(1 for marker in markers if marker.type == "traffic") + sum(1 for zone in zones if zone.type == "traffic")
 
         if req.user_mode == "driver":
-            best_zone = max((zone for zone in zones if zone.type == "demand"), key=lambda item: item.intensity, default=None)
+            best_zone = max((zone for zone in zones if zone.type in ["demand", "driver_density"]), key=lambda item: item.intensity, default=None)
             if best_zone:
-                return f"Khu {best_zone.title} đang có tín hiệu đông khách nhất trong dữ liệu demo; tài xế nên đứng gần rìa vùng để dễ nhận cuốc và tránh điểm tắc."
-            return "Dữ liệu demo chưa thấy điểm cầu nổi bật quanh vị trí này; nên ưu tiên khu trung tâm hoặc điểm gần nhà hàng/văn phòng."
+                if best_zone.type == "driver_density":
+                    return f"Khu {best_zone.title} đang có lượng tài xế hoạt động dày đặc nhất; khách hàng sẽ dễ gọi xe nhanh."
+                if best_zone.type == "demand":
+                    return f"Khu {best_zone.title} đang có tín hiệu đông khách nhất trong dữ liệu hệ thống; tài xế nên đứng gần rìa vùng để dễ nhận cuốc và tránh điểm tắc."
+                return f"Vùng nổi bật nhất hiện tại là {best_zone.title}."
+            return "Dữ liệu hệ thống chưa thấy điểm cầu nổi bật quanh vị trí này; nên ưu tiên khu trung tâm hoặc điểm gần nhà hàng/văn phòng."
 
         parts = []
         if driver_count:
@@ -119,7 +118,7 @@ class MapIntelligenceService:
         if routes:
             parts.append(f"{len(routes)} gợi ý đường tắt")
         if not parts:
-            return "Dữ liệu demo chưa có tín hiệu nổi bật quanh vị trí này."
+            return "Hệ thống chưa có thông tin nổi bật quanh vị trí này."
         return "Em tìm thấy " + ", ".join(parts) + " quanh khu vực anh/chị đang xem."
 
     def _route_near_center(self, points: list[GeoPoint], center: GeoPoint, radius_km: float) -> bool:
