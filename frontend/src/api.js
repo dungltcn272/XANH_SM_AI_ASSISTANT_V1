@@ -290,6 +290,27 @@ export const api = {
     return res.json();
   },
 
+  getMapLayers: async ({ lat, lng, radius_km = 5, layers = [] } = {}) => {
+    const params = new URLSearchParams();
+    if (lat !== undefined && lat !== null) params.set('lat', String(lat));
+    if (lng !== undefined && lng !== null) params.set('lng', String(lng));
+    params.set('radius_km', String(radius_km));
+    if (layers.length) params.set('layers', layers.join(','));
+    const res = await api._fetch(`${API_BASE}/map/layers?${params.toString()}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
+  queryMap: async (payload) => {
+    const res = await api._fetch(`${API_BASE}/map/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getEvalResults: async () => {
     const res = await api._fetch(`${API_BASE}/admin/eval`);
     if (!res.ok) throw new Error('API Error');

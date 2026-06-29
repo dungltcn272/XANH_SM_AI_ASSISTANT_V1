@@ -30,6 +30,7 @@ const parseSseMetadata = (data) => {
       'error',
       'food_card',
       'food_location_request',
+      'map_payload',
       'message_id',
       'metrics',
       'rag_card',
@@ -335,6 +336,50 @@ const SUGGESTION_CARDS = [
     textColor: "text-teal-500"
   },
   {
+    title: "Tài xế quanh đây",
+    desc: "Xem vùng nào đang có nhiều tài xế online",
+    action: "Mở bản đồ",
+    query: "Hiện bản đồ tài xế quanh đây và vùng nào đông tài xế",
+    icon: MapPin,
+    hoverBorder: "hover:border-emerald-500/40 dark:hover:border-emerald-500/40",
+    hoverBg: "hover:bg-emerald-500/5 dark:hover:bg-emerald-500/5",
+    iconBg: "bg-emerald-500/10 text-emerald-500 group-hover/card:bg-emerald-500 group-hover/card:text-white",
+    textColor: "text-emerald-500"
+  },
+  {
+    title: "Quán ăn trên bản đồ",
+    desc: "Hiện các quán ăn quanh khu vực đang xem",
+    action: "Xem map",
+    query: "Hiện các quán ăn gần đây trên bản đồ",
+    icon: Utensils,
+    hoverBorder: "hover:border-orange-500/40 dark:hover:border-orange-500/40",
+    hoverBg: "hover:bg-orange-500/5 dark:hover:bg-orange-500/5",
+    iconBg: "bg-orange-500/10 text-orange-500 group-hover/card:bg-orange-500 group-hover/card:text-white",
+    textColor: "text-orange-500"
+  },
+  {
+    title: "Điểm đông khách",
+    desc: "Gợi ý vùng cầu cao cho tài xế",
+    action: "Xem điểm nóng",
+    query: "Tài xế nên đứng đâu để đông khách? Hiện điểm đông khách trên bản đồ",
+    icon: Sparkles,
+    hoverBorder: "hover:border-blue-500/40 dark:hover:border-blue-500/40",
+    hoverBg: "hover:bg-blue-500/5 dark:hover:bg-blue-500/5",
+    iconBg: "bg-blue-500/10 text-blue-500 group-hover/card:bg-blue-500 group-hover/card:text-white",
+    textColor: "text-blue-500"
+  },
+  {
+    title: "Tắc đường gần tôi",
+    desc: "Xem điểm tắc và đường tắt mô phỏng",
+    action: "Kiểm tra",
+    query: "Hiện điểm tắc đường gần tôi và gợi ý đường tắt",
+    icon: Search,
+    hoverBorder: "hover:border-red-500/40 dark:hover:border-red-500/40",
+    hoverBg: "hover:bg-red-500/5 dark:hover:bg-red-500/5",
+    iconBg: "bg-red-500/10 text-red-500 group-hover/card:bg-red-500 group-hover/card:text-white",
+    textColor: "text-red-500"
+  },
+  {
     title: "Gia nhập Xanh SM",
     desc: "Đăng ký trở thành tài xế Xanh Car, Xanh Bike",
     action: "Đăng ký",
@@ -460,9 +505,14 @@ export default function ChatLayout() {
 
   const [recordingTime, setRecordingTime] = useState(0);
   const timerRef = useRef(null);
+  const silenceTimerRef = useRef(null);
+  const assistantModeSendingRef = useRef(false);
 
   const [isEditingVoiceText, setIsEditingVoiceText] = useState(false);
   const [voiceLanguage] = useState('vi-VN');
+  const [assistantMode, setAssistantMode] = useState(false);
+  const [voiceMuted, setVoiceMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
     if (listening && !isEditingVoiceText) {
@@ -492,6 +542,55 @@ export default function ChatLayout() {
       setTimeout(() => setInput(transcript), 0);
     }
   }, [transcript, isEditingVoiceText]);
+
+  const speakAssistantReply = useCallback((text) => {
+    const cleanText = (text || '').replace(/\[[^\]]+\]/g, '').replace(/\s+/g, ' ').trim();
+    if (!assistantMode || voiceMuted || !cleanText || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    SpeechRecognition.stopListening();
+    const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 900));
+    utterance.lang = voiceLanguage;
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (assistantMode) {
+        resetTranscript();
+        SpeechRecognition.startListening({ language: voiceLanguage, continuous: true });
+      }
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      if (assistantMode) SpeechRecognition.startListening({ language: voiceLanguage, continuous: true });
+    };
+    window.speechSynthesis.speak(utterance);
+  }, [assistantMode, resetTranscript, voiceLanguage, voiceMuted]);
+
+  const stopAssistantMode = useCallback(() => {
+    setAssistantMode(false);
+    setIsSpeaking(false);
+    assistantModeSendingRef.current = false;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    SpeechRecognition.stopListening();
+  }, []);
+
+  const toggleAssistantMode = () => {
+    if (assistantMode) {
+      stopAssistantMode();
+      return;
+    }
+    if (!browserSupportsSpeechRecognition) {
+      alert('Trình duyệt chưa hỗ trợ nhận diện giọng nói liên tục.');
+      return;
+    }
+    resetTranscript();
+    setInput('');
+    setIsEditingVoiceText(false);
+    setAssistantMode(true);
+    SpeechRecognition.startListening({ language: voiceLanguage, continuous: true });
+  };
 
   const handleVoiceInput = () => {
     if (listening) {
@@ -626,6 +725,7 @@ export default function ChatLayout() {
       let streamFoodRecommendations = null;
       let streamFoodInlineParts = null;
       let streamFoodLocationRequest = null;
+      let streamMapPayload = null;
       let streamRagCards = [];
 
       while (true) {
@@ -702,6 +802,10 @@ export default function ChatLayout() {
                     streamFoodLocationRequest = parsed.food_location_request;
                     handledAsMetadata = true;
                   }
+                  if (parsed.map_payload) {
+                    streamMapPayload = parsed.map_payload;
+                    handledAsMetadata = true;
+                  }
                   if (parsed.message_id) {
                     setMessages(prev => {
                       const newMsgs = [...prev];
@@ -752,6 +856,9 @@ export default function ChatLayout() {
             if (streamFoodLocationRequest) {
               newMsgs[newMsgs.length - 1].foodLocationRequest = streamFoodLocationRequest;
             }
+            if (streamMapPayload) {
+              newMsgs[newMsgs.length - 1].mapPayload = streamMapPayload;
+            }
             return newMsgs;
           });
 
@@ -765,6 +872,7 @@ export default function ChatLayout() {
       setLoading(false);
       setPipelineStep(null);
       window.dispatchEvent(new Event('refresh-conversations'));
+      speakAssistantReply(streamReply);
     } catch (error) {
       console.error('Chat stream error:', error);
       setMessages(prev => {
@@ -780,8 +888,30 @@ export default function ChatLayout() {
       setLoading(false);
       setPipelineStep(null);
       window.dispatchEvent(new Event('refresh-conversations'));
+      speakAssistantReply('Xin lỗi, hệ thống AI đang bận hoặc mất kết nối. Anh chị vui lòng thử lại sau ít phút.');
     }
   };
+
+  useEffect(() => {
+    if (!assistantMode || isEditingVoiceText || loading || isSpeaking) return undefined;
+    const spokenText = transcript.trim();
+    if (!spokenText || spokenText.length < 3) return undefined;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = setTimeout(() => {
+      const finalText = transcript.trim();
+      if (!finalText || assistantModeSendingRef.current) return;
+      assistantModeSendingRef.current = true;
+      SpeechRecognition.stopListening();
+      resetTranscript();
+      setInput('');
+      handleSubmit(null, finalText).finally(() => {
+        assistantModeSendingRef.current = false;
+      });
+    }, 1500);
+    return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    };
+  }, [assistantMode, handleSubmit, isEditingVoiceText, isSpeaking, loading, resetTranscript, transcript]);
 
   const handleKeyDown = (e) => {
     if (e.nativeEvent.isComposing) return;
@@ -1316,7 +1446,7 @@ export default function ChatLayout() {
           </div>
         )}
 
-        {(listening || isEditingVoiceText) ? (
+        {(assistantMode || listening || isEditingVoiceText) ? (
           /* Advanced Voice UI Overlay - Compact & Elegant */
           <div className="w-full max-w-4xl mx-auto glass-panel p-4 md:p-6 rounded-[28px] md:rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] flex flex-col gap-3 md:gap-4 border-white/60 bg-white/95 dark:bg-[#0c1618]/95 backdrop-blur-3xl animate-in fade-in slide-in-from-bottom-4 duration-500 pointer-events-auto">
             
@@ -1330,7 +1460,9 @@ export default function ChatLayout() {
                   <Mic className="w-6 h-6 md:w-8 md:h-8" strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col items-start md:items-center">
-                  <span className="text-[9px] md:text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">Đang nghe...</span>
+                  <span className="text-[9px] md:text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">
+                    {assistantMode ? (isSpeaking ? 'Đang trả lời...' : loading ? 'Đang xử lý...' : 'Trợ lý đang nghe') : 'Đang nghe...'}
+                  </span>
                   <span className="text-base md:text-lg font-black text-on-surface font-mono">{formatRecordingTime(recordingTime)}</span>
                 </div>
               </div>
@@ -1339,7 +1471,7 @@ export default function ChatLayout() {
               <div className="flex-1 flex flex-col gap-2 md:gap-3 w-full">
                 <div className="flex items-center justify-center md:justify-start gap-2 text-[#00c897] text-[10px] md:text-xs font-bold">
                   <Sparkles size={14} fill="currentColor" className="animate-pulse" />
-                  <span>Đang chuyỒn giọng nói thành vĒn bản...</span>
+                  <span>{assistantMode ? 'Nói tự nhiên, em sẽ tự gửi khi anh/chị dừng lại...' : 'Đang chuyển giọng nói thành văn bản...'}</span>
                 </div>
                 
                 <div className="min-h-[50px] md:min-h-[60px] w-full">
@@ -1353,7 +1485,7 @@ export default function ChatLayout() {
                     />
                   ) : (
                     <p className="text-lg md:text-2xl font-bold text-on-surface leading-snug break-words text-center md:text-left">
-                      {input || <span className="opacity-20 italic font-medium text-lg">Hãy nói điều gì đó...</span>}
+                      {input || <span className="opacity-20 italic font-medium text-lg">{assistantMode ? 'Em đang lắng nghe...' : 'Hãy nói điều gì đó...'}</span>}
                       {listening && <span className="inline-block w-0.5 h-5 md:w-0.5 md:h-6 bg-[#00c897] ml-1 animate-pulse align-middle"></span>}
                     </p>
                   )}
@@ -1384,28 +1516,51 @@ export default function ChatLayout() {
             {/* Actions Footer - More Compact */}
             <div className="flex items-center justify-center md:justify-end pt-3 md:pt-4 border-t border-on-surface/5">
               <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
-                <button 
-                  onClick={toggleEditingVoiceText}
-                  className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 rounded-xl font-bold text-[11px] md:text-xs transition-all active:scale-95 ${
-                    isEditingVoiceText 
-                      ? 'bg-[#00c897]/10 text-[#00c897] border border-[#00c897]/20' 
-                      : 'text-on-surface-variant hover:bg-surface-variant/50 border border-transparent'
-                  }`}
-                >
-                  <PencilLine size={14} /> {isEditingVoiceText ? "Xong" : "Ch0nh sửa"}
-                </button>
-                <button 
-                  onClick={cancelVoiceInput}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-5 py-2 rounded-xl border border-red-500/10 text-red-500 font-bold text-[11px] md:text-xs hover:bg-red-500/5 transition-all active:scale-95"
-                >
-                  <X size={14} strokeWidth={3} /> Hủy
-                </button>
-                <button 
-                  onClick={stopAndSendVoice}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 md:px-7 py-2 rounded-xl bg-[#00c897] text-white font-black text-[11px] md:text-xs hover:brightness-105 shadow-lg shadow-[#00c897]/10 transition-all active:scale-95"
-                >
-                  <Send size={14} fill="white" /> Gửi
-                </button>
+                {assistantMode ? (
+                  <>
+                    <button
+                      onClick={() => setVoiceMuted(prev => !prev)}
+                      className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-5 py-2 rounded-xl font-bold text-[11px] md:text-xs transition-all active:scale-95 ${
+                        voiceMuted
+                          ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                          : 'text-on-surface-variant hover:bg-surface-variant/50 border border-transparent'
+                      }`}
+                    >
+                      {voiceMuted ? <MicOff size={14} /> : <Mic size={14} />} {voiceMuted ? 'Đang tắt tiếng' : 'Bot đọc lại'}
+                    </button>
+                    <button
+                      onClick={stopAssistantMode}
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-5 py-2 rounded-xl border border-red-500/10 text-red-500 font-bold text-[11px] md:text-xs hover:bg-red-500/5 transition-all active:scale-95"
+                    >
+                      <X size={14} strokeWidth={3} /> Dừng trợ lý
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={toggleEditingVoiceText}
+                      className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 rounded-xl font-bold text-[11px] md:text-xs transition-all active:scale-95 ${
+                        isEditingVoiceText
+                          ? 'bg-[#00c897]/10 text-[#00c897] border border-[#00c897]/20'
+                          : 'text-on-surface-variant hover:bg-surface-variant/50 border border-transparent'
+                      }`}
+                    >
+                      <PencilLine size={14} /> {isEditingVoiceText ? "Xong" : "Chỉnh sửa"}
+                    </button>
+                    <button
+                      onClick={cancelVoiceInput}
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-5 py-2 rounded-xl border border-red-500/10 text-red-500 font-bold text-[11px] md:text-xs hover:bg-red-500/5 transition-all active:scale-95"
+                    >
+                      <X size={14} strokeWidth={3} /> Hủy
+                    </button>
+                    <button
+                      onClick={stopAndSendVoice}
+                      className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 md:px-7 py-2 rounded-xl bg-[#00c897] text-white font-black text-[11px] md:text-xs hover:brightness-105 shadow-lg shadow-[#00c897]/10 transition-all active:scale-95"
+                    >
+                      <Send size={14} fill="white" /> Gửi
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1479,6 +1634,18 @@ export default function ChatLayout() {
                   >
                     <span>🚗</span> Giá cước
                   </button>
+                  <button
+                    onClick={(e) => handleSubmit(e, "Hiện bản đồ tài xế quanh đây và vùng nào đông tài xế")}
+                    className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <MapPin size={12} /> Tài xế quanh đây
+                  </button>
+                  <button
+                    onClick={(e) => handleSubmit(e, "Hiện điểm tắc đường gần tôi và gợi ý đường tắt")}
+                    className="px-2.5 py-1 rounded-full bg-red-500/10 hover:bg-red-500/15 text-on-surface-variant dark:text-white/80 hover:text-red-500 text-[10px] font-bold transition-all border border-red-500/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
+                  >
+                    <Search size={12} /> Tắc đường
+                  </button>
                   <button 
                     onClick={(e) => handleSubmit(e, "Chính sách ưu đãi và khuyến mãi sạc pin trạm V-GREEN")}
                     className="px-2.5 py-1 rounded-full bg-[#00c897]/10 hover:bg-[#00c897]/20 text-on-surface-variant dark:text-white/80 hover:text-[#00c897] text-[10px] font-bold transition-all border border-[#00c897]/20 whitespace-nowrap shrink-0 flex items-center gap-1 active:scale-95"
@@ -1502,6 +1669,20 @@ export default function ChatLayout() {
               
               <div className="flex items-center gap-1.5 shrink-0">
                 {browserSupportsSpeechRecognition && (
+                  <button
+                    onClick={toggleAssistantMode}
+                    className={`h-8 px-3 rounded-full flex items-center justify-center gap-1.5 text-[10px] font-black transition-all active:scale-95 ${
+                      assistantMode
+                        ? 'bg-[#00c897] text-white shadow-lg shadow-[#00c897]/20'
+                        : 'text-on-surface-variant dark:text-white/60 hover:text-[#00c897] hover:bg-surface-variant/50 dark:hover:bg-white/10'
+                    }`}
+                    title={assistantMode ? 'Dừng trợ lý giọng nói liên tục' : 'Bật trợ lý giọng nói liên tục'}
+                  >
+                    <Mic size={14} />
+                    Voice
+                  </button>
+                )}
+                {browserSupportsSpeechRecognition && !assistantMode && (
                   <button
                     onClick={handleVoiceInput}
                     className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 ${

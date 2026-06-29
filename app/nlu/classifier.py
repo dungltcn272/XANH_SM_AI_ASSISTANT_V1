@@ -47,6 +47,50 @@ class XanhSMClassifier:
     def _memory_recall_answer(self, assistant_context: Dict[str, Any] | None) -> str | None:
         return self.memory_extractor.recall_answer(assistant_context)
 
+    def _is_map_related_query(self, query: str) -> bool:
+        text = self._memory_normalize(query)
+        map_terms = [
+            "ban do",
+            "map",
+            "heatmap",
+            "tai xe dong",
+            "dong tai xe",
+            "xe quanh",
+            "dong khach",
+            "diem dong",
+            "tac duong",
+            "ket xe",
+            "un tac",
+            "duong tat",
+            "duong nhanh",
+            "traffic",
+            "shortcut",
+        ]
+        return any(term in text for term in map_terms)
+
+    def _local_map_slots(self, query: str, intent: str) -> dict[str, Any] | None:
+        if intent != "map_intelligence":
+            return None
+        text = self._memory_normalize(query)
+        layers = []
+        if any(term in text for term in ["tai xe", "driver", "xe quanh", "dong xe"]):
+            layers.append("drivers")
+        if any(term in text for term in ["quan", "an", "food", "nha hang", "restaurant"]):
+            layers.append("restaurants")
+        if any(term in text for term in ["dong khach", "nhu cau", "diem dong", "hotspot"]):
+            layers.append("demand")
+        if any(term in text for term in ["tac", "ket", "traffic", "un"]):
+            layers.append("traffic")
+        if any(term in text for term in ["duong tat", "ne", "shortcut", "duong nhanh"]):
+            layers.append("shortcuts")
+        user_mode = "driver" if any(term in text for term in ["tai xe nen", "don khach", "chay xe"]) else "customer"
+        coord_match = re.search(r"(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)", query or "")
+        slots: dict[str, Any] = {"layers": layers or None, "user_mode": user_mode, "radius_km": 5.0}
+        if coord_match:
+            slots["lat"] = float(coord_match.group(1))
+            slots["lng"] = float(coord_match.group(2))
+        return slots
+
     def _merge_memory_candidates(
         self,
         llm_candidates: list[dict[str, Any]],
@@ -87,6 +131,9 @@ class XanhSMClassifier:
                 "expanded_queries": [query],
                 "safety_blocked": True,
                 "safety_reason": safety_res["reason"],
+                "suggested_answer": None,
+                "food_slots": None,
+                "map_slots": None,
                 "memory_candidates": [],
                 "usage": {"prompt_tokens": 0, "completion_tokens": 0},
                 "fast_path": True,
@@ -171,8 +218,12 @@ class XanhSMClassifier:
                     intent = "food_recommendation"
                 if intent in ["miss-info", "missing-info", "missinginfo"]:
                     intent = "missing_info"
-                if intent not in ["small-talk", "rag", "sensitive", "missing_info", "food_recommendation"]:
+                if intent in ["map", "map-intelligence", "map_intent", "geo_map"]:
+                    intent = "map_intelligence"
+                if intent not in ["small-talk", "rag", "sensitive", "missing_info", "food_recommendation", "map_intelligence"]:
                     intent = "rag"
+                if intent == "rag" and self._is_map_related_query(query):
+                    intent = "map_intelligence"
 
                 rewritten_query = intent_data.get("rewritten_query", query)
                 suggested_answer = intent_data.get("suggested_answer")
@@ -226,6 +277,7 @@ class XanhSMClassifier:
                     "expanded_queries": expanded,
                     "suggested_answer": suggested_answer,
                     "food_slots": food_slots,
+                    "map_slots": self._local_map_slots(query, intent),
                     "user_context": food_slots, # Keep compatible with old logic if needed
                     "missing_fields": missing_fields,
                     "ui_form": ui_form,
@@ -245,6 +297,8 @@ class XanhSMClassifier:
         intent = "rag"
         if greeting_check["type"] != "none":
             intent = "small-talk"
+        elif self._is_map_related_query(query):
+            intent = "map_intelligence"
 
         rewritten_query = query
         expanded = [rewritten_query]
@@ -255,6 +309,7 @@ class XanhSMClassifier:
             "expanded_queries": expanded,
             "suggested_answer": None,
             "food_slots": None,
+            "map_slots": self._local_map_slots(query, intent),
             "user_context": food_context if intent == "food_recommendation" else None,
             "missing_fields": ["location"] if intent == "food_recommendation" else [],
             "ui_form": {

@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from app.food_recommendation.core.chain import FoodRecommendationChain
+from app.map_intelligence.chain import MapIntelligenceChain
 from app.rag.core.chain import RagAnswerChain
 from app.assistant.events import sse_pipeline_step, stream_plain_answer
 from app.core.config import settings as config
@@ -33,6 +34,7 @@ class XanhSMAssistantOrchestrator:
             self.cache = None
         self.rag_chain = RagAnswerChain(cache=self.cache)
         self.food_chain = FoodRecommendationChain()
+        self.map_chain = MapIntelligenceChain()
 
     def _calculate_llm_cost(self, prompt_tokens: int, completion_tokens: int) -> dict[str, Any]:
         usd_input = (prompt_tokens / 1_000_000) * 0.15
@@ -48,6 +50,26 @@ class XanhSMAssistantOrchestrator:
 
     def _is_greeting_or_thanks(self, query: str) -> dict[str, Any]:
         return self.gateway.is_greeting_or_thanks(query)
+
+    def _direct_answer_for_intent(self, intent: str, nlu_res: dict[str, Any], rewritten_query: str) -> str:
+        if intent == "sensitive":
+            return nlu_res.get("suggested_answer") or (
+                "Dạ, em rất tiếc nhưng em không thể thực hiện yêu cầu này. "
+                "Anh/chị có thể hỏi em về dịch vụ, giá cước hoặc chính sách của Xanh SM ạ."
+            )
+        if intent == "missing_info":
+            return nlu_res.get("suggested_answer") or (
+                "Dạ anh/chị muốn em làm rõ thông tin nào ạ? Anh/chị có thể nói thêm tên xe, "
+                "dịch vụ, món ăn hoặc mục muốn xem chi tiết giúp em."
+            )
+        answer = nlu_res.get("suggested_answer")
+        if answer:
+            return answer
+        intercept = self._is_greeting_or_thanks(rewritten_query)
+        return intercept["answer"] if intercept["type"] != "none" else (
+            "Dạ, em là Trợ lý ảo chuyên hỗ trợ các dịch vụ của Xanh SM. "
+            "Anh/chị có thể hỏi em về giá cước taxi, chính sách hủy chuyến hoặc cách đặt xe ạ!"
+        )
 
     def stream_run(
         self,
@@ -178,6 +200,7 @@ class XanhSMAssistantOrchestrator:
                 "rewritten_query": rewritten_query,
                 "expanded_queries": expanded_queries,
                 "food_slots": nlu_res.get("food_slots"),
+                "map_slots": nlu_res.get("map_slots"),
                 "missing_fields": nlu_res.get("missing_fields"),
                 "ui_form": nlu_res.get("ui_form"),
                 "user_context": nlu_res.get("user_context"),
@@ -212,6 +235,45 @@ class XanhSMAssistantOrchestrator:
                 user_id=user_id,
                 guest_id=guest_id,
             )
+            return
+
+        if intent == "map_intelligence":
+            save_system_log(
+                node="orchestrator.route",
+                event="route_map_intelligence",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=normalized_query,
+                intent=intent,
+                payload={"rewritten_query": rewritten_query, "map_slots": nlu_res.get("map_slots")},
+            )
+            yield from self.map_chain.stream(
+                query=query,
+                metrics=metrics,
+                t_start=t_start,
+                nlu_map_slots=nlu_res.get("map_slots"),
+                food_context=food_context,
+            )
+            return
+
+        if intent in {"small-talk", "sensitive", "missing_info"}:
+            save_system_log(
+                node="orchestrator.route",
+                event="route_direct_answer",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=normalized_query,
+                intent=intent,
+                payload={"suggested_answer": nlu_res.get("suggested_answer"), "missing_fields": nlu_res.get("missing_fields")},
+            )
+            answer = self._direct_answer_for_intent(intent, nlu_res, rewritten_query)
+            metrics["total_latency_ms"] = (time.time() - t_start) * 1000
+            metrics["intent_group"] = "direct_answer"
+            yield from stream_plain_answer(answer)
+            yield f'data: {json.dumps({"metrics": metrics, "step": "direct-answer"})}\n\n'
+            yield "data: [DONE]\n\n"
             return
 
         if intent == "sensitive":

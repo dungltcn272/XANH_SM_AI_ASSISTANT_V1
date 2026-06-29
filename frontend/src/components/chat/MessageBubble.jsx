@@ -1,6 +1,7 @@
 import { Link2, CheckCheck, ThumbsUp, ThumbsDown, ShieldCheck } from 'lucide-react';
 import { FoodLocationRequestCard, FoodLocationConfirmedCard } from './FoodLocationPrompt';
 import { FoodRecommendationList } from './FoodInlineCards';
+import { MapInsightCard } from './MapInsightCard';
 
 export const MessageBubble = ({
   msg,
@@ -27,6 +28,7 @@ export const MessageBubble = ({
     msg.foodLocationConfirmed ||
     msg.foodInlineParts ||
     msg.foodRecommendations ||
+    msg.mapPayload ||
     msg.ragCards ||
     (msg.sources && msg.sources.length > 0)
   );
@@ -136,6 +138,9 @@ export const MessageBubble = ({
                       }}
                       onExplain={(item) => setExplainingFood(item)}
                     />
+                )}
+                {msg.mapPayload && (
+                  <MapInsightCard payload={msg.mapPayload} />
                 )}
                 {msg.ragCards && RagCardList && (
                   <RagCardList cards={msg.ragCards} />
