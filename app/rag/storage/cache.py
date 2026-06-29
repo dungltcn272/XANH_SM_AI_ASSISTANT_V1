@@ -27,9 +27,10 @@ class XanhSMRAGCache:
 
     def __init__(self):
         self.embeddings = None
-        if config.SEMANTIC_CACHE_ENABLED and config.EMBEDDING_PROVIDER != "mock":
+        if config.SEMANTIC_CACHE_ENABLED:
             try:
-                self.embeddings = get_embedding_model()
+                from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+                self.embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
             except Exception as exc:
                 log_warn("CACHE", f"Semantic cache embeddings disabled: {exc}")
 
