@@ -8,16 +8,18 @@ def plan_tools(intent: str, persona: str) -> list[str]:
         return ["food"]
     if intent == "ride_support":
         return ["ride"]
+    if intent == "rag":
+        return ["rag_driver"] if persona == "driver" else ["rag"]
     if intent == "driver_support":
-        return ["ride_status", "charging", "demand_heatmap"]
+        if persona == "driver":
+            return ["ride_status", "charging", "demand_heatmap"]
+        return ["rag"]
     if intent == "merchant_analytics":
         return ["merchant_analytics", "menu_analysis", "review_analysis"]
     if intent == "operations_monitoring":
         return ["fleet_monitor", "revenue_diagnostics", "fraud_detection"]
     if intent == "executive_insight":
         return ["bi_analysis", "forecast_simulation"]
-    if persona == "driver":
-        return ["ride_status", "charging", "demand_heatmap"]
     if persona == "merchant":
         return ["merchant_analytics", "menu_analysis", "review_analysis"]
     if persona == "operator":
