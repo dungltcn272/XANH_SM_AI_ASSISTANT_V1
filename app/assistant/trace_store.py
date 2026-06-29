@@ -13,6 +13,8 @@ def save_basic_request_log(
     intent: str | None,
     final_answer: str | None,
     nlu_latency_ms: float,
+    cache_latency_ms: float = 0.0,
+    generation_latency_ms: float = 0.0,
     total_latency_ms: float,
     model_name: str | None = None,
     cost_usd: float = 0.0,
@@ -32,6 +34,8 @@ def save_basic_request_log(
                 final_answer=final_answer,
                 model_name=model_name,
                 nlu_latency_ms=nlu_latency_ms,
+                cache_latency_ms=cache_latency_ms,
+                generation_latency_ms=generation_latency_ms,
                 total_latency_ms=total_latency_ms,
                 cost_usd=cost_usd,
             )

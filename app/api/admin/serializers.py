@@ -38,10 +38,12 @@ def serialize_basic_log(row: BasicRequestLog) -> dict:
         "intent": row.intent,
         "final_answer": row.final_answer,
         "model_name": row.model_name,
-        "nlu_latency_ms": row.nlu_latency_ms or 0,
-        "total_latency_ms": row.total_latency_ms or 0,
-        "cost_usd": row.cost_usd or 0,
-        "created_at": _iso(row.created_at),
+        "nlu_latency_ms": row.nlu_latency_ms,
+        "cache_latency_ms": getattr(row, "cache_latency_ms", 0) or 0,
+        "generation_latency_ms": getattr(row, "generation_latency_ms", 0) or 0,
+        "total_latency_ms": row.total_latency_ms,
+        "cost_usd": row.cost_usd,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
     }
 
 def serialize_food_interaction(row: FoodInteraction) -> dict:

@@ -157,9 +157,11 @@ def stream_chat_pipeline(db: Session, user_id: str, conversation_id: str, questi
                 intent=intent_to_save,
                 final_answer=final_answer.strip(),
                 nlu_latency_ms=metrics.get('rewrite_latency_ms', 0),
+                cache_latency_ms=metrics.get('cache_latency_ms', 0),
+                generation_latency_ms=metrics.get('generation_latency_ms', 0),
                 total_latency_ms=metrics.get('total_latency_ms', 0),
-                model_name=metrics.get('answer_model') or metrics.get('model_name'),
-                cost_usd=metrics.get('cost_usd', 0.0)
+                model_name=metrics.get('answer_model', 'unknown'),
+                cost_usd=metrics.get('cost_usd', 0)
             )
             try:
                 new_memory_service.extract_and_save_facts(

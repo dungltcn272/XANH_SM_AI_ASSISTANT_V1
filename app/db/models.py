@@ -189,6 +189,8 @@ class BasicRequestLog(Base):
     final_answer = Column(Text, nullable=True)
     model_name = Column(String, nullable=True)
     nlu_latency_ms = Column(Float, default=0)
+    cache_latency_ms = Column(Float, default=0)
+    generation_latency_ms = Column(Float, default=0)
     total_latency_ms = Column(Float, default=0)
     cost_usd = Column(Float, default=0)
     created_at = Column(DateTime(timezone=True), default=get_vn_time, index=True)
