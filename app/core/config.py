@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     RAG_ANSWER_MODEL: str = os.getenv("RAG_ANSWER_MODEL", "gpt-4o-mini")
     NLU_MODEL: str = os.getenv("NLU_MODEL", "gpt-4o-mini")
     FOOD_ANSWER_MODEL: str = os.getenv("FOOD_ANSWER_MODEL", "gpt-4o-mini")
+    MAP_ANSWER_MODEL: str = os.getenv("MAP_ANSWER_MODEL", "gpt-4o-mini")
     AI_JUDGE_MODEL: str = os.getenv("AI_JUDGE_MODEL", "gpt-4o-mini")
     VLM_MODEL: str = os.getenv("VLM_MODEL", "gpt-4o-mini")
     OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))

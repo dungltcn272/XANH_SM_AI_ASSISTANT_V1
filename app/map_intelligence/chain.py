@@ -48,16 +48,55 @@ class MapIntelligenceChain:
         metrics["map_route_count"] = len(payload.routes)
         metrics["total_latency_ms"] = (time.time() - t_start) * 1000
 
-        answer = self._answer_text(payload.summary, inferred_mode)
-        yield from stream_plain_answer(answer)
+        answer_stream = self._answer_text(payload.summary, inferred_mode)
+        full_answer = ""
+        for token in answer_stream:
+            full_answer += token
+            # Yield token for frontend streaming, assuming format data: {...}
+            import json
+            yield f'data: {json.dumps({"type": "answer", "content": token}, ensure_ascii=False)}\n\n'
+        
+        # Optionally wait slightly so frontend renders the map smoothly
+        import asyncio
+        # We can't use await in a sync generator. Just time.sleep if needed, but pass for now.
+        
         yield f'data: {json.dumps({"type": "map_payload", "map_payload": payload.model_dump()}, ensure_ascii=False)}\n\n'
         yield f'data: {json.dumps({"metrics": metrics, "step": "map-intelligence"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
 
-    def _answer_text(self, summary: str, user_mode: str) -> str:
-        if user_mode == "driver":
-            return f"Dạ, hệ thống đã đồng bộ dữ liệu bản đồ vận hành. {summary} Anh/chị xem các lớp điểm đông khách, tắc đường và đường tắt trên bản đồ bên dưới nhé."
-        return f"Dạ, em đã tổng hợp bản đồ từ hệ thống vận hành. {summary} Anh/chị có thể bật/tắt từng lớp để xem tài xế, quán ăn, điểm đông khách và tình trạng đường."
+    def _answer_text(self, summary: str, user_mode: str):
+        # Hàm này đổi thành stream generator
+        from app.core.llm import get_llm_client
+        from app.core.config import settings as config
+        
+        client = get_llm_client(config.MAP_ANSWER_MODEL)
+        
+        prompt = f"""Bạn là trợ lý ảo của hãng taxi thuần điện Xanh SM.
+Người dùng đang hỏi các thông tin liên quan đến bản đồ, địa điểm, tuyến đường.
+Dưới đây là DỮ LIỆU BẢN ĐỒ thực tế mà hệ thống vừa truy xuất được:
+{summary}
+
+Nhiệm vụ của bạn là dựa vào DỮ LIỆU BẢN ĐỒ trên để trả lời người dùng một cách tự nhiên, lịch sự và súc tích (dưới 4 câu).
+Nếu dữ liệu báo có tuyến đường (khoảng cách, thời gian), hãy thông báo cho người dùng biết.
+Tuyệt đối KHÔNG tự bịa ra thông tin đường đi nếu không có trong dữ liệu trên.
+"""
+        try:
+            response = client.chat.completions.create(
+                model=config.MAP_ANSWER_MODEL,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": "Hãy tổng hợp thông tin bản đồ cho tôi."}
+                ],
+                temperature=0.3,
+                stream=True
+            )
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        except Exception as e:
+            from app.core.logger import log_error
+            log_error("MAP_LLM", str(e))
+            yield f"Dạ, em đã tổng hợp bản đồ từ hệ thống vận hành. {summary} Anh/chị có thể bật/tắt từng lớp để xem chi tiết."
 
     def _infer_user_mode(self, query: str) -> str:
         text = (query or "").lower()

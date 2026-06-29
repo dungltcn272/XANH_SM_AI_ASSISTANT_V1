@@ -26,6 +26,29 @@ def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 2 * radius * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
+def get_osrm_route(lat1: float, lng1: float, lat2: float, lng2: float) -> dict | None:
+    """Gọi OSRM API để lấy thông tin định tuyến (đường đi, khoảng cách, thời gian)"""
+    import requests
+    url = f"http://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}?overview=full&geometries=geojson"
+    try:
+        resp = requests.get(url, timeout=5.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("code") == "Ok" and len(data.get("routes", [])) > 0:
+                route = data["routes"][0]
+                distance_km = route.get("distance", 0) / 1000.0
+                duration_min = route.get("duration", 0) / 60.0
+                coords = route.get("geometry", {}).get("coordinates", [])
+                points = [GeoPoint(lat=lat, lng=lng) for lng, lat in coords]
+                return {
+                    "distance_km": distance_km,
+                    "duration_min": duration_min,
+                    "points": points
+                }
+    except Exception:
+        pass
+    return None
+
 class MapIntelligenceService:
     def infer_layers(self, query: str, layers: list[MapLayer] | None = None) -> list[MapLayer]:
         if layers:
@@ -77,6 +100,28 @@ class MapIntelligenceService:
             if self._route_near_center(route.points, center, radius_km)
         ]
 
+        # Calculate real OSRM route to the nearest relevant point
+        nearest = None
+        if "restaurants" in layers:
+            rests = [m for m in markers if m.type == "restaurant"]
+            if rests:
+                nearest = min(rests, key=lambda m: m.metadata.get("distance_km", 999))
+        elif "drivers" in layers:
+            drvs = [m for m in markers if m.type == "driver"]
+            if drvs:
+                nearest = min(drvs, key=lambda m: m.metadata.get("distance_km", 999))
+        
+        if nearest:
+            osrm = get_osrm_route(center.lat, center.lng, nearest.lat, nearest.lng)
+            if osrm:
+                routes.append(
+                    MapRouteHint(
+                        points=osrm["points"],
+                        title=f"Tuyến đường tới {nearest.title}",
+                        description=f"Quãng đường: {osrm['distance_km']:.1f} km - Thời gian lái xe: {osrm['duration_min']:.0f} phút"
+                    )
+                )
+
         return MapPayload(
             center=center,
             zoom=14 if radius_km <= 5 else 12,
@@ -118,8 +163,15 @@ class MapIntelligenceService:
         if routes:
             parts.append(f"{len(routes)} gợi ý đường tắt")
         if not parts:
-            return "Hệ thống chưa có thông tin nổi bật quanh vị trí này."
-        return "Em tìm thấy " + ", ".join(parts) + " quanh khu vực anh/chị đang xem."
+            summary_text = "Hệ thống chưa có thông tin nổi bật quanh vị trí này."
+        else:
+            summary_text = "Có " + ", ".join(parts) + " quanh khu vực anh/chị đang xem."
+            
+        real_routes = [r for r in routes if "Thời gian lái xe" in r.description]
+        if real_routes:
+            summary_text += f"\nThông tin định tuyến thực tế: Tuyến đường tới điểm gần nhất dài {real_routes[0].description}."
+            
+        return summary_text
 
     def _route_near_center(self, points: list[GeoPoint], center: GeoPoint, radius_km: float) -> bool:
         return any(haversine_km(center.lat, center.lng, point.lat, point.lng) <= radius_km for point in points)

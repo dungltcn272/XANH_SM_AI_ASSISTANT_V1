@@ -187,7 +187,7 @@ class XanhSMClassifier:
                 }
                 
                 # An toàn: Chỉ ép response_format JSON cho các model của OpenAI (hỗ trợ tốt chuẩn này).
-                # Các model Open-source (Qwen, Llama...) qua OpenRouter có thể không hỗ trợ hoặc lỗi validate JSON.
+                # Các model Open-source (Qwen, Llama...) qua Groq có thể báo lỗi hoặc không hỗ trợ JSON mode thuần tuý
                 if "gpt" in target_model.lower():
                     kwargs["response_format"] = {"type": "json_object"}
                     
@@ -196,19 +196,36 @@ class XanhSMClassifier:
                 res_content = res_content.strip()
                 
                 # Robust JSON extraction
-                match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", res_content, re.DOTALL)
-                if match:
-                    json_str = match.group(1)
-                else:
-                    start = res_content.find('{')
-                    end = res_content.rfind('}')
+                def extract_json(text: str) -> dict:
+                    import re, json
+                    text = text.strip()
+                    try: return json.loads(text)
+                    except: pass
+                    
+                    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+                    if match:
+                        try: return json.loads(match.group(1))
+                        except: pass
+                    
+                    start = text.find('{')
+                    if start != -1:
+                        bc = 0
+                        for i, char in enumerate(text[start:]):
+                            if char == '{': bc += 1
+                            elif char == '}':
+                                bc -= 1
+                                if bc == 0:
+                                    try: return json.loads(text[start:start+i+1])
+                                    except: break
+                    
+                    start = text.find('{')
+                    end = text.rfind('}')
                     if start != -1 and end != -1 and end > start:
-                        json_str = res_content[start:end+1]
-                    else:
-                        json_str = "{}" # Fallback if no JSON found
-                
+                        return json.loads(text[start:end+1])
+                    return {}
+
                 return {
-                    "result": json.loads(json_str),
+                    "result": extract_json(res_content),
                     "usage": {
                         "prompt_tokens": response.usage.prompt_tokens,
                         "completion_tokens": response.usage.completion_tokens,
@@ -227,8 +244,8 @@ class XanhSMClassifier:
             
             # Using ThreadPoolExecutor to run Memory Extraction and Intent Classification concurrently
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                future_intent = executor.submit(_call_llm_json, NLU_INTENT_REWRITE_PROMPT, 650 if include_image else 300, model_name)
-                future_memory = executor.submit(_call_llm_json, NLU_MEMORY_EXTRACTION_PROMPT, 500, model_name)
+                future_intent = executor.submit(_call_llm_json, NLU_INTENT_REWRITE_PROMPT, 800 if include_image else 800, model_name)
+                future_memory = executor.submit(_call_llm_json, NLU_MEMORY_EXTRACTION_PROMPT, 800, model_name)
                 
                 intent_resp = future_intent.result()
                 if "error" in intent_resp:
