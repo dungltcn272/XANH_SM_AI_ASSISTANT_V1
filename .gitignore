@@ -68,3 +68,7 @@ evaluation_report.json
 /mobile/android/
 
 app/scripts/llm_enrich_food_catalog.py
+
+// UI promax 
+.agents
+.codex
