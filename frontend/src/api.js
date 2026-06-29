@@ -84,6 +84,14 @@ export const api = {
     return res.json();
   },
 
+  getMapLogs: async (skip = 0, limit = 50, date = '') => {
+    let url = `${API_BASE}/admin/logs/map?skip=${skip}&limit=${limit}`;
+    if (date) url += `&date=${date}`;
+    const res = await api._fetch(url);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getFoodLogs: async (skip = 0, limit = 50, date = '') => {
     let url = `${API_BASE}/admin/logs/food?skip=${skip}&limit=${limit}`;
     if (date) url += `&date=${date}`;

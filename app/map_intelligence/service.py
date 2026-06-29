@@ -12,7 +12,7 @@ from app.map_intelligence.fake_data import (
     TRAFFIC_MARKERS,
     ZONES,
 )
-from app.map_intelligence.schemas import GeoPoint, MapLayer, MapPayload, MapQuery, MapRouteHint, MapZone
+from app.map_intelligence.schemas import GeoPoint, MapLayer, MapPayload, MapQuery, MapRouteHint, MapZone, MapMarker
 
 
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -102,7 +102,22 @@ class MapIntelligenceService:
 
         # Calculate real OSRM route to the nearest relevant point
         nearest = None
-        if "restaurants" in layers:
+        import re
+        dest_match = re.search(r"(?:đến|tới|đi|quán)\s+([A-Z][\w\s]+)", req.query)
+        if dest_match:
+            dest_title = dest_match.group(1).strip()
+            nearest = MapMarker(
+                id="fake_dest",
+                type="restaurant",
+                title=dest_title,
+                description="Điểm đến tùy chỉnh",
+                lat=center.lat + 0.02,
+                lng=center.lng + 0.02,
+                intensity=0.8,
+                metadata={"distance_km": 2.5}
+            )
+            markers.append(nearest)
+        elif "restaurants" in layers:
             rests = [m for m in markers if m.type == "restaurant"]
             if rests:
                 nearest = min(rests, key=lambda m: m.metadata.get("distance_km", 999))
@@ -116,6 +131,7 @@ class MapIntelligenceService:
             if osrm:
                 routes.append(
                     MapRouteHint(
+                        id="route_osrm",
                         points=osrm["points"],
                         title=f"Tuyến đường tới {nearest.title}",
                         description=f"Quãng đường: {osrm['distance_km']:.1f} km - Thời gian lái xe: {osrm['duration_min']:.0f} phút"

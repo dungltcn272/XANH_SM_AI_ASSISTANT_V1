@@ -154,6 +154,7 @@ class RagRequestLog(Base):
     guest_id = Column(String, nullable=True, index=True)
     original_query = Column(Text)
     rewritten_query = Column(Text, nullable=True)
+    intent = Column(String, default="rag", index=True)
     final_answer = Column(Text, nullable=True)
     
     # Telemetry
@@ -164,6 +165,7 @@ class RagRequestLog(Base):
     classification_latency_ms = Column(Float, default=0)
     expansion_latency_ms = Column(Float, default=0)
     rerank_latency_ms = Column(Float, default=0)
+    cache_latency_ms = Column(Float, default=0)
     total_tokens = Column(Integer, default=0)
     cost_usd = Column(Float, default=0)
     

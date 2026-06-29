@@ -47,7 +47,7 @@ class RagAnswerChain:
         lowered = clean.lower()
         if "hệ thống bị gián đoạn" in lowered or "câu trả lời có thể chưa hoàn chỉnh" in lowered:
             return False
-        return clean[-1] in {".", "!", "?", "…", ")", "]", "}", '"', "'", "ạ"}
+        return True
 
     def _cache_policy_for_rag(
         self,

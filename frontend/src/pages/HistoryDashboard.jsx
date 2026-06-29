@@ -2,7 +2,8 @@ import { useState } from 'react';
 import RagLogView from './RagLogView';
 import FoodLogView from './FoodLogView';
 import BasicLogView from './BasicLogView';
-import { Database, Zap, MessageSquare, RefreshCw } from 'lucide-react';
+import MapLogView from './MapLogView';
+import { Database, Zap, MessageSquare, RefreshCw, MapPin } from 'lucide-react';
 
 export default function HistoryDashboard() {
   const [activeTab, setActiveTab] = useState('rag'); // 'basic', 'rag', 'food'
@@ -45,6 +46,17 @@ export default function HistoryDashboard() {
           <Zap size={16} /> FOOD LOG
         </button>
 
+        <button
+          onClick={() => setActiveTab('map')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all ${
+            activeTab === 'map' 
+              ? 'bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/50 shadow-[0_0_15px_rgba(245,158,11,0.15)]' 
+              : 'text-[#64748b] hover:text-[#94a3b8] hover:bg-[#1e293b]'
+          }`}
+        >
+          <MapPin size={16} /> MAP LOG
+        </button>
+
         <div className="ml-auto">
           <button 
             onClick={() => setRefreshCount(prev => prev + 1)}
@@ -60,6 +72,7 @@ export default function HistoryDashboard() {
         {activeTab === 'basic' && <BasicLogView key={`basic-${refreshCount}`} />}
         {activeTab === 'rag' && <RagLogView key={`rag-${refreshCount}`} />}
         {activeTab === 'food' && <FoodLogView key={`food-${refreshCount}`} />}
+        {activeTab === 'map' && <MapLogView key={`map-${refreshCount}`} />}
       </div>
     </div>
   );

@@ -16,9 +16,12 @@ class MapIntelligenceChain:
 
     def stream(
         self,
-        query: str,
-        metrics: dict[str, Any],
-        t_start: float,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        guest_id: str | None = None,
+        query: str = "",
+        metrics: dict[str, Any] = None,
+        t_start: float = 0.0,
         nlu_map_slots: dict[str, Any] | None = None,
         food_context: dict[str, Any] | None = None,
         user_mode: str | None = None,
@@ -52,17 +55,28 @@ class MapIntelligenceChain:
         full_answer = ""
         for token in answer_stream:
             full_answer += token
-            # Yield token for frontend streaming, assuming format data: {...}
-            import json
-            yield f'data: {json.dumps({"type": "answer", "content": token}, ensure_ascii=False)}\n\n'
+            yield f'data: {token}\n\n'
         
-        # Optionally wait slightly so frontend renders the map smoothly
-        import asyncio
-        # We can't use await in a sync generator. Just time.sleep if needed, but pass for now.
+        metrics["generation_latency_ms"] = (time.time() - t_start) * 1000 - metrics["total_latency_ms"]
+        metrics["total_latency_ms"] = (time.time() - t_start) * 1000
         
         yield f'data: {json.dumps({"type": "map_payload", "map_payload": payload.model_dump()}, ensure_ascii=False)}\n\n'
         yield f'data: {json.dumps({"metrics": metrics, "step": "map-intelligence"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
+
+        from app.rag.storage.trace_store import save_rag_request_log
+        save_rag_request_log(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            guest_id=guest_id,
+            query=query,
+            intent="map_intelligence",
+            metrics=metrics,
+            retrieved_docs=[],
+            reranked_docs=[],
+            expanded_docs=[],
+            final_answer=full_answer,
+        )
 
     def _answer_text(self, summary: str, user_mode: str):
         # Hàm này đổi thành stream generator

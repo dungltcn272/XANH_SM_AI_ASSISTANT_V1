@@ -185,9 +185,18 @@ def get_admin_logs(
 
 @router.get("/logs/rag")
 def get_rag_logs(skip: int = 0, limit: int = 50, date: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(RagRequestLog)
+    query = db.query(RagRequestLog).filter(RagRequestLog.intent == "rag")
     if date:
         # Giả định date format 'YYYY-MM-DD'
+        query = query.filter(func.date(RagRequestLog.created_at) == date)
+    logs = [serialize_rag_log(row) for row in query.order_by(RagRequestLog.created_at.desc()).offset(skip).limit(limit).all()]
+    total = query.count()
+    return {"logs": logs, "items": logs, "total": total}
+
+@router.get("/logs/map")
+def get_map_logs(skip: int = 0, limit: int = 50, date: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(RagRequestLog).filter(RagRequestLog.intent == "map_intelligence")
+    if date:
         query = query.filter(func.date(RagRequestLog.created_at) == date)
     logs = [serialize_rag_log(row) for row in query.order_by(RagRequestLog.created_at.desc()).offset(skip).limit(limit).all()]
     total = query.count()

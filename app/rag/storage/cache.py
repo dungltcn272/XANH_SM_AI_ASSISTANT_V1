@@ -90,9 +90,9 @@ class XanhSMRAGCache:
         lowered = clean.lower()
         if "hệ thống bị gián đoạn" in lowered or "câu trả lời có thể chưa hoàn chỉnh" in lowered:
             return False
-        if "há»‡ thá»‘ng bá»‹ giÃ¡n Ä‘oáº¡n" in lowered or "cÃ¢u tráº£ lá»i cÃ³ thá»ƒ chÆ°a hoÃ n chá»‰nh" in lowered:
+        if "há»‡ thá»‘ng bá»‹ giÃ¡n Ä‘oáº¡n" in lowered or "cÃ¢u tráº£ lá» i cÃ³ thá»ƒ chÆ°a hoÃ n chá»‰nh" in lowered:
             return False
-        return clean[-1] in {".", "!", "?", "…", ")", "]", "}", '"', "'", "ạ"}
+        return True
 
     def _payload_from_row(self, row: SemanticCache) -> dict[str, Any] | None:
         try:

@@ -18,6 +18,7 @@ def serialize_rag_log(row: RagRequestLog) -> dict:
         "classification_latency_ms": row.classification_latency_ms or 0,
         "expansion_latency_ms": row.expansion_latency_ms or 0,
         "rerank_latency_ms": row.rerank_latency_ms or 0,
+        "cache_latency_ms": getattr(row, "cache_latency_ms", 0) or 0,
         "total_tokens": row.total_tokens or 0,
         "cost_usd": row.cost_usd or 0,
         "blocked_by_guardrail": bool(row.blocked_by_guardrail),

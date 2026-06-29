@@ -252,6 +252,9 @@ class XanhSMAssistantOrchestrator:
                 payload={"rewritten_query": rewritten_query, "map_slots": nlu_res.get("map_slots")},
             )
             yield from self.map_chain.stream(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
                 query=query,
                 metrics=metrics,
                 t_start=t_start,
