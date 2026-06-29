@@ -4,6 +4,7 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any
 
 from rank_bm25 import BM25Okapi
@@ -12,10 +13,11 @@ from sqlalchemy.orm import Session
 from app.config.settings import settings
 from app.db.models import DocumentChunk
 from app.vectorstore.collections import KNOWLEDGE_COLLECTION
+from app.vectorstore.qdrant_client import get_qdrant_client
 from app.vectorstore.vector_repository import search_vectors
 
 
-_DENSE_SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="rag_dense")
+_SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="rag_search")
 RRF_K = 60
 
 
@@ -61,6 +63,67 @@ def _sql_bm25_search(db: Session, query: str, *, limit: int) -> list[RetrievedCh
             continue
         row = rows[index]
         docs.append(RetrievedChunk(content=row.content, metadata=_metadata(row), score=float(score / max_score), retrieval_source="sql_bm25"))
+    return docs
+
+
+def _scroll_qdrant_payloads(collection: str) -> list[RetrievedChunk]:
+    client = get_qdrant_client()
+    if client is None:
+        return []
+    rows: list[RetrievedChunk] = []
+    offset = None
+    while True:
+        points, offset = client.scroll(
+            collection_name=collection,
+            limit=1000,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+        for point in points:
+            payload = point.payload or {}
+            content = str(payload.get("page_content") or "")
+            metadata = payload.get("metadata") or {}
+            if content:
+                rows.append(RetrievedChunk(content=content, metadata=metadata, retrieval_source="qdrant_bm25"))
+        if offset is None:
+            break
+    return rows
+
+
+@lru_cache(maxsize=4)
+def _qdrant_bm25_index(collection: str) -> tuple[list[RetrievedChunk], BM25Okapi | None]:
+    rows = _scroll_qdrant_payloads(collection)
+    if not rows:
+        return rows, None
+    corpus = [
+        _tokenize(f"{row.metadata.get('title') or ''} {row.metadata.get('section') or ''} {row.content}")
+        for row in rows
+    ]
+    return rows, BM25Okapi(corpus)
+
+
+def _qdrant_bm25_search(query: str, *, collection: str, limit: int) -> list[RetrievedChunk]:
+    rows, bm25 = _qdrant_bm25_index(collection)
+    tokenized_query = _tokenize(query)
+    if bm25 is None or not tokenized_query:
+        return []
+    scores = bm25.get_scores(tokenized_query)
+    ranked = sorted(enumerate(scores), key=lambda item: item[1], reverse=True)[:limit]
+    docs = []
+    max_score = max([score for _, score in ranked] or [1.0]) or 1.0
+    for index, score in ranked:
+        if score <= 0:
+            continue
+        row = rows[index]
+        docs.append(
+            RetrievedChunk(
+                content=row.content,
+                metadata=dict(row.metadata),
+                score=float(score / max_score),
+                retrieval_source="qdrant_bm25",
+            )
+        )
     return docs
 
 
@@ -113,13 +176,19 @@ def _rrf_fuse(*ranked_lists: list[RetrievedChunk], limit: int, rrf_k: int = RRF_
 def retrieve(query: str, *, db: Session, top_k: int | None = None) -> list[RetrievedChunk]:
     limit = top_k or settings.RETRIEVAL_CANDIDATE_LIMIT
 
-    dense_future = _DENSE_SEARCH_EXECUTOR.submit(search_vectors, query, collection=KNOWLEDGE_COLLECTION, limit=limit)
-    sparse_docs = _sql_bm25_search(db, query, limit=limit)
+    dense_future = _SEARCH_EXECUTOR.submit(search_vectors, query, collection=KNOWLEDGE_COLLECTION, limit=limit)
+    sparse_future = _SEARCH_EXECUTOR.submit(_qdrant_bm25_search, query, collection=KNOWLEDGE_COLLECTION, limit=limit)
 
     try:
         dense_items = dense_future.result()
     except Exception:
         dense_items = []
+    try:
+        sparse_docs = sparse_future.result()
+    except Exception:
+        sparse_docs = []
+    if not sparse_docs:
+        sparse_docs = _sql_bm25_search(db, query, limit=limit)
 
     dense_docs = _dense_chunks(dense_items)
     return _rrf_fuse(dense_docs, sparse_docs, limit=limit)

@@ -36,7 +36,7 @@ def _expand_context(db: Session, chunks: list[RetrievedChunk]) -> list[Retrieved
     expanded: list[RetrievedChunk] = []
     seen: set[str] = set()
     max_section_chunks = max(1, settings.MAX_CHUNKS_PER_SECTION)
-    for chunk in chunks:
+    for rank, chunk in enumerate(chunks, start=1):
         metadata = chunk.metadata or {}
         chunk_id = metadata.get("chunk_id")
         chunk_type = metadata.get("chunk_type")
@@ -59,7 +59,7 @@ def _expand_context(db: Session, chunks: list[RetrievedChunk]) -> list[Retrieved
                 continue
 
         parent_id = metadata.get("parent_chunk_id")
-        if parent_id and rerank_score >= settings.CONTEXT_EXPANSION_THRESHOLD:
+        if parent_id and chunk_type != "html_table_full" and rank <= settings.RERANK_TOP_N:
             query = db.query(DocumentChunk).filter(DocumentChunk.metadata_json.contains(parent_id))
             if document_id:
                 query = query.filter(DocumentChunk.document_id == document_id)
