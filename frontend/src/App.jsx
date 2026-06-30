@@ -594,6 +594,19 @@ function MainLayout({ children }) {
                     </ul>
                   </div>
 
+                  {/* Map Intelligence Column */}
+                  <div className="glass-panel p-5 rounded-2xl border border-outline-variant/20 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🗺️</span>
+                      <h3 className="font-bold text-primary text-base">Bản đồ & Chỉ đường</h3>
+                    </div>
+                    <ul className="text-sm space-y-2 text-on-surface-variant list-disc pl-4">
+                      <li><strong>Chỉ đường thông minh:</strong> "Đường từ Ngã tư Sở đến bến xe Mỹ Đình đi thế nào?"</li>
+                      <li><strong>Real-time Traffic:</strong> "Kiểm tra tắc đường quanh khu vực Hồ Gươm".</li>
+                      <li><strong>Tài xế & Xe rảnh:</strong> "Quanh đây có xe Xanh nào đang rảnh không?"</li>
+                    </ul>
+                  </div>
+
                   {/* Merchant Column */}
                   <div className="glass-panel p-5 rounded-2xl border border-outline-variant/20 space-y-3">
                     <div className="flex items-center gap-2">

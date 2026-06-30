@@ -85,19 +85,30 @@ def get_traffic_zones(lat: float, lng: float, radius_km: float = 5.0) -> dict[st
     # Lấy các vùng kẹt xe từ fake data
     traffic_zones = [z for z in ZONES if z.type == "traffic"]
     
-    # Giả lập trả về các vùng kẹt xe
-    results = []
+    # Lọc những vùng nằm trong bán kính radius_km
+    filtered_zones = []
     for z in traffic_zones:
+        dist = ((z.center.lat - lat)**2 + (z.center.lng - lng)**2)**0.5 * 111.0
+        if dist <= radius_km:
+            filtered_zones.append(z)
+            
+    # Giả lập trả về các vùng kẹt xe dưới dạng đường (lines)
+    results = []
+    for z in filtered_zones:
+        points = [
+            {"lat": z.center.lat - 0.002, "lng": z.center.lng - 0.002},
+            {"lat": z.center.lat, "lng": z.center.lng},
+            {"lat": z.center.lat + 0.002, "lng": z.center.lng + 0.002}
+        ]
         results.append({
             "id": z.id,
-            "type": z.type,
+            "type": "traffic",
             "title": z.title,
             "description": z.description,
-            "center": {"lat": z.center.lat, "lng": z.center.lng},
-            "radius_m": z.radius_m,
-            "intensity": z.intensity,
+            "points": points,
+            "metadata": {"delay_minutes": z.intensity * 20},
         })
-    return {"success": True, "zones": results}
+    return {"success": True, "lines": results}
 
 
 def get_driver_density(lat: float, lng: float, radius_km: float = 5.0) -> dict[str, Any]:
@@ -112,25 +123,29 @@ def get_driver_density(lat: float, lng: float, radius_km: float = 5.0) -> dict[s
     
     markers_res = []
     for m in drvs:
-        markers_res.append({
-            "id": m.id,
-            "type": m.type,
-            "title": m.title,
-            "description": m.description,
-            "lat": m.lat,
-            "lng": m.lng,
-            "intensity": m.intensity,
-        })
+        dist = ((m.lat - lat)**2 + (m.lng - lng)**2)**0.5 * 111.0
+        if dist <= radius_km:
+            markers_res.append({
+                "id": m.id,
+                "type": m.type,
+                "title": m.title,
+                "description": m.description,
+                "lat": m.lat,
+                "lng": m.lng,
+                "intensity": m.intensity,
+            })
         
     zones_res = []
     for z in zones:
-        zones_res.append({
-            "id": z.id,
-            "type": z.type,
-            "title": z.title,
-            "description": z.description,
-            "center": {"lat": z.center.lat, "lng": z.center.lng},
-            "radius_m": z.radius_m,
-        })
+        dist = ((z.center.lat - lat)**2 + (z.center.lng - lng)**2)**0.5 * 111.0
+        if dist <= radius_km:
+            zones_res.append({
+                "id": z.id,
+                "type": z.type,
+                "title": z.title,
+                "description": z.description,
+                "center": {"lat": z.center.lat, "lng": z.center.lng},
+                "radius_m": z.radius_m,
+            })
         
     return {"success": True, "markers": markers_res, "zones": zones_res}

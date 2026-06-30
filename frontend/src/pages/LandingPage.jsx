@@ -26,6 +26,7 @@ import {
   Map,
   MapPin,
   Zap,
+  TrafficCone,
 } from 'lucide-react';
 
 const t = {
@@ -134,13 +135,13 @@ const interests = [
   [MapPin, 'Đường từ Hồ Gươm đến sân bay Nội Bài đi thế nào?'],
   [Car, 'Xe VF6 có những màu nào?'],
   [ShieldCheck, 'Chính sách bảo hành pin xe VF5 như thế nào?'],
-  [Utensils, 'Gợi ý món ăn ngon gần đây?'],
+  [TrafficCone, 'Đường từ ngã tư Sở đến bến xe Mỹ Đình có tắc không?'],
 ];
 
 const recentQuestions = [
   ['Từ đây đến Lăng Bác đi đường nào?', 'Vừa xong'],
   ['Giá cước từ sân bay Nội Bài đến Hà Nội?', '2 phút trước'],
-  ['Khu vực Ngã Tư Sở có kẹt xe không?', '10 phút trước'],
+  ['Quanh đây có xe Xanh nào đang rảnh không?', '10 phút trước'],
   ['Chính sách bảo hành pin xe VF5 như thế nào?', '15 phút trước'],
   ['Tin tức mới nhất về Xanh SM?', '1 giờ trước'],
 ];

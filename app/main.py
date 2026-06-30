@@ -40,7 +40,7 @@ except Exception:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, chat, conversations, reviews, food, notifications, map
+from app.api import auth, chat, conversations, reviews, food, notifications, map, map_realtime
 from app.api.admin import router as admin_router
 
 app = FastAPI(
@@ -48,6 +48,12 @@ app = FastAPI(
     description="Xanh SM Enterprise Production RAG System (Phase 9)",
     version="9.0.0"
 )
+
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    from app.map_intelligence.simulator import start_simulator
+    asyncio.create_task(start_simulator())
 
 app.add_middleware(
     CORSMiddleware,
@@ -69,6 +75,7 @@ app.include_router(conversations.router, prefix="/api/conversations", tags=["con
 app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
 app.include_router(food.router, prefix="/api/food", tags=["food"])
 app.include_router(map.router, prefix="/api/map", tags=["map"])
+app.include_router(map_realtime.router, tags=["map_realtime"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(admin_router, prefix="/api/admin")
 

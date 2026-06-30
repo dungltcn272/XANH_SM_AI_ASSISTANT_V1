@@ -1,23 +1,101 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Circle, Layers, MapPin, Navigation, Route, Store, TrafficCone, Users } from 'lucide-react';
 import { Circle as LeafletCircle, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { api } from '../../api';
+
+// Removed CSS transition for vehicle-marker to avoid panning lag
 
 const MapFitter = ({ markers, zones, routes }) => {
   const map = useMap();
+
   useEffect(() => {
     const bounds = L.latLngBounds();
-    let hasData = false;
-    markers.forEach(m => { bounds.extend([m.lat, m.lng]); hasData = true; });
-    zones.forEach(z => { bounds.extend([z.center.lat, z.center.lng]); hasData = true; });
-    routes.forEach(r => r.points.forEach(p => { bounds.extend([p.lat, p.lng]); hasData = true; }));
+    let hasPoints = false;
+
+    if (markers?.length > 0) {
+      markers.forEach(m => bounds.extend([m.lat, m.lng]));
+      hasPoints = true;
+    }
     
-    if (hasData) {
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    if (zones?.length > 0) {
+      zones.forEach(z => {
+        const center = L.latLng(z.center.lat, z.center.lng);
+        // Estimate radius in degrees (~111km per degree)
+        const radiusDeg = z.radius_m / 111000;
+        bounds.extend([center.lat + radiusDeg, center.lng + radiusDeg]);
+        bounds.extend([center.lat - radiusDeg, center.lng - radiusDeg]);
+      });
+      hasPoints = true;
+    }
+    
+    if (routes?.length > 0) {
+      routes.forEach(r => {
+        if (r.points?.length > 0) {
+          r.points.forEach(p => bounds.extend([p.lat, p.lng]));
+        }
+      });
+      hasPoints = true;
+    }
+
+    if (hasPoints) {
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
     }
   }, [map, markers, zones, routes]);
+
   return null;
+};
+
+// Smoothly interpolates lat/lng without using CSS transition on Leaflet container
+const AnimatedMarker = ({ position, icon, children }) => {
+  const markerRef = useRef(null);
+  const animRef = useRef(null);
+  const [initialPos] = useState(position);
+
+    const lat = position[0];
+    const lng = position[1];
+
+    useEffect(() => {
+    if (markerRef.current) {
+      const marker = markerRef.current;
+      const startLatLng = marker.getLatLng();
+      const endLatLng = L.latLng(lat, lng);
+      
+      if (startLatLng.distanceTo(endLatLng) > 5000) {
+        marker.setLatLng(endLatLng);
+        return;
+      }
+
+      if (startLatLng.equals(endLatLng)) return;
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+      
+      let startTime = null;
+      const duration = 2000;
+
+      const animate = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        
+        const currentLat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * progress;
+        const currentLng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * progress;
+        
+        marker.setLatLng([currentLat, currentLng]);
+
+        if (progress < 1) {
+          animRef.current = requestAnimationFrame(animate);
+        }
+      };
+      
+      animRef.current = requestAnimationFrame(animate);
+    }
+    
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
+  }, [lat, lng]);
+
+  return <Marker ref={markerRef} position={initialPos} icon={icon}>{children}</Marker>;
 };
 
 const LAYER_META = {
@@ -43,6 +121,23 @@ const markerIcon = (type, intensity = 0.5) => L.divIcon({
   iconAnchor: [16, 16],
 });
 
+const vehicleIcon = (type, status, heading) => {
+  const imgUrl = type === 'bike' ? '/bike.png' : '/car.png';
+  const indicatorColor = status === 'available' ? '#10b981' : '#ef4444';
+  
+  return L.divIcon({
+    className: 'vehicle-marker',
+    html: `
+      <div style="position:relative; width:36px; height:36px; transform: rotate(${heading}deg); transition: transform 0.5s ease-out;">
+        <img src="${imgUrl}" style="width:100%; height:100%; object-fit:contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));" />
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:10px; height:10px; border-radius:50%; background:${indicatorColor}; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.3);"></div>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+};
+
 const zoneColor = (type) => {
   if (type === 'traffic') return LAYER_META.traffic.color;
   if (type === 'driver_density') return LAYER_META.drivers.color;
@@ -65,7 +160,30 @@ const markerLayer = (type) => {
 export const MapInsightCard = ({ payload }) => {
   const initialLayers = (payload?.layers && payload.layers.length > 0) ? payload.layers : Object.keys(LAYER_META);
   const [visibleLayers, setVisibleLayers] = useState(() => new Set(initialLayers));
-  const center = [Number(payload?.center?.lat) || 10.7769, Number(payload?.center?.lng) || 106.7009];
+  const center = useMemo(() => [Number(payload?.center?.lat) || 10.7769, Number(payload?.center?.lng) || 106.7009], [payload?.center?.lat, payload?.center?.lng]);
+  const [realtimeVehicles, setRealtimeVehicles] = useState([]);
+
+  // Fetch realtime vehicles
+  useEffect(() => {
+    let mounted = true;
+    const fetchVehicles = async () => {
+      try {
+        const res = await api.getMapRealtimeVehicles(center[0], center[1]);
+        if (mounted && res.success) {
+          setRealtimeVehicles(res.drivers);
+        }
+      } catch (err) {
+        console.error("Error fetching vehicles:", err);
+      }
+    };
+
+    fetchVehicles();
+    const interval = setInterval(fetchVehicles, 2000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [center]);
 
   const markers = useMemo(
     () => (payload?.markers || []).filter((item) => visibleLayers.has(markerLayer(item.type))),
@@ -75,8 +193,11 @@ export const MapInsightCard = ({ payload }) => {
     () => (payload?.zones || []).filter((item) => visibleLayers.has(zoneLayer(item.type))),
     [payload?.zones, visibleLayers]
   );
-  const routes = useMemo(
-    () => (payload?.routes || []).filter(() => visibleLayers.has('shortcuts')),
+  const displayRoutes = useMemo(
+    () => (payload?.routes || []).filter(r => {
+       if (r.type === 'traffic') return visibleLayers.has('traffic');
+       return visibleLayers.has('shortcuts'); 
+    }),
     [payload?.routes, visibleLayers]
   );
 
@@ -131,12 +252,11 @@ export const MapInsightCard = ({ payload }) => {
 
       <div className="h-[320px] md:h-[420px] w-full relative">
         <MapContainer center={center} zoom={14} className="w-full h-full z-0 relative font-sans" zoomControl={false}>
-          <MapFitter markers={markers} zones={zones} routes={routes} />
+          <MapFitter markers={markers} zones={zones} routes={displayRoutes} />
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-
           {zones.map((zone) => (
             <LeafletCircle
               key={zone.id}
@@ -157,8 +277,9 @@ export const MapInsightCard = ({ payload }) => {
             </LeafletCircle>
           ))}
 
-          {routes.map((route, idx) => {
-            const color = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'][idx % 4];
+          {displayRoutes.map((route, idx) => {
+            const color = route.type === 'traffic' ? '#ef4444' : ['#3b82f6', '#10b981', '#f59e0b'][idx % 3];
+            const weight = route.type === 'traffic' ? 8 : 6;
             const pts = route.points || [];
             const start = pts[0];
             const end = pts[pts.length - 1];
@@ -166,7 +287,7 @@ export const MapInsightCard = ({ payload }) => {
               <React.Fragment key={route.id}>
                 <Polyline
                   positions={pts.map((point) => [point.lat, point.lng])}
-                  pathOptions={{ color: color, weight: 6, opacity: 0.8 }}
+                  pathOptions={{ color: color, weight: weight, opacity: 0.8 }}
                 >
                   <Popup>
                     <strong>{route.title}</strong>
@@ -175,12 +296,12 @@ export const MapInsightCard = ({ payload }) => {
                     {route.eta_saving_minutes ? <><br />Tiết kiệm khoảng {route.eta_saving_minutes} phút</> : null}
                   </Popup>
                 </Polyline>
-                {start && (
+                {route.type !== 'traffic' && start && (
                   <LeafletCircle center={[start.lat, start.lng]} radius={45} pathOptions={{ color: 'white', fillColor: '#10b981', fillOpacity: 1, weight: 3 }}>
                     <Popup>Điểm xuất phát</Popup>
                   </LeafletCircle>
                 )}
-                {end && (
+                {route.type !== 'traffic' && end && (
                   <LeafletCircle center={[end.lat, end.lng]} radius={45} pathOptions={{ color: 'white', fillColor: '#ef4444', fillOpacity: 1, weight: 3 }}>
                     <Popup>Điểm đến</Popup>
                   </LeafletCircle>
@@ -198,6 +319,25 @@ export const MapInsightCard = ({ payload }) => {
                 {marker.metadata?.distance_km ? <><br />Cách tâm bản đồ {marker.metadata.distance_km} km</> : null}
               </Popup>
             </Marker>
+          ))}
+
+          {/* Render Realtime Vehicles */}
+          {visibleLayers.has('drivers') && realtimeVehicles.map((vehicle) => (
+            <AnimatedMarker 
+              key={vehicle.driver_id} 
+              position={[vehicle.lat, vehicle.lng]} 
+              icon={vehicleIcon(vehicle.vehicle_type, vehicle.status, vehicle.heading)}
+            >
+              <Popup>
+                <strong>{vehicle.driver_id} - {vehicle.vehicle_type === 'bike' ? 'Xanh Bike' : 'Xanh Car'}</strong>
+                <br />
+                Trạng thái: {vehicle.status === 'available' ? 'Đang rảnh' : 'Đang có khách'}
+                <br />
+                Đánh giá: ⭐ {vehicle.rating}
+                <br />
+                Tốc độ: {vehicle.speed} km/h
+              </Popup>
+            </AnimatedMarker>
           ))}
         </MapContainer>
       </div>

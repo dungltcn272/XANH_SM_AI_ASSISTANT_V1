@@ -196,16 +196,27 @@ class MapIntelligenceChain:
                     yield sse_pipeline_step("map_traffic", "Đang tải dữ liệu giao thông...", 0.5)
                     res = get_traffic_zones(lat, lng)
                     if res.get("success"):
-                        for z in res["zones"]:
-                            zones.append(MapZone(
-                                id=z["id"],
-                                type=z["type"],
-                                title=z["title"],
-                                description=z["description"],
-                                center=GeoPoint(lat=z["center"]["lat"], lng=z["center"]["lng"]),
-                                radius_m=z["radius_m"],
-                                intensity=z.get("intensity", 0.5)
-                            ))
+                        if "zones" in res:
+                            for z in res["zones"]:
+                                zones.append(MapZone(
+                                    id=z["id"],
+                                    type=z["type"],
+                                    title=z["title"],
+                                    description=z["description"],
+                                    center=GeoPoint(lat=z["center"]["lat"], lng=z["center"]["lng"]),
+                                    radius_m=z["radius_m"],
+                                    intensity=z.get("intensity", 0.5)
+                                ))
+                        if "lines" in res:
+                            for line in res["lines"]:
+                                routes.append(MapRouteHint(
+                                    id=line["id"],
+                                    type=line["type"],
+                                    title=line["title"],
+                                    description=line["description"],
+                                    points=[GeoPoint(lat=p["lat"], lng=p["lng"]) for p in line["points"]],
+                                    metadata=line.get("metadata", {})
+                                ))
                         layers.add("traffic")
                     tool_res_str = json.dumps(res, ensure_ascii=False)
                     
@@ -278,6 +289,9 @@ class MapIntelligenceChain:
                 center_lat, center_lng = routes[0].points[0].lat, routes[0].points[0].lng
             else:
                 center_lat, center_lng = 21.0278, 105.8342 # Default HN
+
+        # Luôn bật layer drivers cho Realtime Map
+        layers.add("drivers")
 
         payload = MapPayload(
             center=GeoPoint(lat=center_lat, lng=center_lng),

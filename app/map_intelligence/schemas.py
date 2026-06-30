@@ -37,6 +37,7 @@ class MapZone(BaseModel):
 
 class MapRouteHint(BaseModel):
     id: str
+    type: Literal["navigation", "traffic"] = "navigation"
     title: str
     description: str | None = None
     points: list[GeoPoint]

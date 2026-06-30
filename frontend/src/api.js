@@ -100,6 +100,12 @@ export const api = {
     return res.json();
   },
 
+  getMapRealtimeVehicles: async (lat, lng, radius_km = 5.0) => {
+    const res = await api._fetch(`${API_BASE}/map/realtime-vehicles?lat=${lat}&lng=${lng}&radius_km=${radius_km}`);
+    if (!res.ok) throw new Error('API Error');
+    return res.json();
+  },
+
   getBasicLogs: async (skip = 0, limit = 50, intent = '', date = '') => {
     let url = `${API_BASE}/admin/logs/basic?skip=${skip}&limit=${limit}`;
     if (intent && intent !== 'all') {
