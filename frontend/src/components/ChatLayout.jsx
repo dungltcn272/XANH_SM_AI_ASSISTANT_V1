@@ -3,6 +3,7 @@ import 'regenerator-runtime/runtime';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { useSearchParams } from 'react-router-dom';
 import { User, Loader2, Plus, Mic, MicOff, Send, Car, Key, Tag, Newspaper, ShieldCheck, Gift, Info, X, Sparkles, PencilLine, Image as ImageIcon, Search, MapPin, Utensils, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '../api';
@@ -1145,7 +1146,7 @@ export default function ChatLayout() {
       <div className="flex flex-col gap-4">
         {contentForMarkdown && (
           <ReactMarkdown 
-            remarkPlugins={[remarkGfm]}
+            remarkPlugins={[remarkGfm, remarkBreaks]}
             components={markdownComponents}
           >
             {contentForMarkdown}
@@ -1161,7 +1162,7 @@ export default function ChatLayout() {
           typeof part === 'string' ? (
             <ReactMarkdown 
               key={i}
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={[remarkGfm, remarkBreaks]}
               components={markdownComponents}
             >
               {part}

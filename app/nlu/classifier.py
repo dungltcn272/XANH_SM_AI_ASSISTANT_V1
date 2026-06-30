@@ -186,9 +186,8 @@ class XanhSMClassifier:
                     "max_tokens": max_tokens,
                 }
                 
-                # An toàn: Chỉ ép response_format JSON cho các model của OpenAI (hỗ trợ tốt chuẩn này).
-                # Các model Open-source (Qwen, Llama...) qua Groq có thể báo lỗi hoặc không hỗ trợ JSON mode thuần tuý
-                if "gpt" in target_model.lower():
+                # An toàn: Chỉ ép response_format JSON cho các model của OpenAI hoặc Groq
+                if "gpt" in target_model.lower() or "llama" in target_model.lower() or "mixtral" in target_model.lower():
                     kwargs["response_format"] = {"type": "json_object"}
                     
                 response = client.chat.completions.create(**kwargs)
@@ -198,13 +197,20 @@ class XanhSMClassifier:
                 # Robust JSON extraction
                 def extract_json(text: str) -> dict:
                     import re, json
+                    def clean_and_load(s: str) -> dict:
+                        try:
+                            return json.loads(s)
+                        except json.JSONDecodeError:
+                            s = re.sub(r',\s*([\]}])', r'\1', s)
+                            return json.loads(s)
+
                     text = text.strip()
-                    try: return json.loads(text)
+                    try: return clean_and_load(text)
                     except: pass
                     
                     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
                     if match:
-                        try: return json.loads(match.group(1))
+                        try: return clean_and_load(match.group(1))
                         except: pass
                     
                     start = text.find('{')
@@ -215,13 +221,14 @@ class XanhSMClassifier:
                             elif char == '}':
                                 bc -= 1
                                 if bc == 0:
-                                    try: return json.loads(text[start:start+i+1])
+                                    try: return clean_and_load(text[start:start+i+1])
                                     except: break
                     
                     start = text.find('{')
                     end = text.rfind('}')
                     if start != -1 and end != -1 and end > start:
-                        return json.loads(text[start:end+1])
+                        try: return clean_and_load(text[start:end+1])
+                        except: pass
                     return {}
 
                 return {

@@ -6,13 +6,23 @@ from typing import Any
 import uuid
 import logging
 
-from app.assistant.events import sse_pipeline_step
+from app.assistant.events import sse_pipeline_step, stream_plain_answer
 from app.map_intelligence.schemas import MapPayload, GeoPoint, MapMarker, MapRouteHint, MapZone
 from app.map_intelligence.tools import search_places, get_osrm_routes, get_traffic_zones, get_driver_density
 from app.core.llm import get_llm_client
 from app.core.config import settings as config
+from app.prompts.map_prompts import MAP_INTELLIGENCE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
+
+def map_location_payload(query: str) -> dict[str, Any]:
+    return {
+        "title": "Anh/chị muốn tìm đường từ đâu?",
+        "query": query,
+        "address_placeholder": "Nhập địa chỉ xuất phát",
+        "current_location_label": "Dùng vị trí hiện tại",
+        "submit_label": "Xác nhận",
+    }
 
 # Khai báo cấu trúc JSON Schema của các tools để báo cho LLM biết
 MAP_TOOLS = [
@@ -87,9 +97,29 @@ class MapIntelligenceChain:
     ):
         slots = nlu_map_slots or {}
         lat, lng = self._resolve_location(query, slots, food_context)
-        # Fallback to HCM center if location is unknown
         if lat is None or lng is None:
-            lat, lng = 10.7769, 106.7009
+            from app.assistant.system_log import save_system_log
+            trace_id = str(uuid.uuid4())
+            metrics["map_trace_id"] = trace_id
+            save_system_log(
+                node="map.location",
+                event="missing_location",
+                trace_id=trace_id,
+                conversation_id=conversation_id,
+                user_id=user_id,
+                guest_id=guest_id,
+                query=query,
+                intent="map_intelligence",
+                payload={"food_context": food_context, "nlu_map_slots": nlu_map_slots},
+            )
+            location_payload = map_location_payload(query)
+            answer = "Dạ, anh/chị vui lòng xác nhận vị trí xuất phát để em có thể tìm đường chính xác nhất nhé."
+            yield sse_pipeline_step("map_missing_info", "Em cần thêm vị trí xuất phát...", 0.42)
+            yield from stream_plain_answer(answer)
+            yield f'data: {json.dumps({"type": "food_missing_info", "answer": answer, "ui_form": location_payload, "food_location_request": location_payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
+            yield f'data: {json.dumps({"metrics": metrics, "step": "map-missing-location"}, ensure_ascii=False)}\n\n'
+            yield "data: [DONE]\n\n"
+            return
             
         inferred_mode = user_mode or slots.get("user_mode") or "customer"
 
@@ -105,18 +135,7 @@ class MapIntelligenceChain:
         # Agent Loop
         client = get_llm_client(config.MAP_ANSWER_MODEL)
         
-        system_prompt = f"""Bạn là trợ lý ảo của Xanh SM chuyên trách về bản đồ.
-Vị trí hiện tại của người dùng là: vĩ độ {lat}, kinh độ {lng}.
-
-Bạn có các công cụ:
-- search_places: tìm toạ độ địa điểm.
-- get_osrm_routes: vẽ đường đi (chỉ gọi sau khi đã có toạ độ đích).
-- get_traffic_zones: xem kẹt xe.
-- get_driver_density: xem tài xế.
-
-Nhiệm vụ: Gọi công cụ tương ứng để thu thập dữ liệu phục vụ trả lời câu hỏi của người dùng.
-Chỉ gọi các công cụ liên quan trực tiếp đến câu hỏi. Nếu đã đủ dữ liệu, hãy trả lời thẳng câu hỏi (trực tiếp, súc tích).
-"""
+        system_prompt = MAP_INTELLIGENCE_SYSTEM_PROMPT.format(lat=lat, lng=lng)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": query}
@@ -261,7 +280,7 @@ Chỉ gọi các công cụ liên quan trực tiếp đến câu hỏi. Nếu đ
             if chunk.choices and chunk.choices[0].delta.content:
                 token = chunk.choices[0].delta.content
                 full_answer += token
-                yield f'data: {token}\n\n'
+                yield f"data: {token.replace('\n', '\ndata: ')}\n\n"
                 
         # Cập nhật summary bằng full_answer để lưu vào payload
         payload.summary = full_answer

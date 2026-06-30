@@ -1,5 +1,4 @@
-// Import useEffect from react
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Circle, Layers, MapPin, Navigation, Route, Store, TrafficCone, Users } from 'lucide-react';
 import { Circle as LeafletCircle, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -100,9 +99,9 @@ export const MapInsightCard = ({ payload }) => {
             <MapPin size={18} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-base md:text-xl font-black text-on-surface leading-tight">Bản đồ vận hành trực tuyến</h3>
+            <h3 className="text-base md:text-xl font-black text-on-surface leading-tight">Bản đồ trực tuyến</h3>
             <p className="mt-1 text-xs md:text-sm text-on-surface-variant/85 leading-relaxed">
-              {payload.summary || 'Dữ liệu được cập nhật trực tiếp từ hệ thống nội bộ để hỗ trợ điều phối vận hành.'}
+              Dữ liệu được cập nhật từ hệ thống vệ tinh và điều hướng trực tuyến.
             </p>
           </div>
         </div>
@@ -158,20 +157,37 @@ export const MapInsightCard = ({ payload }) => {
             </LeafletCircle>
           ))}
 
-          {routes.map((route) => (
-            <Polyline
-              key={route.id}
-              positions={(route.points || []).map((point) => [point.lat, point.lng])}
-              pathOptions={{ color: LAYER_META.shortcuts.color, weight: 5, opacity: 0.75 }}
-            >
-              <Popup>
-                <strong>{route.title}</strong>
-                <br />
-                {route.description}
-                {route.eta_saving_minutes ? <><br />Tiết kiệm khoảng {route.eta_saving_minutes} phút</> : null}
-              </Popup>
-            </Polyline>
-          ))}
+          {routes.map((route, idx) => {
+            const color = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'][idx % 4];
+            const pts = route.points || [];
+            const start = pts[0];
+            const end = pts[pts.length - 1];
+            return (
+              <React.Fragment key={route.id}>
+                <Polyline
+                  positions={pts.map((point) => [point.lat, point.lng])}
+                  pathOptions={{ color: color, weight: 6, opacity: 0.8 }}
+                >
+                  <Popup>
+                    <strong>{route.title}</strong>
+                    <br />
+                    {route.description}
+                    {route.eta_saving_minutes ? <><br />Tiết kiệm khoảng {route.eta_saving_minutes} phút</> : null}
+                  </Popup>
+                </Polyline>
+                {start && (
+                  <LeafletCircle center={[start.lat, start.lng]} radius={45} pathOptions={{ color: 'white', fillColor: '#10b981', fillOpacity: 1, weight: 3 }}>
+                    <Popup>Điểm xuất phát</Popup>
+                  </LeafletCircle>
+                )}
+                {end && (
+                  <LeafletCircle center={[end.lat, end.lng]} radius={45} pathOptions={{ color: 'white', fillColor: '#ef4444', fillOpacity: 1, weight: 3 }}>
+                    <Popup>Điểm đến</Popup>
+                  </LeafletCircle>
+                )}
+              </React.Fragment>
+            );
+          })}
 
           {markers.map((marker) => (
             <Marker key={marker.id} position={[marker.lat, marker.lng]} icon={markerIcon(marker.type, marker.intensity)}>
