@@ -78,8 +78,7 @@ async def get_realtime_vehicles(lat: float, lng: float, radius_km: float = 15.0,
             d_copy["distance"] = min_dist
             drivers.append(d_copy)
             
-    # Sort by distance and get top 200
-    drivers.sort(key=lambda x: x["distance"])
-    drivers = drivers[:200]
+    # Không limit 200 nữa để tránh việc xe bị biến mất đột ngột khi nằm trong bán kính
+    # Return all cars within radius
     
     return {"success": True, "drivers": drivers}

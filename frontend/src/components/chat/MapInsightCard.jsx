@@ -48,13 +48,37 @@ const MapFitter = ({ markers, zones, routes }) => {
 };
 
 // Smoothly interpolates lat/lng without using CSS transition on Leaflet container
-const AnimatedMarker = ({ position, icon, children }) => {
+const AnimatedMarker = ({ vehicle, children }) => {
   const markerRef = useRef(null);
   const animRef = useRef(null);
-  const [initialPos] = useState(position);
+  const [initialPos] = useState([vehicle.lat, vehicle.lng]);
 
-    const lat = position[0];
-    const lng = position[1];
+  const lat = vehicle.lat;
+  const lng = vehicle.lng;
+
+  const icon = useMemo(() => vehicleIcon(vehicle.vehicle_type, vehicle.status), [vehicle.vehicle_type, vehicle.status]);
+
+  const currentRotationRef = useRef(vehicle.heading);
+
+  useEffect(() => {
+    if (markerRef.current && markerRef.current._icon) {
+      const innerDiv = markerRef.current._icon.querySelector('.vehicle-icon-inner');
+      if (innerDiv) {
+        let currentRot = currentRotationRef.current;
+        let target = vehicle.heading;
+        
+        // Calculate shortest path
+        let diff = target - (currentRot % 360);
+        if (diff > 180) diff -= 360;
+        else if (diff < -180) diff += 360;
+        
+        let newRot = currentRot + diff;
+        currentRotationRef.current = newRot;
+
+        innerDiv.style.transform = `rotate(${newRot}deg)`;
+      }
+    }
+  }, [vehicle.heading]);
 
     useEffect(() => {
     if (markerRef.current) {
@@ -125,14 +149,14 @@ const markerIcon = (type, intensity = 0.5) => L.divIcon({
   iconAnchor: [16, 16],
 });
 
-const vehicleIcon = (type, status, heading) => {
+const vehicleIcon = (type, status) => {
   const imgUrl = type === 'bike' ? '/bike.png' : '/car.png';
   const indicatorColor = status === 'available' ? '#10b981' : '#ef4444';
   
   return L.divIcon({
     className: 'vehicle-marker',
     html: `
-      <div style="position:relative; width:36px; height:36px; transform: rotate(${heading}deg); transition: transform 0.5s ease-out;">
+      <div class="vehicle-icon-inner" style="position:relative; width:36px; height:36px; transition: transform 0.5s ease-out;">
         <img src="${imgUrl}" style="width:100%; height:100%; object-fit:contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));" />
         <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:10px; height:10px; border-radius:50%; background:${indicatorColor}; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.3);"></div>
       </div>
@@ -353,8 +377,7 @@ export const MapInsightCard = ({ payload }) => {
           {visibleLayers.has('drivers') && realtimeVehicles.map((vehicle) => (
             <AnimatedMarker 
               key={vehicle.driver_id} 
-              position={[vehicle.lat, vehicle.lng]} 
-              icon={vehicleIcon(vehicle.vehicle_type, vehicle.status, vehicle.heading)}
+              vehicle={vehicle}
             >
               <Popup>
                 <strong>{vehicle.driver_id} - {vehicle.vehicle_type === 'bike' ? 'Xanh Bike' : 'Xanh Car'}</strong>
