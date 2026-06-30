@@ -1,19 +1,78 @@
 from __future__ import annotations
 
 import json
-import re
 import time
 from typing import Any
+import uuid
+import logging
 
-from app.assistant.events import sse_pipeline_step, stream_plain_answer
-from app.map_intelligence.schemas import MapQuery
-from app.map_intelligence.service import MapIntelligenceService
+from app.assistant.events import sse_pipeline_step
+from app.map_intelligence.schemas import MapPayload, GeoPoint, MapMarker, MapRouteHint, MapZone
+from app.map_intelligence.tools import search_places, get_osrm_routes, get_traffic_zones, get_driver_density
+from app.core.llm import get_llm_client
+from app.core.config import settings as config
+
+logger = logging.getLogger(__name__)
+
+# Khai báo cấu trúc JSON Schema của các tools để báo cho LLM biết
+MAP_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_places",
+            "description": "Tìm kiếm toạ độ của một địa danh cụ thể (VD: Jiro Sushi, Landmark 81).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Tên địa điểm cần tìm kiếm"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_osrm_routes",
+            "description": "Lấy thông tin lộ trình đường đi giữa 2 toạ độ (điểm xuất phát và điểm đến).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "end_lat": {"type": "number", "description": "Vĩ độ điểm đến"},
+                    "end_lng": {"type": "number", "description": "Kinh độ điểm đến"}
+                },
+                "required": ["end_lat", "end_lng"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_traffic_zones",
+            "description": "Lấy thông tin các điểm/vùng đang kẹt xe xung quanh.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_driver_density",
+            "description": "Lấy thông tin vị trí các tài xế hoặc vùng có nhiều tài xế.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    }
+]
 
 
 class MapIntelligenceChain:
-    def __init__(self):
-        self.service = MapIntelligenceService()
-
     def stream(
         self,
         conversation_id: str | None = None,
@@ -28,34 +87,184 @@ class MapIntelligenceChain:
     ):
         slots = nlu_map_slots or {}
         lat, lng = self._resolve_location(query, slots, food_context)
-        inferred_mode = user_mode or slots.get("user_mode") or self._infer_user_mode(query)
-        radius_km = float(slots.get("radius_km") or 5.0)
-        layers = slots.get("layers") if isinstance(slots.get("layers"), list) else None
+        # Fallback to HCM center if location is unknown
+        if lat is None or lng is None:
+            lat, lng = 10.7769, 106.7009
+            
+        inferred_mode = user_mode or slots.get("user_mode") or "customer"
 
         metrics["intent"] = "map_intelligence"
-        metrics["map_layers"] = layers
-        metrics["map_user_mode"] = inferred_mode
-        yield sse_pipeline_step("map_fake_api", "Đang lấy dữ liệu bản đồ mô phỏng...", 0.42)
-        payload = self.service.get_payload(
-            MapQuery(
-                query=query,
-                lat=lat,
-                lng=lng,
-                radius_km=radius_km,
-                layers=layers,
-                user_mode=inferred_mode if inferred_mode in {"customer", "driver"} else "customer",
+        yield sse_pipeline_step("map_agent", "Đang suy luận nhu cầu bản đồ...", 0.3)
+        
+        # State để xây dựng MapPayload
+        markers: list[MapMarker] = []
+        routes: list[MapRouteHint] = []
+        zones: list[MapZone] = []
+        layers = set(["demand"])
+
+        # Agent Loop
+        client = get_llm_client(config.MAP_ANSWER_MODEL)
+        
+        system_prompt = f"""Bạn là trợ lý ảo của Xanh SM chuyên trách về bản đồ.
+Vị trí hiện tại của người dùng là: vĩ độ {lat}, kinh độ {lng}.
+
+Bạn có các công cụ:
+- search_places: tìm toạ độ địa điểm.
+- get_osrm_routes: vẽ đường đi (chỉ gọi sau khi đã có toạ độ đích).
+- get_traffic_zones: xem kẹt xe.
+- get_driver_density: xem tài xế.
+
+Nhiệm vụ: Gọi công cụ tương ứng để thu thập dữ liệu phục vụ trả lời câu hỏi của người dùng.
+Chỉ gọi các công cụ liên quan trực tiếp đến câu hỏi. Nếu đã đủ dữ liệu, hãy trả lời thẳng câu hỏi (trực tiếp, súc tích).
+"""
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": query}
+        ]
+
+        max_iterations = 3
+        
+        for iteration in range(max_iterations):
+            response = client.chat.completions.create(
+                model=config.MAP_ANSWER_MODEL,
+                messages=messages,
+                tools=MAP_TOOLS,
+                tool_choice="auto",
+                temperature=0.0
             )
+            
+            message = response.choices[0].message
+            messages.append(message)
+            
+            if not message.tool_calls:
+                break
+                
+            for tool_call in message.tool_calls:
+                func_name = tool_call.function.name
+                args = {}
+                try:
+                    args = json.loads(tool_call.function.arguments)
+                except:
+                    pass
+                
+                tool_res_str = "{}"
+                if func_name == "search_places":
+                    yield sse_pipeline_step("map_search", f"Đang tìm kiếm {args.get('query')}...", 0.5)
+                    res = search_places(args.get("query", ""), lat, lng)
+                    if res.get("found"):
+                        markers.append(MapMarker(
+                            id=str(uuid.uuid4()),
+                            type="restaurant", # Có thể general hơn
+                            title=res["title"],
+                            description="Kết quả tìm kiếm",
+                            lat=res["lat"],
+                            lng=res["lng"]
+                        ))
+                        layers.add("restaurants")
+                    tool_res_str = json.dumps(res, ensure_ascii=False)
+                    
+                elif func_name == "get_osrm_routes":
+                    yield sse_pipeline_step("map_route", "Đang tính toán lộ trình...", 0.6)
+                    res = get_osrm_routes(lat, lng, args.get("end_lat", lat), args.get("end_lng", lng))
+                    if res.get("success"):
+                        for r in res["routes"]:
+                            routes.append(MapRouteHint(
+                                id=r["id"],
+                                title=r["title"],
+                                description=f"Khoảng cách {r['distance_km']}km, thời gian {r['duration_min']} phút",
+                                points=[GeoPoint(lat=p["lat"], lng=p["lng"]) for p in r["points"]],
+                                eta_saving_minutes=None
+                            ))
+                        layers.add("shortcuts")
+                    tool_res_str = json.dumps(res, ensure_ascii=False)
+                    
+                elif func_name == "get_traffic_zones":
+                    yield sse_pipeline_step("map_traffic", "Đang tải dữ liệu giao thông...", 0.5)
+                    res = get_traffic_zones(lat, lng)
+                    if res.get("success"):
+                        for z in res["zones"]:
+                            zones.append(MapZone(
+                                id=z["id"],
+                                type=z["type"],
+                                title=z["title"],
+                                description=z["description"],
+                                center=GeoPoint(lat=z["center"]["lat"], lng=z["center"]["lng"]),
+                                radius_m=z["radius_m"],
+                                intensity=z.get("intensity", 0.5)
+                            ))
+                        layers.add("traffic")
+                    tool_res_str = json.dumps(res, ensure_ascii=False)
+                    
+                elif func_name == "get_driver_density":
+                    yield sse_pipeline_step("map_drivers", "Đang tìm kiếm tài xế...", 0.5)
+                    res = get_driver_density(lat, lng)
+                    if res.get("success"):
+                        for m in res["markers"]:
+                            markers.append(MapMarker(
+                                id=m["id"],
+                                type=m["type"],
+                                title=m["title"],
+                                description=m["description"],
+                                lat=m["lat"],
+                                lng=m["lng"],
+                                intensity=m.get("intensity", 0.5)
+                            ))
+                        for z in res["zones"]:
+                            zones.append(MapZone(
+                                id=z["id"],
+                                type=z["type"],
+                                title=z["title"],
+                                description=z["description"],
+                                center=GeoPoint(lat=z["center"]["lat"], lng=z["center"]["lng"]),
+                                radius_m=z["radius_m"]
+                            ))
+                        layers.add("drivers")
+                    tool_res_str = json.dumps(res, ensure_ascii=False)
+                else:
+                    tool_res_str = json.dumps({"error": "unknown tool"})
+                    
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": func_name,
+                    "content": tool_res_str
+                })
+
+        # Final answer streaming
+        payload = MapPayload(
+            center=GeoPoint(lat=lat, lng=lng),
+            zoom=14,
+            layers=list(layers),
+            markers=markers,
+            zones=zones,
+            routes=routes,
+            summary="Dữ liệu tổng hợp từ Agent" # Có thể update
         )
+        
         metrics["map_marker_count"] = len(payload.markers)
         metrics["map_zone_count"] = len(payload.zones)
         metrics["map_route_count"] = len(payload.routes)
         metrics["total_latency_ms"] = (time.time() - t_start) * 1000
 
-        answer_stream = self._answer_text(payload.summary, inferred_mode, query)
+        yield sse_pipeline_step("map_answer", "Đang trả lời...", 0.8)
+        
+        # Tạo stream trả lời cuối cùng dựa trên lịch sử messages
+        response_stream = client.chat.completions.create(
+            model=config.MAP_ANSWER_MODEL,
+            messages=messages,
+            temperature=0.3,
+            stream=True
+        )
+        
         full_answer = ""
-        for token in answer_stream:
-            full_answer += token
-            yield f'data: {token}\n\n'
+        for chunk in response_stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                token = chunk.choices[0].delta.content
+                full_answer += token
+                yield f'data: {token}\n\n'
+                
+        # Cập nhật summary bằng full_answer để lưu vào payload
+        payload.summary = full_answer
         
         metrics["generation_latency_ms"] = (time.time() - t_start) * 1000 - metrics["total_latency_ms"]
         metrics["total_latency_ms"] = (time.time() - t_start) * 1000
@@ -78,53 +287,13 @@ class MapIntelligenceChain:
             final_answer=full_answer,
         )
 
-    def _answer_text(self, summary: str, user_mode: str, query: str):
-        # Hàm này đổi thành stream generator
-        from app.core.llm import get_llm_client
-        from app.core.config import settings as config
-        
-        client = get_llm_client(config.MAP_ANSWER_MODEL)
-        
-        prompt = f"""Bạn là trợ lý ảo của hãng taxi thuần điện Xanh SM.
-Người dùng đang hỏi các thông tin liên quan đến bản đồ, địa điểm, tuyến đường.
-Dưới đây là DỮ LIỆU BẢN ĐỒ thực tế mà hệ thống vừa truy xuất được:
-{summary}
-
-Nhiệm vụ của bạn là dựa vào DỮ LIỆU BẢN ĐỒ trên để trực tiếp TRẢ LỜI CÂU HỎI của người dùng một cách tự nhiên, lịch sự và súc tích (dưới 4 câu).
-Nếu người dùng hỏi về đường đi hoặc quán ăn, hãy nhắc đến TÊN ĐIỂM ĐẾN nếu có trong dữ liệu (ví dụ quán Jiro Sushi, toà nhà Landmark...).
-Nếu dữ liệu báo có tuyến đường (khoảng cách, thời gian), hãy thông báo chi tiết cho người dùng biết.
-Tuyệt đối KHÔNG tự bịa ra thông tin đường đi nếu không có trong dữ liệu trên.
-"""
-        try:
-            response = client.chat.completions.create(
-                model=config.MAP_ANSWER_MODEL,
-                messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": query if query else "Hãy tổng hợp thông tin bản đồ cho tôi."}
-                ],
-                temperature=0.3,
-                stream=True
-            )
-            for chunk in response:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-        except Exception as e:
-            from app.core.logger import log_error
-            log_error("MAP_LLM", str(e))
-            yield f"Dạ, em đã tổng hợp bản đồ từ hệ thống vận hành. {summary} Anh/chị có thể bật/tắt từng lớp để xem chi tiết."
-
-    def _infer_user_mode(self, query: str) -> str:
-        text = (query or "").lower()
-        if any(term in text for term in ["tài xế nên", "tai xe nen", "đón khách", "don khach", "chạy xe", "chay xe"]):
-            return "driver"
-        return "customer"
-
     def _resolve_location(
         self,
         query: str,
         slots: dict[str, Any],
         food_context: dict[str, Any] | None,
     ) -> tuple[float | None, float | None]:
+        import re
         lat = slots.get("lat")
         lng = slots.get("lng")
         if lat is not None and lng is not None:
