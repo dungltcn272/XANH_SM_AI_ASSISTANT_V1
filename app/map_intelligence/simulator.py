@@ -11,7 +11,7 @@ from app.api.map_realtime import realtime_drivers_state
 # Center: Hoan Kiem Lake, Hanoi
 CENTER_LAT = 21.028511
 CENTER_LNG = 105.854168
-RADIUS_DEG = 0.3 # ~32km, bao phủ rộng toàn Hà Nội và ngoại thành
+RADIUS_DEG = 3.0 # ~330km, bao phủ nhiều tỉnh thành Miền Bắc
 NUM_DRIVERS = 1000 # Mô phỏng 1000 xe trên Server
 
 def haversine(lon1, lat1, lon2, lat2):
@@ -90,7 +90,7 @@ class Driver:
         if self.status != "available":
             return
             
-        radius_km = 3.0
+        radius_km = 5.0 # Bán kính 5km quanh vị trí hiện tại
         r = radius_km / 111.0
         u = random.random()
         v = random.random()
@@ -99,8 +99,8 @@ class Driver:
         x = w * math.cos(t)
         y = w * math.sin(t)
         
-        self.dest_lat = CENTER_LAT + y
-        self.dest_lng = CENTER_LNG + x
+        self.dest_lat = self.lat + y
+        self.dest_lng = self.lng + x
         
         # Async fetch route
         route = await fetch_route_with_retry(self.lat, self.lng, self.dest_lat, self.dest_lng)
@@ -301,11 +301,12 @@ async def user_generator_loop():
             center_lat = 21.028511
             center_lng = 105.854168
             
-            p_lat = center_lat + random.uniform(-0.02, 0.02)
-            p_lng = center_lng + random.uniform(-0.02, 0.02)
+            # Tạo user rải rác toàn miền Bắc (bán kính 330km)
+            p_lat = center_lat + random.uniform(-3.0, 3.0)
+            p_lng = center_lng + random.uniform(-3.0, 3.0)
             
-            d_lat = center_lat + random.uniform(-0.05, 0.05)
-            d_lng = center_lng + random.uniform(-0.05, 0.05)
+            d_lat = center_lat + random.uniform(-3.0, 3.0)
+            d_lng = center_lng + random.uniform(-3.0, 3.0)
             
             payload = json.dumps({
                 "pickup_lat": p_lat,
