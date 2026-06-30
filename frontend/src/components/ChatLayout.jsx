@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import 'regenerator-runtime/runtime';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import ReactMarkdown from 'react-markdown';
@@ -270,6 +270,17 @@ const extractMarkdownImageCards = (content) => {
 
 
 const SUGGESTION_CARDS = [
+  {
+    title: "Chỉ đường thông minh",
+    desc: "Tìm đường, đo khoảng cách và tránh kẹt xe",
+    action: "Tìm đường",
+    query: "Từ đây đến Lăng Bác đi đường nào?",
+    icon: MapPin,
+    hoverBorder: "hover:border-cyan-500/40 dark:hover:border-cyan-500/40",
+    hoverBg: "hover:bg-cyan-500/5 dark:hover:bg-cyan-500/5",
+    iconBg: "bg-cyan-500/10 text-cyan-500 group-hover/card:bg-cyan-500 group-hover/card:text-white",
+    textColor: "text-cyan-500"
+  },
   {
     title: "Giá cước dịch vụ",
     desc: "Xem bảng giá chi tiết cho từng loại dịch vụ",

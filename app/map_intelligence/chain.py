@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 def map_location_payload(query: str) -> dict[str, Any]:
     return {
         "title": "Anh/chị muốn tìm đường từ đâu?",
+        "subtitle": "Hệ thống cần vị trí xuất phát để tìm tuyến đường tối ưu nhất.",
         "query": query,
         "address_placeholder": "Nhập địa chỉ xuất phát",
         "current_location_label": "Dùng vị trí hiện tại",
@@ -48,10 +49,12 @@ MAP_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "start_lat": {"type": "number", "description": "Vĩ độ điểm xuất phát"},
+                    "start_lng": {"type": "number", "description": "Kinh độ điểm xuất phát"},
                     "end_lat": {"type": "number", "description": "Vĩ độ điểm đến"},
                     "end_lng": {"type": "number", "description": "Kinh độ điểm đến"}
                 },
-                "required": ["end_lat", "end_lng"]
+                "required": ["start_lat", "start_lng", "end_lat", "end_lng"]
             }
         }
     },
@@ -78,6 +81,18 @@ MAP_TOOLS = [
                 "required": []
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "request_user_location",
+            "description": "Yêu cầu người dùng cung cấp vị trí hiện tại của họ trên bản đồ khi cần thiết (ví dụ: 'từ đây đến...', 'quanh đây').",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
     }
 ]
 
@@ -97,29 +112,6 @@ class MapIntelligenceChain:
     ):
         slots = nlu_map_slots or {}
         lat, lng = self._resolve_location(query, slots, food_context)
-        if lat is None or lng is None:
-            from app.assistant.system_log import save_system_log
-            trace_id = str(uuid.uuid4())
-            metrics["map_trace_id"] = trace_id
-            save_system_log(
-                node="map.location",
-                event="missing_location",
-                trace_id=trace_id,
-                conversation_id=conversation_id,
-                user_id=user_id,
-                guest_id=guest_id,
-                query=query,
-                intent="map_intelligence",
-                payload={"food_context": food_context, "nlu_map_slots": nlu_map_slots},
-            )
-            location_payload = map_location_payload(query)
-            answer = "Dạ, anh/chị vui lòng xác nhận vị trí xuất phát để em có thể tìm đường chính xác nhất nhé."
-            yield sse_pipeline_step("map_missing_info", "Em cần thêm vị trí xuất phát...", 0.42)
-            yield from stream_plain_answer(answer)
-            yield f'data: {json.dumps({"type": "food_missing_info", "answer": answer, "ui_form": location_payload, "food_location_request": location_payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
-            yield f'data: {json.dumps({"metrics": metrics, "step": "map-missing-location"}, ensure_ascii=False)}\n\n'
-            yield "data: [DONE]\n\n"
-            return
             
         inferred_mode = user_mode or slots.get("user_mode") or "customer"
 
@@ -184,7 +176,10 @@ class MapIntelligenceChain:
                     
                 elif func_name == "get_osrm_routes":
                     yield sse_pipeline_step("map_route", "Đang tính toán lộ trình...", 0.6)
-                    res = get_osrm_routes(lat, lng, args.get("end_lat", lat), args.get("end_lng", lng))
+                    res = get_osrm_routes(
+                        args.get("start_lat"), args.get("start_lng"),
+                        args.get("end_lat"), args.get("end_lng")
+                    )
                     if res.get("success"):
                         for r in res["routes"]:
                             routes.append(MapRouteHint(
@@ -239,6 +234,29 @@ class MapIntelligenceChain:
                             ))
                         layers.add("drivers")
                     tool_res_str = json.dumps(res, ensure_ascii=False)
+                elif func_name == "request_user_location":
+                    from app.assistant.system_log import save_system_log
+                    trace_id = str(uuid.uuid4())
+                    metrics["map_trace_id"] = trace_id
+                    save_system_log(
+                        node="map.location",
+                        event="missing_location",
+                        trace_id=trace_id,
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        guest_id=guest_id,
+                        query=query,
+                        intent="map_intelligence",
+                        payload={"food_context": food_context, "nlu_map_slots": nlu_map_slots},
+                    )
+                    location_payload = map_location_payload(query)
+                    answer = "Dạ, anh/chị vui lòng xác nhận vị trí xuất phát để em có thể tìm đường chính xác nhất nhé."
+                    yield sse_pipeline_step("map_missing_info", "Em cần thêm vị trí xuất phát...", 0.42)
+                    yield from stream_plain_answer(answer)
+                    yield f'data: {json.dumps({"type": "food_missing_info", "answer": answer, "ui_form": location_payload, "food_location_request": location_payload, "trace_id": trace_id}, ensure_ascii=False)}\n\n'
+                    yield f'data: {json.dumps({"metrics": metrics, "step": "map-missing-location"}, ensure_ascii=False)}\n\n'
+                    yield "data: [DONE]\n\n"
+                    return
                 else:
                     tool_res_str = json.dumps({"error": "unknown tool"})
                     
@@ -250,8 +268,19 @@ class MapIntelligenceChain:
                 })
 
         # Final answer streaming
+        # Determine center: use lat/lng if available, else first marker, else first route point, else default HN
+        center_lat = lat
+        center_lng = lng
+        if center_lat is None or center_lng is None:
+            if markers:
+                center_lat, center_lng = markers[0].lat, markers[0].lng
+            elif routes and routes[0].points:
+                center_lat, center_lng = routes[0].points[0].lat, routes[0].points[0].lng
+            else:
+                center_lat, center_lng = 21.0278, 105.8342 # Default HN
+
         payload = MapPayload(
-            center=GeoPoint(lat=lat, lng=lng),
+            center=GeoPoint(lat=center_lat, lng=center_lng),
             zoom=14,
             layers=list(layers),
             markers=markers,

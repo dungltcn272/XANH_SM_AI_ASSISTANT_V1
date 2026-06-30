@@ -23,6 +23,8 @@ import {
   Sparkles,
   Tag,
   Utensils,
+  Map,
+  MapPin,
   Zap,
 } from 'lucide-react';
 
@@ -42,6 +44,7 @@ const t = {
   news: 'Tin tức',
   promo: 'Ưu đãi',
   food: 'Food AI',
+  map: 'Map AI',
   analytics: 'Analytics',
   discover: 'Khám phá khả năng của AI Assistant',
   allFeatures: 'Tất cả tính năng',
@@ -61,7 +64,8 @@ const orbitItems = [
   { label: t.vehicle, icon: Car, x: 232, y: -124, rotate: 7, color: 'text-emerald-500' },
   { label: t.news, icon: Newspaper, x: 266, y: 34, rotate: -5, color: 'text-violet-500' },
   { label: t.analytics, icon: BarChart2, x: 160, y: 184, rotate: 9, color: 'text-blue-500' },
-  { label: t.food, icon: Utensils, x: -42, y: 226, rotate: -7, color: 'text-orange-500' },
+  { label: t.map, icon: Map, x: -42, y: 226, rotate: -7, color: 'text-cyan-500' },
+  { label: t.food, icon: Utensils, x: -230, y: 80, rotate: 6, color: 'text-orange-500' },
   { label: t.promo, icon: Gift, x: -230, y: 80, rotate: 6, color: 'text-red-500' },
   { label: t.service, icon: Car, x: -210, y: -104, rotate: -10, color: 'text-teal-500' },
 ];
@@ -98,6 +102,11 @@ const capabilityCards = [
     image: '/food_recommendation.png',
   },
   {
+    title: 'Map Intelligence',
+    desc: 'Tìm đường, đo khoảng cách và tránh điểm kẹt xe',
+    image: '/map_intelligence.png',
+  },
+  {
     title: 'Policy & Support',
     desc: 'Chính sách, điều khoản và hỗ trợ khách hàng',
     image: '/policy_support.png',
@@ -122,18 +131,18 @@ function TargetIcon(props) {
 }
 
 const interests = [
-  [Car, 'Giá cước từ sân bay Nội Bài đến Hà Nội?'],
+  [MapPin, 'Đường từ Hồ Gươm đến sân bay Nội Bài đi thế nào?'],
   [Car, 'Xe VF6 có những màu nào?'],
   [ShieldCheck, 'Chính sách bảo hành pin xe VF5 như thế nào?'],
-  [Gift, 'Ưu đãi hiện tại cho khách hàng mới?'],
+  [Utensils, 'Gợi ý món ăn ngon gần đây?'],
 ];
 
 const recentQuestions = [
+  ['Từ đây đến Lăng Bác đi đường nào?', 'Vừa xong'],
   ['Giá cước từ sân bay Nội Bài đến Hà Nội?', '2 phút trước'],
+  ['Khu vực Ngã Tư Sở có kẹt xe không?', '10 phút trước'],
   ['Chính sách bảo hành pin xe VF5 như thế nào?', '15 phút trước'],
   ['Tin tức mới nhất về Xanh SM?', '1 giờ trước'],
-  ['Gợi ý quán ăn ngon gần đây?', '2 giờ trước'],
-  ['Ưu đãi hiện tại cho khách hàng mới?', '3 giờ trước'],
 ];
 
 export default function LandingPage() {

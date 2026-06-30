@@ -87,10 +87,10 @@ export const FoodLocationRequestCard = ({ request, onUseCurrentLocation, onSubmi
           <div className="flex flex-col justify-between gap-4">
             <div>
               <h3 className="text-lg md:text-xl font-black text-on-surface leading-snug">
-                Để gợi ý món ăn gần bạn chính xác hơn, em cần biết vị trí hiện tại của bạn nhé!
+                {request?.title || "Để gợi ý món ăn gần bạn chính xác hơn, em cần biết vị trí hiện tại của bạn nhé!"}
               </h3>
               <p className="mt-3 text-sm md:text-base text-on-surface-variant/85 leading-relaxed">
-                Em sẽ giúp bạn tìm quán gần nhất, ước tính thời gian giao hàng và tính phí ship chính xác.
+                {request?.subtitle || "Em sẽ giúp bạn tìm quán gần nhất, ước tính thời gian giao hàng và tính phí ship chính xác."}
               </p>
             </div>
 
