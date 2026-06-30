@@ -64,7 +64,7 @@ const markerLayer = (type) => {
 };
 
 export const MapInsightCard = ({ payload }) => {
-  const initialLayers = Object.keys(LAYER_META); // Luôn auto show tất cả các lớp
+  const initialLayers = (payload?.layers && payload.layers.length > 0) ? payload.layers : Object.keys(LAYER_META);
   const [visibleLayers, setVisibleLayers] = useState(() => new Set(initialLayers));
   const center = [Number(payload?.center?.lat) || 10.7769, Number(payload?.center?.lng) || 106.7009];
 

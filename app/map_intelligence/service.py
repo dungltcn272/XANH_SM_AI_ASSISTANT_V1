@@ -81,7 +81,6 @@ class MapIntelligenceService:
         markers.extend(DEMAND_MARKERS)
         markers.extend(TRAFFIC_MARKERS)
         zones.extend(zone for zone in ZONES if zone.type in ["traffic", "demand"])
-        routes.extend(ROUTES)
 
         radius_km = req.radius_km or 4.0
         markers = [

@@ -51,7 +51,7 @@ class MapIntelligenceChain:
         metrics["map_route_count"] = len(payload.routes)
         metrics["total_latency_ms"] = (time.time() - t_start) * 1000
 
-        answer_stream = self._answer_text(payload.summary, inferred_mode)
+        answer_stream = self._answer_text(payload.summary, inferred_mode, query)
         full_answer = ""
         for token in answer_stream:
             full_answer += token
@@ -78,7 +78,7 @@ class MapIntelligenceChain:
             final_answer=full_answer,
         )
 
-    def _answer_text(self, summary: str, user_mode: str):
+    def _answer_text(self, summary: str, user_mode: str, query: str):
         # Hàm này đổi thành stream generator
         from app.core.llm import get_llm_client
         from app.core.config import settings as config
@@ -90,8 +90,9 @@ Người dùng đang hỏi các thông tin liên quan đến bản đồ, địa
 Dưới đây là DỮ LIỆU BẢN ĐỒ thực tế mà hệ thống vừa truy xuất được:
 {summary}
 
-Nhiệm vụ của bạn là dựa vào DỮ LIỆU BẢN ĐỒ trên để trả lời người dùng một cách tự nhiên, lịch sự và súc tích (dưới 4 câu).
-Nếu dữ liệu báo có tuyến đường (khoảng cách, thời gian), hãy thông báo cho người dùng biết.
+Nhiệm vụ của bạn là dựa vào DỮ LIỆU BẢN ĐỒ trên để trực tiếp TRẢ LỜI CÂU HỎI của người dùng một cách tự nhiên, lịch sự và súc tích (dưới 4 câu).
+Nếu người dùng hỏi về đường đi hoặc quán ăn, hãy nhắc đến TÊN ĐIỂM ĐẾN nếu có trong dữ liệu (ví dụ quán Jiro Sushi, toà nhà Landmark...).
+Nếu dữ liệu báo có tuyến đường (khoảng cách, thời gian), hãy thông báo chi tiết cho người dùng biết.
 Tuyệt đối KHÔNG tự bịa ra thông tin đường đi nếu không có trong dữ liệu trên.
 """
         try:
@@ -99,7 +100,7 @@ Tuyệt đối KHÔNG tự bịa ra thông tin đường đi nếu không có tr
                 model=config.MAP_ANSWER_MODEL,
                 messages=[
                     {"role": "system", "content": prompt},
-                    {"role": "user", "content": "Hãy tổng hợp thông tin bản đồ cho tôi."}
+                    {"role": "user", "content": query if query else "Hãy tổng hợp thông tin bản đồ cho tôi."}
                 ],
                 temperature=0.3,
                 stream=True
