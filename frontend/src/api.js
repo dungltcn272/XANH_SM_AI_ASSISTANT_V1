@@ -100,8 +100,12 @@ export const api = {
     return res.json();
   },
 
-  getMapRealtimeVehicles: async (lat, lng, radius_km = 5.0) => {
-    const res = await api._fetch(`${API_BASE}/map/realtime-vehicles?lat=${lat}&lng=${lng}&radius_km=${radius_km}`);
+  getMapRealtimeVehicles: async (lat, lng, radius_km = 3.0, lat2 = null, lng2 = null) => {
+    let url = `${API_BASE}/map/realtime-vehicles?lat=${lat}&lng=${lng}&radius_km=${radius_km}`;
+    if (lat2 !== null && lng2 !== null) {
+      url += `&lat2=${lat2}&lng2=${lng2}`;
+    }
+    const res = await api._fetch(url);
     if (!res.ok) throw new Error('API Error');
     return res.json();
   },

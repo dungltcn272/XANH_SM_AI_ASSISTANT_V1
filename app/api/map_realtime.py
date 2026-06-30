@@ -50,10 +50,36 @@ async def mock_booking(request: BookingRequest):
     return {"status": "success", "booking_id": booking_id}
 
 @router.get("/api/map/realtime-vehicles")
-async def get_realtime_vehicles(lat: float, lng: float, radius_km: float = 5.0):
+async def get_realtime_vehicles(lat: float, lng: float, radius_km: float = 15.0, lat2: float = None, lng2: float = None):
     """
     Endpoint for Frontend to fetch real-time vehicles nearby.
     """
-    # Simply return all active drivers for now
-    drivers = list(realtime_drivers_state.values())
+    import math
+
+    def calc_dist(lat1, lng1, lat2, lng2):
+        R = 6371  # Radius of the earth in km
+        dLat = math.radians(lat2 - lat1)
+        dLng = math.radians(lng2 - lng1)
+        a = math.sin(dLat/2) * math.sin(dLat/2) + \
+            math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * \
+            math.sin(dLng/2) * math.sin(dLng/2)
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        return R * c
+
+    # Lọc xe trong bán kính
+    drivers = []
+    for d in realtime_drivers_state.values():
+        dist1 = calc_dist(lat, lng, d["lat"], d["lng"])
+        dist2 = calc_dist(lat2, lng2, d["lat"], d["lng"]) if lat2 is not None and lng2 is not None else float('inf')
+        
+        min_dist = min(dist1, dist2)
+        if min_dist <= radius_km:
+            d_copy = dict(d)
+            d_copy["distance"] = min_dist
+            drivers.append(d_copy)
+            
+    # Sort by distance and get top 200
+    drivers.sort(key=lambda x: x["distance"])
+    drivers = drivers[:200]
+    
     return {"success": True, "drivers": drivers}

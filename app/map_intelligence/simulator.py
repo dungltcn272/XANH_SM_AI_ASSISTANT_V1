@@ -11,8 +11,8 @@ from app.api.map_realtime import realtime_drivers_state
 # Center: Hoan Kiem Lake, Hanoi
 CENTER_LAT = 21.028511
 CENTER_LNG = 105.854168
-RADIUS_DEG = 0.05 # ~5km
-NUM_DRIVERS = 30 # Giảm xuống 30 xe để chạy API OSRM mượt mà, tránh rate limit
+RADIUS_DEG = 0.3 # ~32km, bao phủ rộng toàn Hà Nội và ngoại thành
+NUM_DRIVERS = 1000 # Mô phỏng 1000 xe trên Server
 
 def haversine(lon1, lat1, lon2, lat2):
     R = 6371000 # Earth radius in meters
@@ -48,6 +48,23 @@ async def fetch_route(start_lat, start_lng, end_lat, end_lng):
     except Exception as e:
         print(f"OSRM Error: {e}")
     return None
+
+async def fetch_route_with_retry(start_lat, start_lng, end_lat, end_lng):
+    import urllib.request
+    import asyncio
+    url = f"http://router.project-osrm.org/route/v1/driving/{start_lng},{start_lat};{end_lng},{end_lat}?overview=full&geometries=geojson"
+    for _ in range(5):
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(None, urllib.request.urlopen, req)
+            data = json.loads(response.read().decode('utf-8'))
+            if data.get("code") == "Ok":
+                coords = data["routes"][0]["geometry"]["coordinates"]
+                return [(lat, lng) for lng, lat in coords]
+        except Exception:
+            await asyncio.sleep(2)
+    return []
 
 class Driver:
     def __init__(self, driver_id, lat=None, lng=None, vehicle_type=None):
@@ -86,18 +103,12 @@ class Driver:
         self.dest_lng = CENTER_LNG + x
         
         # Async fetch route
-        import urllib.request
-        url = f"http://router.project-osrm.org/route/v1/driving/{self.lng},{self.lat};{self.dest_lng},{self.dest_lat}?overview=full&geometries=geojson"
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(None, urllib.request.urlopen, req)
-            data = json.loads(response.read().decode('utf-8'))
-            if data["code"] == "Ok":
-                coords = data["routes"][0]["geometry"]["coordinates"]
-                self.route_queue = [(lat, lng) for lng, lat in coords]
-        except Exception as e:
-            self.route_queue = [(self.dest_lat, self.dest_lng)]
+        route = await fetch_route_with_retry(self.lat, self.lng, self.dest_lat, self.dest_lng)
+        if route:
+            self.route_queue = route
+        else:
+            self.route_queue = []
+            await asyncio.sleep(3)
 
     def move(self):
         if not self.route_queue:
@@ -176,20 +187,14 @@ async def process_offer(send_queue, driver, booking_id, pickup_lat, pickup_lng, 
         driver.status = "fetching_route"
         
         # Fetch đường tới Pickup
-        url = f"http://router.project-osrm.org/route/v1/driving/{driver.lng},{driver.lat};{pickup_lng},{pickup_lat}?overview=full&geometries=geojson"
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(None, urllib.request.urlopen, req)
-            data = json.loads(response.read().decode('utf-8'))
-            if data["code"] == "Ok":
-                coords = data["routes"][0]["geometry"]["coordinates"]
-                driver.route_queue = [(lat, lng) for lng, lat in coords]
-        except Exception as e:
-            driver.route_queue = [driver.pickup_coord]
-            
-        # Set status AFTER route is populated
-        driver.status = "moving_to_pickup"
+        route = await fetch_route_with_retry(driver.lat, driver.lng, pickup_lat, pickup_lng)
+        if route:
+            driver.route_queue = route
+            driver.status = "moving_to_pickup"
+        else:
+            # Hủy chuyến nếu không tìm được đường
+            driver.status = "available"
+            driver.route_queue = []
             
     elif rand < 0.8:
         # Reject
@@ -239,17 +244,14 @@ async def simulate_driver(driver, send_queue):
                     }))
                     
                     # Fetch đường tới Dropoff
-                    url = f"http://router.project-osrm.org/route/v1/driving/{driver.lng},{driver.lat};{driver.dropoff_coord[1]},{driver.dropoff_coord[0]}?overview=full&geometries=geojson"
-                    try:
-                        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                        loop = asyncio.get_event_loop()
-                        response = await loop.run_in_executor(None, urllib.request.urlopen, req)
-                        data = json.loads(response.read().decode('utf-8'))
-                        if data["code"] == "Ok":
-                            coords = data["routes"][0]["geometry"]["coordinates"]
-                            driver.route_queue = [(lat, lng) for lng, lat in coords]
-                    except Exception as e:
-                        driver.route_queue = [driver.dropoff_coord]
+                    route = await fetch_route_with_retry(driver.lat, driver.lng, driver.dropoff_coord[0], driver.dropoff_coord[1])
+                    if route:
+                        driver.route_queue = route
+                    else:
+                        # Fallback chờ rồi thử lại
+                        driver.route_queue = []
+                        await asyncio.sleep(3)
+                        continue
                     
                     driver.status = "in_trip"
                 else:

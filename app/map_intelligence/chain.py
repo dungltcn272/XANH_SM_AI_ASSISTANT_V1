@@ -35,7 +35,8 @@ MAP_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Tên địa điểm cần tìm kiếm"}
+                    "query": {"type": "string", "description": "Tên địa điểm cần tìm kiếm"},
+                    "marker_type": {"type": "string", "description": "Loại marker hiển thị (vd: 'start', 'end', 'restaurant', 'demand'). Nếu là điểm xuât phát/đích của tìm đường, hãy truyền 'start' hoặc 'end'."}
                 },
                 "required": ["query"]
             }
@@ -162,16 +163,17 @@ class MapIntelligenceChain:
                 if func_name == "search_places":
                     yield sse_pipeline_step("map_search", f"Đang tìm kiếm {args.get('query')}...", 0.5)
                     res = search_places(args.get("query", ""), lat, lng)
+                    marker_type = args.get("marker_type", "restaurant")
                     if res.get("found"):
                         markers.append(MapMarker(
                             id=str(uuid.uuid4()),
-                            type="restaurant", # Có thể general hơn
+                            type=marker_type,
                             title=res["title"],
                             description="Kết quả tìm kiếm",
                             lat=res["lat"],
                             lng=res["lng"]
                         ))
-                        layers.add("restaurants")
+                        layers.add(marker_type)
                     tool_res_str = json.dumps(res, ensure_ascii=False)
                     
                 elif func_name == "get_osrm_routes":

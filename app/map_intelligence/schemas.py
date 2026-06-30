@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-MapLayer = Literal["drivers", "restaurants", "demand", "traffic", "shortcuts"]
+MapLayer = Literal["drivers", "restaurants", "demand", "traffic", "shortcuts", "start", "end"]
 UserMode = Literal["customer", "driver"]
 
 
@@ -15,7 +15,7 @@ class GeoPoint(BaseModel):
 
 class MapMarker(BaseModel):
     id: str
-    type: Literal["driver", "restaurant", "demand", "traffic"]
+    type: Literal["driver", "restaurant", "demand", "traffic", "start", "end"]
     title: str
     description: str | None = None
     lat: float

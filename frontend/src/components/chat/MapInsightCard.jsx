@@ -104,14 +104,18 @@ const LAYER_META = {
   demand: { label: 'Đông khách', color: '#2563eb', icon: Circle },
   traffic: { label: 'Tắc đường', color: '#ef4444', icon: TrafficCone },
   shortcuts: { label: 'Đường tắt', color: '#7c3aed', icon: Route },
+  start: { label: 'Điểm đi', color: '#10b981', icon: MapPin },
+  end: { label: 'Điểm đến', color: '#ef4444', icon: MapPin },
 };
 
 const markerColor = (type) => {
   if (type === 'driver') return LAYER_META.drivers.color;
   if (type === 'restaurant') return LAYER_META.restaurants.color;
-  if (type === 'demand') return LAYER_META.demand.color;
   if (type === 'traffic') return LAYER_META.traffic.color;
-  return '#00a884';
+  if (type === 'demand') return LAYER_META.demand.color;
+  if (type === 'start') return LAYER_META.start.color;
+  if (type === 'end') return LAYER_META.end.color;
+  return '#3b82f6';
 };
 
 const markerIcon = (type, intensity = 0.5) => L.divIcon({
@@ -168,7 +172,16 @@ export const MapInsightCard = ({ payload }) => {
     let mounted = true;
     const fetchVehicles = async () => {
       try {
-        const res = await api.getMapRealtimeVehicles(center[0], center[1]);
+        let qLat1 = center[0], qLng1 = center[1], qLat2 = null, qLng2 = null;
+        if (payload?.routes && payload.routes.length > 0 && payload.routes[0].points.length > 0) {
+           const pts = payload.routes[0].points;
+           qLat1 = pts[0].lat;
+           qLng1 = pts[0].lng;
+           qLat2 = pts[pts.length - 1].lat;
+           qLng2 = pts[pts.length - 1].lng;
+        }
+        
+        const res = await api.getMapRealtimeVehicles(qLat1, qLng1, 3.0, qLat2, qLng2);
         if (mounted && res.success) {
           setRealtimeVehicles(res.drivers);
         }
@@ -183,7 +196,7 @@ export const MapInsightCard = ({ payload }) => {
       mounted = false;
       clearInterval(interval);
     };
-  }, [center]);
+  }, [center, payload?.routes]);
 
   const markers = useMemo(
     () => (payload?.markers || []).filter((item) => visibleLayers.has(markerLayer(item.type))),
@@ -296,12 +309,27 @@ export const MapInsightCard = ({ payload }) => {
                     {route.eta_saving_minutes ? <><br />Tiết kiệm khoảng {route.eta_saving_minutes} phút</> : null}
                   </Popup>
                 </Polyline>
-                {route.type !== 'traffic' && start && (
+                
+                {/* Arrow at 50% of the route */}
+                {route.type !== 'traffic' && pts.length > 3 && (
+                  <Marker 
+                    position={[pts[Math.floor(pts.length / 2)].lat, pts[Math.floor(pts.length / 2)].lng]} 
+                    icon={L.divIcon({
+                      className: 'route-arrow',
+                      html: `<svg style="transform: rotate(${Math.atan2(pts[Math.floor(pts.length / 2) + 1].lng - pts[Math.floor(pts.length / 2) - 1].lng, pts[Math.floor(pts.length / 2) + 1].lat - pts[Math.floor(pts.length / 2) - 1].lat) * 180 / Math.PI}deg); width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>`,
+                      iconSize: [24, 24],
+                      iconAnchor: [12, 12]
+                    })}
+                  />
+                )}
+                
+                {/* Fallback circles if marker is missing */}
+                {route.type !== 'traffic' && start && !payload?.markers?.some(m => m.lat === start.lat) && (
                   <LeafletCircle center={[start.lat, start.lng]} radius={45} pathOptions={{ color: 'white', fillColor: '#10b981', fillOpacity: 1, weight: 3 }}>
                     <Popup>Điểm xuất phát</Popup>
                   </LeafletCircle>
                 )}
-                {route.type !== 'traffic' && end && (
+                {route.type !== 'traffic' && end && !payload?.markers?.some(m => m.lat === end.lat) && (
                   <LeafletCircle center={[end.lat, end.lng]} radius={45} pathOptions={{ color: 'white', fillColor: '#ef4444', fillOpacity: 1, weight: 3 }}>
                     <Popup>Điểm đến</Popup>
                   </LeafletCircle>
